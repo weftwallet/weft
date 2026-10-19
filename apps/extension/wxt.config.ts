@@ -6,7 +6,7 @@ export default defineConfig({
   manifest: {
     name: "Weft",
     description: "Identity wallet for Hyperledger Fabric. Sign transactions with your organisation's certificate.",
-    permissions: ["storage", "unlimitedStorage"],
+    permissions: ["storage", "unlimitedStorage", "activeTab"],
     // CA and relay hosts differ per organisation, so access is requested at
     // runtime, per host, when the user adds a network.
     optional_host_permissions: ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],

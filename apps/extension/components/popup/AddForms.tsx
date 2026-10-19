@@ -1,7 +1,10 @@
+import { resolveInviteUrl } from "@weftwallet/core";
 import type { OrgInvite } from "@weftwallet/protocol";
-import { useState, type FormEvent } from "react";
+import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { ui, type IdentityView, type NetworkInput, type PendingCsrView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
+import { scanActiveTab, scanPastedImage } from "../../lib/qr";
+import { InviteCard } from "../InviteCard";
 import { BackHeader, Field, Icon, copy } from "../ui";
 import { useAction, type Navigate } from "./state";
 
@@ -99,14 +102,30 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
   const [enrollmentId, setEnrollmentId] = useState("");
   const [secret, setSecret] = useState("");
 
-  const load = useAction(async (url: string) => {
-    // Ask for the invite's host before fetching it.
-    const target = url.startsWith("weft:") ? new URL(url).searchParams.get("u") ?? url : url;
-    await requestHostAccess([target]);
-    const loaded = await ui("fetchInvite", { link: url });
+  const load = useAction(async (value: string) => {
+    // Ask for the invite's own host (not the join page's) before fetching it.
+    await requestHostAccess([resolveInviteUrl(value)]);
+    const loaded = await ui("fetchInvite", { link: value });
     setInvite(loaded);
     setEnrollmentId(loaded.enrollmentId ?? "");
   });
+
+  // Scanning hands over a link but can't open the permission prompt itself:
+  // the browser only allows that from a click. So scanning fills the field and
+  // the user presses Continue.
+  const scan = useAction(async () => {
+    setLink(await scanActiveTab());
+  });
+
+  const onPaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const clipboard = event.clipboardData;
+    if (!Array.from(clipboard.files).some((f) => f.type.startsWith("image/"))) return;
+    event.preventDefault();
+    scan.setError(null);
+    void scanPastedImage(clipboard)
+      .then((text) => text && setLink(text))
+      .catch((error: unknown) => scan.setError(error instanceof Error ? error.message : String(error)));
+  };
 
   const join = useAction(async (inv: OrgInvite) => {
     await requestHostAccess([inv.caUrl, inv.relayUrl]);
@@ -128,9 +147,20 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
           <p className="muted" style={{ margin: 0 }}>
             Your network administrator shares a link that tells Weft where your organisation's CA and relay are.
           </p>
-          <Field label="Invite link">
-            <input required placeholder="weft://invite?u=…" value={link} onChange={(e) => setLink(e.target.value)} />
+          <Field label="Invite link" hint="Paste the link, or paste a screenshot of the QR code.">
+            <input
+              required
+              placeholder="https://… or weft://invite?u=…"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              onPaste={onPaste}
+            />
           </Field>
+          <button type="button" className="add-tile" style={{ minHeight: 48, flexDirection: "row" }} onClick={() => void scan.run()}>
+            <Icon name="qr" size={18} />
+            {scan.busy ? "Looking for a QR code…" : "Scan QR code on this tab"}
+          </button>
+          {scan.error && <div className="error-text">{scan.error}</div>}
           <Submit busy={load.busy} label="Continue" error={load.error} />
         </form>
       </>
@@ -147,22 +177,7 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
           void join.run(invite);
         }}
       >
-        <section className="card" aria-label="Invite">
-          <span className="eyebrow">You're joining</span>
-          <div style={{ fontSize: 20, fontWeight: 600 }}>{invite.network}</div>
-          <dl className="details">
-            <dt>Organisation</dt>
-            <dd>{invite.organization}</dd>
-            <dt>MSP ID</dt>
-            <dd className="mono">{invite.mspId}</dd>
-            <dt>Channels</dt>
-            <dd className="mono">{invite.channels.join(", ")}</dd>
-            <dt>CA</dt>
-            <dd className="mono">{new URL(invite.caUrl).host}</dd>
-            <dt>Relay</dt>
-            <dd className="mono">{new URL(invite.relayUrl).host}</dd>
-          </dl>
-        </section>
+        <InviteCard invite={invite} />
         <Field label="Enrollment ID">
           <input required className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />
         </Field>
