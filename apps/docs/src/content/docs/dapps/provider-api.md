@@ -26,6 +26,9 @@ The provider may be injected after your script runs. Wait for the `weft#initiali
 | `weft_networks` | – | `NetworkSummary[]` | No |
 | `weft_evaluate` | `ContractCall` | `EvaluateResult` | Every time |
 | `weft_submit` | `ContractCall` | `SubmitResult` | Every time |
+| `weft_addNetwork` | `{ url }` | `{ added: true }` | Every time |
+
+`weft_addNetwork` asks the user to join a network from an [org invite](/operators/invites/). `url` is the invite's HTTPS URL, a `weft://` link or a join link. Weft fetches the invite itself from that address, shows it, and the user enrols. It doesn't need the site to be connected, which suits an admin portal's "Set up Weft" button.
 
 `weft_identity` returns `null` for sites that aren't connected. `weft_networks`, `weft_evaluate` and `weft_submit` fail with `4100` until the site is connected.
 

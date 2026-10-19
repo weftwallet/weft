@@ -75,6 +75,17 @@ export interface EvaluateResult {
   base64: string;
 }
 
+/** Params for weft_addNetwork: where the organisation's invite lives. */
+export interface AddNetworkParams {
+  /** HTTPS URL of the invite JSON, a weft:// link, or a join-page link. */
+  url: string;
+}
+
+export interface AddNetworkResult {
+  /** True once the user has enrolled and the network is in their wallet. */
+  added: true;
+}
+
 export interface SubmitResult extends EvaluateResult {
   transactionId: string;
   blockNumber: string;
@@ -89,6 +100,7 @@ export interface WeftMethods {
   weft_networks: { params: undefined; result: NetworkSummary[] };
   weft_evaluate: { params: ContractCall; result: EvaluateResult };
   weft_submit: { params: ContractCall; result: SubmitResult };
+  weft_addNetwork: { params: AddNetworkParams; result: AddNetworkResult };
 }
 
 export type WeftMethod = keyof WeftMethods;
@@ -103,10 +115,16 @@ export const METHODS: readonly WeftMethod[] = [
   "weft_networks",
   "weft_evaluate",
   "weft_submit",
+  "weft_addNetwork",
 ] as const;
 
 /** Methods that always show the user an approval screen. */
-export const APPROVAL_METHODS: ReadonlySet<WeftMethod> = new Set(["weft_connect", "weft_evaluate", "weft_submit"]);
+export const APPROVAL_METHODS: ReadonlySet<WeftMethod> = new Set([
+  "weft_connect",
+  "weft_evaluate",
+  "weft_submit",
+  "weft_addNetwork",
+]);
 
 export function isWeftMethod(value: unknown): value is WeftMethod {
   return typeof value === "string" && (METHODS as readonly string[]).includes(value);

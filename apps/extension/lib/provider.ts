@@ -5,6 +5,8 @@
 
 import {
   CommitError,
+  InviteError,
+  resolveInviteUrl,
   RelayClient,
   RelayError,
   VerificationError,
@@ -268,6 +270,39 @@ function describeFailure(error: unknown): {
   };
 }
 
+/**
+ * Opens a review window for an organisation's invite. The window fetches the
+ * invite and enrols the user; this resolves once they finish or cancel.
+ * Like adding a network in MetaMask, it doesn't require the site to be connected.
+ */
+async function addNetwork(origin: string, params: unknown) {
+  const url = (params as { url?: unknown } | undefined)?.url;
+  if (typeof url !== "string" || !url) throw new WeftError(ErrorCode.InvalidParams, '"url" is required');
+  let inviteUrl: string;
+  try {
+    inviteUrl = resolveInviteUrl(url);
+  } catch (error) {
+    throw new WeftError(ErrorCode.InvalidParams, error instanceof InviteError ? error.message : "Invalid invite URL");
+  }
+  const active = await activeIdentity();
+  const view: ApprovalView = {
+    id: newId(),
+    origin,
+    method: "weft_addNetwork",
+    call: null,
+    identity: active ? await identityView(active.record.id) : null,
+    inviteUrl,
+  };
+  const approval = await openApproval(view);
+  if (!(await approval.decision.promise)) {
+    finish(approval, { status: "rejected" });
+    throw new WeftError(ErrorCode.UserRejected, "The user did not add the network.");
+  }
+  finish(approval, { status: "approved", activityId: null });
+  await broadcast("identityChanged", await activeSummary());
+  return { added: true as const };
+}
+
 export async function handleProviderRequest(origin: string, method: unknown, params: unknown): Promise<unknown> {
   if (!isWeftMethod(method)) {
     throw new WeftError(ErrorCode.UnsupportedMethod, `Unknown method ${String(method)}`);
@@ -292,5 +327,7 @@ export async function handleProviderRequest(origin: string, method: unknown, par
     case "weft_evaluate":
     case "weft_submit":
       return runCall(origin, method, params);
+    case "weft_addNetwork":
+      return addNetwork(origin, params);
   }
 }

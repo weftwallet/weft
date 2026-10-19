@@ -83,6 +83,15 @@ try {
 
 The full list is in the [Provider API](/dapps/provider-api/#errors).
 
+## Onboard users from your portal
+
+If your app is also where users are given access, hand them straight to enrolment:
+
+```ts
+await weft.addNetwork("https://relay.org1.example.com/.well-known/weft-invite.json");
+const me = await weft.connect();
+```
+
 ## React to changes
 
 ```ts

@@ -11,6 +11,7 @@ import {
   ErrorCode,
   WeftError,
   isWeftErrorShape,
+  type AddNetworkResult,
   type ContractCall,
   type EvaluateResult,
   type IdentitySummary,
@@ -99,6 +100,15 @@ export class WeftClient {
   /** Ledger write. The user approves it; resolves once committed as VALID. */
   async submit(call: ContractCall): Promise<SubmitResult> {
     return this.provider.request({ method: "weft_submit", params: call }).catch(rethrow);
+  }
+
+  /**
+   * Asks the user to join a network from your organisation's invite, e.g. from
+   * an admin portal's "Set up Weft" button. Weft shows the invite, then the user
+   * enrols with their enrollment ID and secret. Doesn't require connect().
+   */
+  async addNetwork(inviteUrl: string): Promise<AddNetworkResult> {
+    return this.provider.request({ method: "weft_addNetwork", params: { url: inviteUrl } }).catch(rethrow);
   }
 
   /** Binds a channel and chaincode so calls read like function calls. */

@@ -2,8 +2,11 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../assets/app.css";
 import { qualifiedFunctionName } from "@weftwallet/core";
-import { Icon, healthView } from "../../components/ui";
+import type { OrgInvite } from "@weftwallet/protocol";
+import { InviteCard } from "../../components/InviteCard";
+import { Field, Icon, healthView } from "../../components/ui";
 import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView } from "../../lib/messages";
+import { requestHostAccess } from "../../lib/permissions";
 
 const id = new URLSearchParams(location.search).get("id") ?? "";
 
@@ -42,6 +45,7 @@ function Approve() {
   }
 
   if (phase !== "review") return <Progress view={view} phase={phase} outcome={outcome} />;
+  if (view.method === "weft_addNetwork") return <AddNetworkRequest view={view} onDecide={decide} />;
   return view.method === "weft_connect" ? (
     <ConnectRequest view={view} onDecide={decide} />
   ) : (
@@ -256,6 +260,109 @@ function SignRequest({ view, onDecide }: { view: ApprovalView; onDecide: (approv
   );
 }
 
+/**
+ * weft_addNetwork: a site asks the user to join a network from an invite.
+ * The invite is fetched only after the user agrees, from the organisation's
+ * own server, so the site can't put words in the invite.
+ */
+function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (approved: boolean) => void }) {
+  const inviteUrl = view.inviteUrl!;
+  const [invite, setInvite] = useState<OrgInvite | null>(null);
+  const [enrollmentId, setEnrollmentId] = useState("");
+  const [secret, setSecret] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async (task: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await task();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const review = () =>
+    run(async () => {
+      await requestHostAccess([inviteUrl]);
+      const loaded = await ui("fetchInvite", { link: inviteUrl });
+      setInvite(loaded);
+      setEnrollmentId(loaded.enrollmentId ?? "");
+    });
+
+  const enroll = (inv: OrgInvite) =>
+    run(async () => {
+      await requestHostAccess([inv.caUrl, inv.relayUrl]);
+      await ui("joinInvite", { invite: inv, enrollmentId: enrollmentId.trim(), secret });
+      onDecide(true);
+    });
+
+  return (
+    <>
+      <header className="header" style={{ height: "auto", padding: "18px 16px 14px", flexDirection: "column", alignItems: "stretch", gap: 12 }}>
+        <div style={{ fontSize: 18, fontWeight: 600 }}>Add a network?</div>
+        <Origin origin={view.origin} subtitle="wants you to join a network" />
+      </header>
+      {!invite ? (
+        <>
+          <main className="page">
+            <dl className="details">
+              <dt>Invite from</dt>
+              <dd className="mono">{new URL(inviteUrl).host}</dd>
+            </dl>
+            <div className="notice notice--thread">
+              <Icon name="shield" size={18} color="var(--weft-thread)" />
+              <span>
+                Weft loads the invite from that address, not from the site, and shows you what it contains before you
+                enter anything.
+              </span>
+            </div>
+            {error && <div className="error-text" role="alert">{error}</div>}
+          </main>
+          <footer className="footer">
+            <button type="button" className="btn" onClick={() => onDecide(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn--primary" disabled={busy} onClick={() => void review()}>
+              {busy ? "Loading…" : "Review invite"}
+            </button>
+          </footer>
+        </>
+      ) : (
+        <form
+          style={{ display: "contents" }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void enroll(invite);
+          }}
+        >
+          <main className="page">
+            <InviteCard invite={invite} />
+            <Field label="Enrollment ID">
+              <input required className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />
+            </Field>
+            <Field label="Enrollment secret" hint="From your registrar. Used once, never stored.">
+              <input required type="password" value={secret} onChange={(e) => setSecret(e.target.value)} />
+            </Field>
+            {error && <div className="error-text" role="alert">{error}</div>}
+          </main>
+          <footer className="footer">
+            <button type="button" className="btn" onClick={() => onDecide(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn--primary" disabled={busy}>
+              {busy ? "Enrolling…" : "Enroll"}
+            </button>
+          </footer>
+        </form>
+      )}
+    </>
+  );
+}
+
 function Progress({
   view,
   phase,
@@ -270,7 +377,13 @@ function Progress({
     return (
       <main className="page" style={{ justifyContent: "center", alignItems: "center", textAlign: "center" }}>
         <div style={{ fontSize: 16, fontWeight: 600 }}>
-          {view.method === "weft_connect" ? "Connecting…" : submit ? "Signing and submitting…" : "Signing and querying…"}
+          {view.method === "weft_connect"
+            ? "Connecting…"
+            : view.method === "weft_addNetwork"
+              ? "Finishing…"
+              : submit
+                ? "Signing and submitting…"
+                : "Signing and querying…"}
         </div>
         <div className="muted" style={{ fontSize: 13 }}>
           {submit ? "Waiting for organisations to approve and the block to commit." : "This only takes a moment."}
@@ -304,7 +417,13 @@ function Progress({
         <Icon name="check" size={40} />
       </span>
       <div style={{ fontSize: 16, fontWeight: 600 }}>
-        {view.method === "weft_connect" ? "Connected" : submit ? "Committed" : "Done"}
+        {view.method === "weft_connect"
+          ? "Connected"
+          : view.method === "weft_addNetwork"
+            ? "Network added"
+            : submit
+              ? "Committed"
+              : "Done"}
       </div>
     </main>
   );
