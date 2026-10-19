@@ -42,6 +42,7 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 | `packages/protocol` | `@weftwallet/protocol` | Types shared by everything: provider API, errors, relay API, invites. |
 | `packages/core` | `@weftwallet/core` | Signing, certificates, Fabric CA client, message decoding and verification, relay client. |
 | `packages/sdk` | `@weftwallet/sdk` | What dApps import to talk to the wallet. |
+| `packages/cli` | `@weftwallet/cli` | `weft` command for operators: build invites from connection profiles, share links and QR codes, check a deployment. |
 | `packages/brand` | `@weftwallet/brand` | Logo files and design tokens. |
 | `examples/` | – | A plain-HTML demo dApp and a sample org invite. |
 | `docs/adr/` | – | Architecture decision records. |
