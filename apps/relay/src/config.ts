@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import type { OrgInvite } from "@weftwallet/protocol";
+import { loadInvite } from "./invite.ts";
 
 export interface RelayConfig {
   /** Port the HTTP server listens on. */
@@ -16,6 +18,12 @@ export interface RelayConfig {
   allowedMspIds: string[] | undefined;
   /** Maximum number of cached gateway connections (one per signer). */
   maxGateways: number;
+  /** The organisation's invite, served at /.well-known/weft-invite.json. Null when not configured. */
+  invite: OrgInvite | null;
+  /** Public base URL of this relay, used to print invite links at startup. */
+  publicUrl: string | undefined;
+  /** Hosted join page used in printed links. */
+  joinPage: string | undefined;
 }
 
 function list(value: string | undefined): string[] | undefined {
@@ -42,5 +50,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
     allowedOrigins: !origins || origins.includes("*") ? "*" : origins,
     allowedMspIds: list(env.WEFT_ALLOWED_MSP_IDS),
     maxGateways: Number(env.WEFT_MAX_GATEWAYS ?? 256),
+    invite: loadInvite(env),
+    publicUrl: env.WEFT_PUBLIC_URL?.replace(/\/+$/, "") || undefined,
+    joinPage: env.WEFT_JOIN_PAGE || undefined,
   };
 }

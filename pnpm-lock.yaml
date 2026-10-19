@@ -75,12 +75,18 @@ importers:
       '@hyperledger/fabric-gateway':
         specifier: ^1.13.0
         version: 1.13.0
+      '@weftwallet/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@weftwallet/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       fastify:
         specifier: ^5.12.7
         version: 5.12.7
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
     devDependencies:
       '@hyperledger/fabric-protos':
         specifier: ^0.2.2
@@ -91,9 +97,6 @@ importers:
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.5
-      '@weftwallet/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       vitest:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1))

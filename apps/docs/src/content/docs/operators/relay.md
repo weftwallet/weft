@@ -22,6 +22,13 @@ The relay **never holds private keys** and keeps **no state** between requests, 
 | `WEFT_ALLOWED_MSP_IDS` | No | Refuse signers from any other MSP. Recommended. |
 | `WEFT_MAX_GATEWAYS` | No | Cached connections, one per signer. Default `256`. |
 | `PORT` | No | Default `8787`. |
+| `WEFT_PUBLIC_URL` | For invites | The relay's public URL, as wallets reach it. |
+| `WEFT_CONNECTION_PROFILE` | No | Your Fabric connection profile (JSON or YAML). The relay builds and serves your [invite](/operators/invites/) from it. |
+| `WEFT_INVITE_CHANNELS` | No | Comma-separated channels for the invite, when the profile doesn't list them. |
+| `WEFT_INVITE_ORGANIZATION` | No | Which organisation in the profile, when it lists several. |
+| `WEFT_INVITE_NETWORK` | No | Display name for the network. Defaults to the profile's `name`. |
+| `WEFT_INVITE_FILE` | No | A ready-made invite JSON to serve instead. |
+| `WEFT_JOIN_PAGE` | No | Join page used in the share link printed at startup. Defaults to the hosted Weft page. |
 
 ## Run it
 
@@ -55,6 +62,7 @@ All bodies are JSON; byte fields are base64. The wallet calls these in order; yo
 | Endpoint | Purpose |
 |---|---|
 | `GET /v1/health` | Liveness. |
+| `GET /.well-known/weft-invite.json` | Your organisation's invite, when configured. Public; contains no secrets. |
 | `POST /v1/proposals` | Build an unsigned proposal for `{ signer, call }`. |
 | `POST /v1/proposals/evaluate` | Evaluate a signed proposal on one peer. |
 | `POST /v1/proposals/endorse` | Collect endorsements; returns the unsigned transaction. |

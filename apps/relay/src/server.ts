@@ -18,6 +18,7 @@ import {
 import Fastify, { type FastifyInstance } from "fastify";
 import type { RelayConfig } from "./config.ts";
 import type { GatewayPool } from "./gateways.ts";
+import { INVITE_PATH } from "./invite.ts";
 
 const STATUS_NAMES = new Map<number, string>(Object.entries(StatusCode).map(([name, code]) => [code as number, name]));
 
@@ -94,6 +95,14 @@ export function buildServer(config: RelayConfig, pool: GatewayPool): FastifyInst
   });
 
   app.get(RELAY_PATHS.health, async () => ({ ok: true, peer: config.peerEndpoint }));
+
+  // The organisation's invite. Public by design: it holds URLs and names, never secrets.
+  app.get(INVITE_PATH, async (_request, reply) => {
+    if (!config.invite) {
+      return reply.status(404).send({ error: { kind: "not_found", message: "This relay does not publish an invite." } });
+    }
+    return reply.header("cache-control", "public, max-age=300").send(config.invite);
+  });
 
   app.post<{ Body: RelayProposalRequest }>(RELAY_PATHS.proposals, async (request): Promise<RelayProposalResponse> => {
     const signer = parseSigner(request.body?.signer, config.allowedMspIds);
