@@ -1,4 +1,4 @@
-# @weft/core
+# @weftwallet/core
 
 Runtime-agnostic wallet logic, used by the extension's background worker (and testable in Node):
 

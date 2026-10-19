@@ -14,8 +14,8 @@ import {
   parseCertificate,
   signForFabric,
   summarizeIdentity,
-} from "@weft/core";
-import type { IdentitySummary, OrgInvite } from "@weft/protocol";
+} from "@weftwallet/core";
+import type { IdentitySummary, OrgInvite } from "@weftwallet/protocol";
 import { db, newId, type IdentityRecord, type NetworkRecord, type PendingCsrRecord } from "./db";
 import type { IdentityView, NetworkInput, PendingCsrView, WalletState } from "./messages";
 

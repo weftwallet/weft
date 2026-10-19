@@ -4,7 +4,7 @@
  * back. Only messages tagged for Weft from this same window are accepted.
  */
 
-import { MESSAGE_TARGET, type PageToWalletMessage, type WalletToPageMessage } from "@weft/protocol";
+import { MESSAGE_TARGET, type PageToWalletMessage, type WalletToPageMessage } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import { defineContentScript } from "wxt/utils/define-content-script";
 import type { ProviderEventMessage, ProviderRequest, ProviderResponse } from "../lib/messages";

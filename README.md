@@ -36,13 +36,13 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 
 | Path | Package | What it is |
 |---|---|---|
-| `apps/extension` | `@weft/extension` | The MV3 browser extension (WXT + React). |
-| `apps/relay` | `@weft/relay` | The relay service (Fastify + fabric-gateway). Dockerfile included. |
-| `apps/docs` | `@weft/docs` | The documentation site (Astro Starlight). |
-| `packages/protocol` | `@weft/protocol` | Types shared by everything: provider API, errors, relay API, invites. |
-| `packages/core` | `@weft/core` | Signing, certificates, Fabric CA client, message decoding and verification, relay client. |
-| `packages/sdk` | `@weft/sdk` | What dApps import to talk to the wallet. |
-| `packages/brand` | `@weft/brand` | Logo files and design tokens. |
+| `apps/extension` | `@weftwallet/extension` | The MV3 browser extension (WXT + React). |
+| `apps/relay` | `@weftwallet/relay` | The relay service (Fastify + fabric-gateway). Dockerfile included. |
+| `apps/docs` | `@weftwallet/docs` | The documentation site (Astro Starlight). |
+| `packages/protocol` | `@weftwallet/protocol` | Types shared by everything: provider API, errors, relay API, invites. |
+| `packages/core` | `@weftwallet/core` | Signing, certificates, Fabric CA client, message decoding and verification, relay client. |
+| `packages/sdk` | `@weftwallet/sdk` | What dApps import to talk to the wallet. |
+| `packages/brand` | `@weftwallet/brand` | Logo files and design tokens. |
 | `examples/` | – | A plain-HTML demo dApp and a sample org invite. |
 | `docs/adr/` | – | Architecture decision records. |
 

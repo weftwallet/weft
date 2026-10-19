@@ -32,7 +32,7 @@ pnpm install && pnpm build
 WEFT_PEER_ENDPOINT=peer0.org1.example.com:7051 \
 WEFT_PEER_TLS_CA_CERT=/etc/weft/peer-tls-ca.pem \
 WEFT_ALLOWED_MSP_IDS=Org1MSP \
-pnpm --filter @weft/relay start
+pnpm --filter @weftwallet/relay start
 ```
 
 With Docker, from the repository root:

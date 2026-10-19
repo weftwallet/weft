@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import * as grpc from "@grpc/grpc-js";
 import { connect, type Gateway } from "@hyperledger/fabric-gateway";
-import type { RelaySigner } from "@weft/protocol";
+import type { RelaySigner } from "@weftwallet/protocol";
 import type { RelayConfig } from "./config.ts";
 
 /**

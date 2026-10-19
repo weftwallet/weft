@@ -15,7 +15,7 @@ import {
   type WeftMethod,
   type WeftMethods,
   type WeftProvider,
-} from "@weft/protocol";
+} from "@weftwallet/protocol";
 import { defineContentScript } from "wxt/utils/define-content-script";
 
 export default defineContentScript({

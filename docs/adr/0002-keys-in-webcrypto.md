@@ -15,7 +15,7 @@ WebCrypto ECDSA has two quirks we have to handle:
 ## Decision
 
 - Generated keys and imported PKCS#8 keys are stored as non-extractable `CryptoKey` objects in IndexedDB (structured clone keeps them opaque).
-- `@weft/core` converts every signature to DER and flips `S` to `n - S` when it is high.
+- `@weftwallet/core` converts every signature to DER and flips `S` to `n - S` when it is high.
 - The wallet signs the **message bytes** the relay returns, never a precomputed digest, because WebCrypto always hashes its input. Signing the bytes with ECDSA/SHA-256 produces the same signature Fabric expects over `SHA-256(bytes)`.
 
 ## Consequences

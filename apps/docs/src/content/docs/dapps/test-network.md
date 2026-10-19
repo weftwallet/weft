@@ -68,7 +68,7 @@ Or publish an [invite](/operators/invites/) with the same values and use **Join 
 Serve any page on `localhost` and run:
 
 ```ts
-import { getWeft } from "@weft/sdk";
+import { getWeft } from "@weftwallet/sdk";
 
 const weft = await getWeft();
 await weft.connect();

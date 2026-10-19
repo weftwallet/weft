@@ -6,7 +6,7 @@
  * material back out (docs/adr/0002).
  */
 
-import type { ContractCall } from "@weft/protocol";
+import type { ContractCall } from "@weftwallet/protocol";
 
 export interface NetworkRecord {
   id: string;

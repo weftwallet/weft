@@ -1,5 +1,5 @@
 {
-  "name": "@weft/core",
+  "name": "@weftwallet/core",
   "version": "0.1.0",
   "license": "Apache-2.0",
   "type": "module",
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@peculiar/x509": "^2.2.0",
-    "@weft/protocol": "workspace:*",
+    "@weftwallet/protocol": "workspace:*",
     "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {

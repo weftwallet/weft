@@ -29,5 +29,5 @@ The relay is **stateless**. Every request carries the bytes it needs, so any rep
 
 - **Private keys never leave the wallet.** The relay only ever sees public certificates, unsigned messages and signatures.
 - The relay sees transaction contents. That is acceptable because it runs inside the organisation's own boundary, next to peers that see the same data.
-- A malicious relay could hand the wallet a different proposal from the one the dApp asked for. The wallet therefore **decodes the proposal bytes it is asked to sign and checks channel, contract, function and arguments** against the approved request before signing. This check lives in `@weft/core` (`verifyProposal`) and is a hard requirement, not an optimisation.
+- A malicious relay could hand the wallet a different proposal from the one the dApp asked for. The wallet therefore **decodes the proposal bytes it is asked to sign and checks channel, contract, function and arguments** against the approved request before signing. This check lives in `@weftwallet/core` (`verifyProposal`) and is a hard requirement, not an optimisation.
 - Organisations get one more small service to run. The org invite (see ADR 0003) carries its URL, so users never type it.

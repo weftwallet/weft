@@ -1,24 +1,24 @@
 ---
 title: Quickstart
-description: Connect a web app to Weft and call a Fabric contract in a few lines with @weft/sdk.
+description: Connect a web app to Weft and call a Fabric contract in a few lines with @weftwallet/sdk.
 ---
 
-`@weft/sdk` is a small typed wrapper around the `window.weft` provider the extension injects.
+`@weftwallet/sdk` is a small typed wrapper around the `window.weft` provider the extension injects.
 
 ## Install
 
 ```sh
-pnpm add @weft/sdk
+pnpm add @weftwallet/sdk
 ```
 
 :::note
-The packages aren't on npm yet. Until they are, use the workspace: `"@weft/sdk": "workspace:*"` inside this repository, or `pnpm link` from outside it.
+The packages aren't on npm yet. Until they are, use the workspace: `"@weftwallet/sdk": "workspace:*"` inside this repository, or `pnpm link` from outside it.
 :::
 
 ## Connect
 
 ```ts
-import { getWeft, WeftNotInstalledError } from "@weft/sdk";
+import { getWeft, WeftNotInstalledError } from "@weftwallet/sdk";
 
 try {
   const weft = await getWeft();          // waits up to 3s for the extension
@@ -64,7 +64,7 @@ await assets.submitWith("CreatePrivateAsset", ["asset9"], {
 Every failure is a `WeftError` with a numeric `code`:
 
 ```ts
-import { ErrorCode, WeftError } from "@weft/sdk";
+import { ErrorCode, WeftError } from "@weftwallet/sdk";
 
 try {
   await assets.submit("TransferAsset", "asset6", "Christopher");

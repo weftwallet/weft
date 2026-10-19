@@ -1,4 +1,4 @@
-import type { OrgInvite } from "@weft/protocol";
+import type { OrgInvite } from "@weftwallet/protocol";
 import { useState, type FormEvent } from "react";
 import { ui, type IdentityView, type NetworkInput, type PendingCsrView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";

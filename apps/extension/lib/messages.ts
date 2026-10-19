@@ -4,7 +4,7 @@
  * goes through the bridge content script.
  */
 
-import type { ContractCall, IdentitySummary, OrgInvite, WeftErrorShape, WeftMethod } from "@weft/protocol";
+import type { ContractCall, IdentitySummary, OrgInvite, WeftErrorShape, WeftMethod } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import type { ActivityRecord, NetworkRecord, Settings } from "./db";
 

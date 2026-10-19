@@ -1,9 +1,9 @@
-# @weft/sdk
+# @weftwallet/sdk
 
 Talk to the [Weft](../../README.md) wallet from a web app.
 
 ```ts
-import { getWeft } from "@weft/sdk";
+import { getWeft } from "@weftwallet/sdk";
 
 const weft = await getWeft();
 const me = await weft.connect();

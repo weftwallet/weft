@@ -1,5 +1,5 @@
-import { certificateHealth } from "@weft/core";
-import type { IdentitySummary } from "@weft/protocol";
+import { certificateHealth } from "@weftwallet/core";
+import type { IdentitySummary } from "@weftwallet/protocol";
 import type { ReactNode } from "react";
 
 /* Icons: 24px stroke icons, decorative unless labelled. ------------- */

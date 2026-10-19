@@ -35,13 +35,13 @@ importers:
       '@fontsource/ibm-plex-sans':
         specifier: ^5.3.0
         version: 5.3.0
-      '@weft/brand':
+      '@weftwallet/brand':
         specifier: workspace:*
         version: link:../../packages/brand
-      '@weft/core':
+      '@weftwallet/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@weft/protocol':
+      '@weftwallet/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       react:
@@ -75,7 +75,7 @@ importers:
       '@hyperledger/fabric-gateway':
         specifier: ^1.13.0
         version: 1.13.0
-      '@weft/protocol':
+      '@weftwallet/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       fastify:
@@ -91,7 +91,7 @@ importers:
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.5
-      '@weft/core':
+      '@weftwallet/core':
         specifier: workspace:*
         version: link:../../packages/core
       vitest:
@@ -105,7 +105,7 @@ importers:
       '@peculiar/x509':
         specifier: ^2.2.0
         version: 2.2.0
-      '@weft/protocol':
+      '@weftwallet/protocol':
         specifier: workspace:*
         version: link:../protocol
       reflect-metadata:
@@ -120,7 +120,7 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@weft/protocol':
+      '@weftwallet/protocol':
         specifier: workspace:*
         version: link:../protocol
 

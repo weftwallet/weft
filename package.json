@@ -11,9 +11,9 @@
     "build": "pnpm -r --filter \"./packages/**\" build && pnpm -r --filter \"./apps/**\" build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "dev:extension": "pnpm --filter @weft/extension dev",
-    "dev:docs": "pnpm --filter @weft/docs dev",
-    "dev:relay": "pnpm --filter @weft/relay dev"
+    "dev:extension": "pnpm --filter @weftwallet/extension dev",
+    "dev:docs": "pnpm --filter @weftwallet/docs dev",
+    "dev:relay": "pnpm --filter @weftwallet/relay dev"
   },
   "devDependencies": {
     "typescript": "~5.9.3"

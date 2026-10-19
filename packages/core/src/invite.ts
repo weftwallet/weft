@@ -1,4 +1,4 @@
-import type { OrgInvite } from "@weft/protocol";
+import type { OrgInvite } from "@weftwallet/protocol";
 
 export class InviteError extends Error {
   constructor(message: string) {

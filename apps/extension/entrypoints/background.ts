@@ -1,4 +1,4 @@
-import { ErrorCode, WeftError } from "@weft/protocol";
+import { ErrorCode, WeftError } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { db, type ActivityRecord } from "../lib/db";

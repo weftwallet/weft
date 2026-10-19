@@ -51,7 +51,7 @@
     </main>
 
     <script type="module">
-      // Plain provider calls, no build step. In a real app use @weft/sdk.
+      // Plain provider calls, no build step. In a real app use @weftwallet/sdk.
       const call = { channel: "mychannel", chaincode: "basic" };
       const $ = (id) => document.getElementById(id);
       const log = (message) => ($("log").textContent = `${new Date().toLocaleTimeString()}  ${message}\n` + $("log").textContent);

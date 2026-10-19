@@ -17,7 +17,7 @@ The extension injects `window.weft`, an object with:
 - `on(event, listener)` / `off(event, listener)`,
 - `isWeft: true` and a `version` string.
 
-Methods are namespaced `weft_*` and listed in `@weft/protocol`:
+Methods are namespaced `weft_*` and listed in `@weftwallet/protocol`:
 
 | Method | Approval | Purpose |
 |---|---|---|
@@ -37,5 +37,5 @@ An organisation publishes an **invite**: a small JSON document, optionally signe
 
 ## Consequences
 
-- dApps written against `@weft/sdk` work unchanged if the transport under the wallet changes.
+- dApps written against `@weftwallet/sdk` work unchanged if the transport under the wallet changes.
 - Invites move the "which URL do I type?" problem to network administrators, who already have the answers.

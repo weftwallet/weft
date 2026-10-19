@@ -12,7 +12,7 @@ import {
   evaluateCall,
   submitCall,
   summarizeIdentity,
-} from "@weft/core";
+} from "@weftwallet/core";
 import {
   ErrorCode,
   WeftError,
@@ -20,7 +20,7 @@ import {
   type ContractCall,
   type NetworkSummary,
   type WeftMethod,
-} from "@weft/protocol";
+} from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import { db, newId, type ActivityRecord, type SiteRecord } from "./db";
 import type { ApprovalOutcome, ApprovalView, ProviderEventMessage } from "./messages";

@@ -1,7 +1,7 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../assets/app.css";
-import { qualifiedFunctionName } from "@weft/core";
+import { qualifiedFunctionName } from "@weftwallet/core";
 import { Icon, healthView } from "../../components/ui";
 import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView } from "../../lib/messages";
 

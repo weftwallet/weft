@@ -1,5 +1,5 @@
 /**
- * @weft/protocol
+ * @weftwallet/protocol
  *
  * The contract between a dApp and the Weft wallet. The extension injects an
  * object implementing `WeftProvider` at `window.weft`. Everything that crosses

@@ -1,5 +1,5 @@
 /**
- * @weft/sdk: talk to the Weft wallet from a web app.
+ * @weftwallet/sdk: talk to the Weft wallet from a web app.
  *
  *   const weft = await getWeft();
  *   const me = await weft.connect();
@@ -19,9 +19,9 @@ import {
   type WeftEvent,
   type WeftEvents,
   type WeftProvider,
-} from "@weft/protocol";
+} from "@weftwallet/protocol";
 
-export * from "@weft/protocol";
+export * from "@weftwallet/protocol";
 
 export class WeftNotInstalledError extends Error {
   constructor() {

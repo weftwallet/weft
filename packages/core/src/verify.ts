@@ -3,7 +3,7 @@
  * what the relay returned with what the user approved (docs/adr/0001).
  */
 
-import type { ContractCall, RelaySigner } from "@weft/protocol";
+import type { ContractCall, RelaySigner } from "@weftwallet/protocol";
 import type { DecodedCommitRequest, DecodedProposal, DecodedTransaction } from "./fabric-messages.js";
 
 export class VerificationError extends Error {

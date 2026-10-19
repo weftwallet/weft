@@ -1,6 +1,6 @@
 /**
  * Proves the wallet and relay agree on bytes, without a running network:
- * fabric-gateway builds real proposal messages offline, @weft/core decodes,
+ * fabric-gateway builds real proposal messages offline, @weftwallet/core decodes,
  * verifies and signs them, and fabric-gateway accepts the signature.
  */
 import { createHash, createPublicKey, verify as nodeVerify } from "node:crypto";
@@ -17,9 +17,9 @@ import {
   verifyProposal,
   VerificationError,
   FABRIC_ATTRS_OID,
-} from "@weft/core";
-import type { ContractCall } from "@weft/protocol";
-// After @weft/core, which loads the Reflect polyfill @peculiar/x509 needs.
+} from "@weftwallet/core";
+import type { ContractCall } from "@weftwallet/protocol";
+// After @weftwallet/core, which loads the Reflect polyfill @peculiar/x509 needs.
 import { BasicConstraintsExtension, Extension, X509CertificateGenerator } from "@peculiar/x509";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 

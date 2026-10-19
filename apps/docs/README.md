@@ -1,4 +1,4 @@
-# @weft/docs
+# @weftwallet/docs
 
 The Weft documentation site, built with [Astro Starlight](https://starlight.astro.build).
 

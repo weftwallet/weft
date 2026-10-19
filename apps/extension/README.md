@@ -1,4 +1,4 @@
-# @weft/extension
+# @weftwallet/extension
 
 The Weft browser extension (Manifest V3), built with [WXT](https://wxt.dev) and React.
 
@@ -7,10 +7,10 @@ The Weft browser extension (Manifest V3), built with [WXT](https://wxt.dev) and 
 ```sh
 pnpm install
 pnpm --filter "./packages/**" build   # the extension imports the built packages
-pnpm --filter @weft/extension dev     # opens Chrome with the extension loaded and hot reload
+pnpm --filter @weftwallet/extension dev     # opens Chrome with the extension loaded and hot reload
 ```
 
-`pnpm --filter @weft/extension build` writes an unpacked extension to `.output/chrome-mv3`. Load it from `chrome://extensions` with **Developer mode → Load unpacked**. `pnpm zip` produces the store upload.
+`pnpm --filter @weftwallet/extension build` writes an unpacked extension to `.output/chrome-mv3`. Load it from `chrome://extensions` with **Developer mode → Load unpacked**. `pnpm zip` produces the store upload.
 
 ## How it fits together
 

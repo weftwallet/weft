@@ -1,4 +1,4 @@
-# @weft/brand
+# @weftwallet/brand
 
 Logo files and design tokens shared by the extension and the docs site.
 

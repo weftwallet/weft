@@ -15,7 +15,7 @@ import {
   type RelaySigner,
   type RelaySubmitResponse,
   type SubmitResult,
-} from "@weft/protocol";
+} from "@weftwallet/protocol";
 import { fromBase64, toBase64, tryUtf8 } from "./bytes.js";
 import { decodePreparedTransaction, decodeProposedTransaction, decodeSignedCommitStatusRequest } from "./fabric-messages.js";
 import { explainEndorseError, explainStatus, type StatusExplanation } from "./status.js";

@@ -14,7 +14,7 @@ import {
   type RelaySignedTransaction,
   type RelaySigner,
   type RelaySubmitResponse,
-} from "@weft/protocol";
+} from "@weftwallet/protocol";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { RelayConfig } from "./config.ts";
 import type { GatewayPool } from "./gateways.ts";

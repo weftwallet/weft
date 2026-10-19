@@ -3,7 +3,7 @@ title: Provider API
 description: The window.weft provider, its methods, events and error codes.
 ---
 
-The extension injects `window.weft` into HTTPS pages and `localhost`. The types live in `@weft/protocol`.
+The extension injects `window.weft` into HTTPS pages and `localhost`. The types live in `@weftwallet/protocol`.
 
 ```ts
 interface WeftProvider {
@@ -15,7 +15,7 @@ interface WeftProvider {
 }
 ```
 
-The provider may be injected after your script runs. Wait for the `weft#initialized` event on `window`, or use `detectProvider()` from `@weft/sdk`, which does this for you.
+The provider may be injected after your script runs. Wait for the `weft#initialized` event on `window`, or use `detectProvider()` from `@weftwallet/sdk`, which does this for you.
 
 ## Methods
 

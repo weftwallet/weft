@@ -1,7 +1,7 @@
 // @peculiar/x509 uses tsyringe, which needs the Reflect metadata polyfill loaded first.
 import "reflect-metadata";
 import { Name, Pkcs10CertificateRequestGenerator, X509Certificate } from "@peculiar/x509";
-import type { IdentitySummary } from "@weft/protocol";
+import type { IdentitySummary } from "@weftwallet/protocol";
 import { toHex, tryUtf8 } from "./bytes.js";
 import { sha256 } from "./signing.js";
 

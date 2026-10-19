@@ -1,5 +1,5 @@
 {
-  "name": "@weft/relay",
+  "name": "@weftwallet/relay",
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
@@ -17,14 +17,14 @@
     "@fastify/cors": "^11.3.1",
     "@grpc/grpc-js": "^1.14.6",
     "@hyperledger/fabric-gateway": "^1.13.0",
-    "@weft/protocol": "workspace:*",
+    "@weftwallet/protocol": "workspace:*",
     "fastify": "^5.12.7"
   },
   "devDependencies": {
     "@hyperledger/fabric-protos": "^0.2.2",
     "@peculiar/x509": "^2.2.0",
     "@types/node": "^26.6.5",
-    "@weft/core": "workspace:*",
+    "@weftwallet/core": "workspace:*",
     "vitest": "^5.0.5"
   }
 }

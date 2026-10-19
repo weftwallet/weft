@@ -1,4 +1,4 @@
-# @weft/protocol
+# @weftwallet/protocol
 
 Types and constants shared by every part of Weft: the `window.weft` provider methods and events, error codes, the window-messaging envelope between page and extension, the relay HTTP API, and the org invite schema.
 
