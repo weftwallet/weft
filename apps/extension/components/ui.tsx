@@ -76,6 +76,7 @@ export function Icon({ name, size = 20, color = "currentColor" }: { name: IconNa
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      style={{ flexShrink: 0 }}
     >
       {paths[name]}
     </svg>
