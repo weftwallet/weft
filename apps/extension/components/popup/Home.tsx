@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ActivityRecord } from "../../lib/db";
 import { ui, type IdentityView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
-import { Icon, WovenMark, copy, shorten, healthView } from "../ui";
+import { Icon, Logo, copy, shorten, healthView } from "../ui";
 import { useAction, type Navigate } from "./state";
 
 type Tab = "activity" | "identities" | "sites";
@@ -25,7 +25,7 @@ export function Home({
   return (
     <>
       <header className="header">
-        <WovenMark size={28} />
+        <Logo size={28} />
         <div className="channel-picker">
           <span className="dot" />
           <span className="mono" style={{ fontWeight: 500 }}>

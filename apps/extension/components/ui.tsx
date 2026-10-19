@@ -82,12 +82,28 @@ export function Icon({ name, size = 20, color = "currentColor" }: { name: IconNa
   );
 }
 
-/** The Weft mark at small sizes: three weft bars on a thread tile. */
+/**
+ * The Weft mark for 32px and below, drawn on a 16px pixel grid so threads and
+ * gaps stay crisp. Use WovenMark for anything larger.
+ */
 export function Logo({ size = 24 }: { size?: number }) {
+  const ink = "var(--weft-ink)";
+  const thread = "var(--weft-thread)";
   return (
-    <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Weft">
-      <rect x="2" y="2" width="44" height="44" rx="12" fill="var(--weft-thread)" />
-      <path d="M10 15H38M10 24H38M10 33H38" stroke="var(--weft-ink)" strokeWidth="5" strokeLinecap="round" fill="none" />
+    <svg width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" role="img" aria-label="Weft">
+      <rect width="16" height="16" rx="4" fill={thread} />
+      <rect x="4" y="2" width="2" height="12" fill={ink} />
+      <rect x="10" y="2" width="2" height="12" fill={ink} />
+      <rect x="2" y="4" width="12" height="2" fill={ink} />
+      <rect x="2" y="10" width="12" height="2" fill={ink} />
+      <rect x="9" y="3" width="4" height="4" fill={thread} />
+      <rect x="10" y="3" width="2" height="4" fill={ink} />
+      <rect x="3" y="9" width="4" height="4" fill={thread} />
+      <rect x="4" y="9" width="2" height="4" fill={ink} />
+      <rect x="3" y="3" width="4" height="4" fill={thread} />
+      <rect x="3" y="4" width="4" height="2" fill={ink} />
+      <rect x="9" y="9" width="4" height="4" fill={thread} />
+      <rect x="9" y="10" width="4" height="2" fill={ink} />
     </svg>
   );
 }

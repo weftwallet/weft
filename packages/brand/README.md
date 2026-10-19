@@ -4,13 +4,15 @@ Logo files and design tokens shared by the extension and the docs site.
 
 ## The mark
 
-Three weft threads passing over and under two warp threads: the network is the warp, your identity and transactions are the weft woven through it. It also reads as a ledger's rows.
+Weft threads passing over and under warp threads: the network is the warp, your identity and transactions are the weft woven through it.
+
+There are two drawings of the same idea. Above 32px use the full mark: three wefts over two warps. At 32px and below the full mark's gaps fall under a pixel and blur, so use the small mark: a simpler 2×2 weave fitted to the pixel grid.
 
 | File | Use |
 |---|---|
 | `logo/mark.svg` | Default. Teal tile, ink threads. |
 | `logo/mark-inverted.svg` | On teal or light backgrounds where the tile would disappear. |
-| `logo/mark-small.svg` | 16–24px. The weave is dropped and the threads become three bars so they stay legible. |
+| `logo/mark-small.svg` | 32px and below: toolbar icons, favicons, the popup header. A 2×2 weave drawn on the 16px pixel grid, so every thread and gap lands on whole pixels and stays sharp. |
 | `logo/lockup-dark.svg` | Mark plus wordmark on dark backgrounds. |
 | `logo/lockup-light.svg` | Mark plus wordmark on light backgrounds. |
 

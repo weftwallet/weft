@@ -44,4 +44,4 @@ The manifest asks only for `storage`. CA and relay hosts differ per organisation
 
 ## Icons
 
-`public/icon/*.png` are rendered from `packages/brand/logo`. The 16 and 32px icons use `mark-small.svg`; 48 and 128 use the full woven `mark.svg`.
+`public/icon/*.png` are rendered from `packages/brand/logo` by `scripts/render-icons.mjs`. The 16 and 32px icons use the pixel-fitted `mark-small.svg`; 48 and 128 use the full `mark.svg`.
