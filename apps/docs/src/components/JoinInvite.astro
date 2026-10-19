@@ -1,0 +1,179 @@
+---
+// The landing page behind invite links: previews the invite and hands it to
+// the Weft extension with weft_addNetwork.
+---
+
+<div class="weft-join not-content">
+  <div id="join-missing" class="weft-card" hidden>
+    <p><strong>This link is missing its invite.</strong> Ask your network administrator for the full link.</p>
+  </div>
+
+  <div id="join-main" hidden>
+    <div class="weft-card" id="join-preview">
+      <span class="weft-eyebrow">You've been invited to</span>
+      <div class="weft-title" id="join-network">Loading…</div>
+      <dl class="weft-details" id="join-details" hidden>
+        <dt>Organisation</dt><dd id="join-org"></dd>
+        <dt>MSP ID</dt><dd class="mono" id="join-msp"></dd>
+        <dt>Channels</dt><dd class="mono" id="join-channels"></dd>
+      </dl>
+      <p class="weft-muted" id="join-source"></p>
+    </div>
+
+    <div class="weft-actions">
+      <button type="button" id="join-open">Open in Weft</button>
+    </div>
+    <p class="weft-status" id="join-status" role="status"></p>
+
+    <div class="weft-card" id="join-install" hidden>
+      <p><strong>Weft isn't installed in this browser.</strong></p>
+      <p>
+        <a href="/start/install/">Install Weft</a>, then come back to this page. Or, in Weft, choose
+        <em>Join from an org invite</em> and paste this link:
+      </p>
+      <code id="join-weft-link"></code>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = (id: string) => document.getElementById(id)!;
+  const raw = new URLSearchParams(window.location.search).get("weft-invite");
+  let inviteUrl: URL | null = null;
+  try {
+    inviteUrl = raw ? new URL(raw) : null;
+    if (inviteUrl && !/^https?:$/.test(inviteUrl.protocol)) inviteUrl = null;
+  } catch {
+    inviteUrl = null;
+  }
+
+  if (!inviteUrl) {
+    $("join-missing").hidden = false;
+  } else {
+    const url = inviteUrl.toString();
+    $("join-main").hidden = false;
+    $("join-source").textContent = `Invite from ${inviteUrl.host}`;
+    $("join-weft-link").textContent = `weft://invite?u=${encodeURIComponent(url)}`;
+
+    // Preview only. Weft fetches and validates the invite again itself.
+    fetch(url, { headers: { accept: "application/json" } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((invite) => {
+        $("join-network").textContent = String(invite.network ?? "a Fabric network");
+        $("join-org").textContent = String(invite.organization ?? "");
+        $("join-msp").textContent = String(invite.mspId ?? "");
+        $("join-channels").textContent = Array.isArray(invite.channels) ? invite.channels.join(", ") : "";
+        $("join-details").hidden = false;
+      })
+      .catch(() => {
+        $("join-network").textContent = "a Fabric network";
+      });
+
+    const waitForWeft = () =>
+      new Promise<any>((resolve) => {
+        const w = window as any;
+        if (w.weft?.isWeft) return resolve(w.weft);
+        const timer = setTimeout(() => resolve(null), 1500);
+        window.addEventListener(
+          "weft#initialized",
+          () => {
+            clearTimeout(timer);
+            resolve(w.weft);
+          },
+          { once: true },
+        );
+      });
+
+    $("join-open").addEventListener("click", async () => {
+      const weft = await waitForWeft();
+      if (!weft) {
+        $("join-install").hidden = false;
+        return;
+      }
+      $("join-status").textContent = "Continue in the Weft window…";
+      try {
+        await weft.request({ method: "weft_addNetwork", params: { url } });
+        $("join-status").textContent = "Done. You're enrolled; the network is in Weft.";
+      } catch (error: any) {
+        $("join-status").textContent =
+          error?.code === 4001 ? "Cancelled. You can try again any time." : `Weft couldn't add the network: ${error?.message ?? error}`;
+      }
+    });
+  }
+</script>
+
+<style>
+  /* Card styles set display, which would otherwise override the hidden attribute. */
+  .weft-join [hidden] {
+    display: none !important;
+  }
+  .weft-join {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 32rem;
+    margin-top: 1rem;
+  }
+  .weft-card {
+    border: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-gray-6);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .weft-card p {
+    margin: 0;
+  }
+  .weft-eyebrow {
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sl-color-gray-3);
+  }
+  .weft-title {
+    font-size: var(--sl-text-2xl);
+    font-weight: 600;
+  }
+  .weft-details {
+    display: grid;
+    grid-template-columns: 8rem minmax(0, 1fr);
+    gap: 0.4rem 1rem;
+    margin: 0.5rem 0 0;
+    font-size: var(--sl-text-sm);
+  }
+  .weft-details dt {
+    color: var(--sl-color-gray-3);
+  }
+  .weft-details dd {
+    margin: 0;
+  }
+  .mono {
+    font-family: var(--sl-font-mono);
+  }
+  .weft-muted {
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-sm);
+  }
+  .weft-actions button {
+    font: inherit;
+    font-weight: 600;
+    min-height: 3rem;
+    padding: 0 1.5rem;
+    border-radius: 0.75rem;
+    border: 0;
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    cursor: pointer;
+  }
+  .weft-status {
+    margin: 0;
+    color: var(--sl-color-gray-2);
+  }
+  #join-weft-link {
+    overflow-wrap: anywhere;
+    font-size: var(--sl-text-xs);
+  }
+</style>

@@ -22,7 +22,9 @@ Open Weft from the toolbar. There are four ways in; pick the one your administra
 
 ### Join from an org invite (recommended)
 
-1. Choose **Join from an org invite** and paste the link (it starts with `weft://invite` or `https://`).
+If your administrator sent a link that opens a "Join a network" page, click **Open in Weft** there and skip to step 3.
+
+1. Choose **Join from an org invite** and paste the link (it starts with `weft://invite` or `https://`). If you were given a QR code instead, show it on screen and choose **Scan QR code on this tab**, or paste a screenshot of it into the link field.
 2. Weft asks your browser for permission to reach the invite's host. Allow it.
 3. Check the network, organisation, MSP ID and channels shown. If anything looks wrong, stop and ask your administrator.
 4. Enter your **enrollment ID** and **enrollment secret**, then **Enroll**. Weft asks for access to the CA and relay hosts, creates a key pair, and asks the CA for a certificate.
