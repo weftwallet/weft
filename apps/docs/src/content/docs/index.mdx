@@ -28,8 +28,8 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
     writes the ledger.
   </Card>
   <Card title="Keys never leave the browser" icon="approve-check">
-    Private keys are created as non-exportable WebCrypto keys. The relay only ever sees certificates, unsigned messages
-    and signatures.
+    Private keys are created in the browser and stored encrypted with your password. The relay only ever sees
+    certificates, unsigned messages and signatures.
   </Card>
   <Card title="Failures in plain English" icon="information">
     `ENDORSEMENT_POLICY_FAILURE` becomes "Not enough organisations approved it", with which ones did and didn't.

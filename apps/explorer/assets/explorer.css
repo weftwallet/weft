@@ -137,8 +137,10 @@ pre.value { margin: 0; font: 13px/1.5 var(--mono); white-space: pre-wrap; }
 .pager { display: flex; gap: 16px; font-size: 14px; }
 .empty { color: var(--subtle); }
 .more { display: inline-block; margin-top: 12px; font-size: 14px; }
-.live { margin-top: 16px; display: inline-flex; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--thread-soft); color: var(--thread); font-size: 13px; }
-.live[hidden] { display: none; }
+/* Rows that arrived since the page loaded, marked for a few seconds. */
+@keyframes arrive { from { background: var(--thread-soft); } to { background: transparent; } }
+.table tr.is-new td { animation: arrive 4s ease-out; }
+@media (prefers-reduced-motion: reduce) { .table tr.is-new td { animation: none; } }
 
 .foot { display: flex; justify-content: space-between; gap: 16px; padding-top: 32px; padding-bottom: 32px; margin-top: 40px; border-top: 1px solid var(--line); color: var(--subtle); font-size: 13px; }
 @media (max-width: 640px) {

@@ -108,23 +108,51 @@ ${options.live ? raw(LIVE) : ""}
 </html>`.value;
 }
 
-/** Polls the status API and offers a refresh when the index grows. */
+/**
+ * Keeps the page current: polls the status API and, when the index grows,
+ * fetches this page again and swaps in the new content. Rows that weren't
+ * there before are marked briefly. Pages of older blocks don't update.
+ */
 const LIVE = `
 (function () {
+  if (/[?&]before=/.test(location.search)) return;
   var seen = null;
+  function relative() {
+    document.querySelectorAll("time[datetime]").forEach(function (el) {
+      var s = Math.round((Date.now() - new Date(el.getAttribute("datetime")).getTime()) / 1000);
+      var t = s < 45 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : null;
+      if (t) el.textContent = t;
+    });
+  }
+  function links(root) {
+    var out = {};
+    root.querySelectorAll("tbody tr a[href]").forEach(function (a) { out[a.getAttribute("href")] = true; });
+    return out;
+  }
+  function refresh() {
+    fetch(location.href, { headers: { accept: "text/html" } }).then(function (r) { return r.text(); }).then(function (text) {
+      var next = new DOMParser().parseFromString(text, "text/html").querySelector("main");
+      var main = document.querySelector("main");
+      if (!next || !main) return;
+      var before = links(main);
+      main.innerHTML = next.innerHTML;
+      main.querySelectorAll("tbody tr").forEach(function (row) {
+        var a = row.querySelector("a[href]");
+        if (a && !before[a.getAttribute("href")]) row.classList.add("is-new");
+      });
+      relative();
+    }).catch(function () {});
+  }
   function check() {
     fetch("/api/v1/status").then(function (r) { return r.json(); }).then(function (s) {
       var total = s.channels.reduce(function (n, c) { return n + c.height; }, 0);
-      if (seen === null) seen = total;
-      else if (total > seen) {
-        var note = document.getElementById("live");
-        note.hidden = false;
-        note.querySelector("span").textContent = (total - seen) + (total - seen === 1 ? " new block" : " new blocks");
-      }
+      if (seen !== null && total > seen) refresh();
+      seen = total;
     }).catch(function () {});
   }
   check();
-  setInterval(check, 5000);
+  setInterval(check, 4000);
+  setInterval(relative, 30000);
 })();`;
 
 function channelCard(c: ChannelSummary, s: ChannelStatus | undefined): Html {
@@ -196,7 +224,6 @@ export function homePage(site: Site, channels: ChannelSummary[], statuses: Chann
   <h1>${site.name}'s view of the ledger</h1>
   <p class="lead">Blocks and transactions as ${site.name}'s peers recorded them, checked block by block here.</p>
 </section>
-<div id="live" class="live" hidden><span></span> <a href="/">Refresh</a></div>
 <div class="grid">${channels.map((c) => channelCard(c, statuses.find((s) => s.channel === c.channel)))}</div>
 <div class="split">
   <section><h2>Latest blocks</h2>${blockRows(latest)}</section>
@@ -219,7 +246,6 @@ export function channelPage(
     channel.channel,
     html`<nav class="crumbs"><a href="/">Overview</a></nav>
 <h1 class="mono">${channel.channel}</h1>
-<div id="live" class="live" hidden><span></span> <a href="">Refresh</a></div>
 <div class="grid">${channelCard(channel, s)}
   <section class="card">
     <h2 class="card__title">Contracts</h2>

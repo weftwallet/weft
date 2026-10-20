@@ -8,7 +8,7 @@ The explorer shows blocks and transactions from your organisation's peers: who c
 It has two parts in one process:
 
 - An indexer that follows each published channel's blocks through your peer's Gateway, with a read-only identity, and stores what your policy allows in SQLite.
-- A web server for the pages and a JSON API.
+- A web server for the pages and a JSON API. The overview and channel pages update on their own as blocks arrive.
 
 The explorer doesn't sign transactions and holds no wallet keys. Its identity only needs to read the channel.
 
