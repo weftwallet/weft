@@ -43,3 +43,106 @@
 .sl-markdown-content code {
   font-size: 0.875em;
 }
+
+/* Asides in Weft's palette: thread for notes and tips, amber for cautions,
+   signal for danger. Starlight's defaults are blue, purple, orange and red. */
+:root[data-theme="dark"] {
+  --sl-color-blue-low: #102826;
+  --sl-color-blue: #3fc1b0;
+  --sl-color-blue-high: #c6efe9;
+  --sl-color-purple-low: #102826;
+  --sl-color-purple: #3fc1b0;
+  --sl-color-purple-high: #c6efe9;
+  --sl-color-orange-low: #2a2214;
+  --sl-color-orange: #e8a33d;
+  --sl-color-orange-high: #f6dcb3;
+  --sl-color-red-low: #2a1817;
+  --sl-color-red: #e5675b;
+  --sl-color-red-high: #f6cdc8;
+}
+
+:root[data-theme="light"] {
+  --sl-color-blue-low: #dcf3ef;
+  --sl-color-blue: #1f7f73;
+  --sl-color-blue-high: #11463f;
+  --sl-color-purple-low: #dcf3ef;
+  --sl-color-purple: #1f7f73;
+  --sl-color-purple-high: #11463f;
+  --sl-color-orange-low: #f8ead2;
+  --sl-color-orange: #a8650c;
+  --sl-color-orange-high: #5a3606;
+  --sl-color-red-low: #f8dfdc;
+  --sl-color-red: #b83a2f;
+  --sl-color-red-high: #5e1a14;
+}
+
+.starlight-aside {
+  border-radius: 0 0.6rem 0.6rem 0;
+}
+
+/* Card icons in the brand accent rather than Starlight's rainbow. */
+.card .icon {
+  --sl-card-border: var(--sl-color-accent);
+  --sl-card-bg: var(--sl-color-accent-low);
+  color: var(--sl-color-accent-high);
+}
+
+.card {
+  border-radius: 0.9rem;
+  transition:
+    border-color 160ms,
+    transform 160ms;
+}
+
+.card:hover {
+  border-color: var(--sl-color-gray-4);
+}
+
+/* Links ease instead of snapping. */
+.sl-markdown-content a {
+  text-underline-offset: 0.18em;
+  transition: color 140ms;
+}
+
+/* Landing page ------------------------------------------------------ */
+
+.hero {
+  padding-block: clamp(2.5rem, 6vw, 5rem);
+}
+
+.hero > .hero-html.hero-html {
+  width: min(100%, 34rem);
+}
+
+.hero-html img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Give the product shot room next to the headline. */
+@media (min-width: 50rem) {
+  .hero.hero {
+    grid-template-columns: 6fr 5fr;
+  }
+}
+
+.hero .tagline {
+  max-width: 34rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero > * {
+    animation: weft-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .hero > :nth-child(2) {
+    animation-delay: 90ms;
+  }
+}
+
+@keyframes weft-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}

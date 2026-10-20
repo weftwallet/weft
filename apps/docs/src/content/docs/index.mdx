@@ -5,7 +5,8 @@ template: splash
 hero:
   tagline: An identity wallet for Hyperledger Fabric. The network is the warp; your identity and transactions are the weft, woven through it.
   image:
-    file: ../../assets/mark.svg
+    # Served as-is: Starlight would shrink a hero `file` to a 400px WebP.
+    html: '<img src="/hero-product.png" width="953" height="1020" alt="The Weft wallet showing an identity and its recent transactions, next to a signature request for a TransferShipment transaction." />'
   actions:
     - text: Get started
       link: /start/what-is-weft/
@@ -17,7 +18,7 @@ hero:
 
 import { Card, CardGrid } from "@astrojs/starlight/components";
 
-<CardGrid stagger>
+<CardGrid>
   <Card title="Identity, not tokens" icon="seti:lock">
     Fabric has no coins and no gas. Weft holds the X.509 certificate your organisation's CA issued you, shows you when it
     expires, and renews it in one click.
