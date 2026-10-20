@@ -6,7 +6,7 @@ import { NetworkSettings } from "../../components/popup/NetworkSettings";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { useWallet, type Route } from "../../components/popup/state";
 import { FeedbackProvider } from "../../components/feedback";
-import { Spinner, WovenMark } from "../../components/ui";
+import { Spinner, WeaveMark } from "../../components/ui";
 
 /** How deep each screen sits, so moving deeper slides one way and back the other. */
 const DEPTH: Record<Route["name"], number> = {
@@ -114,9 +114,10 @@ function Screens() {
 function Welcome({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <main className="page" style={{ gap: 24, paddingTop: 40 }}>
-      <div className="fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 16 }}>
-        <WovenMark size={72} />
-        <div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 16 }}>
+        <WeaveMark size={72} mode="draw" />
+        {/* The words follow once the mark has drawn itself. */}
+        <div className="fade-in" style={{ animationDelay: "420ms", animationFillMode: "both" }}>
           <div className="mono" style={{ fontSize: 40, fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1 }}>
             weft
           </div>

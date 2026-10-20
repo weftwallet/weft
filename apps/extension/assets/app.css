@@ -106,6 +106,7 @@ body.window {
   *::before,
   *::after {
     animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
@@ -1263,4 +1264,53 @@ textarea {
 .header-action:hover {
   border-color: var(--weft-thread);
   background: var(--weft-thread-soft);
+}
+
+/* The weave: the mark's weft threads drawn in (components/ui.tsx WeaveMark).
+   Timings are the approved mockup's at 1x. */
+.weave .weave__reveal {
+  transform-box: fill-box;
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+.weave--loop .weave__reveal--1 { animation: weave-l1 1800ms linear infinite; }
+.weave--loop .weave__reveal--2 { animation: weave-l2 1800ms linear infinite; }
+.weave--loop .weave__reveal--3 { animation: weave-l3 1800ms linear infinite; }
+.weave--loop .weave__rows { animation: weave-fade 1800ms linear infinite; }
+
+@keyframes weave-l1 { 0% { transform: scaleX(0); animation-timing-function: cubic-bezier(.3,.7,.2,1); } 25%, 100% { transform: scaleX(1); } }
+@keyframes weave-l2 { 0%, 10% { transform: scaleX(0); animation-timing-function: cubic-bezier(.3,.7,.2,1); } 35%, 100% { transform: scaleX(1); } }
+@keyframes weave-l3 { 0%, 20% { transform: scaleX(0); animation-timing-function: cubic-bezier(.3,.7,.2,1); } 45%, 100% { transform: scaleX(1); } }
+@keyframes weave-fade { 0%, 78% { opacity: 1; } 90%, 100% { opacity: 0; } }
+
+.weave--settle .weave__reveal { animation: weave-in 380ms cubic-bezier(.2,.8,.2,1) both; }
+.weave--settle .weave__reveal--2 { animation-delay: 120ms; }
+.weave--settle .weave__reveal--3 { animation-delay: 240ms; }
+.weave--settle { transform-origin: center; animation: weave-pulse 420ms 560ms cubic-bezier(.2,.8,.2,1) both; }
+
+.weave--draw .weave__ground { transform-box: fill-box; transform-origin: center; animation: weave-ground 200ms cubic-bezier(.2,.8,.2,1) both; }
+.weave--draw .weave__warps { transform-box: fill-box; transform-origin: top center; animation: weave-warps 200ms 80ms cubic-bezier(.2,.8,.2,1) both; }
+.weave--draw .weave__reveal { animation: weave-in 300ms cubic-bezier(.2,.8,.2,1) both; }
+.weave--draw .weave__reveal--1 { animation-delay: 200ms; }
+.weave--draw .weave__reveal--2 { animation-delay: 280ms; }
+.weave--draw .weave__reveal--3 { animation-delay: 360ms; }
+
+@keyframes weave-in { to { transform: scaleX(1); } }
+@keyframes weave-pulse { 0% { transform: scale(1); } 45% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes weave-ground { from { transform: scale(.85); opacity: 0; } }
+@keyframes weave-warps { from { transform: scaleY(0); } }
+
+/* Reduced motion: the finished mark, still. (The global rule above would end
+   the loop on its faded-out frame.) */
+@media (prefers-reduced-motion: reduce) {
+  .weave,
+  .weave .weave__reveal,
+  .weave .weave__rows,
+  .weave .weave__ground,
+  .weave .weave__warps {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
 }

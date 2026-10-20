@@ -1,6 +1,6 @@
 import { certificateHealth } from "@weftwallet/core";
 import type { IdentitySummary } from "@weftwallet/protocol";
-import { useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 /* Icons: 24px stroke icons, decorative unless labelled. ------------- */
 
@@ -128,6 +128,53 @@ export function Logo({ size = 24 }: { size?: number }) {
       <rect x="3" y="4" width="4" height="2" fill={ink} />
       <rect x="9" y="9" width="4" height="4" fill={thread} />
       <rect x="9" y="10" width="4" height="2" fill={ink} />
+    </svg>
+  );
+}
+
+/**
+ * The full mark with its weft threads drawn in, for motion:
+ * - "loop": the threads weave in row by row and fade, while Weft waits on the network.
+ * - "settle": they weave in once and the mark gives a small pulse, on success.
+ * - "draw": the square, then the warps, then the wefts, once (first-run welcome).
+ * prefers-reduced-motion shows the finished mark.
+ */
+export function WeaveMark({ size = 72, mode }: { size?: number; mode: "loop" | "settle" | "draw" }) {
+  const id = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const ink = "var(--weft-ink)";
+  const thread = "var(--weft-thread)";
+  // Each row: [y, x of the warp it passes over, x of the warp it passes under].
+  const rows: [number, number, number][] = [
+    [14, 17, 31],
+    [24, 31, 17],
+    [34, 17, 31],
+  ];
+  const bands: [number, number][] = [
+    [6, 13.25],
+    [19.25, 10],
+    [29.25, 12.75],
+  ];
+  return (
+    <svg className={`weave weave--${mode}`} width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Weft">
+      <defs>
+        {bands.map(([y, h], i) => (
+          <clipPath key={i} id={`${id}r${i}`}>
+            <rect className={`weave__reveal weave__reveal--${i + 1}`} x="6" y={y} width="36" height={h} />
+          </clipPath>
+        ))}
+      </defs>
+      <rect className="weave__ground" x="2" y="2" width="44" height="44" rx="12" fill={thread} />
+      <path className="weave__warps" d="M17 8V40M31 8V40" stroke={ink} strokeWidth="3" strokeLinecap="round" fill="none" />
+      <g className="weave__rows" fill="none">
+        {rows.map(([y, over, under], i) => (
+          <g key={i} clipPath={`url(#${id}r${i})`}>
+            <path d={`M${over - 4} ${y}H${over + 4}`} stroke={thread} strokeWidth="9" />
+            <path d={`M10 ${y}H38`} stroke={ink} strokeWidth="6" strokeLinecap="round" />
+            <path d={`M${under} ${y - 4.5}V${y + 4.5}`} stroke={thread} strokeWidth="7" />
+            <path d={`M${under} ${y - 4.5}V${y + 4.5}`} stroke={ink} strokeWidth="3" />
+          </g>
+        ))}
+      </g>
     </svg>
   );
 }

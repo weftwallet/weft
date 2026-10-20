@@ -6,7 +6,7 @@ import "../../assets/app.css";
 import { qualifiedFunctionName } from "@weftwallet/core";
 import type { OrgInvite } from "@weftwallet/protocol";
 import { InviteCard } from "../../components/InviteCard";
-import { Field, Icon, SecretInput, Spinner, SuccessMark, healthView } from "../../components/ui";
+import { Field, Icon, SecretInput, Spinner, WeaveMark, healthView } from "../../components/ui";
 import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 
@@ -454,7 +454,7 @@ function Progress({
   if (phase === "working") {
     return (
       <main className="status-screen" aria-live="polite">
-        <Spinner tone={submit ? "amber" : "thread"} />
+        <WeaveMark size={72} mode="loop" />
         <div style={{ fontSize: 16, fontWeight: 600 }}>
           {view.method === "weft_connect"
             ? "Connecting…"
@@ -492,7 +492,7 @@ function Progress({
   }
   return (
     <main className="status-screen" aria-live="polite">
-      <SuccessMark />
+      <WeaveMark size={72} mode="settle" />
       <div style={{ fontSize: 16, fontWeight: 600 }}>
         {view.method === "weft_connect"
           ? "Connected"

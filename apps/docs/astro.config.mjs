@@ -17,6 +17,8 @@ export default defineConfig({
         replacesTitle: true,
       },
       favicon: "/favicon.svg",
+      // The title weaves on hover; see src/components/SiteTitle.astro.
+      components: { SiteTitle: "./src/components/SiteTitle.astro" },
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/ifeanyi-ugwu/weft" }],
       editLink: { baseUrl: "https://github.com/ifeanyi-ugwu/weft/edit/main/apps/docs/" },
       customCss: [
