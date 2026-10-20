@@ -4,6 +4,7 @@ A local Hyperledger Fabric network ready for Weft, in one command. Use it to try
 
 ```sh
 pnpm playground:up       # first run downloads Fabric (~5–10 minutes)
+pnpm playground:up --https   # the same, with the CA on https://localhost:7443 (needs mkcert)
 pnpm dev:docs            # in another terminal
 # open http://localhost:4321/playground/
 pnpm playground:down     # stop everything and remove the network
@@ -14,6 +15,7 @@ pnpm playground:status   # what's running
 
 - Docker (Docker Desktop or OrbStack), running
 - git and curl
+- [mkcert](https://github.com/FiloSottile/mkcert), only for `--https` (`brew install mkcert` on macOS)
 
 ## What it runs
 
@@ -21,7 +23,7 @@ pnpm playground:status   # what's running
 |---|---|---|
 | Fabric `test-network` | Docker | Two orgs, Raft orderer, a CA per org, channel `mychannel` |
 | `basic` contract | `mychannel` | fabric-samples' asset-transfer (TypeScript) |
-| Org1 CA proxy | `http://localhost:7080` | Forwards to the CA's HTTPS on 7054, so the browser can enrol (see below) |
+| Org1 CA proxy | `http://localhost:7080`, or `https://localhost:7443` with `--https` | Forwards to the CA's HTTPS on 7054, so the browser can enrol (see below) |
 | Weft relay | `http://localhost:8787` | Talks to `peer0.org1`; serves the invite at `/.well-known/weft-invite.json` |
 
 ## Demo users (Org1)
@@ -34,6 +36,14 @@ pnpm playground:status   # what's running
 ## Why a CA proxy?
 
 The test network's CA serves HTTPS with a self-signed certificate. Browsers reject it, and accepting it in a tab doesn't help: the extension's background worker still refuses it, so enrolment fails with "Failed to fetch". The proxy talks HTTPS to the CA, verifying it against the CA's own root certificate, and serves plain HTTP on `localhost`, which browsers allow. Nothing to install or trust.
+
+### HTTPS with `--https`
+
+Real organisations give an `https://` CA URL, so use `pnpm playground:up --https` to test that path. The script runs `mkcert -install`, which adds mkcert's root to your system's trusted certificates (it may ask for your password the first time), makes a `localhost` certificate in `playground/.state`, and serves the proxy on `https://localhost:7443`. Chrome trusts the system's certificates, and unlike a certificate accepted in a tab, that trust reaches the extension too. Firefox keeps its own list: mkcert adds its root there if `certutil` is installed (`brew install nss`).
+
+If mkcert isn't installed, `--https` stops before doing anything and tells you to install it or drop the flag.
+
+Restart the stack to switch between the two (`pnpm playground:down`, then `up` with or without `--https`), and rejoin from the playground, since the invite's CA URL changes.
 
 ## Using your own fabric-samples
 

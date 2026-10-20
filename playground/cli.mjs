@@ -3,6 +3,9 @@
  * The Weft playground stack: a local Fabric network you can point Weft at.
  *
  *   pnpm playground:up      start everything (first run downloads Fabric, ~5–10 min)
+ *   pnpm playground:up --https
+ *                           the same, but the CA proxy serves HTTPS with a mkcert
+ *                           certificate, so the CA URL looks like production's
  *   pnpm playground:status  what's running
  *   pnpm playground:down    stop everything and remove the network
  *
@@ -14,6 +17,8 @@
  *   3. Registers demo users in Org1 with known secrets.
  *   4. Starts a proxy in front of Org1's CA on http://localhost, so the
  *      browser can enrol without trusting the CA's self-signed certificate.
+ *      With --https it serves https://localhost:7443 instead, using a
+ *      certificate from mkcert, whose root your system already trusts.
  *   5. Starts the Weft relay for Org1, serving the playground invite.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -32,7 +37,7 @@ const samples = resolve(process.env.WEFT_FABRIC_SAMPLES ?? join(here, ".fabric",
 const testNetwork = join(samples, "test-network");
 const org1 = join(testNetwork, "organizations", "peerOrganizations", "org1.example.com");
 
-const PORTS = { relay: 8787, caProxy: 7080, docs: 4321 };
+const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, docs: 4321 };
 const CHANNEL = "mychannel";
 const DEMO_USERS = [
   { id: "alice", secret: "alicepw", attrs: "role=auditor:ecert" },
@@ -170,7 +175,7 @@ function stopBackground(name) {
 /* Steps                                                               */
 /* ------------------------------------------------------------------ */
 
-function checkPrerequisites() {
+function checkPrerequisites({ https }) {
   step(0, "Checking prerequisites");
   if (!has("docker")) fail("Docker is required.", "Install Docker Desktop or OrbStack, then run this again.");
   if (spawnSync("docker", ["info"], { stdio: "ignore" }).status !== 0) {
@@ -178,7 +183,15 @@ function checkPrerequisites() {
   }
   if (!has("git")) fail("git is required to fetch fabric-samples.");
   if (!has("curl")) fail("curl is required to download Fabric.");
-  note("docker, git and curl found");
+  if (https && !has("mkcert")) {
+    fail(
+      "--https needs mkcert, which isn't installed.",
+      "Install it (macOS: brew install mkcert; others: https://github.com/FiloSottile/mkcert), " +
+        "or run pnpm playground:up without --https: the CA proxy then serves http://localhost:7080, " +
+        "which needs no certificate.",
+    );
+  }
+  note(https ? "docker, git, curl and mkcert found" : "docker, git and curl found");
 }
 
 function ensureFabric() {
@@ -240,18 +253,37 @@ function registerUsers() {
   }
 }
 
-function startCaProxy() {
+/** A localhost certificate signed by mkcert's root, which `mkcert -install` adds to the system's trust store. */
+function mkcertCertificate() {
+  const cert = join(state, "ca-proxy.pem");
+  const key = join(state, "ca-proxy-key.pem");
+  note("making sure mkcert's root is trusted (may ask for your password the first time)");
+  run("mkcert", ["-install"]);
+  if (!existsSync(cert) || !existsSync(key)) {
+    run("mkcert", ["-cert-file", cert, "-key-file", key, "localhost", "127.0.0.1", "::1"]);
+  }
+  return { cert, key };
+}
+
+function startCaProxy({ https }) {
   step(4, "Proxy for Org1's CA");
+  const upstream = [
+    "--target", "https://localhost:7054",
+    "--upstream-ca", join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem"),
+  ];
+  if (https) {
+    const { cert, key } = mkcertCertificate();
+    startBackground("ca-proxy", join(here, "ca-proxy.mjs"), [
+      "--listen", String(PORTS.caProxyHttps), ...upstream, "--cert", cert, "--key", key,
+    ]);
+    return { port: PORTS.caProxyHttps, url: `https://localhost:${PORTS.caProxyHttps}` };
+  }
   // The test network's CA serves HTTPS with a certificate browsers don't trust,
   // and the extension can't be told to trust it. The proxy talks HTTPS to the
   // CA (verifying it against the CA root) and serves plain HTTP on localhost,
   // which browsers allow without any certificate.
-  startBackground("ca-proxy", join(here, "ca-proxy.mjs"), [
-    "--listen", String(PORTS.caProxy),
-    "--target", "https://localhost:7054",
-    "--upstream-ca", join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem"),
-  ]);
-  return `http://localhost:${PORTS.caProxy}`;
+  startBackground("ca-proxy", join(here, "ca-proxy.mjs"), ["--listen", String(PORTS.caProxy), ...upstream]);
+  return { port: PORTS.caProxy, url: `http://localhost:${PORTS.caProxy}` };
 }
 
 async function startRelay(caUrl) {
@@ -311,17 +343,18 @@ Stop with ${bold("pnpm playground:down")}.
 /* Commands                                                            */
 /* ------------------------------------------------------------------ */
 
-async function up() {
+async function up(flags) {
+  const https = flags.includes("--https");
   mkdirSync(state, { recursive: true });
-  checkPrerequisites();
+  checkPrerequisites({ https });
   ensureFabric();
   startNetwork();
   registerUsers();
-  const caUrl = startCaProxy();
-  await waitForPort(PORTS.caProxy, "The CA proxy");
+  const proxy = startCaProxy({ https });
+  await waitForPort(proxy.port, "The CA proxy");
   ensureStillRunning("ca-proxy");
-  await startRelay(caUrl);
-  summary(caUrl);
+  await startRelay(proxy.url);
+  summary(proxy.url);
 }
 
 function down() {
@@ -340,16 +373,22 @@ async function status() {
   const line = (label, good, detail) => console.log(`${good ? "✓" : "✗"} ${label.padEnd(10)} ${detail}`);
   line("Network", containerRunning("peer0.org1.example.com"), "peer0.org1.example.com container");
   const proxy = runningPid("ca-proxy");
-  line("CA proxy", Boolean(proxy), proxy ? `pid ${proxy}, http://localhost:${PORTS.caProxy}` : "not running");
+  let caUrl = `http://localhost:${PORTS.caProxy}`;
+  try {
+    caUrl = JSON.parse(readFileSync(join(state, "invite.json"), "utf8")).caUrl;
+  } catch {}
+  line("CA proxy", Boolean(proxy), proxy ? `pid ${proxy}, ${caUrl}` : "not running");
   const relayUp = await ok(`http://localhost:${PORTS.relay}/v1/health`);
   line("Relay", relayUp, `http://localhost:${PORTS.relay}`);
   line("Invite", await ok(`http://localhost:${PORTS.relay}/.well-known/weft-invite.json`), "served by the relay");
 }
 
-const command = process.argv[2];
+const [command, ...flags] = process.argv.slice(2).filter((a) => a !== "--");
 const commands = { up, down, status };
-if (!commands[command]) {
-  console.log("Usage: node playground/cli.mjs <up|down|status>");
+const unknown = flags.filter((f) => !(command === "up" && f === "--https"));
+if (!commands[command] || unknown.length) {
+  console.log("Usage: node playground/cli.mjs <up [--https]|down|status>");
+  if (unknown.length) console.log(`Unknown option: ${unknown.join(" ")}`);
   process.exit(command ? 1 : 0);
 }
-await commands[command]();
+await commands[command](flags);

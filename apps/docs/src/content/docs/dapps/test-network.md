@@ -17,7 +17,7 @@ pnpm dev:docs           # in another terminal
 
 Then open [the playground](http://localhost:4321/playground/). It finds the local network, lets you join as a demo user (`alice` / `alicepw` or `bob` / `bobpw`) and call the contract. `pnpm playground:down` removes everything.
 
-`playground:up` does the steps below for you, plus one more: it puts a small proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Details: [`playground/README.md`](https://github.com/ifeanyi-ugwu/weft/tree/main/playground).
+`playground:up` does the steps below for you, plus one more: it puts a small proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Add `--https` to serve it on `https://localhost:7443` with a [mkcert](https://github.com/FiloSottile/mkcert) certificate instead, to test an HTTPS CA URL like a real organisation's. Details: [`playground/README.md`](https://github.com/ifeanyi-ugwu/weft/tree/main/playground).
 
 ## By hand
 
