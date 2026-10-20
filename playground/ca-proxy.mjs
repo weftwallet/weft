@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
- * HTTPS proxy in front of a local Fabric CA.
+ * Proxy in front of a local Fabric CA.
  *
- * The test network's CA serves TLS with a certificate browsers don't trust, so
- * the Weft extension can't enrol against it directly. This proxy serves a
- * certificate your machine trusts (made with mkcert) and forwards to the CA,
- * verifying it against the CA root certificate (ca-cert.pem, the file
- * fabric-ca-client uses as --tls.certfiles). It also adds CORS headers.
+ * The test network's CA serves HTTPS with a self-signed certificate. Browsers
+ * reject it, and accepting it in a tab doesn't help: the Weft extension's
+ * background worker still refuses it. This proxy talks HTTPS to the CA,
+ * verifying it against the CA root (ca-cert.pem, the file fabric-ca-client
+ * uses as --tls.certfiles), and serves plain HTTP on localhost, which
+ * browsers allow. It also adds CORS headers.
  *
- * For local development only.
+ * For local development. To serve HTTPS (e.g. when hosting), pass --cert and
+ * --key for a certificate browsers trust.
  *
- *   node ca-proxy.mjs --listen 7443 --target https://localhost:7054 \
- *     --cert localhost.pem --key localhost-key.pem --upstream-ca ca-cert.pem
+ *   node ca-proxy.mjs --listen 7080 --target https://localhost:7054 --upstream-ca ca-cert.pem
  */
 import { readFileSync } from "node:fs";
 import { createServer as createHttpServer, request as httpRequest } from "node:http";
@@ -20,7 +21,7 @@ import { parseArgs } from "node:util";
 
 const { values } = parseArgs({
   options: {
-    listen: { type: "string", default: "7443" },
+    listen: { type: "string", default: "7080" },
     target: { type: "string", default: "https://localhost:7054" },
     cert: { type: "string" },
     key: { type: "string" },

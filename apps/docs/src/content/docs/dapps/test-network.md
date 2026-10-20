@@ -17,7 +17,7 @@ pnpm dev:docs           # in another terminal
 
 Then open [the playground](http://localhost:4321/playground/). It finds the local network, lets you join as a demo user (`alice` / `alicepw` or `bob` / `bobpw`) and call the contract. `pnpm playground:down` removes everything.
 
-`playground:up` does the steps below for you, plus one more: it puts an HTTPS proxy with a locally trusted certificate in front of Org1's CA, so the browser can enrol. Install [mkcert](https://github.com/FiloSottile/mkcert) first (`brew install mkcert` on macOS) to get that. Details: [`playground/README.md`](https://github.com/ifeanyi-ugwu/weft/tree/main/playground).
+`playground:up` does the steps below for you, plus one more: it puts a small proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Details: [`playground/README.md`](https://github.com/ifeanyi-ugwu/weft/tree/main/playground).
 
 ## By hand
 
@@ -72,16 +72,14 @@ In the extension choose **Enroll with CA** and enter:
 | MSP ID | `Org1MSP` |
 | Channels | `mychannel` |
 | Relay URL | `http://localhost:8787` |
-| CA URL | `https://localhost:7054` |
+| CA URL | `http://localhost:7080` (the CA proxy) |
 | CA name | `ca-org1` |
 
 :::caution[Self-signed CA certificate]
-The test network's CA uses a TLS certificate the browser doesn't trust, so enrolment fails. Either open `https://localhost:7054/cainfo` once and accept the warning, or run the playground's CA proxy and use `https://localhost:7443` as the CA URL:
+The test network's CA serves HTTPS with a self-signed certificate. The browser refuses it, and accepting it in a tab doesn't help: Weft's background worker still refuses it, so enrolment fails with "Failed to fetch". `pnpm playground:up` starts a proxy for this. By hand, run the playground's CA proxy, which verifies the CA against its root certificate and serves plain HTTP on `localhost`, and use `http://localhost:7080` as the CA URL:
 
 ```sh
-mkcert -cert-file localhost.pem -key-file localhost-key.pem localhost
-node playground/ca-proxy.mjs --listen 7443 --target https://localhost:7054 \
-  --cert localhost.pem --key localhost-key.pem \
+node playground/ca-proxy.mjs --listen 7080 --target https://localhost:7054 \
   --upstream-ca fabric-samples/test-network/organizations/fabric-ca/org1/ca-cert.pem
 ```
 :::

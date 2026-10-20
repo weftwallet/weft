@@ -12,8 +12,8 @@
  *   2. Starts test-network with CAs, creates `mychannel`, deploys the
  *      asset-transfer `basic` contract.
  *   3. Registers demo users in Org1 with known secrets.
- *   4. Starts an HTTPS proxy in front of Org1's CA with a certificate your
- *      machine trusts (mkcert), so the browser can enrol.
+ *   4. Starts a proxy in front of Org1's CA on http://localhost, so the
+ *      browser can enrol without trusting the CA's self-signed certificate.
  *   5. Starts the Weft relay for Org1, serving the playground invite.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -32,7 +32,7 @@ const samples = resolve(process.env.WEFT_FABRIC_SAMPLES ?? join(here, ".fabric",
 const testNetwork = join(samples, "test-network");
 const org1 = join(testNetwork, "organizations", "peerOrganizations", "org1.example.com");
 
-const PORTS = { relay: 8787, caProxy: 7443, docs: 4321 };
+const PORTS = { relay: 8787, caProxy: 7080, docs: 4321 };
 const CHANNEL = "mychannel";
 const DEMO_USERS = [
   { id: "alice", secret: "alicepw", attrs: "role=auditor:ecert" },
@@ -240,38 +240,18 @@ function registerUsers() {
   }
 }
 
-function caCertificate() {
-  const cert = join(state, "localhost.pem");
-  const key = join(state, "localhost-key.pem");
-  if (existsSync(cert) && existsSync(key)) return { cert, key, trusted: true };
-  if (!has("mkcert")) return null;
-  note("installing mkcert's local CA (you may be asked for your password, once)");
-  run("mkcert", ["-install"]);
-  run("mkcert", ["-cert-file", cert, "-key-file", key, "localhost", "127.0.0.1", "::1"]);
-  return { cert, key, trusted: true };
-}
-
 function startCaProxy() {
-  step(4, "HTTPS proxy for Org1's CA");
-  const tls = caCertificate();
-  if (!tls) {
-    note("mkcert not found, so the browser won't trust a local certificate.");
-    note("Install it (macOS: brew install mkcert; Linux: see github.com/FiloSottile/mkcert) and run up again,");
-    note("or open https://localhost:7054/cainfo once and accept the warning. The invite will point at the CA directly.");
-    return null;
-  }
-  startBackground(
-    "ca-proxy",
-    join(here, "ca-proxy.mjs"),
-    [
-      "--listen", String(PORTS.caProxy),
-      "--target", "https://localhost:7054",
-      "--cert", tls.cert,
-      "--key", tls.key,
-      "--upstream-ca", join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem"),
-    ],
-  );
-  return `https://localhost:${PORTS.caProxy}`;
+  step(4, "Proxy for Org1's CA");
+  // The test network's CA serves HTTPS with a certificate browsers don't trust,
+  // and the extension can't be told to trust it. The proxy talks HTTPS to the
+  // CA (verifying it against the CA root) and serves plain HTTP on localhost,
+  // which browsers allow without any certificate.
+  startBackground("ca-proxy", join(here, "ca-proxy.mjs"), [
+    "--listen", String(PORTS.caProxy),
+    "--target", "https://localhost:7054",
+    "--upstream-ca", join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem"),
+  ]);
+  return `http://localhost:${PORTS.caProxy}`;
 }
 
 async function startRelay(caUrl) {
@@ -337,11 +317,9 @@ async function up() {
   ensureFabric();
   startNetwork();
   registerUsers();
-  const caUrl = startCaProxy() ?? "https://localhost:7054";
-  if (caUrl.endsWith(String(PORTS.caProxy))) {
-    await waitForPort(PORTS.caProxy, "The CA proxy");
-    ensureStillRunning("ca-proxy");
-  }
+  const caUrl = startCaProxy();
+  await waitForPort(PORTS.caProxy, "The CA proxy");
+  ensureStillRunning("ca-proxy");
   await startRelay(caUrl);
   summary(caUrl);
 }
@@ -362,7 +340,7 @@ async function status() {
   const line = (label, good, detail) => console.log(`${good ? "✓" : "✗"} ${label.padEnd(10)} ${detail}`);
   line("Network", containerRunning("peer0.org1.example.com"), "peer0.org1.example.com container");
   const proxy = runningPid("ca-proxy");
-  line("CA proxy", Boolean(proxy), proxy ? `pid ${proxy}, https://localhost:${PORTS.caProxy}` : "not running");
+  line("CA proxy", Boolean(proxy), proxy ? `pid ${proxy}, http://localhost:${PORTS.caProxy}` : "not running");
   const relayUp = await ok(`http://localhost:${PORTS.relay}/v1/health`);
   line("Relay", relayUp, `http://localhost:${PORTS.relay}`);
   line("Invite", await ok(`http://localhost:${PORTS.relay}/.well-known/weft-invite.json`), "served by the relay");
