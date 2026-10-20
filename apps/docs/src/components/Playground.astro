@@ -27,10 +27,14 @@
   </section>
 
   <section class="pg-card">
-    <h2>2. Identity</h2>
+    <div class="pg-head">
+      <h2>2. Identity</h2>
+      <span class="pg-pill" id="pg-conn" data-state="pending">Not connected</span>
+    </div>
     <div class="pg-row pg-wrap">
       <button type="button" id="pg-join" class="pg-secondary" disabled>Join with Weft</button>
       <button type="button" id="pg-connect" disabled>Connect</button>
+      <button type="button" id="pg-disconnect" class="pg-secondary" hidden>Disconnect</button>
     </div>
     <p class="pg-hint">
       Join once to enrol (local demo users: <code>alice</code>/<code>alicepw</code>, <code>bob</code>/<code>bobpw</code>),
@@ -133,6 +137,8 @@
       return result;
     } catch (error: any) {
       log("←", `${method} failed · ${Math.round(performance.now() - started)} ms`, { code: error?.code, message: error?.message, data: error?.data }, "err");
+      // 4100: the wallet no longer treats this site as connected.
+      if (error?.code === 4100 && connected) setConnected(false);
       throw error;
     }
   }
@@ -142,9 +148,18 @@
   function setWeftPill(state: "ok" | "missing") {
     const pill = $("pg-weft");
     pill.dataset.state = state;
-    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Weft not installed";
+    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Weft not installed · how to install";
     if (state === "missing") {
-      pill.title = "Install Weft from the Start here section, then reload.";
+      // Turn the pill into a link to the install guide.
+      const link = Object.assign(document.createElement("a"), {
+        id: "pg-weft",
+        className: "pg-pill",
+        href: "/start/install/",
+        textContent: pill.textContent,
+        title: "Install Weft, then reload this page.",
+      });
+      link.dataset.state = "missing";
+      pill.replaceWith(link);
     }
   }
 
@@ -156,7 +171,14 @@
         log("•", "event identityChanged", identity);
         showIdentity(identity);
       });
-      weft.on("networkChanged", (payload: any) => log("•", "event networkChanged", payload));
+      weft.on("networkChanged", (payload: any) => {
+        log("•", "event networkChanged", payload);
+        selectChannel(payload.channel);
+      });
+      weft.on("disconnect", (payload: any) => {
+        log("•", "event disconnect", payload);
+        setConnected(false, DISCONNECT_REASONS[payload?.reason] ?? "Disconnected");
+      });
       void refreshIdentity();
       updateButtons();
       return;
@@ -166,12 +188,36 @@
   window.addEventListener("weft#initialized", detect, { once: true });
   setTimeout(() => !weft && detect(), 1200);
 
+  const DISCONNECT_REASONS: Record<string, string> = {
+    user: "Disconnected in Weft",
+    site: "Disconnected",
+    "no-identity": "No identity in Weft",
+  };
+
+  function setConnected(value: boolean, label?: string) {
+    connected = value;
+    const pill = $("pg-conn");
+    pill.dataset.state = value ? "ok" : "pending";
+    pill.textContent = label ?? (value ? "Connected" : "Not connected");
+    if (!value) showIdentity(null);
+    updateButtons();
+  }
+
+  function selectChannel(channel: string) {
+    const select = $<HTMLSelectElement>("pg-channel");
+    if (![...select.options].some((o) => o.value === channel)) {
+      select.append(Object.assign(document.createElement("option"), { value: channel, textContent: channel }));
+    }
+    select.value = channel;
+  }
+
   async function refreshIdentity() {
     try {
       const identity = await weft.request({ method: "weft_identity" });
       if (identity) {
-        connected = true;
         showIdentity(identity);
+        setConnected(true);
+        return;
       }
     } catch {
       /* not connected */
@@ -197,7 +243,8 @@
     const haveInvite = Boolean(inviteUrl());
     $<HTMLButtonElement>("pg-join").disabled = !weft || !haveInvite;
     $<HTMLButtonElement>("pg-connect").disabled = !weft;
-    $<HTMLButtonElement>("pg-connect").textContent = connected ? "Connected" : "Connect";
+    $("pg-connect").hidden = connected;
+    $("pg-disconnect").hidden = !connected;
     $<HTMLButtonElement>("pg-evaluate").disabled = !weft || !connected;
     $<HTMLButtonElement>("pg-submit").disabled = !weft || !connected;
   }
@@ -265,14 +312,22 @@
   });
 
   $("pg-connect").addEventListener("click", async () => {
+    const button = $<HTMLButtonElement>("pg-connect");
+    button.disabled = true;
+    button.textContent = "Waiting for Weft…";
     try {
       showIdentity(await call("weft_connect"));
-      connected = true;
+      setConnected(true);
     } catch {
       /* logged */
+    } finally {
+      button.textContent = "Connect";
+      updateButtons();
     }
-    updateButtons();
   });
+
+  // The wallet answers with a disconnect event, which updates the page.
+  $("pg-disconnect").addEventListener("click", () => void call("weft_disconnect").catch(() => {}));
 
   /* ---------------- contract calls ---------------- */
 
@@ -326,6 +381,9 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     $("pg-result-wrap").hidden = false;
     $("pg-code").textContent = codeFor(kind, c);
     $("pg-result").textContent = kind === "submit" ? "Waiting for approval, endorsement and commit…" : "Waiting for approval…";
+    $("pg-result").dataset.tone = "pending";
+    const buttons = [$<HTMLButtonElement>("pg-evaluate"), $<HTMLButtonElement>("pg-submit")];
+    buttons.forEach((b) => (b.disabled = true));
     try {
       const result = await call(kind === "submit" ? "weft_submit" : "weft_evaluate", c);
       let pretty = result.text;
@@ -336,9 +394,13 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       }
       const meta = kind === "submit" ? `Committed in block ${result.blockNumber} · tx ${result.transactionId}\n\n` : "";
       $("pg-result").textContent = `${meta}${pretty ?? `(binary result, base64) ${result.base64}`}` || "(empty result)";
+      $("pg-result").dataset.tone = "ok";
     } catch (error: any) {
       const detail = error?.data?.status ? ` (${error.data.status})` : "";
       $("pg-result").textContent = `Error ${error?.code ?? ""}: ${error?.message ?? error}${detail}`;
+      $("pg-result").dataset.tone = "err";
+    } finally {
+      updateButtons();
     }
   }
 
@@ -399,6 +461,26 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-pill[data-state="missing"] {
     border-color: #e8a33d;
     color: #e8a33d;
+    text-decoration: none;
+  }
+  a.pg-pill[data-state="missing"]:hover {
+    background: color-mix(in srgb, #e8a33d 12%, transparent);
+  }
+  .pg-pill {
+    transition:
+      border-color 200ms,
+      color 200ms,
+      background-color 200ms;
+  }
+  .pg-pill[data-state="ok"]::before {
+    content: "";
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-right: 0.4rem;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: 0.05em;
   }
   .pg-label {
     display: flex;
@@ -451,9 +533,63 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     color: var(--sl-color-black);
     cursor: pointer;
   }
-  .pg button:disabled {
-    opacity: 0.45;
+  .pg button {
+    transition:
+      filter 140ms,
+      background-color 140ms,
+      border-color 140ms,
+      color 140ms,
+      transform 140ms;
+  }
+  .pg button:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  .pg button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .pg button:focus-visible,
+  .pg input:focus-visible,
+  .pg select:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 2px;
+  }
+  /* Disabled reads as unavailable, not as a dimmer version of the colour. */
+  .pg button:disabled,
+  .pg button.pg-teal:disabled,
+  .pg button.pg-amber:disabled {
+    background: transparent;
+    border-color: var(--sl-color-gray-5);
+    border-style: dashed;
+    color: var(--sl-color-gray-3);
     cursor: not-allowed;
+    filter: none;
+  }
+  .pg button.pg-secondary:hover:not(:disabled),
+  .pg-presets button:hover {
+    border-color: var(--sl-color-accent);
+    filter: none;
+  }
+  .pg input,
+  .pg select {
+    transition: border-color 140ms;
+  }
+  .pg input:hover,
+  .pg select:hover {
+    border-color: var(--sl-color-gray-4);
+  }
+  .pg-log li {
+    animation: pg-in 220ms ease-out;
+  }
+  @keyframes pg-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pg-log li {
+      animation: none;
+    }
   }
   .pg button.pg-secondary {
     background: transparent;
@@ -525,6 +661,15 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-details dd {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+  .pg-out[data-tone="ok"] {
+    border-color: color-mix(in srgb, #3fc1b0 55%, transparent);
+  }
+  .pg-out[data-tone="err"] {
+    border-color: color-mix(in srgb, #e5675b 60%, transparent);
+  }
+  .pg-out[data-tone="pending"] {
+    color: var(--sl-color-gray-3);
   }
   .pg-out {
     margin: 0;
