@@ -1340,10 +1340,11 @@ textarea {
   color: var(--weft-thread);
 }
 
+/* Top-aligned so an error appearing below doesn't move the mark. */
 .lock-screen {
-  justify-content: center;
+  justify-content: flex-start;
   gap: 14px;
-  padding-top: 32px;
+  padding-top: 72px;
   padding-bottom: 32px;
 }
 
@@ -1351,4 +1352,45 @@ textarea {
   display: flex;
   justify-content: center;
   margin-bottom: 4px;
+}
+
+/* Status screens: the text block has a fixed height so the mark never moves. */
+.status-screen__mark {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-screen__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  /* title (one line) plus up to two lines of detail */
+  min-height: calc(24px + 6px + 2 * 20px);
+  max-width: 280px;
+}
+
+.status-screen__title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.status-screen__detail {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Selects draw their own chevron, inset like the other fields' icons. */
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  cursor: pointer;
 }

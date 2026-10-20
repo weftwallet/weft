@@ -342,3 +342,24 @@ export function shorten(value: string, head = 8, tail = 4): string {
 export function initial(name: string): string {
   return name.trim().charAt(0) || "?";
 }
+
+/**
+ * A centred mark with a title and a line or two of detail. The text area has a
+ * fixed height, so the mark stays put when the text changes (working, then
+ * done); the text fades in place instead.
+ */
+export function StatusScreen({ mark, title, detail }: { mark: ReactNode; title: string; detail: ReactNode }) {
+  return (
+    <main className="status-screen" aria-live="polite">
+      <div className="status-screen__mark">{mark}</div>
+      <div className="status-screen__text">
+        <div key={title} className="status-screen__title fade-in">
+          {title}
+        </div>
+        <div key={`${title}-detail`} className="status-screen__detail muted fade-in">
+          {detail}
+        </div>
+      </div>
+    </main>
+  );
+}

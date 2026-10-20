@@ -9,7 +9,7 @@ import { browser } from "wxt/browser";
 import { InviteCard } from "../../components/InviteCard";
 import { CreatePassword, Unlock } from "../../components/lock";
 import type { VaultStatus } from "../../lib/vault";
-import { Field, Icon, SecretInput, Spinner, WeaveMark, healthView } from "../../components/ui";
+import { Field, Icon, SecretInput, Spinner, StatusScreen, WeaveMark, healthView } from "../../components/ui";
 import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 
@@ -111,7 +111,8 @@ function Approve() {
   else if (view.method === "weft_connect") screen = <ConnectRequest view={view} onDecide={decide} deciding={deciding} />;
   else screen = <SignRequest view={view} onDecide={decide} deciding={deciding} />;
   return (
-    <div key={`${phase}-${vault?.state}`} className="screen fade-in">
+    // Working and done share one screen, so the mark settles in place rather than reloading.
+    <div key={`${phase === "review" ? "review" : outcome?.status === "failed" ? "failed" : "progress"}-${vault?.state}`} className="screen fade-in">
       {screen}
     </div>
   );
@@ -488,21 +489,19 @@ function Progress({
   const submit = view.method === "weft_submit";
   if (phase === "working") {
     return (
-      <main className="status-screen" aria-live="polite">
-        <WeaveMark size={72} mode="loop" />
-        <div style={{ fontSize: 16, fontWeight: 600 }}>
-          {view.method === "weft_connect"
+      <StatusScreen
+        mark={<WeaveMark size={72} mode="loop" />}
+        title={
+          view.method === "weft_connect"
             ? "Connecting…"
             : view.method === "weft_addNetwork"
               ? "Finishing…"
               : submit
                 ? "Signing and submitting…"
-                : "Signing and querying…"}
-        </div>
-        <div className="muted" style={{ fontSize: 13 }}>
-          {submit ? "Waiting for organisations to approve and the block to commit." : "This only takes a moment."}
-        </div>
-      </main>
+                : "Signing and querying…"
+        }
+        detail={submit ? "Waiting for organisations to approve and the block to commit." : "This only takes a moment."}
+      />
     );
   }
   if (outcome?.status === "failed") {
@@ -526,21 +525,11 @@ function Progress({
     );
   }
   return (
-    <main className="status-screen" aria-live="polite">
-      <WeaveMark size={72} mode="settle" />
-      <div style={{ fontSize: 16, fontWeight: 600 }}>
-        {view.method === "weft_connect"
-          ? "Connected"
-          : view.method === "weft_addNetwork"
-            ? "Network added"
-            : submit
-              ? "Committed"
-              : "Done"}
-      </div>
-      <div className="muted" style={{ fontSize: 13 }}>
-        This window closes on its own.
-      </div>
-    </main>
+    <StatusScreen
+      mark={<WeaveMark size={72} mode="settle" />}
+      title={view.method === "weft_connect" ? "Connected" : view.method === "weft_addNetwork" ? "Network added" : submit ? "Committed" : "Done"}
+      detail="This window closes on its own."
+    />
   );
 }
 

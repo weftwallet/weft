@@ -7,7 +7,7 @@ import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { browser } from "wxt/browser";
 import "../../assets/app.css";
-import { Field, Icon, Spinner, WeaveMark } from "../../components/ui";
+import { Field, Icon, Spinner, StatusScreen, WeaveMark } from "../../components/ui";
 import { addPasskey, unlockWithPasskey } from "../../lib/passkey";
 
 const params = new URLSearchParams(location.search);
@@ -38,13 +38,11 @@ function PasskeyWindow() {
 
   if (phase === "done") {
     return (
-      <main className="status-screen fade-in" aria-live="polite">
-        <WeaveMark size={64} mode="settle" />
-        <div style={{ fontSize: 16, fontWeight: 600 }}>{action === "add" ? "Passkey added" : "Unlocked"}</div>
-        <div className="muted" style={{ fontSize: 13 }}>
-          This window closes on its own.
-        </div>
-      </main>
+      <StatusScreen
+        mark={<WeaveMark size={64} mode="settle" />}
+        title={action === "add" ? "Passkey added" : "Unlocked"}
+        detail="This window closes on its own."
+      />
     );
   }
 
