@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../components/popup/AddForms";
 import { Home } from "../../components/popup/Home";
 import { AddIdentityOptions, Identities } from "../../components/popup/Identities";
+import { NetworkSettings } from "../../components/popup/NetworkSettings";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { useWallet, type Route } from "../../components/popup/state";
 import { FeedbackProvider } from "../../components/feedback";
@@ -17,6 +18,7 @@ const DEPTH: Record<Route["name"], number> = {
   import: 2,
   csr: 2,
   "complete-csr": 2,
+  network: 2,
 };
 
 export function App() {
@@ -85,6 +87,9 @@ function Screens() {
       break;
     case "tx":
       screen = <TxDetail state={state} activityId={route.activityId} navigate={navigate} />;
+      break;
+    case "network":
+      screen = <NetworkSettings state={state} onState={setState} networkId={route.networkId} navigate={navigate} />;
       break;
     case "home":
       screen =

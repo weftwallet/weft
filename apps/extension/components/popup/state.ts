@@ -9,7 +9,8 @@ export type Route =
   | { name: "import" }
   | { name: "csr" }
   | { name: "complete-csr"; pendingId: string }
-  | { name: "tx"; activityId: string };
+  | { name: "tx"; activityId: string }
+  | { name: "network"; networkId: string };
 
 export type Navigate = (route: Route) => void;
 

@@ -362,7 +362,7 @@ function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (
   const enroll = (inv: OrgInvite) =>
     run(async () => {
       await requestHostAccess([inv.caUrl, inv.relayUrl]);
-      await ui("joinInvite", { invite: inv, enrollmentId: enrollmentId.trim(), secret });
+      await ui("joinInvite", { invite: inv, enrollmentId: enrollmentId.trim(), secret, inviteUrl });
       onDecide(true);
     });
 

@@ -11,6 +11,8 @@ export interface ConfirmOptions {
   body: ReactNode;
   confirmLabel: string;
   icon?: IconName;
+  /** "danger" (default) for things that can't be undone; "caution" for changes worth a second look. */
+  tone?: "danger" | "caution";
 }
 
 interface Feedback {
@@ -113,7 +115,7 @@ function ConfirmSheet({
   return (
     <div className={`sheet-backdrop ${closing ? "is-closing" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}>
       <div ref={sheet} className="sheet" role="alertdialog" aria-modal="true" aria-labelledby="sheet-title" aria-describedby="sheet-body">
-        <span className="sheet__icon">
+        <span className={`sheet__icon ${options.tone === "caution" ? "sheet__icon--caution" : ""}`}>
           <Icon name={options.icon ?? "alert"} size={20} />
         </span>
         <h2 id="sheet-title" className="sheet__title">
@@ -126,7 +128,11 @@ function ConfirmSheet({
           <button ref={cancel} type="button" className="btn" onClick={() => onClose(false)}>
             Cancel
           </button>
-          <button type="button" className="btn btn--danger" onClick={() => onClose(true)}>
+          <button
+            type="button"
+            className={`btn ${options.tone === "caution" ? "btn--amber" : "btn--danger"}`}
+            onClick={() => onClose(true)}
+          >
             {options.confirmLabel}
           </button>
         </div>

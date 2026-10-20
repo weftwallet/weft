@@ -41,8 +41,8 @@ const handlers: Handlers = {
   },
   fetchInvite: ({ link }) => wallet.fetchInvite(link),
   // Adding the first identity makes it active, so these can change what sites see.
-  joinInvite: ({ invite, enrollmentId, secret }) =>
-    withActiveChange(() => wallet.enroll(wallet.inviteToNetwork(invite), enrollmentId, secret)),
+  joinInvite: ({ invite, enrollmentId, secret, inviteUrl }) =>
+    withActiveChange(() => wallet.enroll(wallet.inviteToNetwork(invite, inviteUrl), enrollmentId, secret)),
   enroll: ({ network, enrollmentId, secret }) => withActiveChange(() => wallet.enroll(network, enrollmentId, secret)),
   importIdentity: ({ network, certificate, privateKeyPem }) =>
     withActiveChange(() => wallet.importIdentity(network, certificate, privateKeyPem)),
@@ -69,6 +69,15 @@ const handlers: Handlers = {
     await disconnectSites([origin], "user");
     return wallet.getState();
   },
+  updateNetwork: async ({ networkId, patch }) => {
+    await wallet.updateNetwork(networkId, patch);
+    // Sites using this network hear about it if their channel changed.
+    const active = await wallet.activeIdentity();
+    if (active?.network.id === networkId && patch.channels) await notifyNetworkChanged();
+    return wallet.getState();
+  },
+  checkEndpoints: ({ relayUrl, caUrl, caName }) => wallet.checkEndpoints(relayUrl, caUrl, caName),
+  refreshInvite: ({ networkId }) => wallet.refreshInvite(networkId),
   approvalGet: async ({ id }) => getApproval(id),
   approvalDecide: ({ id, approved }) => decideApproval(id, approved),
   keepAlive: async () => null,

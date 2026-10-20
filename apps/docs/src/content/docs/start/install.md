@@ -57,3 +57,12 @@ For CAs where an administrator issues certificates by hand. Weft creates the key
 The first time a web app needs your identity, Weft opens a window asking whether to connect. The site then sees your public identity: name, MSP ID, role, attributes and certificate. Connecting does **not** let it sign anything; each query and transaction asks again.
 
 A connection is for one identity. If you switch to another identity, sites you haven't connected it to are disconnected and must ask again, so a site only ever sees the identities you chose for it. **Sites** on the home screen shows which identities each site can use, and disconnects it.
+
+## Network settings
+
+Open **Manage identities** (the people icon at the top of the home screen) and pick a network under **Networks**.
+
+- **Refresh from invite** checks your organisation's invite again and shows what changed, such as a new channel or a moved relay, before applying it.
+- **Advanced** lets you change the relay URL, CA URL and CA name, like a custom RPC URL in MetaMask. Weft tests the new addresses before saving. Only use addresses your organisation gave you.
+
+There's no setting for peers on purpose. Your organisation's relay chooses which peers to use, and finds other organisations' peers through Fabric's discovery service.

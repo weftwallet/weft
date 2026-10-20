@@ -17,6 +17,8 @@ export interface NetworkRecord {
   caName?: string;
   relayUrl: string;
   channels: string[];
+  /** Where the invite came from, for "Refresh from invite". */
+  inviteUrl?: string;
 }
 
 export interface IdentityRecord {

@@ -58,7 +58,8 @@ export interface UiApi {
   setActive: [{ identityId: string; channel?: string }, WalletState];
   setChannel: [{ channel: string }, WalletState];
   fetchInvite: [{ link: string }, OrgInvite];
-  joinInvite: [{ invite: OrgInvite; enrollmentId: string; secret: string }, IdentityView];
+  /** inviteUrl: where the invite came from, kept so the network can be refreshed from it later. */
+  joinInvite: [{ invite: OrgInvite; enrollmentId: string; secret: string; inviteUrl?: string }, IdentityView];
   enroll: [{ network: NetworkInput; enrollmentId: string; secret: string }, IdentityView];
   importIdentity: [{ network: NetworkInput; certificate: string; privateKeyPem: string }, IdentityView];
   createCsr: [{ network: NetworkInput; commonName: string }, PendingCsrView];
@@ -68,6 +69,15 @@ export interface UiApi {
   disconnectSite: [{ origin: string }, WalletState];
   approvalGet: [{ id: string }, ApprovalView | null];
   approvalDecide: [{ id: string; approved: boolean }, ApprovalOutcome];
+  /** Changes where Weft reaches a network, or its channels. */
+  updateNetwork: [
+    { networkId: string; patch: Partial<Pick<NetworkRecord, "name" | "organization" | "relayUrl" | "caUrl" | "caName" | "channels">> },
+    WalletState,
+  ];
+  /** Tries a relay and CA before saving them. Each is null when it answered, or the problem. */
+  checkEndpoints: [{ relayUrl: string; caUrl: string; caName?: string }, { relay: string | null; ca: string | null }];
+  /** Fetches the network's invite again, to compare with what Weft has. */
+  refreshInvite: [{ networkId: string }, OrgInvite];
   /** Sent by open approval windows so the worker isn't stopped mid-approval. */
   keepAlive: [undefined, null];
 }

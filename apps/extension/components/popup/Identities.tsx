@@ -67,6 +67,31 @@ export function Identities({
           </div>
         )}
 
+        {state.networks.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="eyebrow">Networks</div>
+            {state.networks.map((network) => (
+              <button
+                key={network.id}
+                type="button"
+                className="nav-row"
+                onClick={() => navigate({ name: "network", networkId: network.id })}
+              >
+                <span className="site-row__icon">
+                  <Icon name="globe" size={16} />
+                </span>
+                <span className="list-item__body">
+                  <span className="list-item__title">{network.name}</span>
+                  <span className="mono subtle" style={{ fontSize: 11 }}>
+                    {network.mspId} · {network.channels.length} channel{network.channels.length === 1 ? "" : "s"}
+                  </span>
+                </span>
+                <Icon name="chevron" size={16} />
+              </button>
+            ))}
+          </div>
+        )}
+
         {state.pendingCsrs.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div className="eyebrow">Waiting for a certificate</div>
