@@ -20,6 +20,8 @@ Then open `chrome://extensions`, turn on **Developer mode**, choose **Load unpac
 
 Open Weft from the toolbar. There are four ways in; pick the one your administrator set up.
 
+The first time, Weft asks you to set a password. It encrypts your private keys with it and asks for it again whenever Weft has locked itself. You can add a passkey later under **Security** to unlock with a fingerprint or security key instead.
+
 ### Join from an org invite (recommended)
 
 If your administrator sent a link that opens a "Join a network" page, click **Open in Weft** there and skip to step 3.
@@ -46,7 +48,7 @@ For an identity you already have as files, for example from `fabric-samples`:
   openssl pkcs8 -topk8 -nocrypt -in key.pem -out key-pkcs8.pem
   ```
 
-Weft checks the key belongs to the certificate, then imports it as a non-extractable key. Delete the key file afterwards; Weft cannot give it back to you.
+Weft checks the key belongs to the certificate, then stores it encrypted with your password. Delete the key file afterwards; Weft cannot give it back to you.
 
 ### Generate CSR
 

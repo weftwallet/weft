@@ -7,6 +7,7 @@
 import type { ContractCall, IdentitySummary, OrgInvite, WeftErrorShape, WeftMethod } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import type { ActivityRecord, NetworkRecord, Settings, SiteRecord } from "./db";
+import type { VaultStatus } from "./vault";
 
 export interface IdentityView extends IdentitySummary {
   networkId: string;
@@ -14,6 +15,8 @@ export interface IdentityView extends IdentitySummary {
   organization: string;
   channels: string[];
   enrollmentId: string | null;
+  /** Saved before keys were encrypted (docs/adr/0005); re-enrolling fixes it. */
+  legacyKey: boolean;
 }
 
 export interface PendingCsrView {
@@ -31,6 +34,7 @@ export interface WalletState {
   pendingCsrs: PendingCsrView[];
   sites: SiteRecord[];
   settings: Settings;
+  vault: VaultStatus;
 }
 
 export type NetworkInput = Omit<NetworkRecord, "id">;
@@ -80,6 +84,19 @@ export interface UiApi {
   refreshInvite: [{ networkId: string }, OrgInvite];
   /** Sent by open approval windows so the worker isn't stopped mid-approval. */
   keepAlive: [undefined, null];
+
+  /* The lock (docs/adr/0005). Byte arrays travel as number[]. */
+  vaultStatus: [undefined, VaultStatus];
+  vaultSetup: [{ password: string }, VaultStatus];
+  vaultUnlock: [{ password: string }, VaultStatus];
+  vaultLock: [undefined, VaultStatus];
+  /** Credential IDs and PRF salts for navigator.credentials.get. */
+  passkeyRequest: [undefined, { id: string; salt: number[] }[]];
+  passkeyUnlock: [{ credentialId: string; prfOutput: number[] }, VaultStatus];
+  passkeyAdd: [{ credentialId: string; name: string; salt: number[]; prfOutput: number[] }, VaultStatus];
+  passkeyRemove: [{ credentialId: string }, VaultStatus];
+  changePassword: [{ current: string; next: string }, VaultStatus];
+  setAutoLock: [{ minutes: number }, VaultStatus];
 }
 
 export type UiMethod = keyof UiApi;

@@ -136,7 +136,7 @@ export function Identities({
 
         <div className="row" style={{ marginTop: "auto", fontSize: 12, color: "var(--weft-text-muted)" }}>
           <Icon name="shield" size={18} />
-          Private keys are created in this browser and can never be exported, even by Weft.
+          Private keys are created in this browser, encrypted with your password, and can never be exported, even by Weft.
         </div>
       </main>
     </>

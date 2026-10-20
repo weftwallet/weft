@@ -16,6 +16,7 @@ import {
   summarizeIdentity,
 } from "@weftwallet/core";
 import type { IdentitySummary, OrgInvite } from "@weftwallet/protocol";
+import * as vault from "./vault";
 import { db, newId, type IdentityRecord, type NetworkRecord, type PendingCsrRecord, type SiteRecord } from "./db";
 import type { IdentityView, NetworkInput, PendingCsrView, WalletState } from "./messages";
 
@@ -33,6 +34,7 @@ async function toView(identity: IdentityRecord, networks: Map<string, NetworkRec
     organization: network?.organization ?? identity.mspId,
     channels: network?.channels ?? [],
     enrollmentId: identity.enrollmentId,
+    legacyKey: !identity.wrappedKey,
   };
 }
 
@@ -63,7 +65,7 @@ export async function getState(): Promise<WalletState> {
     csr: p.csr,
     createdAt: p.createdAt,
   }));
-  return { identities: views, networks, pendingCsrs: pendingViews, sites, settings };
+  return { identities: views, networks, pendingCsrs: pendingViews, sites, settings, vault: await vault.status() };
 }
 
 export async function activeIdentity(): Promise<{ record: IdentityRecord; network: NetworkRecord; channel: string } | null> {
@@ -133,8 +135,14 @@ export async function fetchInvite(link: string): Promise<OrgInvite> {
   return fetchInviteDocument(link);
 }
 
+/** A key pair whose private half can be encrypted once, then forgotten. */
+async function newKeys(): Promise<CryptoKeyPair> {
+  await vault.requireUnlocked();
+  return generateKeyPair("P-256", { extractable: true });
+}
+
 export async function enroll(network: NetworkInput, enrollmentId: string, secret: string): Promise<IdentityView> {
-  const keys = await generateKeyPair();
+  const keys = await newKeys();
   const ca = new FabricCaClient({ url: network.caUrl, ...(network.caName ? { caName: network.caName } : {}) });
   const issued = await ca.enroll(enrollmentId, secret, keys);
   const record = await upsertNetwork(network);
@@ -142,23 +150,25 @@ export async function enroll(network: NetworkInput, enrollmentId: string, secret
     networkId: record.id,
     mspId: network.mspId,
     certificate: issued.certificate,
-    privateKey: keys.privateKey,
+    wrappedKey: await vault.wrap(keys.privateKey),
     enrollmentId,
   });
 }
 
 export async function importIdentity(network: NetworkInput, certificate: string, privateKeyPem: string) {
-  const privateKey = await importPrivateKeyPem(privateKeyPem);
+  await vault.requireUnlocked();
+  const privateKey = await importPrivateKeyPem(privateKeyPem, "P-256", { extractable: true });
   if (!(await keyMatchesCertificate(privateKey, certificate))) {
     throw new Error("The private key does not belong to this certificate.");
   }
+  const wrappedKey = await vault.wrap(privateKey);
   const record = await upsertNetwork(network);
   const cn = parseCertificate(certificate).subjectName.getField("CN")[0] ?? null;
-  return saveIdentity({ networkId: record.id, mspId: network.mspId, certificate, privateKey, enrollmentId: cn });
+  return saveIdentity({ networkId: record.id, mspId: network.mspId, certificate, wrappedKey, enrollmentId: cn });
 }
 
 export async function startCsr(network: NetworkInput, commonName: string): Promise<PendingCsrView> {
-  const keys = await generateKeyPair();
+  const keys = await newKeys();
   const csr = await createCsr(keys, commonName);
   const record = await upsertNetwork(network);
   const pending: PendingCsrRecord = {
@@ -166,12 +176,12 @@ export async function startCsr(network: NetworkInput, commonName: string): Promi
     networkId: record.id,
     commonName,
     csr,
-    privateKey: keys.privateKey,
+    wrappedKey: await vault.wrap(keys.privateKey),
     publicKey: keys.publicKey,
     createdAt: Date.now(),
   };
   await db.put("pendingCsrs", pending);
-  return { ...pending, networkName: record.name };
+  return { id: pending.id, networkId: record.id, networkName: record.name, commonName, csr, createdAt: pending.createdAt };
 }
 
 export async function completeCsr(pendingId: string, certificate: string): Promise<IdentityView> {
@@ -186,7 +196,7 @@ export async function completeCsr(pendingId: string, certificate: string): Promi
     networkId: network.id,
     mspId: network.mspId,
     certificate,
-    privateKey: pending.privateKey,
+    ...(pending.wrappedKey ? { wrappedKey: pending.wrappedKey } : { privateKey: pending.privateKey! }),
     enrollmentId: pending.commonName,
   });
   await db.delete("pendingCsrs", pendingId);
@@ -201,11 +211,15 @@ export async function reenroll(identityId: string): Promise<IdentityView> {
   if (!network) throw new Error("This identity's network was removed.");
   const commonName = identity.enrollmentId ?? parseCertificate(identity.certificate).subjectName.getField("CN")[0];
   if (!commonName) throw new Error("Cannot tell which enrollment ID to renew.");
-  const newKeys = await generateKeyPair();
+  const keys = await newKeys();
   const ca = new FabricCaClient({ url: network.caUrl, ...(network.caName ? { caName: network.caName } : {}) });
-  const issued = await ca.reenroll(identity, newKeys, commonName);
-  const updated: IdentityRecord = { ...identity, certificate: issued.certificate, privateKey: newKeys.privateKey };
+  // The CA checks the request is signed with the current key.
+  const current = { certificate: identity.certificate, privateKey: await vault.signingKey(identity) };
+  const issued = await ca.reenroll(current, keys, commonName);
+  const { privateKey: _legacy, ...rest } = identity;
+  const updated: IdentityRecord = { ...rest, certificate: issued.certificate, wrappedKey: await vault.wrap(keys.privateKey) };
   await db.put("identities", updated);
+  vault.forget(identity.id);
   return toView(updated, await networkMap());
 }
 
@@ -295,7 +309,12 @@ export async function removeIdentity(identityId: string): Promise<void> {
 /* Signing                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Returns a signer bound to one identity. The key never leaves this worker. */
-export function signerFor(identity: IdentityRecord) {
-  return (message: Uint8Array) => signForFabric(identity.privateKey, message);
+/**
+ * Returns a signer bound to one identity, or throws VaultLockedError. The key
+ * never leaves this worker.
+ */
+export async function signerFor(identity: IdentityRecord) {
+  const key = await vault.signingKey(identity);
+  await vault.touch();
+  return (message: Uint8Array) => signForFabric(key, message);
 }

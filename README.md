@@ -15,7 +15,7 @@ Fabric has no coins, gas or addresses. Weft is built around X.509 identities iss
 
 - The home screen shows your certificate, MSP ID, role and attributes, with the expiry date and one-click renewal.
 - Every request shows the channel, contract, function and decoded arguments. Reads are teal and ledger writes are amber.
-- Private keys are non-extractable WebCrypto keys. The relay sees only certificates, unsigned messages and signatures.
+- Private keys are encrypted with your password and used as non-extractable WebCrypto keys. Weft locks itself, and unlocks with the password or a passkey. The relay sees only certificates, unsigned messages and signatures.
 - Weft decodes every Fabric message it's asked to sign and refuses anything that doesn't match what you approved.
 - Failures are explained in plain English: `ENDORSEMENT_POLICY_FAILURE` becomes "Not enough organisations approved it", with per-peer details.
 
@@ -80,7 +80,7 @@ See [`playground/README.md`](playground/README.md).
 
 ## Status
 
-Weft is in early development. The extension, relay, SDK and docs work end to end; see the security model's "Not covered yet" list before trusting it with production identities. Keys are protected at rest only by the browser profile until passkey wrapping is implemented.
+Weft is in early development. The extension, relay, SDK and docs work end to end; see the security model's "Not covered yet" list before trusting it with production identities.
 
 ## Licence
 

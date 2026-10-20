@@ -9,6 +9,9 @@ import { EXTENSION, PORTS, type StackInfo } from "./stack.ts";
 
 export { expect };
 
+/** The wallet password the fixture sets, unless a test opts out with test.use({ walletPassword: null }). */
+export const PASSWORD = "e2e wallet password";
+
 export function stack(): StackInfo {
   const raw = process.env.WEFT_E2E_INFO;
   if (!raw) throw new Error("WEFT_E2E_INFO is missing: run the tests through Playwright (global setup starts the stack).");
@@ -157,6 +160,15 @@ export class Wallet {
     );
   }
 
+  /** Unlocks with the test password, through the worker. */
+  async unlock() {
+    return this.ui("vaultUnlock", { password: PASSWORD });
+  }
+
+  async lock() {
+    return this.ui("vaultLock");
+  }
+
   /** Enrols through the background directly, for setting up state quickly. */
   async enroll(user: string, secret: string, network: Partial<Record<string, unknown>> = {}) {
     const s = stack();
@@ -171,7 +183,7 @@ export class Wallet {
   }
 }
 
-type Fixtures = { wallet: Wallet };
+type Fixtures = { wallet: Wallet; walletPassword: string | null };
 type WorkerFixtures = { site: Site };
 
 export const test = base.extend<Fixtures, WorkerFixtures>({
@@ -185,7 +197,9 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     { scope: "worker" },
   ],
 
-  wallet: async ({ site }, use, testInfo) => {
+  walletPassword: [PASSWORD, { option: true }],
+
+  wallet: async ({ site, walletPassword }, use, testInfo) => {
     const headed = testInfo.tags.includes("@headed");
     const context = await chromium.launchPersistentContext(testInfo.outputPath("profile"), {
       channel: "chromium",
@@ -194,7 +208,13 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     });
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
     const id = new URL(worker.url()).host;
-    await use(new Wallet(context, id, worker, site));
+    const wallet = new Wallet(context, id, worker, site);
+    if (walletPassword) {
+      await wallet.ui("vaultSetup", { password: walletPassword });
+      // ui() opened a popup tab to talk to the worker; tests expect a clean slate.
+      for (const page of context.pages()) if (page.url().startsWith(wallet.url(""))) await page.close();
+    }
+    await use(wallet);
     await context.close();
   },
 });

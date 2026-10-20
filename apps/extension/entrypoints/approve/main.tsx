@@ -5,7 +5,10 @@ import { createRoot } from "react-dom/client";
 import "../../assets/app.css";
 import { qualifiedFunctionName } from "@weftwallet/core";
 import type { OrgInvite } from "@weftwallet/protocol";
+import { browser } from "wxt/browser";
 import { InviteCard } from "../../components/InviteCard";
+import { CreatePassword, Unlock } from "../../components/lock";
+import type { VaultStatus } from "../../lib/vault";
 import { Field, Icon, SecretInput, Spinner, WeaveMark, healthView } from "../../components/ui";
 import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
@@ -17,14 +20,23 @@ function Approve() {
   const [phase, setPhase] = useState<"review" | "working" | "done">("review");
   const [outcome, setOutcome] = useState<ApprovalOutcome | null>(null);
   const [deciding, setDeciding] = useState(false);
+  const [vault, setVault] = useState<VaultStatus | null>(null);
 
   useEffect(() => {
     void ui("approvalGet", { id }).then(setView, () => setView(null));
+    const loadVault = () => void ui("vaultStatus").then(setVault, () => {});
+    loadVault();
+    // Weft can lock while this window is open (auto-lock, or locked elsewhere).
+    const onChange = (_changes: unknown, area: string) => area === "session" && loadVault();
+    browser.storage.onChanged.addListener(onChange);
     // Chrome stops an idle extension worker after about 30 seconds, which
     // would drop this request while the user is still reading it. Any
     // message resets that timer.
     const timer = setInterval(() => void ui("keepAlive").catch(() => {}), 20_000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      browser.storage.onChanged.removeListener(onChange);
+    };
   }, []);
 
   const decide = async (approved: boolean) => {
@@ -52,7 +64,7 @@ function Approve() {
     }
   };
 
-  if (view === undefined) {
+  if (view === undefined || (view && !vault)) {
     return (
       <div className="splash">
         <Spinner />
@@ -71,12 +83,35 @@ function Approve() {
   }
 
   let screen;
-  if (phase !== "review") screen = <Progress view={view} phase={phase} outcome={outcome} />;
+  const reloadVault = () => void ui("vaultStatus").then(setVault);
+  if (phase === "review" && vault?.state === "none") {
+    screen = (
+      <CreatePassword
+        intro={
+          view.method === "weft_addNetwork"
+            ? "Weft encrypts the private key it creates for this network with your password, and asks for it again after it locks."
+            : "Weft now encrypts private keys with a password and locks itself when you're not using it. Set one to continue."
+        }
+        onDone={reloadVault}
+        onCancel={() => void decide(false)}
+      />
+    );
+  } else if (phase === "review" && vault?.state === "locked") {
+    screen = (
+      <Unlock
+        status={vault}
+        passkey="inline"
+        subtitle={`${new URL(view.origin).host} is waiting. Unlock to review the request.`}
+        onUnlocked={reloadVault}
+        onCancel={() => void decide(false)}
+      />
+    );
+  } else if (phase !== "review") screen = <Progress view={view} phase={phase} outcome={outcome} />;
   else if (view.method === "weft_addNetwork") screen = <AddNetworkRequest view={view} onDecide={decide} />;
   else if (view.method === "weft_connect") screen = <ConnectRequest view={view} onDecide={decide} deciding={deciding} />;
   else screen = <SignRequest view={view} onDecide={decide} deciding={deciding} />;
   return (
-    <div key={phase} className="screen fade-in">
+    <div key={`${phase}-${vault?.state}`} className="screen fade-in">
       {screen}
     </div>
   );

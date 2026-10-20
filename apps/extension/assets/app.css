@@ -1314,3 +1314,41 @@ textarea {
     opacity: 1 !important;
   }
 }
+
+/* The lock (docs/adr/0005) ----------------------------------------- */
+
+.header__actions {
+  display: flex;
+  flex: none;
+  margin-left: -6px;
+}
+
+.header__actions .icon-btn {
+  width: 40px;
+}
+
+.lock-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--weft-slate);
+  border: 1px solid var(--weft-line-strong);
+  color: var(--weft-thread);
+}
+
+.lock-screen {
+  justify-content: center;
+  gap: 14px;
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+
+.lock-screen__mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}

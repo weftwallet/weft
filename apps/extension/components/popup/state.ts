@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { browser } from "wxt/browser";
 import { ui, type WalletState } from "../../lib/messages";
 
 export type Route =
@@ -11,7 +12,8 @@ export type Route =
   | { name: "csr" }
   | { name: "complete-csr"; pendingId: string }
   | { name: "tx"; activityId: string }
-  | { name: "network"; networkId: string };
+  | { name: "network"; networkId: string }
+  | { name: "security" };
 
 export type Navigate = (route: Route) => void;
 
@@ -30,6 +32,12 @@ export function useWallet() {
 
   useEffect(() => {
     void refresh();
+    // Locking (by the user in another window, or the auto-lock) changes session storage.
+    const onChange = (_changes: unknown, area: string) => {
+      if (area === "session") void refresh();
+    };
+    browser.storage.onChanged.addListener(onChange);
+    return () => browser.storage.onChanged.removeListener(onChange);
   }, [refresh]);
 
   return { state, setState, error, refresh };

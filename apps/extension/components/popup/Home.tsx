@@ -57,15 +57,26 @@ export function Home({
             </span>
           )}
         </div>
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Manage identities"
-          title="Manage identities"
-          onClick={() => navigate({ name: "identities" })}
-        >
-          <Icon name="users" />
-        </button>
+        <div className="header__actions">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Manage identities"
+            title="Manage identities"
+            onClick={() => navigate({ name: "identities" })}
+          >
+            <Icon name="users" />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Security"
+            title="Security"
+            onClick={() => navigate({ name: "security" })}
+          >
+            <Icon name="lock" />
+          </button>
+        </div>
       </header>
 
       <main className="page">
@@ -162,7 +173,16 @@ function IdentityCard({
         <div className="bar">
           <div style={{ width: `${health.width}%`, background: health.color }} />
         </div>
-        {(health.state === "expiring" || health.state === "expired") && identity.enrollmentId && caUrl && (
+        {identity.legacyKey && health.state !== "expired" && (
+          <div className="notice notice--amber" style={{ fontSize: 13 }}>
+            <Icon name="lock" size={18} color="var(--weft-amber)" />
+            <span>
+              This key was saved before Weft encrypted keys with your password, so it isn't encrypted on disk.
+              {identity.enrollmentId && caUrl ? " Re-enrol to replace it with an encrypted one." : " Add this identity again to encrypt it."}
+            </span>
+          </div>
+        )}
+        {(health.state === "expiring" || health.state === "expired" || identity.legacyKey) && identity.enrollmentId && caUrl && (
           <button
             type="button"
             className={`btn ${health.state === "expired" ? "btn--outline-signal" : "btn--outline-amber"}`}

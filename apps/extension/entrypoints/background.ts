@@ -21,6 +21,7 @@ import {
   withActiveChange,
 } from "../lib/sites";
 import { checkCertificates, registerCertificateWatch } from "../lib/certificate-watch";
+import * as vault from "../lib/vault";
 import * as wallet from "../lib/wallet";
 
 type Handlers = { [M in UiMethod]: (payload: UiApi[M][0]) => Promise<UiApi[M][1]> };
@@ -63,6 +64,7 @@ const handlers: Handlers = {
       await wallet.removeIdentity(identityId);
       await forgetIdentity(identityId);
     });
+    vault.forget(identityId);
     return wallet.getState();
   },
   disconnectSite: async ({ origin }) => {
@@ -81,13 +83,33 @@ const handlers: Handlers = {
   approvalGet: async ({ id }) => getApproval(id),
   approvalDecide: ({ id, approved }) => decideApproval(id, approved),
   keepAlive: async () => null,
+  vaultStatus: () => vault.status(),
+  vaultSetup: async ({ password }) => (await vault.setup(password), vault.status()),
+  vaultUnlock: async ({ password }) => (await vault.unlockWithPassword(password), vault.status()),
+  vaultLock: async () => (await vault.lock(), vault.status()),
+  passkeyRequest: () => vault.passkeyRequest(),
+  passkeyUnlock: async ({ credentialId, prfOutput }) => (
+    await vault.unlockWithPasskey(credentialId, new Uint8Array(prfOutput)), vault.status()
+  ),
+  passkeyAdd: async ({ credentialId, name, salt, prfOutput }) => (
+    await vault.addPasskey({ id: credentialId, name, salt: new Uint8Array(salt), prfOutput: new Uint8Array(prfOutput) }),
+    vault.status()
+  ),
+  passkeyRemove: async ({ credentialId }) => (await vault.removePasskey(credentialId), vault.status()),
+  changePassword: async ({ current, next }) => (await vault.changePassword(current, next), vault.status()),
+  setAutoLock: async ({ minutes }) => (await vault.setAutoLock(minutes), vault.status()),
 };
+
+// Using Weft from its own pages counts as activity for the auto-lock, except
+// the requests an open window sends on its own.
+const PASSIVE: UiMethod[] = ["keepAlive", "state", "vaultStatus", "approvalGet"];
 
 export default defineBackground(() => {
   const extensionOrigin = new URL(browser.runtime.getURL("/")).origin;
   registerApprovalListeners();
   void migrateSites();
   registerCertificateWatch();
+  vault.registerAutoLock();
 
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id) return false;
@@ -98,6 +120,7 @@ export default defineBackground(() => {
       const fromExtensionPage = sender.url ? new URL(sender.url).origin === extensionOrigin : false;
       if (!fromExtensionPage || !m.method || !(m.method in handlers)) return false;
       const handler = handlers[m.method as UiMethod] as (payload: unknown) => Promise<unknown>;
+      if (!PASSIVE.includes(m.method as UiMethod)) void vault.touch();
       handler(m.payload)
         .then((value) => sendResponse({ ok: true, value } satisfies UiResponse<unknown>))
         .catch((error: unknown) =>

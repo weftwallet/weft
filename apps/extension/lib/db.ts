@@ -1,11 +1,12 @@
 /**
  * IndexedDB storage for the background worker.
  *
- * Private keys are stored as non-extractable CryptoKey objects: IndexedDB's
- * structured clone keeps them opaque, so nothing here can ever read key
- * material back out (docs/adr/0002).
+ * Private keys are stored encrypted with the vault key (docs/adr/0005).
+ * Records saved before the lock hold a non-extractable CryptoKey instead
+ * (docs/adr/0002), which still works but isn't encrypted at rest.
  */
 
+import type { WrappedKey } from "@weftwallet/core";
 import type { ContractCall } from "@weftwallet/protocol";
 
 export interface NetworkRecord {
@@ -26,7 +27,10 @@ export interface IdentityRecord {
   networkId: string;
   mspId: string;
   certificate: string;
-  privateKey: CryptoKey;
+  /** The private key, encrypted with the vault key. */
+  wrappedKey?: WrappedKey;
+  /** Legacy: a non-extractable key saved before the lock. */
+  privateKey?: CryptoKey;
   /** The enrollment ID used with the CA, needed for re-enrolment. */
   enrollmentId: string | null;
   createdAt: number;
@@ -38,7 +42,9 @@ export interface PendingCsrRecord {
   networkId: string;
   commonName: string;
   csr: string;
-  privateKey: CryptoKey;
+  wrappedKey?: WrappedKey;
+  /** Legacy, as on IdentityRecord. */
+  privateKey?: CryptoKey;
   publicKey: CryptoKey;
   createdAt: number;
 }

@@ -3,6 +3,8 @@ import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../
 import { Home } from "../../components/popup/Home";
 import { AddIdentity, AddIdentityOptions, Identities } from "../../components/popup/Identities";
 import { NetworkSettings } from "../../components/popup/NetworkSettings";
+import { Security } from "../../components/popup/Security";
+import { CreatePassword, Unlock } from "../../components/lock";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { useWallet, type Route } from "../../components/popup/state";
 import { FeedbackProvider } from "../../components/feedback";
@@ -15,6 +17,7 @@ const DEPTH: Record<Route["name"], number> = {
   tx: 1,
   add: 2,
   network: 2,
+  security: 1,
   "complete-csr": 2,
   join: 3,
   enroll: 3,
@@ -66,8 +69,50 @@ function Screens() {
   };
   const props = { state, navigate, onDone };
 
+  // The lock comes before everything else (docs/adr/0005).
+  if (state.vault.state === "locked") {
+    return (
+      <div className="screen fade-in">
+        <Unlock
+          status={state.vault}
+          passkey="window"
+          onUnlocked={() => {
+            setRoute({ name: "home" });
+            void refresh();
+          }}
+        />
+      </div>
+    );
+  }
+  if (state.vault.state === "none" && (state.identities.length > 0 || state.pendingCsrs.length > 0)) {
+    return (
+      <div className="screen fade-in">
+        <CreatePassword
+          heading="Weft needs a password now"
+          intro="Weft now encrypts private keys with a password and locks itself when you're not using it. Set one to keep going."
+          onDone={() => void refresh()}
+        />
+      </div>
+    );
+  }
+  const savesKey = route.name === "join" || route.name === "enroll" || route.name === "import" || route.name === "csr";
+  if (state.vault.state === "none" && savesKey) {
+    return (
+      <div className="screen" data-dir="forward">
+        <CreatePassword
+          intro="Weft encrypts your private keys with this password before it saves them, and asks for it again after it locks."
+          onDone={() => void refresh()}
+          onCancel={() => navigate({ name: "home" })}
+        />
+      </div>
+    );
+  }
+
   let screen;
   switch (route.name) {
+    case "security":
+      screen = <Security state={state} onState={setState} navigate={navigate} />;
+      break;
     case "identities":
       screen = <Identities state={state} onState={setState} navigate={navigate} />;
       break;

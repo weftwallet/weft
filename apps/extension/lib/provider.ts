@@ -9,6 +9,7 @@ import {
   resolveInviteUrl,
   RelayClient,
   RelayError,
+  VaultLockedError,
   VerificationError,
   certificateHealth,
   evaluateCall,
@@ -206,9 +207,8 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
 
   const relay = new RelayClient(active.network.relayUrl);
   const signer = { mspId: active.record.mspId, certificate: active.record.certificate };
-  const sign = signerFor(active.record);
-
   try {
+    const sign = await signerFor(active.record);
     if (method === "weft_evaluate") {
       const result = await evaluateCall(relay, signer, call, sign);
       await db.put<ActivityRecord>("activity", { ...base, status: "evaluated" });
@@ -253,6 +253,12 @@ function describeFailure(error: unknown): {
     return {
       error: new WeftError(code, e.title, { code: e.code, details: error.details }),
       record: { code: e.code, title: e.title, detail: e.detail, ...(error.details ? { endorsers: error.details } : {}) },
+    };
+  }
+  if (error instanceof VaultLockedError) {
+    return {
+      error: new WeftError(ErrorCode.UserRejected, "Weft locked before it could sign."),
+      record: { code: "LOCKED", title: "Weft locked before signing", detail: "Nothing was signed. Unlock Weft and try again." },
     };
   }
   if (error instanceof VerificationError) {

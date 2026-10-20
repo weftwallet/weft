@@ -22,4 +22,4 @@ WebCrypto ECDSA has two quirks we have to handle:
 
 - A compromised page or extension script can still *use* a key while the wallet is unlocked, so every signature goes through the approval screen.
 - Keys cannot be exported for backup. Recovery is re-enrolment with the organisation's CA, which matches how Fabric organisations already manage identities.
-- **Open item:** the v0 vault relies on the browser profile for protection at rest. A later version wraps each key with a passkey-derived key (WebAuthn PRF extension) so a stolen profile alone is not enough.
+- **Open item, since addressed by ADR 0005:** the v0 vault relied on the browser profile for protection at rest.
