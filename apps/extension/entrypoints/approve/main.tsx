@@ -1,10 +1,12 @@
+// Must load before @peculiar/x509 (via @weftwallet/core), whatever the import order.
+import "reflect-metadata";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../../assets/app.css";
 import { qualifiedFunctionName } from "@weftwallet/core";
 import type { OrgInvite } from "@weftwallet/protocol";
 import { InviteCard } from "../../components/InviteCard";
-import { Field, Icon, healthView } from "../../components/ui";
+import { Field, Icon, SecretInput, Spinner, SuccessMark, healthView } from "../../components/ui";
 import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 
@@ -14,42 +16,64 @@ function Approve() {
   const [view, setView] = useState<ApprovalView | null | undefined>(undefined);
   const [phase, setPhase] = useState<"review" | "working" | "done">("review");
   const [outcome, setOutcome] = useState<ApprovalOutcome | null>(null);
+  const [deciding, setDeciding] = useState(false);
 
   useEffect(() => {
-    void ui("approvalGet", { id }).then(setView);
+    void ui("approvalGet", { id }).then(setView, () => setView(null));
   }, []);
 
   const decide = async (approved: boolean) => {
+    if (deciding) return; // one decision per request, however fast the clicks
+    setDeciding(true);
     if (!approved) {
-      await ui("approvalDecide", { id, approved: false });
+      await ui("approvalDecide", { id, approved: false }).catch(() => {});
       window.close();
       return;
     }
     setPhase("working");
-    const result = await ui("approvalDecide", { id, approved: true });
-    setOutcome(result);
-    setPhase("done");
-    if (result.status === "approved") setTimeout(() => window.close(), 1200);
+    try {
+      const result = await ui("approvalDecide", { id, approved: true });
+      setOutcome(result);
+      setPhase("done");
+      if (result.status === "approved") setTimeout(() => window.close(), 1400);
+    } catch (error) {
+      setOutcome({
+        status: "failed",
+        activityId: null,
+        title: "Weft stopped responding",
+        detail: error instanceof Error ? error.message : String(error),
+      });
+      setPhase("done");
+    }
   };
 
-  if (view === undefined) return null;
+  if (view === undefined) {
+    return (
+      <div className="splash">
+        <Spinner />
+      </div>
+    );
+  }
   if (view === null) {
     return (
-      <main className="page">
-        <div className="empty">This request is no longer waiting for you.</div>
+      <div className="status-screen fade-in">
+        <div className="muted">This request is no longer waiting for you.</div>
         <button type="button" className="btn" onClick={() => window.close()}>
           Close
         </button>
-      </main>
+      </div>
     );
   }
 
-  if (phase !== "review") return <Progress view={view} phase={phase} outcome={outcome} />;
-  if (view.method === "weft_addNetwork") return <AddNetworkRequest view={view} onDecide={decide} />;
-  return view.method === "weft_connect" ? (
-    <ConnectRequest view={view} onDecide={decide} />
-  ) : (
-    <SignRequest view={view} onDecide={decide} />
+  let screen;
+  if (phase !== "review") screen = <Progress view={view} phase={phase} outcome={outcome} />;
+  else if (view.method === "weft_addNetwork") screen = <AddNetworkRequest view={view} onDecide={decide} />;
+  else if (view.method === "weft_connect") screen = <ConnectRequest view={view} onDecide={decide} deciding={deciding} />;
+  else screen = <SignRequest view={view} onDecide={decide} deciding={deciding} />;
+  return (
+    <div key={phase} className="screen fade-in">
+      {screen}
+    </div>
   );
 }
 
@@ -82,13 +106,23 @@ function Origin({ origin, subtitle }: { origin: string; subtitle: string }) {
   );
 }
 
-function Footer({ onDecide, cta, ctaClass }: { onDecide: (approved: boolean) => void; cta: string; ctaClass: string }) {
+function Footer({
+  onDecide,
+  cta,
+  ctaClass,
+  deciding,
+}: {
+  onDecide: (approved: boolean) => void;
+  cta: string;
+  ctaClass: string;
+  deciding: boolean;
+}) {
   return (
     <footer className="footer">
-      <button type="button" className="btn" onClick={() => onDecide(false)}>
+      <button type="button" className="btn" disabled={deciding} onClick={() => onDecide(false)}>
         Reject
       </button>
-      <button type="button" className={`btn ${ctaClass}`} onClick={() => onDecide(true)}>
+      <button type="button" className={`btn ${ctaClass}`} disabled={deciding} onClick={() => onDecide(true)}>
         {cta}
       </button>
     </footer>
@@ -104,7 +138,15 @@ function IdentityLine({ identity }: { identity: IdentityView | null }) {
   );
 }
 
-function ConnectRequest({ view, onDecide }: { view: ApprovalView; onDecide: (approved: boolean) => void }) {
+function ConnectRequest({
+  view,
+  onDecide,
+  deciding,
+}: {
+  view: ApprovalView;
+  onDecide: (approved: boolean) => void;
+  deciding: boolean;
+}) {
   const identity = view.identity;
   return (
     <>
@@ -141,12 +183,20 @@ function ConnectRequest({ view, onDecide }: { view: ApprovalView; onDecide: (app
           </span>
         </div>
       </main>
-      <Footer onDecide={onDecide} cta="Connect" ctaClass="btn--primary" />
+      <Footer onDecide={onDecide} cta="Connect" ctaClass="btn--primary" deciding={deciding} />
     </>
   );
 }
 
-function SignRequest({ view, onDecide }: { view: ApprovalView; onDecide: (approved: boolean) => void }) {
+function SignRequest({
+  view,
+  onDecide,
+  deciding,
+}: {
+  view: ApprovalView;
+  onDecide: (approved: boolean) => void;
+  deciding: boolean;
+}) {
   const call = view.call!;
   const submit = view.method === "weft_submit";
   const [showRaw, setShowRaw] = useState(false);
@@ -255,6 +305,7 @@ function SignRequest({ view, onDecide }: { view: ApprovalView; onDecide: (approv
         onDecide={onDecide}
         cta={submit ? "Sign & submit" : "Sign & query"}
         ctaClass={submit ? "btn--amber" : "btn--primary"}
+        deciding={deciding}
       />
     </>
   );
@@ -327,7 +378,13 @@ function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (
               Cancel
             </button>
             <button type="button" className="btn btn--primary" disabled={busy} onClick={() => void review()}>
-              {busy ? "Loading…" : "Review invite"}
+              {busy ? (
+                <>
+                  <Spinner small /> Loading…
+                </>
+              ) : (
+                "Review invite"
+              )}
             </button>
           </footer>
         </>
@@ -345,7 +402,7 @@ function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (
               <input required className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />
             </Field>
             <Field label="Enrollment secret" hint="From your registrar. Used once, never stored.">
-              <input required type="password" value={secret} onChange={(e) => setSecret(e.target.value)} />
+              <SecretInput required value={secret} onChange={(e) => setSecret(e.target.value)} />
             </Field>
             {error && <div className="error-text" role="alert">{error}</div>}
           </main>
@@ -354,7 +411,13 @@ function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (
               Cancel
             </button>
             <button type="submit" className="btn btn--primary" disabled={busy}>
-              {busy ? "Enrolling…" : "Enroll"}
+              {busy ? (
+                <>
+                  <Spinner small /> Enrolling…
+                </>
+              ) : (
+                "Enroll"
+              )}
             </button>
           </footer>
         </form>
@@ -375,7 +438,8 @@ function Progress({
   const submit = view.method === "weft_submit";
   if (phase === "working") {
     return (
-      <main className="page" style={{ justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+      <main className="status-screen" aria-live="polite">
+        <Spinner tone={submit ? "amber" : "thread"} />
         <div style={{ fontSize: 16, fontWeight: 600 }}>
           {view.method === "weft_connect"
             ? "Connecting…"
@@ -412,10 +476,8 @@ function Progress({
     );
   }
   return (
-    <main className="page" style={{ justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-      <span style={{ color: "var(--weft-thread)" }}>
-        <Icon name="check" size={40} />
-      </span>
+    <main className="status-screen" aria-live="polite">
+      <SuccessMark />
       <div style={{ fontSize: 16, fontWeight: 600 }}>
         {view.method === "weft_connect"
           ? "Connected"
@@ -424,6 +486,9 @@ function Progress({
             : submit
               ? "Committed"
               : "Done"}
+      </div>
+      <div className="muted" style={{ fontSize: 13 }}>
+        This window closes on its own.
       </div>
     </main>
   );

@@ -1,49 +1,111 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../components/popup/AddForms";
 import { Home } from "../../components/popup/Home";
 import { AddIdentityOptions, Identities } from "../../components/popup/Identities";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { useWallet, type Route } from "../../components/popup/state";
-import { WovenMark } from "../../components/ui";
+import { FeedbackProvider } from "../../components/feedback";
+import { Spinner, WovenMark } from "../../components/ui";
+
+/** How deep each screen sits, so moving deeper slides one way and back the other. */
+const DEPTH: Record<Route["name"], number> = {
+  home: 0,
+  identities: 1,
+  tx: 1,
+  join: 2,
+  enroll: 2,
+  import: 2,
+  csr: 2,
+  "complete-csr": 2,
+};
 
 export function App() {
+  return (
+    <FeedbackProvider>
+      <Screens />
+    </FeedbackProvider>
+  );
+}
+
+function Screens() {
   const { state, setState, error, refresh } = useWallet();
   const [route, setRoute] = useState<Route>({ name: "home" });
+  const direction = useRef<"forward" | "back" | "none">("none");
+  const visits = useRef(0);
 
-  if (error) return <div className="empty error-text">{error}</div>;
-  if (!state) return null;
+  const navigate = (next: Route) => {
+    direction.current = DEPTH[next.name] >= DEPTH[route.name] ? "forward" : "back";
+    visits.current += 1;
+    setRoute(next);
+  };
+
+  if (error) {
+    return (
+      <div className="status-screen">
+        <div className="error-text">{error}</div>
+        <button type="button" className="btn" onClick={() => void refresh()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+  if (!state) {
+    return (
+      <div className="splash">
+        <Spinner />
+      </div>
+    );
+  }
 
   const onDone = async () => {
     await refresh();
-    setRoute({ name: "home" });
+    navigate({ name: "home" });
   };
-  const props = { state, navigate: setRoute, onDone };
+  const props = { state, navigate, onDone };
 
+  let screen;
   switch (route.name) {
     case "identities":
-      return <Identities state={state} onState={setState} navigate={setRoute} />;
+      screen = <Identities state={state} onState={setState} navigate={navigate} />;
+      break;
     case "join":
-      return <JoinInvite {...props} />;
+      screen = <JoinInvite {...props} />;
+      break;
     case "enroll":
-      return <EnrollForm {...props} />;
+      screen = <EnrollForm {...props} />;
+      break;
     case "import":
-      return <ImportForm {...props} />;
+      screen = <ImportForm {...props} />;
+      break;
     case "csr":
-      return <CsrForm {...props} />;
+      screen = <CsrForm {...props} />;
+      break;
     case "complete-csr":
-      return <CompleteCsr {...props} pendingId={route.pendingId} />;
+      screen = <CompleteCsr {...props} pendingId={route.pendingId} />;
+      break;
     case "tx":
-      return <TxDetail state={state} activityId={route.activityId} navigate={setRoute} />;
+      screen = <TxDetail state={state} activityId={route.activityId} navigate={navigate} />;
+      break;
     case "home":
-      if (state.identities.length === 0) return <Welcome navigate={setRoute} />;
-      return <Home state={state} onState={setState} navigate={setRoute} />;
+      screen =
+        state.identities.length === 0 ? (
+          <Welcome navigate={navigate} />
+        ) : (
+          <Home state={state} onState={setState} navigate={navigate} />
+        );
   }
+
+  return (
+    <div key={visits.current} className="screen" data-dir={direction.current}>
+      {screen}
+    </div>
+  );
 }
 
 function Welcome({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <main className="page" style={{ gap: 24, paddingTop: 40 }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 16 }}>
+      <div className="fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 16 }}>
         <WovenMark size={72} />
         <div>
           <div className="mono" style={{ fontSize: 40, fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1 }}>

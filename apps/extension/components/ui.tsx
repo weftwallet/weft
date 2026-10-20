@@ -1,6 +1,6 @@
 import { certificateHealth } from "@weftwallet/core";
 import type { IdentitySummary } from "@weftwallet/protocol";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 /* Icons: 24px stroke icons, decorative unless labelled. ------------- */
 
@@ -54,6 +54,22 @@ const paths = {
     </>
   ),
   upload: <path d="M12 3v12M6 9l6-6 6 6M5 21h14" />,
+  trash: <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />,
+  users: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.2A6.5 6.5 0 0 1 21.5 20" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  eyeOff: <path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.9 8.4 2 12 2 12s3.6 7 10 7c1.9 0 3.5-.6 4.9-1.4M9.9 9.9a3 3 0 0 0 4.2 4.2" />,
+  unlink: <path d="M9 15l-2 2a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M15 9l2-2a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0M4 4l16 16" />,
+  activity: <path d="M3 12h4l3-8 4 16 3-8h4" />,
   globe: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -127,16 +143,84 @@ export function WovenMark({ size = 72 }: { size?: number }) {
 }
 
 export function BackHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Move focus to the new screen's title so keyboard and screen reader users
+  // land at the top of what just opened.
+  useEffect(() => heading.current?.focus({ preventScroll: true }), [title]);
   return (
     <header className="header header--back">
       <button type="button" className="icon-btn" aria-label="Back" onClick={onBack}>
         <Icon name="back" />
       </button>
-      <h1 className="header__title" style={{ margin: 0 }}>
+      <h1 ref={heading} tabIndex={-1} className="header__title" style={{ margin: 0, outline: "none" }}>
         {title}
       </h1>
     </header>
   );
+}
+
+/** Password field with a show/hide toggle. */
+export function SecretInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="secret">
+      <input {...props} type={shown ? "text" : "password"} autoComplete="off" spellCheck={false} />
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label={shown ? "Hide secret" : "Show secret"}
+        aria-pressed={shown}
+        onClick={() => setShown(!shown)}
+      >
+        <Icon name={shown ? "eyeOff" : "eye"} size={18} />
+      </button>
+    </div>
+  );
+}
+
+export function Spinner({ tone = "thread", small = false }: { tone?: "thread" | "amber"; small?: boolean }) {
+  return (
+    <span
+      className={`spinner ${tone === "amber" ? "spinner--amber" : ""} ${small ? "spinner--sm" : ""}`}
+      role="status"
+      aria-label="Working"
+    />
+  );
+}
+
+export function SuccessMark() {
+  return (
+    <span className="success-mark">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 12l5 5L20 7" />
+      </svg>
+    </span>
+  );
+}
+
+export function Empty({ icon, children }: { icon: IconName; children: ReactNode }) {
+  return (
+    <div className="empty fade-in">
+      <div className="empty__icon">
+        <Icon name={icon} size={20} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** "3 min ago", "yesterday", or a date. */
+export function timeAgo(at: number, now = Date.now()): string {
+  const s = Math.round((now - at) / 1000);
+  if (s < 45) return "just now";
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} h ago`;
+  const d = Math.round(h / 24);
+  if (d === 1) return "yesterday";
+  if (d < 7) return `${d} days ago`;
+  return new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: d > 300 ? "numeric" : undefined });
 }
 
 export function Field(props: {

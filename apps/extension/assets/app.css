@@ -22,21 +22,93 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Fixed-size app shell: the header and footer stay put and only the page
+   between them scrolls. */
 body {
   width: 360px;
-  min-height: 600px;
+  height: 600px;
+  overflow: clip;
 }
 
-/* The approval window is a real window; let it fill. */
+/* The approval window is a real window; fill it at whatever size. */
 body.window {
   width: auto;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 #root {
-  min-height: inherit;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
+  /* clip, not hidden: hidden boxes can still be scrolled by focus() and
+     scrollIntoView, which made the whole popup jump. */
+  overflow: clip;
+}
+
+/* One route. Header, scrolling page, optional footer. */
+.screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen > form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Motion: short and directional, never in the way. */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fast: 140ms;
+  --base: 220ms;
+}
+
+.screen[data-dir="forward"] {
+  animation: screen-in-forward var(--base) var(--ease-out);
+}
+
+.screen[data-dir="back"] {
+  animation: screen-in-back var(--base) var(--ease-out);
+}
+
+@keyframes screen-in-forward {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes screen-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+.fade-in {
+  animation: fade-in var(--base) var(--ease-out);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }
 
 a {
@@ -106,9 +178,30 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--weft-line-strong) transparent;
+}
+
+/* The page scrolls; its children must keep their size rather than shrink to fit. */
+.page > * {
+  flex-shrink: 0;
+}
+
+/* A form's submit button rides along the bottom of the scrolling page. */
+.page__actions {
+  position: sticky;
+  bottom: -16px;
+  margin: auto -16px -16px;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(to bottom, transparent, var(--weft-ink) 14px);
 }
 
 .footer {
+  background: var(--weft-ink);
   padding: 14px 16px 16px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -135,9 +228,46 @@ textarea {
   padding: 0 16px;
 }
 
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    background-color var(--fast),
+    border-color var(--fast),
+    opacity var(--fast),
+    transform var(--fast);
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--weft-text-subtle);
+}
+
+.btn--primary:hover:not(:disabled),
+.btn--amber:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.btn:active:not(:disabled),
+.icon-btn:active,
+.add-tile:active,
+.invite-tile:active,
+.identity-option:active,
+.list-item:active {
+  transform: scale(0.98);
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.btn--danger {
+  border: 0;
+  background: var(--weft-signal);
+  color: var(--weft-ink);
+  font-weight: 600;
 }
 
 .btn--primary {
@@ -184,8 +314,26 @@ textarea {
   flex: none;
 }
 
+.icon-btn {
+  transition:
+    background-color var(--fast),
+    color var(--fast),
+    transform var(--fast);
+}
+
 .icon-btn:hover {
   background: var(--weft-surface);
+  color: var(--weft-text);
+}
+
+.icon-btn--danger:hover {
+  background: var(--weft-signal-soft);
+  color: var(--weft-signal);
+}
+
+.icon-btn--sm {
+  width: 32px;
+  height: 32px;
 }
 
 .channel-picker {
@@ -308,6 +456,14 @@ textarea {
 .bar > div {
   height: 6px;
   border-radius: 3px;
+  transform-origin: left;
+  animation: bar-grow 600ms var(--ease-out);
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
 }
 
 .row {
@@ -321,6 +477,7 @@ textarea {
 }
 
 .tabs {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
@@ -329,7 +486,20 @@ textarea {
   background: var(--weft-surface);
 }
 
+.tabs__indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 16px) / 3);
+  border-radius: 9px;
+  background: var(--weft-line);
+  transition: transform var(--base) var(--ease-out);
+}
+
 .tabs button {
+  position: relative;
+  transition: color var(--fast);
   height: 36px;
   border: 0;
   border-radius: 9px;
@@ -339,8 +509,11 @@ textarea {
   cursor: pointer;
 }
 
+.tabs button:hover {
+  color: var(--weft-text);
+}
+
 .tabs button[aria-selected="true"] {
-  background: var(--weft-line);
   color: var(--weft-text);
   font-weight: 500;
 }
@@ -351,6 +524,10 @@ textarea {
 }
 
 .list-item {
+  border-radius: 8px;
+  transition:
+    background-color var(--fast),
+    transform var(--fast);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -361,6 +538,10 @@ textarea {
   text-align: left;
   cursor: pointer;
   width: 100%;
+}
+
+.list-item:hover {
+  background: var(--weft-surface);
 }
 
 .list-item:last-child {
@@ -404,6 +585,25 @@ textarea {
   text-align: left;
   cursor: pointer;
   width: 100%;
+}
+
+.identity-option,
+.add-tile,
+.invite-tile {
+  transition:
+    background-color var(--fast),
+    border-color var(--fast),
+    transform var(--fast);
+}
+
+.identity-option:hover,
+.add-tile:hover {
+  border-color: var(--weft-line-strong);
+  background: var(--weft-slate);
+}
+
+.invite-tile:hover {
+  background: #133330;
 }
 
 .identity-option[aria-pressed="true"] {
@@ -546,6 +746,11 @@ textarea {
   border-top: 1px solid #1c2733;
 }
 
+.link-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .link-btn {
   border: 0;
   background: transparent;
@@ -567,4 +772,290 @@ textarea {
 .error-text {
   color: var(--weft-signal);
   font-size: 13px;
+}
+
+/* Lists with a trailing action ------------------------------------ */
+
+.manage-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.manage-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.site-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px 10px 12px;
+  border-radius: var(--weft-radius-lg);
+  background: var(--weft-surface);
+  border: 1px solid var(--weft-line);
+}
+
+.site-row__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--weft-slate);
+  color: var(--weft-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.small-btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 1px solid var(--weft-line-strong);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--weft-text-muted);
+  transition:
+    color var(--fast),
+    border-color var(--fast),
+    background-color var(--fast);
+}
+
+.small-btn:hover {
+  color: var(--weft-signal);
+  border-color: var(--weft-signal);
+  background: var(--weft-signal-soft);
+}
+
+.empty__icon {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 10px;
+  border-radius: 12px;
+  background: var(--weft-surface);
+  border: 1px solid var(--weft-line);
+  color: var(--weft-text-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Password with show/hide ----------------------------------------- */
+
+.secret {
+  position: relative;
+}
+
+.secret input {
+  padding-right: 48px;
+}
+
+.secret .icon-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+}
+
+/* Spinner and success ----------------------------------------------- */
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--weft-line);
+  border-top-color: var(--weft-thread);
+  animation: spin 800ms linear infinite;
+}
+
+.spinner--amber {
+  border-top-color: var(--weft-amber);
+}
+
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.success-mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 32px;
+  background: var(--weft-thread-soft);
+  border: 1px solid var(--weft-thread);
+  color: var(--weft-thread);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pop 320ms var(--ease-out);
+}
+
+.success-mark path {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: draw 360ms 120ms var(--ease-out) forwards;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.status-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+/* Confirmation sheet ------------------------------------------------ */
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(5, 9, 12, 0.66);
+  display: flex;
+  align-items: flex-end;
+  animation: backdrop-in 180ms ease-out both;
+}
+
+.sheet-backdrop.is-closing {
+  animation: backdrop-out 160ms ease-in both;
+}
+
+.sheet-backdrop.is-closing .sheet {
+  animation: sheet-out 160ms ease-in both;
+}
+
+.sheet {
+  width: 100%;
+  padding: 20px 16px 16px;
+  border-radius: 18px 18px 0 0;
+  background: var(--weft-slate);
+  border-top: 1px solid var(--weft-line-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.35);
+  animation: sheet-in 240ms var(--ease-out) both;
+}
+
+.sheet__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--weft-signal-soft);
+  color: var(--weft-signal);
+}
+
+.sheet__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sheet__body {
+  margin: 0;
+  color: var(--weft-text-muted);
+  font-size: 13px;
+}
+
+.sheet__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+/* Fade the backdrop's colour, not its opacity, so the sheet inside it stays solid. */
+@keyframes backdrop-in {
+  from {
+    background-color: rgba(5, 9, 12, 0);
+  }
+}
+
+/* A short rise rather than a full slide from off-screen: the sheet is solid
+   from the first frame, so nothing behind it shows through. */
+@keyframes sheet-in {
+  from {
+    transform: translateY(32px);
+  }
+}
+
+@keyframes sheet-out {
+  to {
+    transform: translateY(32px);
+    opacity: 0;
+  }
+}
+
+@keyframes backdrop-out {
+  to {
+    background-color: rgba(5, 9, 12, 0);
+  }
+}
+
+/* Toast ------------------------------------------------------------- */
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  z-index: 30;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: var(--weft-text);
+  color: var(--weft-ink);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: toast-in var(--base) var(--ease-out);
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+.splash {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

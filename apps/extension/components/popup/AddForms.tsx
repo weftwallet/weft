@@ -5,7 +5,8 @@ import { ui, type IdentityView, type NetworkInput, type PendingCsrView, type Wal
 import { requestHostAccess } from "../../lib/permissions";
 import { scanActiveTab, scanPastedImage } from "../../lib/qr";
 import { InviteCard } from "../InviteCard";
-import { BackHeader, Field, Icon, copy } from "../ui";
+import { useFeedback, useLeaveGuard } from "../feedback";
+import { BackHeader, Field, Icon, SecretInput, Spinner } from "../ui";
 import { useAction, type Navigate } from "./state";
 
 interface FormProps {
@@ -83,14 +84,27 @@ function NetworkFields({
   );
 }
 
-function Submit({ busy, label, error }: { busy: boolean; label: string; error: string | null }) {
+const isDirty = (d: NetworkDraft) => Object.values(d).some((v) => v.trim() !== "");
+
+/** The form's submit button, pinned to the bottom of the scrolling page. */
+function Submit({ busy, label, busyLabel = "Working…", error }: { busy: boolean; label: string; busyLabel?: string; error: string | null }) {
   return (
-    <footer className="footer footer--single" style={{ padding: 0, border: 0, gap: 8 }}>
-      {error && <div className="error-text" role="alert">{error}</div>}
+    <div className="page__actions">
+      {error && (
+        <div className="error-text fade-in" role="alert">
+          {error}
+        </div>
+      )}
       <button type="submit" className="btn btn--primary" disabled={busy}>
-        {busy ? "Working…" : label}
+        {busy ? (
+          <>
+            <Spinner small /> {busyLabel}
+          </>
+        ) : (
+          label
+        )}
       </button>
-    </footer>
+    </div>
   );
 }
 
@@ -133,6 +147,8 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
     await onDone();
   });
 
+  const leave = useLeaveGuard(secret !== "", () => setInvite(null));
+
   if (!invite) {
     return (
       <>
@@ -158,10 +174,16 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
           </Field>
           <button type="button" className="add-tile" style={{ minHeight: 48, flexDirection: "row" }} onClick={() => void scan.run()}>
             <Icon name="qr" size={18} />
-            {scan.busy ? "Looking for a QR code…" : "Scan QR code on this tab"}
+            {scan.busy ? (
+              <>
+                <Spinner small /> Looking for a QR code…
+              </>
+            ) : (
+              "Scan QR code on this tab"
+            )}
           </button>
           {scan.error && <div className="error-text">{scan.error}</div>}
-          <Submit busy={load.busy} label="Continue" error={load.error} />
+          <Submit busy={load.busy} label="Continue" busyLabel="Loading invite…" error={load.error} />
         </form>
       </>
     );
@@ -169,7 +191,7 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
 
   return (
     <>
-      <BackHeader title="Join from invite" onBack={() => setInvite(null)} />
+      <BackHeader title="Join from invite" onBack={() => void leave()} />
       <form
         className="page"
         onSubmit={(e: FormEvent) => {
@@ -182,9 +204,9 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
           <input required className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />
         </Field>
         <Field label="Enrollment secret" hint="From your registrar. Used once, never stored.">
-          <input required type="password" value={secret} onChange={(e) => setSecret(e.target.value)} />
+          <SecretInput required value={secret} onChange={(e) => setSecret(e.target.value)} />
         </Field>
-        <Submit busy={join.busy} label="Enroll" error={join.error} />
+        <Submit busy={join.busy} label="Enroll" busyLabel="Enrolling…" error={join.error} />
       </form>
     </>
   );
@@ -202,10 +224,11 @@ export function EnrollForm({ navigate, onDone }: FormProps) {
     await ui("enroll", { network, enrollmentId: enrollmentId.trim(), secret });
     await onDone();
   });
+  const back = useLeaveGuard(isDirty(draft) || enrollmentId !== "" || secret !== "", () => navigate({ name: "identities" }));
 
   return (
     <>
-      <BackHeader title="Enroll with CA" onBack={() => navigate({ name: "identities" })} />
+      <BackHeader title="Enroll with CA" onBack={() => void back()} />
       <form
         className="page"
         onSubmit={(e: FormEvent) => {
@@ -217,10 +240,10 @@ export function EnrollForm({ navigate, onDone }: FormProps) {
           <input required className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />
         </Field>
         <Field label="Enrollment secret" hint="Used once, never stored.">
-          <input required type="password" value={secret} onChange={(e) => setSecret(e.target.value)} />
+          <SecretInput required value={secret} onChange={(e) => setSecret(e.target.value)} />
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa />
-        <Submit busy={action.busy} label="Enroll" error={action.error} />
+        <Submit busy={action.busy} label="Enroll" busyLabel="Enrolling…" error={action.error} />
       </form>
     </>
   );
@@ -238,10 +261,11 @@ export function ImportForm({ navigate, onDone }: FormProps) {
     await ui("importIdentity", { network, certificate, privateKeyPem });
     await onDone();
   });
+  const back = useLeaveGuard(isDirty(draft) || certificate !== "" || privateKeyPem !== "", () => navigate({ name: "identities" }));
 
   return (
     <>
-      <BackHeader title="Import PEM" onBack={() => navigate({ name: "identities" })} />
+      <BackHeader title="Import PEM" onBack={() => void back()} />
       <form
         className="page"
         onSubmit={(e: FormEvent) => {
@@ -256,7 +280,7 @@ export function ImportForm({ navigate, onDone }: FormProps) {
           <textarea required placeholder="-----BEGIN PRIVATE KEY-----" value={privateKeyPem} onChange={(e) => setPrivateKeyPem(e.target.value)} />
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa={false} />
-        <Submit busy={action.busy} label="Import" error={action.error} />
+        <Submit busy={action.busy} label="Import" busyLabel="Importing…" error={action.error} />
       </form>
     </>
   );
@@ -273,6 +297,8 @@ export function CsrForm({ navigate, onDone }: FormProps) {
     await requestHostAccess([network.relayUrl, network.caUrl]);
     setResult(await ui("createCsr", { network, commonName: commonName.trim() }));
   });
+  const { toast } = useFeedback();
+  const back = useLeaveGuard(isDirty(draft) || commonName !== "", () => navigate({ name: "identities" }));
 
   if (result) {
     return (
@@ -288,9 +314,15 @@ export function CsrForm({ navigate, onDone }: FormProps) {
               {result.csr}
             </pre>
           </div>
-          <button type="button" className="btn btn--primary" onClick={() => copy(result.csr)}>
-            Copy request
-          </button>
+          <div className="page__actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => void navigator.clipboard.writeText(result.csr).then(() => toast("Request copied"))}
+            >
+              <Icon name="copy" size={18} /> Copy request
+            </button>
+          </div>
         </main>
       </>
     );
@@ -298,7 +330,7 @@ export function CsrForm({ navigate, onDone }: FormProps) {
 
   return (
     <>
-      <BackHeader title="Generate CSR" onBack={() => navigate({ name: "identities" })} />
+      <BackHeader title="Generate CSR" onBack={() => void back()} />
       <form
         className="page"
         onSubmit={(e: FormEvent) => {
@@ -313,7 +345,7 @@ export function CsrForm({ navigate, onDone }: FormProps) {
           <input required className="mono" value={commonName} onChange={(e) => setCommonName(e.target.value)} />
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa={false} />
-        <Submit busy={action.busy} label="Create request" error={action.error} />
+        <Submit busy={action.busy} label="Create request" busyLabel="Creating…" error={action.error} />
       </form>
     </>
   );
@@ -327,10 +359,11 @@ export function CompleteCsr({ state, navigate, onDone, pendingId }: FormProps & 
     await onDone();
     return view;
   });
+  const back = useLeaveGuard(certificate !== "", () => navigate({ name: "identities" }));
 
   return (
     <>
-      <BackHeader title="Add certificate" onBack={() => navigate({ name: "identities" })} />
+      <BackHeader title="Add certificate" onBack={() => void back()} />
       <form
         className="page"
         onSubmit={(e: FormEvent) => {
@@ -347,7 +380,7 @@ export function CompleteCsr({ state, navigate, onDone, pendingId }: FormProps & 
         <Field label="Issued certificate (PEM)">
           <textarea required placeholder="-----BEGIN CERTIFICATE-----" value={certificate} onChange={(e) => setCertificate(e.target.value)} />
         </Field>
-        <Submit busy={action.busy} label="Add identity" error={action.error} />
+        <Submit busy={action.busy} label="Add identity" busyLabel="Adding…" error={action.error} />
       </form>
     </>
   );

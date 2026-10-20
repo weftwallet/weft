@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import type { ActivityRecord } from "../../lib/db";
 import { ui, type IdentityView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
-import { Icon, Logo, copy, shorten, healthView } from "../ui";
+import { CopyButton, useFeedback } from "../feedback";
+import { Empty, Icon, Logo, Spinner, shorten, healthView, timeAgo } from "../ui";
 import { useAction, type Navigate } from "./state";
 
 type Tab = "activity" | "identities" | "sites";
@@ -21,6 +22,7 @@ export function Home({
   const channel =
     state.settings.activeChannel && channels.includes(state.settings.activeChannel) ? state.settings.activeChannel : channels[0];
   const [tab, setTab] = useState<Tab>("activity");
+  const tabs = ["activity", "identities", "sites"] as const;
 
   return (
     <>
@@ -32,21 +34,35 @@ export function Home({
             {active.mspId}
           </span>
           <span className="subtle">·</span>
-          <select
-            aria-label="Channel"
-            value={channel ?? ""}
-            onChange={async (e) => onState(await ui("setChannel", { channel: e.target.value }))}
-          >
-            {channels.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <Icon name="chevron" size={14} color="var(--weft-text-subtle)" />
+          {channels.length > 1 ? (
+            <>
+              <select
+                aria-label="Channel"
+                value={channel ?? ""}
+                onChange={async (e) => onState(await ui("setChannel", { channel: e.target.value }))}
+              >
+                {channels.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <Icon name="chevron" size={14} color="var(--weft-text-subtle)" />
+            </>
+          ) : (
+            <span title="Your only channel" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {channel}
+            </span>
+          )}
         </div>
-        <button type="button" className="icon-btn" aria-label="Identities" onClick={() => navigate({ name: "identities" })}>
-          <Icon name="more" />
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Manage identities"
+          title="Manage identities"
+          onClick={() => navigate({ name: "identities" })}
+        >
+          <Icon name="users" />
         </button>
       </header>
 
@@ -58,18 +74,25 @@ export function Home({
         />
 
         <nav className="tabs" role="tablist" aria-label="Wallet sections">
-          {(["activity", "identities", "sites"] as const).map((t) => (
+          <span
+            className="tabs__indicator"
+            aria-hidden="true"
+            style={{ transform: `translateX(calc(${tabs.indexOf(tab)} * (100% + 4px)))` }}
+          />
+          {tabs.map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-              {t === "activity" ? "Activity" : t === "identities" ? "Identities" : "Sites"}
+              {t === "activity" ? "Activity" : t === "identities" ? "Identities" : `Sites${state.sites.length ? ` · ${state.sites.length}` : ""}`}
             </button>
           ))}
         </nav>
 
-        {tab === "activity" && <ActivityList navigate={navigate} />}
-        {tab === "identities" && (
-          <IdentityList state={state} onState={onState} onManage={() => navigate({ name: "identities" })} />
-        )}
-        {tab === "sites" && <SiteList state={state} onState={onState} />}
+        <div key={tab} className="fade-in" role="tabpanel">
+          {tab === "activity" && <ActivityList navigate={navigate} />}
+          {tab === "identities" && (
+            <IdentityList state={state} onState={onState} onManage={() => navigate({ name: "identities" })} />
+          )}
+          {tab === "sites" && <SiteList state={state} onState={onState} />}
+        </div>
       </main>
     </>
   );
@@ -107,15 +130,9 @@ function IdentityCard({
       <div className="mono subtle" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
         <span>SHA-256</span>
         <span style={{ color: "#c9d2da" }}>{shorten(identity.fingerprint, 11, 5)}</span>
-        <button
-          type="button"
-          className="icon-btn"
-          style={{ marginLeft: "auto", width: 32, height: 32 }}
-          aria-label="Copy fingerprint"
-          onClick={() => copy(identity.fingerprint)}
-        >
-          <Icon name="copy" size={16} />
-        </button>
+        <span style={{ marginLeft: "auto" }}>
+          <CopyButton text={identity.fingerprint} label="Copy fingerprint" />
+        </span>
       </div>
       {attributes.length > 0 && (
         <div className="chips">
@@ -141,7 +158,13 @@ function IdentityCard({
             disabled={renew.busy}
             onClick={() => void renew.run()}
           >
-            {renew.busy ? "Renewing…" : `Re-enroll as ${identity.enrollmentId}`}
+            {renew.busy ? (
+              <>
+                <Spinner small tone={health.state === "expired" ? "thread" : "amber"} /> Renewing…
+              </>
+            ) : (
+              `Re-enroll as ${identity.enrollmentId}`
+            )}
           </button>
         )}
         {renew.error && <div className="error-text">{renew.error}</div>}
@@ -165,7 +188,7 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
 
   if (!items) return null;
   if (items.length === 0) {
-    return <div className="empty">No transactions yet. Requests from apps you connect will show up here.</div>;
+    return <Empty icon="activity">No transactions yet. Requests from apps you connect will show up here.</Empty>;
   }
   return (
     <div className="list">
@@ -192,8 +215,13 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
                 </span>
               )}
             </span>
-            <span className="mono" style={{ fontSize: 11, color: s.fg }}>
-              {s.label}
+            <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flex: "none" }}>
+              <span className="mono" style={{ fontSize: 11, color: s.fg }}>
+                {s.label}
+              </span>
+              <span className="subtle" style={{ fontSize: 11 }}>
+                {timeAgo(item.at)}
+              </span>
             </span>
           </button>
         );
@@ -211,6 +239,7 @@ function IdentityList({
   onState: (s: WalletState) => void;
   onManage: () => void;
 }) {
+  const { toast } = useFeedback();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {state.identities.map((identity) => (
@@ -218,7 +247,11 @@ function IdentityList({
           key={identity.id}
           identity={identity}
           active={identity.id === state.settings.activeIdentityId}
-          onSelect={async () => onState(await ui("setActive", { identityId: identity.id }))}
+          onSelect={async () => {
+            if (identity.id === state.settings.activeIdentityId) return;
+            onState(await ui("setActive", { identityId: identity.id }));
+            toast(`Switched to ${identity.name}`);
+          }}
         />
       ))}
       <button type="button" className="link-btn" onClick={onManage}>
@@ -256,21 +289,36 @@ export function IdentityOption({
 }
 
 function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletState) => void }) {
+  const { confirm, toast } = useFeedback();
   if (state.sites.length === 0) {
-    return <div className="empty">No sites connected. Apps ask to connect the first time they need your identity.</div>;
+    return <Empty icon="globe">No sites connected. Apps ask to connect the first time they need your identity.</Empty>;
   }
+  const disconnect = async (origin: string) => {
+    const host = new URL(origin).host;
+    const ok = await confirm({
+      title: `Disconnect ${host}?`,
+      body: "The site loses access to your identity and must ask again before it can request anything. Any open tabs of it are told straight away.",
+      confirmLabel: "Disconnect",
+      icon: "unlink",
+    });
+    if (!ok) return;
+    onState(await ui("disconnectSite", { origin }));
+    toast(`Disconnected ${host}`);
+  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {state.sites.map((site) => (
-        <div key={site.origin} className="row">
-          <span className="dot" />
-          <span style={{ flex: 1, overflowWrap: "anywhere" }}>{new URL(site.origin).host}</span>
-          <button
-            type="button"
-            className="link-btn"
-            style={{ width: "auto", padding: "4px 0" }}
-            onClick={async () => onState(await ui("disconnectSite", { origin: site.origin }))}
-          >
+        <div key={site.origin} className="site-row">
+          <span className="site-row__icon">
+            <Icon name={site.origin.startsWith("https:") ? "lock" : "globe"} size={16} />
+          </span>
+          <span className="list-item__body">
+            <span className="list-item__title">{new URL(site.origin).host}</span>
+            <span className="subtle" style={{ fontSize: 11 }}>
+              Connected {timeAgo(site.connectedAt)}
+            </span>
+          </span>
+          <button type="button" className="small-btn" onClick={() => void disconnect(site.origin)}>
             Disconnect
           </button>
         </div>

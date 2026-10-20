@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ActivityRecord } from "../../lib/db";
 import { ui, type WalletState } from "../../lib/messages";
-import { BackHeader, copy, shorten } from "../ui";
+import { CopyButton, useFeedback } from "../feedback";
+import { BackHeader, Icon, Spinner, shorten, timeAgo } from "../ui";
 import type { Navigate } from "./state";
 
 const HEADLINE = {
@@ -12,13 +13,23 @@ const HEADLINE = {
 } as const;
 
 export function TxDetail({ state, activityId, navigate }: { state: WalletState; activityId: string; navigate: Navigate }) {
+  const { toast } = useFeedback();
   const [item, setItem] = useState<ActivityRecord | null | undefined>(undefined);
   useEffect(() => {
     void ui("activityItem", { id: activityId }).then(setItem);
   }, [activityId]);
 
   const back = () => navigate({ name: "home" });
-  if (item === undefined) return <BackHeader title="Transaction" onBack={back} />;
+  if (item === undefined) {
+    return (
+      <>
+        <BackHeader title="Transaction" onBack={back} />
+        <div className="splash">
+          <Spinner />
+        </div>
+      </>
+    );
+  }
   if (item === null) {
     return (
       <>
@@ -72,7 +83,10 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           {item.transactionId && (
             <>
               <dt>Tx ID</dt>
-              <dd className="mono">{shorten(item.transactionId)}</dd>
+              <dd className="mono" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: -6, marginBottom: -6 }}>
+                <span title={item.transactionId}>{shorten(item.transactionId)}</span>
+                <CopyButton text={item.transactionId} label="Copy transaction ID" size={14} />
+              </dd>
             </>
           )}
           <dt>Site</dt>
@@ -97,13 +111,19 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           <dt>Block</dt>
           <dd className={item.blockNumber ? "mono" : "muted"}>{item.blockNumber ?? "None"}</dd>
           <dt>When</dt>
-          <dd>{new Date(item.at).toLocaleString()}</dd>
+          <dd>
+            {timeAgo(item.at)} <span className="subtle">· {new Date(item.at).toLocaleString()}</span>
+          </dd>
         </dl>
       </main>
       {item.transactionId && (
         <footer className="footer footer--single">
-          <button type="button" className="btn" onClick={() => copy(item.transactionId!)}>
-            Copy tx ID
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void navigator.clipboard.writeText(item.transactionId!).then(() => toast("Transaction ID copied"))}
+          >
+            <Icon name="copy" size={18} /> Copy transaction ID
           </button>
         </footer>
       )}

@@ -1,4 +1,5 @@
 import { ui, type WalletState } from "../../lib/messages";
+import { useFeedback } from "../feedback";
 import { BackHeader, Icon } from "../ui";
 import { IdentityOption } from "./Home";
 import type { Navigate } from "./state";
@@ -12,11 +13,30 @@ export function Identities({
   onState: (s: WalletState) => void;
   navigate: Navigate;
 }) {
-  const remove = async (identityId: string, name: string) => {
-    if (!confirm(`Remove ${name}? Its private key is deleted from this browser and cannot be recovered. You can re-enrol with your CA later.`)) {
-      return;
-    }
+  const { confirm, toast } = useFeedback();
+  const remove = async (identityId: string, name: string, mspId: string) => {
+    const last = state.identities.length === 1;
+    const ok = await confirm({
+      title: `Remove ${name}?`,
+      body: (
+        <>
+          <p style={{ margin: "0 0 8px" }}>
+            The private key for <span className="mono">{name}</span> ({mspId}) is deleted from this browser. It can't be
+            recovered, not even by Weft.
+          </p>
+          <p style={{ margin: 0 }}>
+            {last
+              ? "It's your only identity, so connected sites are disconnected too. You can enrol again with your CA."
+              : "You can enrol again with your CA, which issues a new certificate."}
+          </p>
+        </>
+      ),
+      confirmLabel: "Remove",
+      icon: "trash",
+    });
+    if (!ok) return;
     onState(await ui("removeIdentity", { identityId }));
+    toast(`Removed ${name}`);
   };
 
   return (
@@ -25,8 +45,9 @@ export function Identities({
       <main className="page" style={{ gap: 18 }}>
         {state.identities.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="eyebrow">Your identities</div>
             {state.identities.map((identity) => (
-              <div key={identity.id} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <div key={identity.id} className="manage-row">
                 <IdentityOption
                   identity={identity}
                   active={identity.id === state.settings.activeIdentityId}
@@ -34,11 +55,12 @@ export function Identities({
                 />
                 <button
                   type="button"
-                  className="link-btn"
-                  style={{ padding: "2px 12px", fontSize: 12, color: "var(--weft-text-subtle)" }}
-                  onClick={() => void remove(identity.id, identity.name)}
+                  className="icon-btn icon-btn--danger"
+                  aria-label={`Remove ${identity.name}`}
+                  title={`Remove ${identity.name}`}
+                  onClick={() => void remove(identity.id, identity.name, identity.mspId)}
                 >
-                  Remove {identity.name}
+                  <Icon name="trash" size={18} />
                 </button>
               </div>
             ))}
