@@ -1129,3 +1129,138 @@ textarea {
   transform: rotate(-90deg);
   color: var(--weft-text-subtle);
 }
+
+/* Lists that hold up with many items and long names ------------------- */
+
+.one-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.identity-name {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The header picker never grows past its box: the MSP ID gives way first,
+   so the channel and the identities button stay visible. */
+.channel-picker {
+  overflow: hidden;
+}
+
+.channel-picker__msp {
+  font-weight: 500;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-picker__channel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-picker select {
+  flex: 1 1 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--weft-radius-md);
+  border: 1px solid var(--weft-line-strong);
+  background: var(--weft-surface);
+  color: var(--weft-text-subtle);
+  transition: border-color var(--fast);
+}
+
+.filter:focus-within {
+  border-color: var(--weft-thread);
+}
+
+.filter input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--weft-text);
+  font-size: 13px;
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 0 0 4px;
+}
+
+.group-head__title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.group-head__detail {
+  font-size: 11px;
+  color: var(--weft-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 0 1000 auto;
+}
+
+.group-head .icon-btn {
+  margin-left: auto;
+}
+
+.header-action {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 18px;
+  border: 1px solid var(--weft-line-strong);
+  background: transparent;
+  color: var(--weft-thread);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color var(--fast),
+    background-color var(--fast);
+}
+
+.header-action:hover {
+  border-color: var(--weft-thread);
+  background: var(--weft-thread-soft);
+}

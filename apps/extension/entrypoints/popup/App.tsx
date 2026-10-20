@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../components/popup/AddForms";
 import { Home } from "../../components/popup/Home";
-import { AddIdentityOptions, Identities } from "../../components/popup/Identities";
+import { AddIdentity, AddIdentityOptions, Identities } from "../../components/popup/Identities";
 import { NetworkSettings } from "../../components/popup/NetworkSettings";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { useWallet, type Route } from "../../components/popup/state";
@@ -13,12 +13,13 @@ const DEPTH: Record<Route["name"], number> = {
   home: 0,
   identities: 1,
   tx: 1,
-  join: 2,
-  enroll: 2,
-  import: 2,
-  csr: 2,
-  "complete-csr": 2,
+  add: 2,
   network: 2,
+  "complete-csr": 2,
+  join: 3,
+  enroll: 3,
+  import: 3,
+  csr: 3,
 };
 
 export function App() {
@@ -69,6 +70,9 @@ function Screens() {
   switch (route.name) {
     case "identities":
       screen = <Identities state={state} onState={setState} navigate={navigate} />;
+      break;
+    case "add":
+      screen = <AddIdentity state={state} navigate={navigate} />;
       break;
     case "join":
       screen = <JoinInvite {...props} />;

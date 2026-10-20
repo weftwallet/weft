@@ -152,7 +152,7 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
   if (!invite) {
     return (
       <>
-        <BackHeader title="Join from invite" onBack={() => navigate({ name: "identities" })} />
+        <BackHeader title="Join from invite" onBack={() => navigate({ name: "add" })} />
         <form
           className="page"
           onSubmit={(e: FormEvent) => {
@@ -224,7 +224,7 @@ export function EnrollForm({ navigate, onDone }: FormProps) {
     await ui("enroll", { network, enrollmentId: enrollmentId.trim(), secret });
     await onDone();
   });
-  const back = useLeaveGuard(isDirty(draft) || enrollmentId !== "" || secret !== "", () => navigate({ name: "identities" }));
+  const back = useLeaveGuard(isDirty(draft) || enrollmentId !== "" || secret !== "", () => navigate({ name: "add" }));
 
   return (
     <>
@@ -261,7 +261,7 @@ export function ImportForm({ navigate, onDone }: FormProps) {
     await ui("importIdentity", { network, certificate, privateKeyPem });
     await onDone();
   });
-  const back = useLeaveGuard(isDirty(draft) || certificate !== "" || privateKeyPem !== "", () => navigate({ name: "identities" }));
+  const back = useLeaveGuard(isDirty(draft) || certificate !== "" || privateKeyPem !== "", () => navigate({ name: "add" }));
 
   return (
     <>
@@ -298,7 +298,7 @@ export function CsrForm({ navigate, onDone }: FormProps) {
     setResult(await ui("createCsr", { network, commonName: commonName.trim() }));
   });
   const { toast } = useFeedback();
-  const back = useLeaveGuard(isDirty(draft) || commonName !== "", () => navigate({ name: "identities" }));
+  const back = useLeaveGuard(isDirty(draft) || commonName !== "", () => navigate({ name: "add" }));
 
   if (result) {
     return (

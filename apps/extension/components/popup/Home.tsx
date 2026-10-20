@@ -4,6 +4,7 @@ import { ui, type IdentityView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import { CopyButton, useFeedback } from "../feedback";
 import { Empty, Icon, Logo, Spinner, shorten, healthView, timeAgo } from "../ui";
+import { FILTER_FROM, FilterInput, GroupHeading, groupByNetwork, matches, namesSummary } from "./lists";
 import { useAction, type Navigate } from "./state";
 
 type Tab = "activity" | "identities" | "sites";
@@ -30,7 +31,7 @@ export function Home({
         <Logo size={28} />
         <div className="channel-picker">
           <span className="dot" />
-          <span className="mono" style={{ fontWeight: 500 }}>
+          <span className="channel-picker__msp mono" title={active.mspId}>
             {active.mspId}
           </span>
           <span className="subtle">·</span>
@@ -38,6 +39,7 @@ export function Home({
             <>
               <select
                 aria-label="Channel"
+                title={channel}
                 value={channel ?? ""}
                 onChange={async (e) => onState(await ui("setChannel", { channel: e.target.value }))}
               >
@@ -50,7 +52,7 @@ export function Home({
               <Icon name="chevron" size={14} color="var(--weft-text-subtle)" />
             </>
           ) : (
-            <span title="Your only channel" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span className="channel-picker__channel" title={channel}>
               {channel}
             </span>
           )}
@@ -81,7 +83,11 @@ export function Home({
           />
           {tabs.map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
-              {t === "activity" ? "Activity" : t === "identities" ? "Identities" : `Sites${state.sites.length ? ` · ${state.sites.length}` : ""}`}
+              {t === "activity"
+                ? "Activity"
+                : t === "identities"
+                  ? `Identities${state.identities.length > 1 ? ` · ${state.identities.length}` : ""}`
+                  : `Sites${state.sites.length ? ` · ${state.sites.length}` : ""}`}
             </button>
           ))}
         </nav>
@@ -122,9 +128,14 @@ function IdentityCard({
         {identity.role ? <span className="chip chip--solid">{identity.role}</span> : null}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}>{identity.name}</div>
-        <div className="muted" style={{ fontSize: 13 }}>
-          {identity.organization} · <span className="mono">{identity.networkName}</span>
+        <div className="identity-name" title={identity.name}>
+          {identity.name}
+        </div>
+        <div className="muted one-line" style={{ fontSize: 13 }} title={identity.organization}>
+          {identity.organization}
+        </div>
+        <div className="mono subtle one-line" style={{ fontSize: 12 }} title={identity.networkName}>
+          {identity.networkName}
         </div>
       </div>
       <div className="mono subtle" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
@@ -190,11 +201,53 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
   if (items.length === 0) {
     return <Empty icon="activity">No transactions yet. Requests from apps you connect will show up here.</Empty>;
   }
+  const days = groupByDay(items);
   return (
-    <div className="list">
-      {items.map((item) => {
-        const s = STATUS_STYLE[item.status];
-        return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {days.map((day) => (
+        <section key={day.label} aria-label={day.label}>
+          <div className="eyebrow" style={{ padding: "10px 4px 4px" }}>
+            {day.label}
+          </div>
+          <div className="list">
+            {day.items.map((item) => (
+              <ActivityRow key={item.id} item={item} navigate={navigate} />
+            ))}
+          </div>
+        </section>
+      ))}
+      {items.length >= 50 && (
+        <p className="subtle" style={{ fontSize: 12, textAlign: "center", margin: "8px 0 0" }}>
+          Showing the 50 most recent.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** "Today", "Yesterday", or a date, newest first. */
+function groupByDay(items: ActivityRecord[]): { label: string; items: ActivityRecord[] }[] {
+  const startOfDay = (t: number) => new Date(t).setHours(0, 0, 0, 0);
+  const today = startOfDay(Date.now());
+  const out: { label: string; items: ActivityRecord[] }[] = [];
+  for (const item of items) {
+    const day = startOfDay(item.at);
+    const label =
+      day === today
+        ? "Today"
+        : day === today - 86_400_000
+          ? "Yesterday"
+          : new Date(day).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+    const last = out[out.length - 1];
+    if (last?.label === label) last.items.push(item);
+    else out.push({ label, items: [item] });
+  }
+  return out;
+}
+
+function ActivityRow({ item, navigate }: { item: ActivityRecord; navigate: Navigate }) {
+  const s = STATUS_STYLE[item.status];
+  return (
           <button
             key={item.id}
             type="button"
@@ -205,11 +258,15 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
               <Icon name={s.icon} size={16} />
             </span>
             <span className="list-item__body">
-              <span className="list-item__title">{item.call.fn}</span>
+              <span className="list-item__title" title={item.call.fn}>
+                {item.call.fn}
+              </span>
               {item.status === "failed" ? (
-                <span style={{ fontSize: 12, color: "var(--weft-signal)" }}>{item.title}</span>
+                <span className="one-line" style={{ fontSize: 12, color: "var(--weft-signal)" }}>
+                  {item.title}
+                </span>
               ) : (
-                <span className="mono subtle" style={{ fontSize: 11 }}>
+                <span className="mono subtle one-line" style={{ fontSize: 11 }}>
                   {item.call.chaincode}
                   {item.blockNumber ? ` · block ${Number(item.blockNumber).toLocaleString()}` : item.kind === "evaluate" ? " · query" : ""}
                 </span>
@@ -224,9 +281,6 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
               </span>
             </span>
           </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -240,20 +294,36 @@ function IdentityList({
   onManage: () => void;
 }) {
   const { toast } = useFeedback();
+  const [query, setQuery] = useState("");
+  const activeId = state.settings.activeIdentityId;
+  const groups = groupByNetwork(
+    state.identities.filter((i) => matches(query, i.name, i.mspId, i.networkName, i.organization, i.role)),
+    state.networks,
+    activeId,
+  );
+  const grouped = new Set(state.identities.map((i) => i.networkId)).size > 1;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {state.identities.map((identity) => (
-        <IdentityOption
-          key={identity.id}
-          identity={identity}
-          active={identity.id === state.settings.activeIdentityId}
-          onSelect={async () => {
-            if (identity.id === state.settings.activeIdentityId) return;
-            onState(await ui("setActive", { identityId: identity.id }));
-            toast(`Switched to ${identity.name}`);
-          }}
-        />
+      {state.identities.length >= FILTER_FROM && <FilterInput value={query} onChange={setQuery} label="Filter identities" />}
+      {groups.map((group) => (
+        <div key={group.networkId} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {grouped && <GroupHeading title={group.network?.name ?? "Unknown network"} detail={group.network?.mspId} />}
+          {group.identities.map((identity) => (
+            <IdentityOption
+              key={identity.id}
+              identity={identity}
+              active={identity.id === activeId}
+              showMsp={!grouped}
+              onSelect={async () => {
+                if (identity.id === activeId) return;
+                onState(await ui("setActive", { identityId: identity.id }));
+                toast(`Switched to ${identity.name}`);
+              }}
+            />
+          ))}
+        </div>
       ))}
+      {groups.length === 0 && <Empty icon="search">No identity matches "{query}".</Empty>}
       <button type="button" className="link-btn" onClick={onManage}>
         Add or manage identities
       </button>
@@ -265,20 +335,24 @@ export function IdentityOption({
   identity,
   active,
   onSelect,
+  showMsp = true,
 }: {
   identity: IdentityView;
   active: boolean;
   onSelect: () => void;
+  /** Off inside a network group, whose heading already names the MSP. */
+  showMsp?: boolean;
 }) {
   const health = healthView(identity);
   return (
     <button type="button" className="identity-option" aria-pressed={active} onClick={onSelect}>
       <span className={`avatar ${active ? "avatar--active" : ""}`}>{identity.name.charAt(0)}</span>
       <span className="list-item__body">
-        <span className="list-item__title">{identity.name}</span>
-        <span className="mono subtle" style={{ fontSize: 11 }}>
-          {identity.mspId}
-          {identity.role ? ` · ${identity.role}` : ""}
+        <span className="list-item__title" title={identity.name}>
+          {identity.name}
+        </span>
+        <span className="mono subtle one-line" style={{ fontSize: 11 }}>
+          {[showMsp ? identity.mspId : null, identity.role ?? "no role"].filter(Boolean).join(" · ")}
         </span>
       </span>
       <span style={{ fontSize: 12, color: health.state === "valid" ? "var(--weft-text-subtle)" : health.color }}>
@@ -290,6 +364,7 @@ export function IdentityOption({
 
 function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletState) => void }) {
   const { confirm, toast } = useFeedback();
+  const [query, setQuery] = useState("");
   if (state.sites.length === 0) {
     return <Empty icon="globe">No sites connected. Apps ask to connect the first time they need your identity.</Empty>;
   }
@@ -305,23 +380,30 @@ function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletS
     onState(await ui("disconnectSite", { origin }));
     toast(`Disconnected ${host}`);
   };
+  const shown = state.sites.filter((site) => matches(query, new URL(site.origin).host));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {state.sites.map((site) => (
+      {state.sites.length >= FILTER_FROM && <FilterInput value={query} onChange={setQuery} label="Filter sites" />}
+      {shown.length === 0 && <Empty icon="search">No site matches "{query}".</Empty>}
+      {shown.map((site) => (
         <div key={site.origin} className="site-row">
           <span className="site-row__icon">
             <Icon name={site.origin.startsWith("https:") ? "lock" : "globe"} size={16} />
           </span>
           <span className="list-item__body">
-            <span className="list-item__title">{new URL(site.origin).host}</span>
-            <span className="subtle" style={{ fontSize: 11 }}>
-              {(() => {
-                const names = (site.identityIds ?? [])
-                  .map((id) => state.identities.find((i) => i.id === id)?.name)
-                  .filter(Boolean);
-                return names.length ? `As ${names.join(", ")} · ${timeAgo(site.connectedAt)}` : `Connected ${timeAgo(site.connectedAt)}`;
-              })()}
+            <span className="list-item__title" title={new URL(site.origin).host}>
+              {new URL(site.origin).host}
             </span>
+            {(() => {
+              const names = (site.identityIds ?? [])
+                .map((id) => state.identities.find((i) => i.id === id)?.name)
+                .filter((n): n is string => Boolean(n));
+              return (
+                <span className="subtle one-line" style={{ fontSize: 11 }} title={names.length ? `Connected as ${names.join(", ")}` : undefined}>
+                  {names.length ? `As ${namesSummary(names)} · ${timeAgo(site.connectedAt)}` : `Connected ${timeAgo(site.connectedAt)}`}
+                </span>
+              );
+            })()}
           </span>
           <button type="button" className="small-btn" onClick={() => void disconnect(site.origin)}>
             Disconnect

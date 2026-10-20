@@ -4,6 +4,7 @@ import { ui, type WalletState } from "../../lib/messages";
 export type Route =
   | { name: "home" }
   | { name: "identities" }
+  | { name: "add" }
   | { name: "join" }
   | { name: "enroll" }
   | { name: "import" }
