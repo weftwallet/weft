@@ -46,6 +46,7 @@ export default defineConfig({
           label: "Build a dApp",
           items: [
             { label: "Quickstart", slug: "dapps/quickstart" },
+            { label: "Playground", slug: "playground" },
             { label: "Provider API", slug: "dapps/provider-api" },
             { label: "Local test network", slug: "dapps/test-network" },
           ],

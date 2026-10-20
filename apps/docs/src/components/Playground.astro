@@ -1,0 +1,576 @@
+---
+// An interactive dApp for trying Weft against any network that publishes an
+// invite: the local playground stack, a hosted demo, or your own.
+---
+
+<div class="pg not-content">
+  <section class="pg-card">
+    <div class="pg-head">
+      <h2>1. Network</h2>
+      <span class="pg-pill" id="pg-weft" data-state="pending">Looking for Weft…</span>
+    </div>
+    <label class="pg-label"
+      >Invite URL
+      <div class="pg-row">
+        <input id="pg-invite" type="url" placeholder="http://localhost:8787/.well-known/weft-invite.json" />
+        <button type="button" id="pg-load" class="pg-secondary">Load</button>
+      </div>
+    </label>
+    <p class="pg-hint" id="pg-invite-status">
+      Run <code>pnpm playground:up</code> for a local network, or paste any organisation's invite URL.
+    </p>
+    <dl class="pg-details" id="pg-invite-details" hidden>
+      <dt>Network</dt><dd id="pg-net"></dd>
+      <dt>Organisation</dt><dd id="pg-org"></dd>
+      <dt>Channels</dt><dd class="mono" id="pg-channels"></dd>
+    </dl>
+  </section>
+
+  <section class="pg-card">
+    <h2>2. Identity</h2>
+    <div class="pg-row pg-wrap">
+      <button type="button" id="pg-join" class="pg-secondary" disabled>Join with Weft</button>
+      <button type="button" id="pg-connect" disabled>Connect</button>
+    </div>
+    <p class="pg-hint">
+      Join once to enrol (local demo users: <code>alice</code>/<code>alicepw</code>, <code>bob</code>/<code>bobpw</code>),
+      then connect this page.
+    </p>
+    <dl class="pg-details" id="pg-identity" hidden>
+      <dt>Name</dt><dd id="pg-id-name"></dd>
+      <dt>MSP ID</dt><dd class="mono" id="pg-id-msp"></dd>
+      <dt>Role</dt><dd class="mono" id="pg-id-role"></dd>
+      <dt>Attributes</dt><dd class="mono" id="pg-id-attrs"></dd>
+      <dt>Expires</dt><dd id="pg-id-exp"></dd>
+    </dl>
+  </section>
+
+  <section class="pg-card">
+    <h2>3. Call the contract</h2>
+    <div class="pg-presets" aria-label="Examples for the basic contract">
+      <span class="pg-hint">Try:</span>
+      <button type="button" data-preset="InitLedger">InitLedger</button>
+      <button type="button" data-preset="GetAllAssets">GetAllAssets</button>
+      <button type="button" data-preset="ReadAsset">ReadAsset</button>
+      <button type="button" data-preset="CreateAsset">CreateAsset</button>
+      <button type="button" data-preset="TransferAsset">TransferAsset</button>
+      <button type="button" data-preset="DeleteAsset">DeleteAsset</button>
+    </div>
+    <div class="pg-grid">
+      <label class="pg-label">Channel<select id="pg-channel"><option value="mychannel">mychannel</option></select></label>
+      <label class="pg-label">Contract (chaincode)<input id="pg-chaincode" value="basic" class="mono" /></label>
+      <label class="pg-label">Function<input id="pg-fn" value="GetAllAssets" class="mono" /></label>
+    </div>
+    <div class="pg-label">
+      Arguments
+      <div id="pg-args" class="pg-args"></div>
+      <button type="button" id="pg-add-arg" class="pg-link">+ Add argument</button>
+    </div>
+    <div class="pg-row pg-wrap">
+      <button type="button" id="pg-evaluate" class="pg-teal" disabled>Evaluate (read)</button>
+      <button type="button" id="pg-submit" class="pg-amber" disabled>Submit (write)</button>
+    </div>
+    <div id="pg-result-wrap" hidden>
+      <h3>Result</h3>
+      <pre id="pg-result" class="pg-out"></pre>
+      <h3>The same call in code</h3>
+      <pre id="pg-code" class="pg-out"></pre>
+    </div>
+  </section>
+
+  <section class="pg-card">
+    <div class="pg-head">
+      <h2>Provider log</h2>
+      <button type="button" id="pg-clear" class="pg-link">Clear</button>
+    </div>
+    <p class="pg-hint">Every <code>window.weft</code> request and response, with timings.</p>
+    <ol id="pg-log" class="pg-log"></ol>
+  </section>
+</div>
+
+<script>
+  const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
+
+  type Preset = { fn: string; args: string[]; kind: "evaluate" | "submit" };
+  const PRESETS: Record<string, Preset> = {
+    InitLedger: { fn: "InitLedger", args: [], kind: "submit" },
+    GetAllAssets: { fn: "GetAllAssets", args: [], kind: "evaluate" },
+    ReadAsset: { fn: "ReadAsset", args: ["asset1"], kind: "evaluate" },
+    CreateAsset: { fn: "CreateAsset", args: ["asset7", "teal", "5", "Ifeanyi", "300"], kind: "submit" },
+    TransferAsset: { fn: "TransferAsset", args: ["asset6", "Christopher"], kind: "submit" },
+    DeleteAsset: { fn: "DeleteAsset", args: ["asset7"], kind: "submit" },
+  };
+
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const w = window as any;
+  let weft: any = null;
+  let connected = false;
+
+  /* ---------------- log ---------------- */
+
+  function log(direction: "→" | "←" | "•", title: string, body?: unknown, tone: "ok" | "err" | "info" = "info") {
+    const li = document.createElement("li");
+    li.dataset.tone = tone;
+    const head = document.createElement("div");
+    head.className = "pg-log-head";
+    head.textContent = `${new Date().toLocaleTimeString()}  ${direction} ${title}`;
+    li.append(head);
+    if (body !== undefined) {
+      const pre = document.createElement("pre");
+      pre.textContent = typeof body === "string" ? body : JSON.stringify(body, null, 2);
+      li.append(pre);
+    }
+    $("pg-log").prepend(li);
+  }
+
+  async function call(method: string, params?: unknown) {
+    if (!weft) throw new Error("Weft is not installed in this browser.");
+    log("→", method, params);
+    const started = performance.now();
+    try {
+      const result = await weft.request(params === undefined ? { method } : { method, params });
+      log("←", `${method} · ${Math.round(performance.now() - started)} ms`, result, "ok");
+      return result;
+    } catch (error: any) {
+      log("←", `${method} failed · ${Math.round(performance.now() - started)} ms`, { code: error?.code, message: error?.message, data: error?.data }, "err");
+      throw error;
+    }
+  }
+
+  /* ---------------- wallet detection ---------------- */
+
+  function setWeftPill(state: "ok" | "missing") {
+    const pill = $("pg-weft");
+    pill.dataset.state = state;
+    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Weft not installed";
+    if (state === "missing") {
+      pill.title = "Install Weft from the Start here section, then reload.";
+    }
+  }
+
+  function detect() {
+    if (w.weft?.isWeft) {
+      weft = w.weft;
+      setWeftPill("ok");
+      weft.on("identityChanged", (identity: any) => {
+        log("•", "event identityChanged", identity);
+        showIdentity(identity);
+      });
+      weft.on("networkChanged", (payload: any) => log("•", "event networkChanged", payload));
+      void refreshIdentity();
+      updateButtons();
+      return;
+    }
+    setWeftPill("missing");
+  }
+  window.addEventListener("weft#initialized", detect, { once: true });
+  setTimeout(() => !weft && detect(), 1200);
+
+  async function refreshIdentity() {
+    try {
+      const identity = await weft.request({ method: "weft_identity" });
+      if (identity) {
+        connected = true;
+        showIdentity(identity);
+      }
+    } catch {
+      /* not connected */
+    }
+    updateButtons();
+  }
+
+  function showIdentity(identity: any) {
+    if (!identity) {
+      $("pg-identity").hidden = true;
+      return;
+    }
+    $("pg-id-name").textContent = identity.name;
+    $("pg-id-msp").textContent = identity.mspId;
+    $("pg-id-role").textContent = identity.role ?? "none";
+    const attrs = Object.entries(identity.attributes ?? {}).filter(([k]) => !k.startsWith("hf."));
+    $("pg-id-attrs").textContent = attrs.length ? attrs.map(([k, v]) => `${k}=${v}`).join(", ") : "none";
+    $("pg-id-exp").textContent = new Date(identity.notAfter).toLocaleDateString();
+    $("pg-identity").hidden = false;
+  }
+
+  function updateButtons() {
+    const haveInvite = Boolean(inviteUrl());
+    $<HTMLButtonElement>("pg-join").disabled = !weft || !haveInvite;
+    $<HTMLButtonElement>("pg-connect").disabled = !weft;
+    $<HTMLButtonElement>("pg-connect").textContent = connected ? "Connected" : "Connect";
+    $<HTMLButtonElement>("pg-evaluate").disabled = !weft || !connected;
+    $<HTMLButtonElement>("pg-submit").disabled = !weft || !connected;
+  }
+
+  /* ---------------- invite ---------------- */
+
+  function inviteUrl(): string | null {
+    const value = $<HTMLInputElement>("pg-invite").value.trim();
+    try {
+      return /^https?:/.test(value) ? new URL(value).toString() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function loadInvite(quiet = false) {
+    const url = inviteUrl();
+    updateButtons();
+    if (!url) return;
+    try {
+      const response = await fetch(url, { headers: { accept: "application/json" } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const invite = await response.json();
+      $("pg-net").textContent = invite.network;
+      $("pg-org").textContent = `${invite.organization} (${invite.mspId})`;
+      $("pg-channels").textContent = invite.channels.join(", ");
+      $("pg-invite-details").hidden = false;
+      $("pg-invite-status").textContent = `Loaded from ${new URL(url).host}.`;
+      const select = $<HTMLSelectElement>("pg-channel");
+      select.replaceChildren(...invite.channels.map((c: string) => Object.assign(document.createElement("option"), { value: c, textContent: c })));
+    } catch (error) {
+      $("pg-invite-details").hidden = true;
+      if (!quiet) $("pg-invite-status").textContent = `Couldn't load the invite: ${error instanceof Error ? error.message : error}.`;
+    }
+  }
+
+  const fromQuery = new URLSearchParams(location.search).get("invite");
+  if (fromQuery) {
+    $<HTMLInputElement>("pg-invite").value = fromQuery;
+    void loadInvite();
+  } else {
+    // Quietly look for the local playground stack.
+    fetch(LOCAL_INVITE, { signal: AbortSignal.timeout(1500) })
+      .then((r) => {
+        if (!r.ok) return;
+        $<HTMLInputElement>("pg-invite").value = LOCAL_INVITE;
+        $("pg-invite-status").textContent = "Found the local playground stack.";
+        void loadInvite(true);
+      })
+      .catch(() => {});
+  }
+  $("pg-load").addEventListener("click", () => void loadInvite());
+  $("pg-invite").addEventListener("input", updateButtons);
+
+  /* ---------------- identity actions ---------------- */
+
+  $("pg-join").addEventListener("click", async () => {
+    const url = inviteUrl();
+    if (!url) return;
+    try {
+      await call("weft_addNetwork", { url });
+    } catch {
+      /* logged */
+    }
+  });
+
+  $("pg-connect").addEventListener("click", async () => {
+    try {
+      showIdentity(await call("weft_connect"));
+      connected = true;
+    } catch {
+      /* logged */
+    }
+    updateButtons();
+  });
+
+  /* ---------------- contract calls ---------------- */
+
+  function argInputs() {
+    return Array.from($("pg-args").querySelectorAll<HTMLInputElement>("input"));
+  }
+
+  function addArg(value = "") {
+    const row = document.createElement("div");
+    row.className = "pg-arg";
+    const input = Object.assign(document.createElement("input"), { value, className: "mono", placeholder: `argument ${argInputs().length}` });
+    input.setAttribute("aria-label", `Argument ${argInputs().length}`);
+    const remove = Object.assign(document.createElement("button"), { type: "button", textContent: "Remove", className: "pg-link" });
+    remove.addEventListener("click", () => row.remove());
+    row.append(input, remove);
+    $("pg-args").append(row);
+  }
+  $("pg-add-arg").addEventListener("click", () => addArg());
+
+  function applyPreset(name: string) {
+    const preset = PRESETS[name];
+    if (!preset) return;
+    $<HTMLInputElement>("pg-fn").value = preset.fn;
+    $("pg-args").replaceChildren();
+    preset.args.forEach((a) => addArg(a));
+    $("pg-evaluate").classList.toggle("pg-suggested", preset.kind === "evaluate");
+    $("pg-submit").classList.toggle("pg-suggested", preset.kind === "submit");
+  }
+  document.querySelectorAll<HTMLButtonElement>("[data-preset]").forEach((b) => b.addEventListener("click", () => applyPreset(b.dataset.preset!)));
+
+  function currentCall() {
+    return {
+      channel: $<HTMLSelectElement>("pg-channel").value,
+      chaincode: $<HTMLInputElement>("pg-chaincode").value.trim(),
+      fn: $<HTMLInputElement>("pg-fn").value.trim(),
+      args: argInputs().map((i) => i.value),
+    };
+  }
+
+  function codeFor(kind: "evaluate" | "submit", c: ReturnType<typeof currentCall>) {
+    const args = c.args.map((a) => JSON.stringify(a)).join(", ");
+    return `import { getWeft } from "@weftwallet/sdk";
+
+const weft = await getWeft();
+const contract = weft.contract({ channel: ${JSON.stringify(c.channel)}, chaincode: ${JSON.stringify(c.chaincode)} });
+const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Boolean).join(", ")});`;
+  }
+
+  async function run(kind: "evaluate" | "submit") {
+    const c = currentCall();
+    $("pg-result-wrap").hidden = false;
+    $("pg-code").textContent = codeFor(kind, c);
+    $("pg-result").textContent = kind === "submit" ? "Waiting for approval, endorsement and commit…" : "Waiting for approval…";
+    try {
+      const result = await call(kind === "submit" ? "weft_submit" : "weft_evaluate", c);
+      let pretty = result.text;
+      try {
+        pretty = JSON.stringify(JSON.parse(result.text), null, 2);
+      } catch {
+        /* not JSON */
+      }
+      const meta = kind === "submit" ? `Committed in block ${result.blockNumber} · tx ${result.transactionId}\n\n` : "";
+      $("pg-result").textContent = `${meta}${pretty ?? `(binary result, base64) ${result.base64}`}` || "(empty result)";
+    } catch (error: any) {
+      const detail = error?.data?.status ? ` (${error.data.status})` : "";
+      $("pg-result").textContent = `Error ${error?.code ?? ""}: ${error?.message ?? error}${detail}`;
+    }
+  }
+
+  $("pg-evaluate").addEventListener("click", () => void run("evaluate"));
+  $("pg-submit").addEventListener("click", () => void run("submit"));
+  $("pg-clear").addEventListener("click", () => $("pg-log").replaceChildren());
+</script>
+
+<style is:global>
+  /* Global because the arguments and log rows are created by the script, which
+     Astro's scoped styles would not reach. Every selector is under .pg. */
+  .pg {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
+  .pg [hidden] {
+    display: none !important;
+  }
+  .pg-card {
+    border: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-gray-6);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .pg h2 {
+    font-size: var(--sl-text-lg);
+    margin: 0;
+  }
+  .pg h3 {
+    font-size: var(--sl-text-sm);
+    margin: 0.5rem 0 0;
+    color: var(--sl-color-gray-2);
+  }
+  .pg-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .pg-pill {
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--sl-color-gray-5);
+    color: var(--sl-color-gray-2);
+  }
+  .pg-pill[data-state="ok"] {
+    border-color: var(--sl-color-accent);
+    color: var(--sl-color-accent-high);
+  }
+  .pg-pill[data-state="missing"] {
+    border-color: #e8a33d;
+    color: #e8a33d;
+  }
+  .pg-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+  .pg-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .pg-row > input {
+    flex: 1;
+    min-width: 0;
+  }
+  .pg-wrap {
+    flex-wrap: wrap;
+  }
+  .pg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+    gap: 0.75rem;
+  }
+  .pg input,
+  .pg select {
+    font: inherit;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-white);
+    background: var(--sl-color-black);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    min-height: 2.75rem;
+    width: 100%;
+  }
+  .pg .mono,
+  .pg input.mono {
+    font-family: var(--sl-font-mono);
+  }
+  .pg button {
+    font: inherit;
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--sl-color-gray-5);
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    cursor: pointer;
+  }
+  .pg button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .pg button.pg-secondary {
+    background: transparent;
+    color: var(--sl-color-white);
+  }
+  .pg button.pg-teal {
+    background: #3fc1b0;
+    border-color: #3fc1b0;
+    color: #0b1218;
+  }
+  .pg button.pg-amber {
+    background: #e8a33d;
+    border-color: #e8a33d;
+    color: #0b1218;
+  }
+  .pg button.pg-suggested {
+    outline: 2px solid var(--sl-color-white);
+    outline-offset: 2px;
+  }
+  .pg button.pg-link {
+    background: transparent;
+    border: 0;
+    color: var(--sl-color-accent-high);
+    padding: 0.25rem 0;
+    min-height: 2rem;
+    font-weight: 500;
+    align-self: flex-start;
+  }
+  .pg-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .pg-presets button {
+    min-height: 2.25rem;
+    padding: 0 0.7rem;
+    font-family: var(--sl-font-mono);
+    font-weight: 500;
+    font-size: var(--sl-text-xs);
+    background: transparent;
+    color: var(--sl-color-white);
+  }
+  .pg-args {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .pg-arg {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .pg-hint {
+    margin: 0;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .pg-details {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.35rem 1rem;
+    margin: 0;
+    font-size: var(--sl-text-sm);
+  }
+  .pg-details dt {
+    color: var(--sl-color-gray-3);
+  }
+  .pg-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .pg-out {
+    margin: 0;
+    padding: 0.85rem;
+    border-radius: 0.6rem;
+    background: var(--sl-color-black);
+    border: 1px solid var(--sl-color-gray-5);
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 22rem;
+    overflow: auto;
+  }
+  .pg-log {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 28rem;
+    overflow: auto;
+  }
+  .pg-log li {
+    border-left: 3px solid var(--sl-color-gray-5);
+    padding: 0.25rem 0 0.25rem 0.75rem;
+  }
+  .pg-log li[data-tone="ok"] {
+    border-color: #3fc1b0;
+  }
+  .pg-log li[data-tone="err"] {
+    border-color: #e5675b;
+  }
+  .pg-log-head {
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-2);
+  }
+  .pg-log pre {
+    margin: 0.35rem 0 0;
+    font-size: var(--sl-text-xs);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--sl-color-gray-2);
+    background: transparent;
+    padding: 0;
+  }
+</style>

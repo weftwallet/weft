@@ -44,6 +44,7 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 | `packages/sdk` | `@weftwallet/sdk` | What dApps import to talk to the wallet. |
 | `packages/cli` | `@weftwallet/cli` | `weft` command for operators: build invites from connection profiles, share links and QR codes, check a deployment. |
 | `packages/brand` | `@weftwallet/brand` | Logo files and design tokens. |
+| `playground/` | – | `pnpm playground:up`: a local Fabric network with the relay and demo users, for the docs' playground page. |
 | `examples/` | – | A plain-HTML demo dApp and a sample org invite. |
 | `docs/adr/` | – | Architecture decision records. |
 
@@ -66,7 +67,14 @@ pnpm dev:relay      # needs apps/relay/.env, see .env.example
 pnpm dev:docs       # http://localhost:4321
 ```
 
-To try everything against a real network, follow [Local test network](apps/docs/src/content/docs/dapps/test-network.md), which uses Fabric's `test-network` and the `basic` asset-transfer chaincode.
+To try everything against a real network on your machine:
+
+```sh
+pnpm playground:up   # Fabric test-network, the basic contract, demo users and the relay (needs Docker)
+pnpm dev:docs        # then open http://localhost:4321/playground/
+```
+
+See [`playground/README.md`](playground/README.md).
 
 ## Status
 
