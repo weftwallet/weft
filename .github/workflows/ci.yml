@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  e2e:
+    name: Browser tests (Fabric CA, no peers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @weftwallet/extension build:e2e
+      - name: Cache Fabric CA
+        uses: actions/cache@v4
+        with:
+          path: e2e/.bin
+          key: fabric-ca-1.5.17-${{ runner.os }}-${{ runner.arch }}
+      - run: e2e/scripts/fabric-ca.sh
+      - run: pnpm --filter @weftwallet/e2e exec playwright install --with-deps chromium
+      - name: Browser tests
+        run: pnpm --filter @weftwallet/e2e test
+      - name: Windowed tests (extension reload)
+        run: pnpm --filter @weftwallet/e2e test:headed
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+
+  playground:
+    name: Real Fabric network (playground)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @weftwallet/extension build:e2e
+      - name: Start the playground (Fabric test-network, basic contract, relay)
+        run: pnpm playground:up
+      - run: pnpm --filter @weftwallet/e2e exec playwright install --with-deps chromium
+      - name: Browser tests against real peers
+        run: pnpm --filter @weftwallet/e2e test
+        env:
+          WEFT_E2E_STACK: playground
+      - if: always()
+        run: pnpm playground:down
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playground-logs
+          path: |
+            playground/.state/*.log
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
