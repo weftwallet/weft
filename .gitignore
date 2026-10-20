@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .output/
+.output-e2e/
 .wxt/
 .astro/
 coverage/
@@ -9,3 +10,8 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# End-to-end tests
+e2e/test-results/
+e2e/playwright-report/
+e2e/.bin/

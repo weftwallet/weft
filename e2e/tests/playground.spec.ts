@@ -1,0 +1,40 @@
+import { expect, stack, test } from "../support/fixtures.ts";
+
+test("the docs playground follows the wallet's connection", async ({ wallet }) => {
+  const s = stack();
+  test.skip(!s.docsUrl, "Build the docs first (pnpm --filter @weftwallet/docs build).");
+  const page = await wallet.context.newPage();
+  await page.goto(`${s.docsUrl}/playground/?invite=${encodeURIComponent(s.inviteUrl)}`);
+  await expect(page.locator("#pg-weft")).toHaveAttribute("data-state", "ok");
+  await expect(page.locator("#pg-join")).toBeEnabled();
+
+  await wallet.approve(
+    () => page.locator("#pg-join").click(),
+    async (win) => {
+      await win.getByRole("button", { name: "Review invite" }).click();
+      await win.locator("input.mono").fill("bob");
+      await win.locator("input[type=password]").fill(s.users.bob!);
+      await win.getByRole("button", { name: "Enrol", exact: true }).click();
+      // The page's click returns at once; wait for the window to finish.
+      await win.waitForEvent("close", { timeout: 20_000 });
+    },
+  );
+  await wallet.approve(
+    () => page.locator("#pg-connect").click(),
+    (win) => win.locator("footer").getByRole("button", { name: "Connect" }).click(),
+  );
+  await expect(page.locator("#pg-conn")).toHaveText("Connected");
+
+  await page.locator("#pg-disconnect").click();
+  await expect(page.locator("#pg-conn")).toHaveText("Disconnected");
+
+  await wallet.approve(
+    () => page.locator("#pg-connect").click(),
+    (win) => win.locator("footer").getByRole("button", { name: "Connect" }).click(),
+  );
+  const popup = await wallet.popup();
+  await popup.getByRole("tab", { name: /Sites/ }).click();
+  await popup.locator(".small-btn", { hasText: "Disconnect" }).click();
+  await popup.locator(".sheet").getByRole("button", { name: "Disconnect" }).click();
+  await expect(page.locator("#pg-conn")).toHaveText("Disconnected in Weft");
+});

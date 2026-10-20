@@ -8,6 +8,22 @@ pnpm build
 pnpm test
 ```
 
+## Browser tests
+
+`e2e/` drives the real extension in Chromium against a real Fabric CA, the CA proxy and the relay. It needs no Docker; there are no peers, so contract calls fail fast.
+
+```sh
+e2e/scripts/fabric-ca.sh   # once: downloads the Fabric CA server and client into e2e/.bin
+pnpm build
+pnpm test:e2e              # builds the test extension, then runs the suite
+```
+
+`pnpm --filter @weftwallet/e2e test:headed` runs the tests that need a windowed browser (they reload the extension), under `xvfb-run` on Linux.
+
+To test against real peers, start the playground (`pnpm playground:up`), then run the suite with `WEFT_E2E_STACK=playground`. That also runs the `@fabric` tests, which submit to the `basic` contract.
+
+CI (`.github/workflows/ci.yml`) runs all three: unit tests and typecheck, the browser tests, and the browser tests against the playground.
+
 ## Where things go
 
 - A change to what crosses the page/wallet or wallet/relay boundary starts in `packages/protocol`. Update the docs' [Provider API](apps/docs/src/content/docs/dapps/provider-api.md) in the same change.

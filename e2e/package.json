@@ -1,0 +1,15 @@
+{
+  "name": "@weftwallet/e2e",
+  "private": true,
+  "description": "Browser tests: the extension, the docs playground and the relay, against a real Fabric CA.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "WEFT_E2E_GREP=1 xvfb-run -a playwright test --grep @headed",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "@types/node": "^22.19.0"
+  }
+}
