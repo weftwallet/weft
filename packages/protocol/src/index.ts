@@ -196,6 +196,8 @@ export const ErrorCode = {
   CertificateExpired: 4301,
   /** The params were malformed. */
   InvalidParams: -32602,
+  /** This site already has a request waiting for the user. Wait for it before sending another. */
+  RequestPending: -32002,
   /** The network rejected the transaction. `data` carries the Fabric detail. */
   TransactionFailed: 5001,
   /** The relay or network could not be reached. */

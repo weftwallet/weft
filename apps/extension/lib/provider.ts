@@ -76,7 +76,25 @@ export async function decideApproval(id: string, approved: boolean): Promise<App
   return approval.outcome.promise;
 }
 
+/**
+ * One waiting approval per site. A second request while one is open brings
+ * the open window to the front and fails, so a page can't stack up windows.
+ */
+async function ensureNoPendingApproval(origin: string): Promise<void> {
+  for (const approval of approvals.values()) {
+    if (approval.view.origin !== origin) continue;
+    if (approval.windowId !== undefined) {
+      await browser.windows.update(approval.windowId, { focused: true }).catch(() => {});
+    }
+    throw new WeftError(
+      ErrorCode.RequestPending,
+      "This site already has a request waiting in Weft. Approve or reject it first.",
+    );
+  }
+}
+
 async function openApproval(view: ApprovalView): Promise<PendingApproval> {
+  await ensureNoPendingApproval(view.origin);
   const approval: PendingApproval = { view, decision: deferred(), outcome: deferred() };
   approvals.set(view.id, approval);
   const created = await browser.windows.create({

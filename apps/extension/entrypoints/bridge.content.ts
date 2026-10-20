@@ -35,11 +35,17 @@ export default defineContentScript({
           }
         })
         .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : "Weft is unavailable";
           post({
             target: MESSAGE_TARGET.toPage,
             kind: "response",
             id,
-            error: { code: -32603, message: error instanceof Error ? error.message : "Weft is unavailable" },
+            error: {
+              code: -32603,
+              // After Weft is updated or reloaded, this page's old connection
+              // to it is dead until the page reloads.
+              message: /context invalidated/i.test(message) ? "Weft was updated. Reload this page to keep using it." : message,
+            },
           });
         });
     });

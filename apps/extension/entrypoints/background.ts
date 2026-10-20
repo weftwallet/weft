@@ -73,6 +73,7 @@ const handlers: Handlers = {
   },
   approvalGet: async ({ id }) => getApproval(id),
   approvalDecide: ({ id, approved }) => decideApproval(id, approved),
+  keepAlive: async () => null,
 };
 
 export default defineBackground(() => {

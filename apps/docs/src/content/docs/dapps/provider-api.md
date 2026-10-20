@@ -98,6 +98,7 @@ Rejected promises carry `{ code, message, data? }` (a `WeftError` when you use t
 | `4200` | UnsupportedMethod | Unknown method. |
 | `4300` | NoIdentity | Weft has no identity yet. |
 | `4301` | CertificateExpired | The active certificate has expired. |
+| `-32002` | RequestPending | This site already has a request waiting in Weft. Weft brings that window to the front; wait for it to settle before sending another. |
 | `5001` | TransactionFailed | The network rejected the transaction. `data` has the Fabric code and, for endorsement failures, per-peer details. |
 | `5002` | NetworkUnavailable | The relay couldn't be reached. |
 | `-32602` | InvalidParams | Malformed params. |

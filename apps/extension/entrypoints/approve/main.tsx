@@ -20,6 +20,11 @@ function Approve() {
 
   useEffect(() => {
     void ui("approvalGet", { id }).then(setView, () => setView(null));
+    // Chrome stops an idle extension worker after about 30 seconds, which
+    // would drop this request while the user is still reading it. Any
+    // message resets that timer.
+    const timer = setInterval(() => void ui("keepAlive").catch(() => {}), 20_000);
+    return () => clearInterval(timer);
   }, []);
 
   const decide = async (approved: boolean) => {
@@ -221,6 +226,16 @@ function SignRequest({
               : "Read only. Nothing is written to the ledger."}
           </span>
         </div>
+
+        {view.identity && !view.identity.channels.includes(call.channel) && (
+          <div className="notice notice--amber">
+            <Icon name="alert" size={18} color="var(--weft-amber)" />
+            <span>
+              Your invite for {view.identity.networkName} doesn't list the channel <span className="mono">{call.channel}</span>.
+              The network will likely reject this unless your organisation has joined it since.
+            </span>
+          </div>
+        )}
 
         <dl className="details">
           <dt>Signing as</dt>

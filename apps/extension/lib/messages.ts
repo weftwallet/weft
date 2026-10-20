@@ -68,6 +68,8 @@ export interface UiApi {
   disconnectSite: [{ origin: string }, WalletState];
   approvalGet: [{ id: string }, ApprovalView | null];
   approvalDecide: [{ id: string; approved: boolean }, ApprovalOutcome];
+  /** Sent by open approval windows so the worker isn't stopped mid-approval. */
+  keepAlive: [undefined, null];
 }
 
 export type UiMethod = keyof UiApi;
