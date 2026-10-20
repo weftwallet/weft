@@ -52,15 +52,32 @@ function Settings({
   const [relayUrl, setRelayUrl] = useState(network.relayUrl);
   const [caUrl, setCaUrl] = useState(network.caUrl);
   const [caName, setCaName] = useState(network.caName ?? "");
+  // Channels are editable only for networks added without an invite; invite
+  // networks take their channels from the invite.
+  const editableChannels = !network.inviteUrl;
+  const [channels, setChannels] = useState(network.channels.join(", "));
+  const channelList = channels
+    .split(",")
+    .map((c) => c.trim())
+    .filter(Boolean);
   const [problems, setProblems] = useState<{ relay: string | null; ca: string | null } | null>(null);
   const [invite, setInvite] = useState<OrgInvite | null>(null);
   const identities = state.identities.filter((i) => i.networkId === network.id);
 
-  const dirty = relayUrl !== network.relayUrl || caUrl !== network.caUrl || caName !== (network.caName ?? "");
+  const channelsChanged = editableChannels && channelList.join(",") !== network.channels.join(",");
+  const endpointsChanged = relayUrl !== network.relayUrl || caUrl !== network.caUrl || caName !== (network.caName ?? "");
+  const dirty = endpointsChanged || channelsChanged;
   const leave = useLeaveGuard(dirty, onBack);
 
   const save = useAction(async (force: boolean) => {
     setProblems(null);
+    if (editableChannels && channelList.length === 0) throw new Error("Enter at least one channel.");
+    // Only channels changed: no endpoints to test or confirm.
+    if (!endpointsChanged) {
+      onState(await ui("updateNetwork", { networkId: network.id, patch: { channels: channelList } }));
+      toast("Channels saved");
+      return;
+    }
     await requestHostAccess([relayUrl.trim(), caUrl.trim()]);
     if (!force) {
       const found = await ui("checkEndpoints", { relayUrl: relayUrl.trim(), caUrl: caUrl.trim(), caName: caName.trim() || undefined });
@@ -90,7 +107,12 @@ function Settings({
     onState(
       await ui("updateNetwork", {
         networkId: network.id,
-        patch: { relayUrl: relayUrl.trim(), caUrl: caUrl.trim(), caName: caName.trim() },
+        patch: {
+          relayUrl: relayUrl.trim(),
+          caUrl: caUrl.trim(),
+          caName: caName.trim(),
+          ...(editableChannels ? { channels: channelList } : {}),
+        },
       }),
     );
     setProblems(null);
@@ -177,7 +199,7 @@ function Settings({
           )
         ) : (
           <p className="subtle" style={{ fontSize: 12, margin: 0 }}>
-            Added without an invite, so channels and addresses only change here.
+            Added without an invite. Change its channels and addresses under Advanced.
           </p>
         )}
         {(refresh.error || apply.error) && <div className="error-text">{refresh.error ?? apply.error}</div>}
@@ -190,13 +212,21 @@ function Settings({
         >
           <span>Advanced</span>
           <span className="subtle" style={{ fontSize: 12, marginLeft: "auto" }}>
-            Relay and CA addresses
+            {editableChannels ? "Channels, relay and CA" : "Relay and CA addresses"}
           </span>
           <Icon name="chevron" size={16} />
         </button>
 
         {advanced && (
           <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {editableChannels && (
+              <Field
+                label="Channels"
+                hint="Comma-separated. Listing a channel doesn't give access: your organisation must be a member of it."
+              >
+                <input className="mono" value={channels} onChange={(e) => setChannels(e.target.value)} />
+              </Field>
+            )}
             <Field label="Relay URL" hint="Your organisation's Weft relay. It picks which peers to use.">
               <input required type="url" value={relayUrl} onChange={(e) => setRelayUrl(e.target.value)} />
             </Field>
@@ -225,7 +255,7 @@ function Settings({
                       <Spinner small /> Checking…
                     </>
                   ) : (
-                    "Test and save"
+                    endpointsChanged ? "Test and save" : "Save"
                   )}
                 </button>
               </div>

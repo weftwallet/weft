@@ -63,6 +63,6 @@ A connection is for one identity. If you switch to another identity, sites you h
 Open **Manage identities** (the people icon at the top of the home screen) and pick a network under **Networks**.
 
 - **Refresh from invite** checks your organisation's invite again and shows what changed, such as a new channel or a moved relay, before applying it.
-- **Advanced** lets you change the relay URL, CA URL and CA name, like a custom RPC URL in MetaMask. Weft tests the new addresses before saving. Only use addresses your organisation gave you.
+- **Advanced** lets you change the relay URL, CA URL and CA name, like a custom RPC URL in MetaMask. Weft tests the new addresses before saving. Only use addresses your organisation gave you. For a network added without an invite, Advanced also edits its channel list.
 
 There's no setting for peers on purpose. Your organisation's relay chooses which peers to use, and finds other organisations' peers through Fabric's discovery service.
