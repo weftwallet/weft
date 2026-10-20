@@ -1,15 +1,32 @@
+// Must load before @peculiar/x509 (via @weftwallet/core), whatever the import order.
+import "reflect-metadata";
 import { ErrorCode, WeftError } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 import { db, type ActivityRecord } from "../lib/db";
 import type { ProviderResponse, UiApi, UiMethod, UiResponse } from "../lib/messages";
-import { broadcast, decideApproval, getApproval, handleProviderRequest, registerApprovalListeners } from "../lib/provider";
+import {
+  broadcast,
+  decideApproval,
+  disconnectSites,
+  getApproval,
+  handleProviderRequest,
+  registerApprovalListeners,
+} from "../lib/provider";
 import * as wallet from "../lib/wallet";
 
 type Handlers = { [M in UiMethod]: (payload: UiApi[M][0]) => Promise<UiApi[M][1]> };
 
 async function notifyIdentityChanged() {
   await broadcast("identityChanged", await wallet.activeSummary());
+}
+
+async function notifyNetworkChanged() {
+  const active = await wallet.activeIdentity();
+  if (!active) return;
+  const { activeChannel } = await db.settings();
+  const channel = activeChannel && active.network.channels.includes(activeChannel) ? activeChannel : active.network.channels[0];
+  if (channel) await broadcast("networkChanged", { networkId: active.network.id, channel });
 }
 
 const handlers: Handlers = {
@@ -19,12 +36,12 @@ const handlers: Handlers = {
   setActive: async ({ identityId, channel }) => {
     await db.saveSettings({ activeIdentityId: identityId, activeChannel: channel ?? null });
     await notifyIdentityChanged();
+    await notifyNetworkChanged();
     return wallet.getState();
   },
   setChannel: async ({ channel }) => {
     await db.saveSettings({ activeChannel: channel });
-    const active = await wallet.activeIdentity();
-    if (active) await broadcast("networkChanged", { networkId: active.network.id, channel });
+    await notifyNetworkChanged();
     return wallet.getState();
   },
   fetchInvite: ({ link }) => wallet.fetchInvite(link),
@@ -40,11 +57,18 @@ const handlers: Handlers = {
   },
   removeIdentity: async ({ identityId }) => {
     await wallet.removeIdentity(identityId);
+    const state = await wallet.getState();
+    if (state.identities.length === 0) {
+      // Nothing left to sign with: connected sites would only get errors.
+      await disconnectSites(state.sites.map((s) => s.origin), "no-identity");
+      return wallet.getState();
+    }
     await notifyIdentityChanged();
-    return wallet.getState();
+    await notifyNetworkChanged();
+    return state;
   },
   disconnectSite: async ({ origin }) => {
-    await db.delete("sites", origin);
+    await disconnectSites([origin], "user");
     return wallet.getState();
   },
   approvalGet: async ({ id }) => getApproval(id),

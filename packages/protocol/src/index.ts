@@ -101,6 +101,8 @@ export interface WeftMethods {
   weft_evaluate: { params: ContractCall; result: EvaluateResult };
   weft_submit: { params: ContractCall; result: SubmitResult };
   weft_addNetwork: { params: AddNetworkParams; result: AddNetworkResult };
+  /** Disconnects this site. It must call weft_connect again to use the wallet. */
+  weft_disconnect: { params: undefined; result: null };
 }
 
 export type WeftMethod = keyof WeftMethods;
@@ -116,6 +118,7 @@ export const METHODS: readonly WeftMethod[] = [
   "weft_evaluate",
   "weft_submit",
   "weft_addNetwork",
+  "weft_disconnect",
 ] as const;
 
 /** Methods that always show the user an approval screen. */
@@ -134,10 +137,22 @@ export function isWeftMethod(value: unknown): value is WeftMethod {
 /* Events                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Why a site was disconnected. */
+export type DisconnectReason =
+  /** The user disconnected the site in Weft. */
+  | "user"
+  /** The site called weft_disconnect (possibly from another tab). */
+  | "site"
+  /** The user removed their last identity. */
+  | "no-identity";
+
 export interface WeftEvents {
+  /** The user switched, renewed or removed the active identity. Sent to connected sites. */
   identityChanged: IdentitySummary | null;
+  /** The user picked a different channel or identity. Sent to connected sites. */
   networkChanged: { networkId: string; channel: string };
-  disconnect: { reason: string };
+  /** The site is no longer connected; calls fail until it connects again. */
+  disconnect: { reason: DisconnectReason };
 }
 
 export type WeftEvent = keyof WeftEvents;

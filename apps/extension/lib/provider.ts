@@ -20,7 +20,10 @@ import {
   WeftError,
   isWeftMethod,
   type ContractCall,
+  type DisconnectReason,
   type NetworkSummary,
+  type WeftEvent,
+  type WeftEvents,
   type WeftMethod,
 } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
@@ -107,8 +110,12 @@ async function requireConnected(origin: string): Promise<void> {
 }
 
 /** Sends an event to every connected site's tabs. */
-export async function broadcast(event: string, payload: unknown): Promise<void> {
-  const origins = (await db.all<SiteRecord>("sites")).map((s) => s.origin);
+export async function broadcast<E extends WeftEvent>(event: E, payload: WeftEvents[E]): Promise<void> {
+  await sendTo((await db.all<SiteRecord>("sites")).map((s) => s.origin), event, payload);
+}
+
+/** Sends an event to these sites' tabs only. The bridge drops it in any other origin. */
+async function sendTo<E extends WeftEvent>(origins: string[], event: E, payload: WeftEvents[E]): Promise<void> {
   if (origins.length === 0) return;
   const message: ProviderEventMessage & { origins: string[] } = { channel: "weft-provider-event", event, payload, origins };
   for (const tab of await browser.tabs.query({})) {
@@ -117,6 +124,15 @@ export async function broadcast(event: string, payload: unknown): Promise<void> 
       /* Tab without our content script. */
     });
   }
+}
+
+/**
+ * Forgets sites and tells their open tabs, so a page never shows "connected"
+ * after Weft has stopped answering it.
+ */
+export async function disconnectSites(origins: string[], reason: DisconnectReason): Promise<void> {
+  for (const origin of origins) await db.delete("sites", origin);
+  await sendTo(origins, "disconnect", { reason });
 }
 
 /* ------------------------------------------------------------------ */
@@ -329,5 +345,8 @@ export async function handleProviderRequest(origin: string, method: unknown, par
       return runCall(origin, method, params);
     case "weft_addNetwork":
       return addNetwork(origin, params);
+    case "weft_disconnect":
+      if (await isConnected(origin)) await disconnectSites([origin], "site");
+      return null;
   }
 }

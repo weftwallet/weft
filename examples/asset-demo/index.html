@@ -113,6 +113,10 @@
         });
 
       window.weft?.on?.("identityChanged", (id) => ($("who").textContent = id ? `${id.name} · ${id.mspId}` : ""));
+      window.weft?.on?.("disconnect", () => {
+        $("who").textContent = "";
+        log("Disconnected. Connect again to continue.");
+      });
     </script>
   </body>
 </html>

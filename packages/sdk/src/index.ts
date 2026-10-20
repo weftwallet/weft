@@ -88,6 +88,11 @@ export class WeftClient {
     return this.provider.request({ method: "weft_identity" }).catch(rethrow);
   }
 
+  /** Disconnects this site. Every tab of this site gets a `disconnect` event. */
+  async disconnect(): Promise<void> {
+    await this.provider.request({ method: "weft_disconnect" }).catch(rethrow);
+  }
+
   async networks(): Promise<NetworkSummary[]> {
     return this.provider.request({ method: "weft_networks" }).catch(rethrow);
   }

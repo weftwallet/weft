@@ -27,6 +27,7 @@ The provider may be injected after your script runs. Wait for the `weft#initiali
 | `weft_evaluate` | `ContractCall` | `EvaluateResult` | Every time |
 | `weft_submit` | `ContractCall` | `SubmitResult` | Every time |
 | `weft_addNetwork` | `{ url }` | `{ added: true }` | Every time |
+| `weft_disconnect` | – | `null` | No |
 
 `weft_addNetwork` asks the user to join a network from an [org invite](/operators/invites/). `url` is the invite's HTTPS URL, a `weft://` link or a join link. Weft fetches the invite itself from that address, shows it, and the user enrols. It doesn't need the site to be connected, which suits an admin portal's "Set up Weft" button.
 
@@ -81,10 +82,10 @@ interface SubmitResult extends EvaluateResult {
 | Event | Payload | When |
 |---|---|---|
 | `identityChanged` | `IdentitySummary \| null` | The user switched, renewed or removed the active identity. |
-| `networkChanged` | `{ networkId, channel }` | The user picked a different channel. |
-| `disconnect` | `{ reason }` | Reserved. |
+| `networkChanged` | `{ networkId, channel }` | The user picked a different channel, or switched to an identity on another network. |
+| `disconnect` | `{ reason }` | The site is no longer connected. `reason` is `"user"` (disconnected in Weft), `"site"` (your page called `weft_disconnect`, maybe in another tab) or `"no-identity"` (the user removed their last identity). |
 
-Events reach connected sites only.
+`identityChanged` and `networkChanged` reach connected sites only. `disconnect` reaches the site being disconnected, in every open tab. After it, show your "Connect" state again: calls fail with `4100` until the user reconnects.
 
 ## Errors
 

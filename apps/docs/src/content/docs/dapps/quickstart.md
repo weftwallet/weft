@@ -98,6 +98,17 @@ const me = await weft.connect();
 const stop = weft.on("identityChanged", (identity) => {
   // The user switched identity in Weft (or removed it: identity is null).
 });
+
+weft.on("disconnect", ({ reason }) => {
+  // The user disconnected your site in Weft, or you called weft.disconnect().
+  // Show your "Connect" button again.
+});
+
+weft.on("networkChanged", ({ channel }) => {
+  // The user picked another channel. Point your contract at it, or tell them.
+});
 ```
+
+Give users a way out too: `await weft.disconnect()` disconnects your site, and every open tab of it gets the `disconnect` event.
 
 Next: [run everything locally against Fabric's test network](/dapps/test-network/).
