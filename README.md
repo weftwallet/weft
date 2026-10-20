@@ -48,7 +48,7 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 | `packages/cli` | `@weftwallet/cli` | `weft` command for operators: build invites from connection profiles, share links and QR codes, check a deployment. |
 | `packages/brand` | `@weftwallet/brand` | Logo files and design tokens. |
 | `playground/` | – | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the docs' playground page. |
-| `examples/` | – | A plain-HTML demo dApp and a sample org invite. |
+| `examples/` | – | A plain-HTML demo dApp, a sample org invite, and a ballot contract for elections the explorer can check. |
 | `docs/adr/` | – | Architecture decision records. |
 
 ## Develop

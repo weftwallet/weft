@@ -10,6 +10,7 @@ import type { ChannelStatus } from "./indexer.ts";
 import * as pages from "./pages.ts";
 import { channelLevel, contractLevel, viewTransaction, type Policy } from "./policy.ts";
 import type { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
+import { checkReceipt, elections } from "./elections.ts";
 
 export interface ServerOptions {
   name: string;
@@ -88,6 +89,10 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       viewer,
       signIn: membersLevelExists,
       peers: (channel) => options.crossCheck?.peersFor(channel) ?? [],
+      elections: (channel) => {
+        const contract = policy.channels[channel]?.elections;
+        return !!contract && visible.includes(channel) && canSeeContract(channel, contract);
+      },
     };
     return { viewer, memberOf, visible, canSee, canSeeContract, view, site };
   }
@@ -226,6 +231,53 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     }
     return send(reply, pages.searchPage(s.site, query, results));
   });
+
+  /* Elections (phase 4) ------------------------------------------------ */
+
+  /** The channel's election rows, when this viewer may see the ballot contract. */
+  function electionData(request: FastifyRequest, channel: string) {
+    const s = scope(request);
+    const contract = policy.channels[channel]?.elections;
+    if (!contract || !s.canSee(channel) || !s.canSeeContract(channel, contract)) return null;
+    return { s, list: elections(db.contractRows(channel, contract).map(s.view)) };
+  }
+
+  app.get<{ Params: { channel: string } }>("/channels/:channel/elections", async (request, reply) => {
+    const data = electionData(request, request.params.channel);
+    if (!data) return notFound(reply, scope(request).site, "This channel has no published elections.");
+    return send(reply, pages.electionsPage(data.s.site, request.params.channel, data.list));
+  });
+
+  app.get<{ Params: { channel: string; id: string }; Querystring: { tx?: string; commitment?: string } }>(
+    "/channels/:channel/elections/:id",
+    async (request, reply) => {
+      const { channel, id } = request.params;
+      const data = electionData(request, channel);
+      const election = data?.list.find((e) => e.id === id);
+      if (!data || !election) return notFound(reply, scope(request).site, "No published election has that ID.");
+      const txId = (request.query.tx ?? "").trim().toLowerCase();
+      const receipt = txId
+        ? { txId, commitment: request.query.commitment ?? "", result: checkReceipt(id, (() => { const t = db.transaction(channel, txId); return t ? data.s.view(t) : null; })()) }
+        : null;
+      return send(reply, pages.electionPage(data.s.site, channel, election, receipt));
+    },
+  );
+
+  app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/elections", async (request, reply) => {
+    const data = electionData(request, request.params.channel);
+    return data ? data.list : reply.code(404).send({ error: "not found" });
+  });
+
+  app.get<{ Params: { channel: string; id: string; txId: string } }>(
+    "/api/v1/channels/:channel/elections/:id/receipts/:txId",
+    async (request, reply) => {
+      const { channel, id, txId } = request.params;
+      const data = electionData(request, channel);
+      if (!data || !data.list.some((e) => e.id === id)) return reply.code(404).send({ error: "not found" });
+      const tx = db.transaction(channel, txId.toLowerCase());
+      return checkReceipt(id, tx ? data.s.view(tx) : null);
+    },
+  );
 
   /* API: the same view as the pages, for whoever is asking ------------ */
 

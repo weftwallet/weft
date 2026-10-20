@@ -278,6 +278,14 @@ export class ExplorerDb {
     return rows.map(toTransaction);
   }
 
+  /** Every transaction that called one contract on a channel, oldest first. */
+  contractRows(channel: string, chaincode: string): TransactionRow[] {
+    const rows = this.db
+      .prepare("SELECT * FROM transactions WHERE channel = ? AND chaincode = ? ORDER BY block_number, idx")
+      .all(channel, chaincode) as Row[];
+    return rows.map(toTransaction);
+  }
+
   /** Transactions whose ID starts with `prefix`, across published channels. */
   findTransactions(channels: string[], prefix: string, limit = 10): TransactionRow[] {
     if (channels.length === 0) return [];

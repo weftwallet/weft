@@ -11,6 +11,7 @@
  *       contracts:             # contracts not listed take the channel's level
  *         basic: public
  *         private-thing: hidden
+ *       elections: ballot      # optional: the ballot contract, for election pages
  */
 
 import { createHash } from "node:crypto";
@@ -26,6 +27,8 @@ export interface ChannelPolicy {
   values: "show" | "hash";
   submitter: "show" | "hide";
   contracts: Record<string, Level>;
+  /** The ballot contract on this channel (examples/ballot-contract), whose elections the explorer shows. */
+  elections?: string;
 }
 
 export interface Policy {
@@ -53,7 +56,16 @@ export function parsePolicy(source: unknown): Policy {
     for (const [contract, l] of Object.entries((c.contracts ?? {}) as Record<string, unknown>)) {
       contracts[contract] = level(l, `channels.${name}.contracts.${contract}`);
     }
-    channels[name] = { level: level(c.level, `channels.${name}.level`), values, submitter, contracts };
+    if (c.elections !== undefined && (typeof c.elections !== "string" || !c.elections)) {
+      throw new Error(`channels.${name}.elections must be the ballot contract's name.`);
+    }
+    channels[name] = {
+      level: level(c.level, `channels.${name}.level`),
+      values,
+      submitter,
+      contracts,
+      ...(typeof c.elections === "string" ? { elections: c.elections } : {}),
+    };
   }
   return { organisation: typeof root.organisation === "string" ? root.organisation : null, channels };
 }
@@ -64,7 +76,7 @@ export function policyFingerprint(policy: Policy): string {
     .sort()
     .map((name) => {
       const c = policy.channels[name]!;
-      return [name, c.level, c.values, c.submitter, Object.entries(c.contracts).sort()];
+      return [name, c.level, c.values, c.submitter, Object.entries(c.contracts).sort(), c.elections ?? null];
     });
   return createHash("sha256").update(JSON.stringify(sorted)).digest("hex");
 }

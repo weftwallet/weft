@@ -1,0 +1,23 @@
+{
+  "name": "weft-ballot-contract",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Fabric contract for ballots that can be counted and checked without revealing them: private ballots, public commitments, a published tally.",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "start": "fabric-chaincode-node start",
+    "package": "npm run build"
+  },
+  "dependencies": {
+    "fabric-contract-api": "~2.5",
+    "fabric-shim": "~2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "~5.8"
+  }
+}

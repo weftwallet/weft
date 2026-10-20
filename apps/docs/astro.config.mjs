@@ -42,6 +42,7 @@ export default defineConfig({
             { label: "Reading a signature request", slug: "guides/signing" },
             { label: "Certificates and renewal", slug: "guides/certificates" },
             { label: "When a transaction fails", slug: "guides/failures" },
+            { label: "Run an election", slug: "guides/elections" },
           ],
         },
         {

@@ -9,6 +9,7 @@ import { html, raw, type Html } from "./html.ts";
 import type { ChannelStatus } from "./indexer.ts";
 import type { Viewer } from "./auth.ts";
 import { agreementFor, type PeerStatus } from "./checkpoints.ts";
+import { splitKey, type ElectionView, type ReceiptCheck } from "./elections.ts";
 import type { PublishedParty, ShownValue } from "./policy.ts";
 
 export interface Site {
@@ -20,6 +21,8 @@ export interface Site {
   signIn: boolean;
   /** The other organisations' explorers' reports for a channel. Empty when none are configured. */
   peers: (channel: string) => PeerStatus[];
+  /** Whether the channel has elections this viewer can see. */
+  elections: (channel: string) => boolean;
 }
 
 const MARK = raw(`<svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
@@ -55,6 +58,13 @@ function party(p: PublishedParty | null): Html {
 function status(validation: string, redacted = false): Html {
   const ok = validation === "VALID";
   return html`<span class="pill ${ok ? "pill--ok" : "pill--bad"}" title="${redacted ? "" : explainStatus(validation).title}">${ok ? "valid" : validation.toLowerCase().replace(/_/g, " ")}</span>`;
+}
+
+/** Composite keys (\0type\0a\0b\0) read as type / a / b. */
+function readableKey(key: string): Html {
+  const parts = splitKey(key);
+  if (!parts) return html`${key}`;
+  return html`<span class="subtle">${parts.type}</span>${parts.attrs.map((a) => html`<span class="subtle"> / </span>${a}`)}`;
 }
 
 function value(v: ShownValue | null): Html {
@@ -361,6 +371,7 @@ export function channelPage(
         )}</ul>`}
   </section>
 </div>
+${site.elections(channel.channel) ? html`<p class="elections-link"><a href="/channels/${enc(channel.channel)}/elections">Elections on ${channel.channel}</a> <span class="subtle">ballots, results and receipt checks</span></p>` : ""}
 <section><h2>Blocks</h2>${blockRows(site, blocks)}
 ${oldest !== undefined && oldest > 0 ? html`<a class="more" href="/channels/${enc(channel.channel)}?before=${oldest}">Older blocks</a>` : ""}
 </section>`,
@@ -460,7 +471,7 @@ ${tx.type === "endorser"
 <section><h2>Changes</h2>${tx.writes.length === 0
       ? html`<p class="empty">${tx.reads > 0 ? `Read ${tx.reads} ${tx.reads === 1 ? "key" : "keys"}, wrote nothing.` : "No reads or writes published."}</p>`
       : html`<table class="table"><thead><tr><th>Key</th><th>New value</th></tr></thead><tbody>${tx.writes.map(
-          (w) => html`<tr><td class="mono">${w.namespace !== tx.chaincode ? html`<span class="subtle">${w.namespace}/</span>` : ""}${w.key}</td><td>${value(w.value)}</td></tr>`,
+          (w) => html`<tr><td class="mono">${w.namespace !== tx.chaincode ? html`<span class="subtle">${w.namespace}/</span>` : ""}${readableKey(w.key)}</td><td>${value(w.value)}</td></tr>`,
         )}</tbody></table>${!ok ? html`<p class="subtle small">Shown as proposed. The transaction was invalid, so none of these were applied.</p>` : ""}`}</section>
 ${tx.response && tx.response.payload.text !== "" ? html`<section><h2>Returned</h2><div class="card">${value(tx.response.payload)}</div></section>` : ""}
 ${tx.event ? html`<section><h2>Event</h2><div class="card"><div class="mono fn">${tx.event.name}</div>${value(tx.event.payload)}</div></section>` : ""}`
@@ -513,4 +524,109 @@ export function mePage(site: Site, viewer: Viewer, txs: TransactionRow[]): strin
     }.</p>
 <section><h2>Transactions you submitted</h2>${txRows(txs)}</section>`,
   );
+}
+
+/* Elections (docs/adr/0004, phase 4) ------------------------------------ */
+
+const electionUrl = (channel: string, id: string) => `/channels/${enc(channel)}/elections/${enc(id)}`;
+
+function electionState(e: ElectionView): Html {
+  return e.state === "closed"
+    ? html`<span class="pill pill--ok">counted</span>`
+    : Date.parse(e.closesAt) <= Date.now()
+      ? html`<span class="pill pill--warn">closed, not yet counted</span>`
+      : html`<span class="pill pill--quiet">open</span>`;
+}
+
+export function electionsPage(site: Site, channel: string, list: ElectionView[]): string {
+  return layout(
+    site,
+    "Elections",
+    html`<nav class="crumbs"><a href="/">Overview</a><a class="mono" href="/channels/${enc(channel)}">${channel}</a></nav>
+<h1>Elections</h1>
+<p class="lead">Ballots are kept private. The ledger holds a commitment for each one and, once voting closes, the count. Anyone can count the commitments here, and any voter can check their own.</p>
+${list.length === 0
+  ? html`<p class="empty">No elections on ${channel} yet.</p>`
+  : html`<table class="table"><thead><tr><th>Election</th><th>Closes</th><th class="num">Ballots</th><th>State</th></tr></thead><tbody>${[...list].reverse().map(
+      (e) => html`<tr><td><a href="${electionUrl(channel, e.id)}">${e.title}</a><div class="mono subtle small">${e.id}</div></td><td>${time(Date.parse(e.closesAt))}</td><td class="num mono">${e.commitments}</td><td>${electionState(e)}</td></tr>`,
+    )}</tbody></table>`}`,
+    { live: true },
+  );
+}
+
+export function electionPage(
+  site: Site,
+  channel: string,
+  e: ElectionView,
+  receipt: { txId: string; commitment: string; result: ReceiptCheck } | null,
+): string {
+  const max = Math.max(1, ...Object.values(e.tally?.counts ?? {}));
+  return layout(
+    site,
+    e.title,
+    html`<nav class="crumbs"><a href="/">Overview</a><a class="mono" href="/channels/${enc(channel)}">${channel}</a><a href="/channels/${enc(channel)}/elections">Elections</a></nav>
+<div class="title-row"><h1>${e.title}</h1>${electionState(e)}</div>
+<section class="card">
+  <dl class="details">
+    <dt>Election</dt><dd class="mono">${e.id}</dd>
+    <dt>Options</dt><dd>${e.options.join(", ")}</dd>
+    <dt>Voting closes</dt><dd>${time(Date.parse(e.closesAt))}</dd>
+    <dt>Run by</dt><dd class="mono">${e.creatorMsp}</dd>
+    <dt>Ballots committed</dt><dd><span class="mono">${e.commitments}</span> <span class="subtle small">counted from the ledger here</span></dd>
+  </dl>
+</section>
+${e.tally
+  ? html`<section><h2>Result</h2><div class="card tally">${e.options.map(
+      (o) => html`<div class="tally__row"><span>${o}</span><svg class="tally__bar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><rect width="100" height="10" class="tally__track"/><rect width="${Math.max(0.0001, ((e.tally!.counts[o] ?? 0) / max) * 100)}" height="10" class="tally__fill"/></svg><span class="mono">${e.tally!.counts[o] ?? 0}</span></div>`,
+    )}
+    <p class="check ${e.tallyMatches ? "" : "check--bad"}">${
+      e.tallyMatches
+        ? `The published total, ${e.tally.total}, matches the ${e.commitments} commitments on the ledger.`
+        : `The published total, ${e.tally.total}, doesn't match the ${e.commitments} commitments on the ledger.`
+    }</p>
+    ${e.closedIn ? html`<p class="subtle small">Published in <a class="mono" href="/channels/${enc(channel)}/transactions/${enc(e.closedIn.txId)}">${short(e.closedIn.txId, 8, 4)}</a>, block #${e.closedIn.blockNumber}.</p>` : ""}</div></section>`
+  : html`<section><h2>Result</h2><p class="empty">${Date.parse(e.closesAt) > Date.now() ? "Voting is open. The count is published when it closes." : `Voting has closed. ${e.creatorMsp} publishes the count.`}</p></section>`}
+<section id="receipt">
+  <h2>Check your receipt</h2>
+  <form class="card receipt" method="get" action="#receipt">
+    <label><span>Transaction ID</span><input name="tx" value="${receipt?.txId ?? ""}" class="mono" required spellcheck="false" autocomplete="off"></label>
+    <label><span>Commitment</span><input name="commitment" value="${receipt?.commitment ?? ""}" class="mono" spellcheck="false" autocomplete="off" placeholder="optional"></label>
+    <button type="submit" class="signin">Check</button>
+  </form>
+  ${receipt ? receiptResult(receipt) : ""}
+  <div class="card receipt receipt--local" id="local" ${receipt?.result.commitment ? "" : "hidden"}>
+    <p class="small">To confirm the commitment is your vote, enter the choice and the salt from your receipt. They stay in this browser.</p>
+    <label><span>Your choice</span><select id="local-option">${e.options.map((o) => html`<option>${o}</option>`)}</select></label>
+    <label><span>Salt</span><input id="local-salt" class="mono" spellcheck="false" autocomplete="off"></label>
+    <button type="button" class="signin" id="local-check">Check here</button>
+    <p id="local-result" class="small" aria-live="polite"></p>
+  </div>
+</section>
+<script>
+(function () {
+  var button = document.getElementById("local-check");
+  if (!button) return;
+  var expected = ${raw(JSON.stringify(receipt?.result.commitment ?? null))};
+  var electionId = ${raw(JSON.stringify(e.id).replace(/</g, "\\u003c"))};
+  button.addEventListener("click", async function () {
+    var option = document.getElementById("local-option").value, salt = document.getElementById("local-salt").value.trim();
+    var bytes = new TextEncoder().encode(electionId + "\\n" + option + "\\n" + salt);
+    var hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+    var out = document.getElementById("local-result");
+    out.textContent = hash === expected ? "It matches: this commitment is a vote for " + option + "." : "It doesn't match. Check the choice and the salt.";
+    out.className = "small " + (hash === expected ? "ok" : "bad");
+  });
+})();
+</script>`,
+  );
+}
+
+function receiptResult(r: { txId: string; commitment: string; result: ReceiptCheck }): Html {
+  const res = r.result;
+  if (!res.found) return html`<div class="banner banner--bad"><strong>No published transaction has that ID.</strong><span>Check the ID on your receipt. It may also be in a block this explorer hasn't indexed yet.</span></div>`;
+  if (!res.commitment) return html`<div class="banner banner--bad"><strong>That transaction isn't a ballot in this election.</strong></div>`;
+  if (!res.valid) return html`<div class="banner banner--bad"><strong>The network didn't accept that ballot.</strong><span>It's in block #${res.blockNumber}, marked ${res.validation}, so it wasn't counted. Vote again if voting is still open.</span></div>`;
+  const given = r.commitment.trim().toLowerCase();
+  if (given && given !== res.commitment) return html`<div class="banner banner--bad"><strong>The commitment doesn't match.</strong><span>The ledger has <span class="mono">${short(res.commitment, 12, 8)}</span> for this transaction.</span></div>`;
+  return html`<div class="banner banner--ok"><strong>Your ballot is in block #${res.blockNumber} and was accepted.</strong><span>Commitment <span class="mono">${short(res.commitment, 12, 8)}</span>${given ? ", as on your receipt" : ""}. It's one of the commitments counted above.</span></div>`;
 }

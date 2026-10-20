@@ -39,6 +39,7 @@ channels:
 | `level: public` | Anyone can see the channel without signing in. |
 | `level: members` | Visible to people who [sign in with Weft](#signing-in) with an identity from an organisation in the channel. |
 | `level: hidden` | Not indexed at all. |
+| `elections: ballot` | The channel's [ballot contract](/guides/elections/). The explorer adds election pages with results and receipt checks. |
 | `values: hash` | Arguments, written values, return values and event payloads are shown as SHA-256 hashes. Keys are still shown. |
 | `submitter: hide` | Transactions show no submitter. Endorsing organisations are still shown, since they're peers, not people. |
 

@@ -1,6 +1,6 @@
 # 0004: An explorer that each organisation hosts
 
-**Status:** Accepted. Phases 1 to 3 are built (`apps/explorer`, `weft_signIn`, signed checkpoints).
+**Status:** Accepted. All four phases are built: `apps/explorer`, `weft_signIn`, signed checkpoints, and `examples/ballot-contract` with the explorer's election pages.
 **Date:** 2026-10-20
 
 ## Context
