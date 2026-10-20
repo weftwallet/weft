@@ -111,23 +111,37 @@ export function Icon({ name, size = 20, color = "currentColor" }: { name: IconNa
  * gaps stay crisp. Use WovenMark for anything larger.
  */
 export function Logo({ size = 24 }: { size?: number }) {
+  const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
+  // The warps stay put; on hover the two weft rows pass through again.
   return (
-    <svg width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" role="img" aria-label="Weft">
+    <svg className="logo" width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" role="img" aria-label="Weft">
+      <defs>
+        <clipPath id={`${id}a`}>
+          <rect className="logo__reveal logo__reveal--1" x="2" y="2" width="12" height="6" />
+        </clipPath>
+        <clipPath id={`${id}b`}>
+          <rect className="logo__reveal logo__reveal--2" x="2" y="8" width="12" height="6" />
+        </clipPath>
+      </defs>
       <rect width="16" height="16" rx="4" fill={thread} />
       <rect x="4" y="2" width="2" height="12" fill={ink} />
       <rect x="10" y="2" width="2" height="12" fill={ink} />
-      <rect x="2" y="4" width="12" height="2" fill={ink} />
-      <rect x="2" y="10" width="12" height="2" fill={ink} />
-      <rect x="9" y="3" width="4" height="4" fill={thread} />
-      <rect x="10" y="3" width="2" height="4" fill={ink} />
-      <rect x="3" y="9" width="4" height="4" fill={thread} />
-      <rect x="4" y="9" width="2" height="4" fill={ink} />
-      <rect x="3" y="3" width="4" height="4" fill={thread} />
-      <rect x="3" y="4" width="4" height="2" fill={ink} />
-      <rect x="9" y="9" width="4" height="4" fill={thread} />
-      <rect x="9" y="10" width="4" height="2" fill={ink} />
+      <g clipPath={`url(#${id}a)`}>
+        <rect x="2" y="4" width="12" height="2" fill={ink} />
+        <rect x="9" y="3" width="4" height="4" fill={thread} />
+        <rect x="10" y="3" width="2" height="4" fill={ink} />
+        <rect x="3" y="3" width="4" height="4" fill={thread} />
+        <rect x="3" y="4" width="4" height="2" fill={ink} />
+      </g>
+      <g clipPath={`url(#${id}b)`}>
+        <rect x="2" y="10" width="12" height="2" fill={ink} />
+        <rect x="3" y="9" width="4" height="4" fill={thread} />
+        <rect x="4" y="9" width="2" height="4" fill={ink} />
+        <rect x="9" y="9" width="4" height="4" fill={thread} />
+        <rect x="9" y="10" width="4" height="2" fill={ink} />
+      </g>
     </svg>
   );
 }
@@ -139,8 +153,16 @@ export function Logo({ size = 24 }: { size?: number }) {
  * - "draw": the square, then the warps, then the wefts, once (first-run welcome).
  * prefers-reduced-motion shows the finished mark.
  */
-export function WeaveMark({ size = 72, mode }: { size?: number; mode: "loop" | "settle" | "draw" }) {
+/**
+ * The mark, weaving. "draw" builds it from nothing (first run), "settle" weaves
+ * the weft in once and pulses (done), "loop" weaves while working, "still" is
+ * the finished mark with no motion (after work that didn't succeed).
+ */
+export function WeaveMark({ size = 72, mode }: { size?: number; mode: "loop" | "settle" | "draw" | "still" }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
+  // Hovering a resting mark weaves its weft in again. A new key restarts the animation.
+  const [hovers, setHovers] = useState(0);
+  const shown = hovers > 0 && mode !== "loop" ? "weave" : mode;
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
   // Each row: [y, x of the warp it passes over, x of the warp it passes under].
@@ -155,7 +177,16 @@ export function WeaveMark({ size = 72, mode }: { size?: number; mode: "loop" | "
     [29.25, 12.75],
   ];
   return (
-    <svg className={`weave weave--${mode}`} width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Weft">
+    <svg
+      key={hovers}
+      className={`weave weave--${shown}`}
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      role="img"
+      aria-label="Weft"
+      onMouseEnter={() => mode !== "loop" && setHovers((n) => n + 1)}
+    >
       <defs>
         {bands.map(([y, h], i) => (
           <clipPath key={i} id={`${id}r${i}`}>

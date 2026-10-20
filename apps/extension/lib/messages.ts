@@ -99,6 +99,8 @@ export interface UiApi {
   passkeyRemove: [{ credentialId: string }, VaultStatus];
   changePassword: [{ current: string; next: string }, VaultStatus];
   setAutoLock: [{ minutes: number }, VaultStatus];
+  /** For a forgotten password: deletes every key and identity. Networks are kept. */
+  vaultReset: [undefined, VaultStatus];
 }
 
 export type UiMethod = keyof UiApi;

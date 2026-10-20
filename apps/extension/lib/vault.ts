@@ -212,6 +212,12 @@ export function forget(ownerId: string): void {
   cache.delete(ownerId);
 }
 
+/** Forgets the password and passkeys. The caller deletes the keys they protected. */
+export async function destroy(): Promise<void> {
+  await lock();
+  await db.delete("settings", "vault");
+}
+
 /* Settings, all needing Weft unlocked. -------------------------------- */
 
 export async function changePassword(current: string, next: string): Promise<void> {

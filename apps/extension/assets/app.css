@@ -1296,6 +1296,8 @@ textarea {
 .weave--draw .weave__reveal--2 { animation-delay: 280ms; }
 .weave--draw .weave__reveal--3 { animation-delay: 360ms; }
 
+.weave--still .weave__reveal { transform: scaleX(1); }
+
 @keyframes weave-in { to { transform: scaleX(1); } }
 @keyframes weave-pulse { 0% { transform: scale(1); } 45% { transform: scale(1.08); } 100% { transform: scale(1); } }
 @keyframes weave-ground { from { transform: scale(.85); opacity: 0; } }
@@ -1394,3 +1396,19 @@ textarea {
   background-size: 16px;
   cursor: pointer;
 }
+
+.lock-badge--danger {
+  color: var(--weft-signal);
+}
+
+/* Hovering a resting mark weaves its weft in again, without the pulse. */
+.weave--weave .weave__reveal { animation: weave-in 380ms cubic-bezier(.2,.8,.2,1) both; }
+.weave--weave .weave__reveal--2 { animation-delay: 120ms; }
+.weave--weave .weave__reveal--3 { animation-delay: 240ms; }
+
+/* The small header mark: its two weft rows pass through again on hover. */
+.logo .logo__reveal { transform-box: fill-box; transform-origin: left center; }
+.logo:hover .logo__reveal--1 { animation: weave-in-from 260ms cubic-bezier(.2,.8,.2,1) both; }
+.logo:hover .logo__reveal--2 { animation: weave-in-from 260ms 80ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes weave-in-from { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .logo:hover .logo__reveal { animation: none; } }

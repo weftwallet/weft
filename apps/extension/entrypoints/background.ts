@@ -98,6 +98,11 @@ const handlers: Handlers = {
   passkeyRemove: async ({ credentialId }) => (await vault.removePasskey(credentialId), vault.status()),
   changePassword: async ({ current, next }) => (await vault.changePassword(current, next), vault.status()),
   setAutoLock: async ({ minutes }) => (await vault.setAutoLock(minutes), vault.status()),
+  vaultReset: async () => {
+    const origins = await wallet.resetWallet();
+    await disconnectSites(origins, "no-identity");
+    return vault.status();
+  },
 };
 
 // Using Weft from its own pages counts as activity for the auto-lock, except

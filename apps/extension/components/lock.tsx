@@ -115,16 +115,26 @@ export function Unlock({
   subtitle = "Unlock to continue.",
   onUnlocked,
   onCancel,
+  onReset,
 }: {
   status: VaultStatus;
   passkey: "inline" | "window";
   subtitle?: string;
   onUnlocked: () => void;
   onCancel?: () => void;
+  /** Offers "Forgot your password?", which leads to resetting Weft. The popup passes it. */
+  onReset?: () => void;
 }) {
   const [password, setPassword] = useState("");
   const { busy, error, run } = useBusy();
+  const [attempted, setAttempted] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const hasPasskey = status.passkeys.length > 0;
+  // The mark weaves in once when the screen opens and loops while checking.
+  // After a wrong password it stays still: weaving in again would look like success.
+  const markMode = busy ? "loop" : attempted ? "still" : "settle";
+
+  if (resetting && onReset) return <ResetWeft onCancel={() => setResetting(false)} onDone={onReset} />;
 
   const withPasskey = () =>
     run(async () => {
@@ -142,6 +152,7 @@ export function Unlock({
       style={{ display: "contents" }}
       onSubmit={(e) => {
         e.preventDefault();
+        setAttempted(true);
         void run(async () => {
           await ui("vaultUnlock", { password });
           onUnlocked();
@@ -150,7 +161,7 @@ export function Unlock({
     >
       <main className="page lock-screen">
         <div className="lock-screen__mark">
-          <WeaveMark size={56} mode={busy ? "loop" : "settle"} />
+          <WeaveMark size={56} mode={markMode} />
         </div>
         <div style={{ textAlign: "center" }}>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Weft is locked</h1>
@@ -180,12 +191,85 @@ export function Unlock({
             <Icon name="key" size={16} /> Use a passkey
           </button>
         )}
+        {onReset && (
+          <button type="button" className="link-btn" style={{ alignSelf: "center" }} onClick={() => setResetting(true)}>
+            Forgot your password?
+          </button>
+        )}
         {onCancel && (
           <button type="button" className="link-btn" style={{ alignSelf: "center" }} onClick={onCancel}>
             Cancel
           </button>
         )}
       </main>
+    </form>
+  );
+}
+
+const RESET_PHRASE = "reset weft";
+
+/**
+ * The way out of a forgotten password. Weft can't recover it, so this deletes
+ * every key and starts again. Typing the phrase makes sure it's meant.
+ */
+function ResetWeft({ onCancel, onDone }: { onCancel: () => void; onDone: () => void }) {
+  const [typed, setTyped] = useState("");
+  const { busy, error, run } = useBusy();
+  const ready = typed.trim().toLowerCase() === RESET_PHRASE;
+  return (
+    <form
+      style={{ display: "contents" }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!ready) return;
+        void run(async () => {
+          await ui("vaultReset");
+          onDone();
+        });
+      }}
+    >
+      <main className="page">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className="lock-badge lock-badge--danger">
+            <Icon name="alert" size={18} />
+          </span>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Reset Weft?</h1>
+        </div>
+        <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+          Weft can't recover a forgotten password, because it never stores it. Resetting deletes every identity and private
+          key in this browser, your activity and your site connections.
+        </p>
+        <div className="notice notice--signal" style={{ fontSize: 13 }}>
+          <Icon name="alert" size={18} color="var(--weft-signal)" />
+          <span>
+            This can't be undone. Your certificates stay valid on the network, and your networks are kept, so you can enrol
+            again with your CA's enrollment ID and secret.
+          </span>
+        </div>
+        <Field label={`Type “${RESET_PHRASE}” to confirm`}>
+          <input
+            autoFocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Confirmation"
+          />
+        </Field>
+        {error && (
+          <div className="error-text" role="alert">
+            {error}
+          </div>
+        )}
+      </main>
+      <footer className="footer">
+        <button type="button" className="btn" onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="submit" className="btn btn--danger" disabled={!ready || busy}>
+          {busy ? <Spinner small /> : "Reset Weft"}
+        </button>
+      </footer>
     </form>
   );
 }

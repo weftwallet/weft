@@ -80,6 +80,10 @@ function Screens() {
             setRoute({ name: "home" });
             void refresh();
           }}
+          onReset={() => {
+            setRoute({ name: "home" });
+            void refresh();
+          }}
         />
       </div>
     );

@@ -296,6 +296,20 @@ export async function refreshInvite(networkId: string): Promise<OrgInvite> {
   return fetchInviteDocument(network.inviteUrl);
 }
 
+/**
+ * Deletes every identity, pending request, connection and activity record,
+ * and the vault. Networks stay, so enrolling again is quick.
+ */
+export async function resetWallet(): Promise<string[]> {
+  for (const store of ["identities", "pendingCsrs", "activity"] as const) {
+    for (const row of await db.all<{ id: string }>(store)) await db.delete(store, row.id);
+  }
+  const origins = (await db.all<SiteRecord>("sites")).map((s) => s.origin);
+  await db.saveSettings({ activeIdentityId: null, activeChannel: null });
+  await vault.destroy();
+  return origins;
+}
+
 export async function removeIdentity(identityId: string): Promise<void> {
   await db.delete("identities", identityId);
   const settings = await db.settings();

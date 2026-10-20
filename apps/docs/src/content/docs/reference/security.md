@@ -25,7 +25,7 @@ Weft locks after 15 minutes without use (you can choose 5 minutes to 4 hours, or
 
 Sites you connected can still read your public identity while Weft is locked, because they already have it.
 
-Passkeys are optional and need the WebAuthn PRF extension, which most phone and laptop passkeys and recent security keys support. Your password always works, so losing a security key doesn't lose the wallet. Weft can't reset a forgotten password; you enrol again with your CA.
+Passkeys are optional and need the WebAuthn PRF extension, which most phone and laptop passkeys and recent security keys support. Your password always works, so losing a security key doesn't lose the wallet. Weft can't recover a forgotten password. **Forgot your password?** on the lock screen resets Weft instead: after you type a phrase to confirm, it deletes every identity and key in the browser and keeps your networks, so you can enrol again with your CA.
 
 ### Pages have no privileges
 

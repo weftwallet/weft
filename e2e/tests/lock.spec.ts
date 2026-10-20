@@ -217,3 +217,35 @@ test("a wallet from before the lock sets a password and re-enrols its old keys",
   await expect(popup.getByText("isn't encrypted on disk")).toBeHidden();
   expect(await storedKeys(wallet)).toEqual([{ wrapped: true, legacy: false }]);
 });
+
+test("a forgotten password resets Weft after typing the phrase, keeping networks", async ({ wallet }) => {
+  const dapp = await wallet.dapp();
+  await wallet.join(dapp, "alice", stack().users.alice!);
+  await wallet.connect(dapp);
+  await dapp.record();
+  await wallet.lock();
+
+  const popup = await wallet.popup();
+  await popup.getByLabel("Password").fill("not it");
+  await popup.getByRole("button", { name: "Unlock" }).click();
+  await expect(popup.getByRole("alert")).toHaveText("That password isn't right.");
+  // After a wrong password the mark stays still rather than weaving in again.
+  await expect(popup.locator(".lock-screen__mark svg")).toHaveClass(/weave--still/);
+
+  await popup.getByRole("button", { name: "Forgot your password?" }).click();
+  await expect(popup.getByRole("heading", { name: "Reset Weft?" })).toBeVisible();
+  const reset = popup.getByRole("button", { name: "Reset Weft" });
+  await expect(reset).toBeDisabled();
+  await popup.getByLabel("Confirmation").fill("reset");
+  await expect(reset).toBeDisabled();
+  await popup.getByLabel("Confirmation").fill("reset weft");
+  await reset.click();
+
+  await expect(popup.getByText("An identity wallet for Hyperledger Fabric")).toBeVisible();
+  const state = await wallet.ui("state");
+  expect(state.identities).toHaveLength(0);
+  expect(state.sites).toHaveLength(0);
+  expect(state.vault.state).toBe("none");
+  expect(state.networks).toHaveLength(1);
+  expect((await dapp.events()).map((e) => e.event)).toContain("disconnect");
+});
