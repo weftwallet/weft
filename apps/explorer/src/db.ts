@@ -5,7 +5,11 @@
  */
 
 import { DatabaseSync } from "node:sqlite";
+import type { ChannelMember } from "./decode.ts";
 import type { PublishedBlock, PublishedTransaction } from "./policy.ts";
+
+/** Bumped when the tables change; an older index is rebuilt from block 0. */
+const SCHEMA = "2";
 
 export interface BlockRow {
   channel: string;
@@ -62,8 +66,13 @@ export class ExplorerDb {
 
   constructor(path: string) {
     this.db = new DatabaseSync(path);
+    this.db.exec("PRAGMA journal_mode = WAL; CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);");
+    const schema = this.db.prepare("SELECT value FROM meta WHERE key = 'schema'").get() as Row | undefined;
+    if (schema?.value !== SCHEMA) {
+      this.db.exec("DROP TABLE IF EXISTS blocks; DROP TABLE IF EXISTS transactions; DELETE FROM meta;");
+      this.db.prepare("INSERT INTO meta (key, value) VALUES ('schema', ?)").run(SCHEMA);
+    }
     this.db.exec(`
-      PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS blocks (
         channel TEXT NOT NULL,
         number INTEGER NOT NULL,
@@ -85,14 +94,15 @@ export class ExplorerDb {
         timestamp INTEGER,
         chaincode TEXT,
         creator_msp TEXT,
+        creator_name TEXT,
+        level TEXT NOT NULL,
         validation TEXT NOT NULL,
         body TEXT NOT NULL,
         PRIMARY KEY (channel, block_number, idx)
       );
       CREATE INDEX IF NOT EXISTS tx_id ON transactions (tx_id);
       CREATE INDEX IF NOT EXISTS tx_chaincode ON transactions (channel, chaincode, block_number);
-      CREATE INDEX IF NOT EXISTS tx_creator ON transactions (channel, creator_msp, block_number);
-      CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE INDEX IF NOT EXISTS tx_creator ON transactions (channel, creator_msp, creator_name, block_number);
     `);
   }
 
@@ -104,9 +114,19 @@ export class ExplorerDb {
   usePolicy(fingerprint: string): boolean {
     const row = this.db.prepare("SELECT value FROM meta WHERE key = 'policy'").get() as Row | undefined;
     if (row?.value === fingerprint) return false;
-    this.db.exec("DELETE FROM blocks; DELETE FROM transactions;");
+    this.db.exec("DELETE FROM blocks; DELETE FROM transactions; DELETE FROM meta WHERE key LIKE 'members:%';");
     this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('policy', ?)").run(fingerprint);
     return row !== undefined;
+  }
+
+  /** The channel's application organisations, from its latest config block. */
+  setMembers(channel: string, members: ChannelMember[]): void {
+    this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(`members:${channel}`, JSON.stringify(members));
+  }
+
+  members(channel: string): ChannelMember[] {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = ?").get(`members:${channel}`) as Row | undefined;
+    return row ? (JSON.parse(row.value as string) as ChannelMember[]) : [];
   }
 
   close(): void {
@@ -125,8 +145,8 @@ export class ExplorerDb {
       | undefined;
     const linked = block.number === 0 ? null : before ? before.hash === block.previousHash : null;
     const insertTx = this.db.prepare(
-      `INSERT OR REPLACE INTO transactions (channel, tx_id, block_number, idx, timestamp, chaincode, creator_msp, validation, body)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO transactions (channel, tx_id, block_number, idx, timestamp, chaincode, creator_msp, creator_name, level, validation, body)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     this.db.exec("BEGIN");
     try {
@@ -156,6 +176,8 @@ export class ExplorerDb {
           tx.timestamp,
           tx.chaincode,
           tx.creator?.mspId ?? null,
+          tx.creator?.name ?? null,
+          tx.level,
           tx.validation,
           JSON.stringify(tx),
         );
@@ -214,13 +236,24 @@ export class ExplorerDb {
   /** Recent transactions, optionally for one contract or one organisation. */
   transactions(
     channels: string[],
-    options: { channel?: string; chaincode?: string; mspId?: string; before?: number; limit?: number } = {},
+    options: {
+      channel?: string;
+      chaincode?: string;
+      mspId?: string;
+      creatorName?: string;
+      /** Leave out members-level rows, for filters a non-member mustn't be able to probe. */
+      publicOnly?: boolean;
+      before?: number;
+      limit?: number;
+    } = {},
   ): TransactionRow[] {
     const where = [`channel IN (${channels.map(() => "?").join(",") || "''"})`];
     const params: (string | number)[] = [...channels];
     if (options.channel) (where.push("channel = ?"), params.push(options.channel));
     if (options.chaincode) (where.push("chaincode = ?"), params.push(options.chaincode));
     if (options.mspId) (where.push("creator_msp = ?"), params.push(options.mspId));
+    if (options.creatorName) (where.push("creator_name = ?"), params.push(options.creatorName));
+    if (options.publicOnly) where.push("level = 'public'");
     if (options.before !== undefined) (where.push("block_number < ?"), params.push(options.before));
     const rows = this.db
       .prepare(`SELECT * FROM transactions WHERE ${where.join(" AND ")} ORDER BY block_number DESC, idx DESC LIMIT ?`)
@@ -239,12 +272,12 @@ export class ExplorerDb {
     return rows.map(toTransaction);
   }
 
-  /** Contracts with published transactions on a channel, busiest first. */
-  contracts(channel: string): { chaincode: string; transactions: number; lastBlock: number }[] {
+  /** Contracts with published transactions on a channel, busiest first. Members-level ones only for members. */
+  contracts(channel: string, member = false): { chaincode: string; transactions: number; lastBlock: number }[] {
     const rows = this.db
       .prepare(
         `SELECT chaincode, COUNT(*) AS n, MAX(block_number) AS last FROM transactions
-         WHERE channel = ? AND chaincode IS NOT NULL GROUP BY chaincode ORDER BY n DESC`,
+         WHERE channel = ? AND chaincode IS NOT NULL ${member ? "" : "AND level = 'public'"} GROUP BY chaincode ORDER BY n DESC`,
       )
       .all(channel) as Row[];
     return rows.map((r) => ({ chaincode: r.chaincode as string, transactions: Number(r.n), lastBlock: Number(r.last) }));

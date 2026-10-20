@@ -1,3 +1,4 @@
+import { Auth } from "./auth.ts";
 import { loadConfig } from "./config.ts";
 import { ExplorerDb } from "./db.ts";
 import { Indexer } from "./indexer.ts";
@@ -8,7 +9,16 @@ const config = loadConfig();
 const db = new ExplorerDb(config.databasePath);
 const rebuilt = db.usePolicy(policyFingerprint(config.policy));
 const channels = publishedChannels(config.policy);
-const app = buildServer({ name: config.name, channels, db, status: () => indexer.statuses(), logger: true });
+const app = buildServer({
+  name: config.name,
+  channels,
+  policy: config.policy,
+  db,
+  status: () => indexer.statuses(),
+  auth: new Auth(config.sessionSecret),
+  ...(config.publicUrl ? { publicUrl: config.publicUrl } : {}),
+  logger: true,
+});
 const indexer = new Indexer(config, config.policy, db, { info: (m) => app.log.info(m), warn: (m) => app.log.warn(m) });
 
 const shutdown = async () => {

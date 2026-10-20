@@ -21,6 +21,8 @@ export interface TxSpec {
   endorsers?: string[];
   event?: string;
   config?: boolean;
+  /** Config transactions: member organisations and their root certificates (PEM). */
+  members?: { mspId: string; rootCerts: string[] }[];
 }
 
 function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
@@ -39,6 +41,30 @@ function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
 
   const payload = new common.Payload();
   payload.setHeader(header);
+
+  if (spec.config && spec.members) {
+    const application = new common.ConfigGroup();
+    for (const m of spec.members) {
+      const fabric = new msp.FabricMSPConfig();
+      fabric.setName(m.mspId);
+      fabric.setRootCertsList(m.rootCerts.map((c) => Buffer.from(c)));
+      const mspConfig = new msp.MSPConfig();
+      mspConfig.setType(0);
+      mspConfig.setConfig(fabric.serializeBinary());
+      const value = new common.ConfigValue();
+      value.setValue(mspConfig.serializeBinary());
+      const org = new common.ConfigGroup();
+      org.getValuesMap().set("MSP", value);
+      application.getGroupsMap().set(m.mspId, org);
+    }
+    const channelGroup = new common.ConfigGroup();
+    channelGroup.getGroupsMap().set("Application", application);
+    const config = new common.Config();
+    config.setChannelGroup(channelGroup);
+    const envelope = new common.ConfigEnvelope();
+    envelope.setConfig(config);
+    payload.setData(envelope.serializeBinary());
+  }
 
   if (!spec.config) {
     const input = new peer.ChaincodeInput();

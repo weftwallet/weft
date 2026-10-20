@@ -112,7 +112,11 @@ export class Indexer {
         this.update(channel, { state: "following", lastError: null });
         this.log.info(`Following ${channel} from block ${startBlock}`);
         for await (const block of blocks) {
-          this.db.addBlock(publishBlock(this.policy, decodeBlock(block)));
+          const decoded = decodeBlock(block);
+          // Config blocks say which organisations are members: who may sign in.
+          const config = decoded.transactions.find((t) => t.members);
+          if (config?.members) this.db.setMembers(channel, config.members);
+          this.db.addBlock(publishBlock(this.policy, decoded));
           this.update(channel, { lastBlockAt: Date.now() });
           delay = 1000;
         }

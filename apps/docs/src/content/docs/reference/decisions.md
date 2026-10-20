@@ -27,7 +27,7 @@ A Fabric ledger is readable only by channel members, so an explorer runs as an o
 
 **Trade-off:** a second service per organisation, with its own identity and database. Publishing is a disclosure decision, so everything starts hidden. For voting, the explorer can prove ballots were counted, not hide who voted from member organisations.
 
-The first phase is built: one organisation's explorer, `public` level only. See [Run an explorer](/operators/explorer/).
+The first two phases are built: one organisation's explorer, with `public` and `members` levels and sign-in with Weft. See [Run an explorer](/operators/explorer/).
 
 ## 0005: Keys are encrypted with a password, and Weft locks
 

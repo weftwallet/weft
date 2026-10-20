@@ -21,6 +21,13 @@ export interface Write {
   value: Uint8Array;
 }
 
+/** An application organisation in a channel, as its configuration describes it. */
+export interface ChannelMember {
+  mspId: string;
+  rootCerts: string[];
+  intermediateCerts: string[];
+}
+
 export interface DecodedTransaction {
   index: number;
   txId: string;
@@ -41,6 +48,8 @@ export interface DecodedTransaction {
   /** The contract's response, as returned to the submitter. */
   response: { status: number; message: string; payload: Uint8Array } | null;
   event: { name: string; payload: Uint8Array } | null;
+  /** Config transactions only: the channel's application organisations after this change. */
+  members?: ChannelMember[];
 }
 
 export interface DecodedBlock {
@@ -188,6 +197,34 @@ function unreadable(index: number, validation: string): DecodedTransaction {
   };
 }
 
+const pem = (der: Uint8Array) => {
+  const text = Buffer.from(der).toString("utf8");
+  // Fabric stores PEM text here; fall back to wrapping DER.
+  if (text.includes("BEGIN CERTIFICATE")) return text.trim();
+  return `-----BEGIN CERTIFICATE-----\n${Buffer.from(der).toString("base64").match(/.{1,64}/g)!.join("\n")}\n-----END CERTIFICATE-----`;
+};
+
+/** The application organisations a config transaction leaves the channel with. */
+function decodeMembers(data: Uint8Array): ChannelMember[] {
+  const config = common.ConfigEnvelope.deserializeBinary(data).getConfig();
+  const application = config?.getChannelGroup()?.getGroupsMap().get("Application");
+  if (!application) return [];
+  const members: ChannelMember[] = [];
+  application.getGroupsMap().forEach((group) => {
+    const value = group.getValuesMap().get("MSP");
+    if (!value) return;
+    const mspConfig = msp.MSPConfig.deserializeBinary(value.getValue_asU8());
+    if (mspConfig.getType() !== 0) return; // 0 is X.509; idemix organisations can't sign in this way
+    const fabric = msp.FabricMSPConfig.deserializeBinary(mspConfig.getConfig_asU8());
+    members.push({
+      mspId: fabric.getName(),
+      rootCerts: fabric.getRootCertsList_asU8().map(pem),
+      intermediateCerts: fabric.getIntermediateCertsList_asU8().map(pem),
+    });
+  });
+  return members.sort((a, b) => a.mspId.localeCompare(b.mspId));
+}
+
 function decodeEnvelope(raw: Uint8Array, index: number, validation: string): { tx: DecodedTransaction; channelId: string } {
   const envelope = common.Envelope.deserializeBinary(raw);
   const payload = common.Payload.deserializeBinary(envelope.getPayload_asU8());
@@ -220,6 +257,13 @@ function decodeEnvelope(raw: Uint8Array, index: number, validation: string): { t
       decodeEndorserTransaction(tx, payload.getData_asU8());
     } catch {
       /* A malformed transaction is still listed, with what could be read. */
+    }
+  }
+  if (type === "config") {
+    try {
+      tx.members = decodeMembers(payload.getData_asU8());
+    } catch {
+      /* listed without its membership */
     }
   }
   return { tx, channelId: channelHeader.getChannelId() };

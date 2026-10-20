@@ -1,6 +1,6 @@
 # 0004: An explorer that each organisation hosts
 
-**Status:** Accepted. Phase 1 is built (`apps/explorer`).
+**Status:** Accepted. Phases 1 and 2 are built (`apps/explorer`, `weft_signIn`).
 **Date:** 2026-10-20
 
 ## Context

@@ -2,16 +2,24 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
-import type { ExplorerDb } from "./db.ts";
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import { SignInError } from "@weftwallet/core";
+import { Auth, SESSION_COOKIE, type Viewer } from "./auth.ts";
+import type { ExplorerDb, TransactionRow } from "./db.ts";
 import type { ChannelStatus } from "./indexer.ts";
 import * as pages from "./pages.ts";
+import { channelLevel, contractLevel, viewTransaction, type Policy } from "./policy.ts";
 
 export interface ServerOptions {
   name: string;
+  /** Indexed channels (public and members). */
   channels: string[];
+  policy: Policy;
   db: ExplorerDb;
   status: () => ChannelStatus[];
+  auth?: Auth;
+  /** This explorer's public origin, e.g. https://explorer.org1.example. Sign-in messages must name it. */
+  publicUrl?: string;
   logger?: boolean;
 }
 
@@ -44,19 +52,37 @@ function int(value: unknown): number | undefined {
 }
 
 export function buildServer(options: ServerOptions): FastifyInstance {
-  const { db, channels } = options;
-  const site: pages.Site = { name: options.name, channels };
+  const { db, channels, policy } = options;
+  const auth = options.auth ?? new Auth();
   const app = Fastify({ logger: options.logger ?? false });
-  const published = (channel: string) => channels.includes(channel);
   const statusOf = (channel: string) => options.status().find((s) => s.channel === channel);
+  // Sign-in only matters when something is published to members.
+  const membersLevelExists = channels.some(
+    (c) => channelLevel(policy, c) === "members" || Object.values(policy.channels[c]?.contracts ?? {}).includes("members"),
+  );
+
+  /** Everything that depends on who's asking. */
+  function scope(request: FastifyRequest) {
+    const viewer = auth.read(request.headers.cookie);
+    const memberOf = (channel: string) => !!viewer && db.members(channel).some((m) => m.mspId === viewer.mspId);
+    const visible = channels.filter((c) => channelLevel(policy, c) === "public" || memberOf(c));
+    const canSee = (channel: string) => visible.includes(channel);
+    const canSeeContract = (channel: string, name: string) => {
+      const level = contractLevel(policy, channel, name);
+      return level === "public" || (level === "members" && memberOf(channel));
+    };
+    const view = (tx: TransactionRow) => viewTransaction(tx, memberOf(tx.channel));
+    const site: pages.Site = { name: options.name, channels: visible, viewer, signIn: membersLevelExists };
+    return { viewer, memberOf, visible, canSee, canSeeContract, view, site };
+  }
 
   const send = (reply: FastifyReply, body: string, code = 200) =>
-    reply.code(code).header("content-type", "text/html; charset=utf-8").header("cache-control", "no-cache").send(body);
-  const notFound = (reply: FastifyReply, what: string) => send(reply, pages.notFoundPage(site, what), 404);
+    reply.code(code).header("content-type", "text/html; charset=utf-8").header("cache-control", "no-store").send(body);
+  const notFound = (reply: FastifyReply, site: pages.Site, what: string) => send(reply, pages.notFoundPage(site, what), 404);
 
-  // Published data is public by definition, so other sites and other
-  // organisations' explorers may read the API.
   app.addHook("onSend", async (request, reply) => {
+    // Public data can be read by anyone, including other organisations'
+    // explorers. Cookies aren't sent cross-origin, so members-level data isn't.
     if (request.url.startsWith("/api/")) reply.header("access-control-allow-origin", "*");
     reply.header("x-content-type-options", "nosniff");
     reply.header("referrer-policy", "no-referrer");
@@ -71,63 +97,106 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     return reply.header("content-type", entry.type).header("cache-control", "public, max-age=86400").send(entry.body());
   });
 
+  /* Sign-in ---------------------------------------------------------- */
+
+  const originOf = (request: FastifyRequest) => options.publicUrl ?? `${request.protocol}://${request.host}`;
+
+  app.get("/auth/nonce", async (_request, reply) => reply.header("cache-control", "no-store").send({ nonce: auth.nonce() }));
+
+  app.post<{ Body: { message?: unknown; signature?: unknown; certificate?: unknown } }>("/auth/verify", async (request, reply) => {
+    try {
+      const membersOf = (mspId: string) => channels.flatMap((c) => db.members(c).filter((m) => m.mspId === mspId));
+      const viewer = await auth.verify(request.body ?? {}, originOf(request), membersOf);
+      const secure = originOf(request).startsWith("https:") ? "; Secure" : "";
+      reply.header(
+        "set-cookie",
+        `${SESSION_COOKIE}=${auth.cookie(viewer)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor((viewer.expires - Date.now()) / 1000)}${secure}`,
+      );
+      return { mspId: viewer.mspId, name: viewer.name };
+    } catch (error) {
+      const message = error instanceof SignInError ? error.message : "That sign-in couldn't be checked.";
+      return reply.code(401).send({ error: message });
+    }
+  });
+
+  // The sign-out button is a plain form post; it has no fields worth reading.
+  app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, _body, done) => done(null, {}));
+
+  app.post("/auth/sign-out", async (_request, reply) =>
+    reply.header("set-cookie", `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`).redirect("/", 303),
+  );
+
   /* Pages ------------------------------------------------------------ */
 
-  app.get("/", async (_request, reply) => {
-    const latest = channels.flatMap((c) => db.blocks(c, { limit: 8 })).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)).slice(0, 8);
-    return send(reply, pages.homePage(site, db.channels(channels), options.status(), latest, db.transactions(channels, { limit: 8 })));
+  app.get("/", async (request, reply) => {
+    const s = scope(request);
+    const latest = s.visible.flatMap((c) => db.blocks(c, { limit: 8 })).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)).slice(0, 8);
+    const txs = db.transactions(s.visible, { limit: 8 }).map(s.view);
+    return send(reply, pages.homePage(s.site, db.channels(s.visible), options.status(), latest, txs));
+  });
+
+  app.get("/me", async (request, reply) => {
+    const s = scope(request);
+    if (!s.viewer) return reply.redirect("/", 303);
+    const txs = s.viewer.name ? db.transactions(s.visible, { mspId: s.viewer.mspId, creatorName: s.viewer.name, limit: 50 }).map(s.view) : [];
+    return send(reply, pages.mePage(s.site, s.viewer, txs));
   });
 
   app.get<{ Params: { channel: string }; Querystring: { before?: string } }>("/channels/:channel", async (request, reply) => {
+    const s = scope(request);
     const { channel } = request.params;
-    if (!published(channel)) return notFound(reply, "That channel isn't published here.");
+    if (!s.canSee(channel)) return notFound(reply, s.site, "That channel isn't published here, or only its members can see it.");
     const [summary] = db.channels([channel]);
     const blocks = db.blocks(channel, { before: int(request.query.before), limit: PAGE });
-    return send(reply, pages.channelPage(site, summary!, statusOf(channel), blocks, db.contracts(channel)));
+    return send(reply, pages.channelPage(s.site, summary!, statusOf(channel), blocks, db.contracts(channel, s.memberOf(channel))));
   });
 
   app.get<{ Params: { channel: string; number: string } }>("/channels/:channel/blocks/:number", async (request, reply) => {
+    const s = scope(request);
     const { channel } = request.params;
     const number = int(request.params.number);
-    const found = published(channel) && number !== undefined ? db.block(channel, number) : null;
-    if (!found) return notFound(reply, "That block isn't here. It may not be indexed yet.");
+    const found = s.canSee(channel) && number !== undefined ? db.block(channel, number) : null;
+    if (!found) return notFound(reply, s.site, "That block isn't here. It may not be indexed yet.");
     const hasNext = db.block(channel, number! + 1) !== null;
-    return send(reply, pages.blockPage(site, found.block, found.transactions, hasNext));
+    return send(reply, pages.blockPage(s.site, found.block, found.transactions.map(s.view), hasNext));
   });
 
   app.get<{ Params: { channel: string; txId: string } }>("/channels/:channel/transactions/:txId", async (request, reply) => {
+    const s = scope(request);
     const { channel, txId } = request.params;
-    const tx = published(channel) ? db.transaction(channel, txId) : null;
-    if (!tx) return notFound(reply, "No published transaction has that ID.");
-    return send(reply, pages.transactionPage(site, tx));
+    const tx = s.canSee(channel) ? db.transaction(channel, txId) : null;
+    if (!tx) return notFound(reply, s.site, "No published transaction has that ID.");
+    return send(reply, pages.transactionPage(s.site, s.view(tx)));
   });
 
   app.get<{ Params: { channel: string; name: string }; Querystring: { before?: string } }>(
     "/channels/:channel/contracts/:name",
     async (request, reply) => {
+      const s = scope(request);
       const { channel, name } = request.params;
-      if (!published(channel)) return notFound(reply, "That channel isn't published here.");
+      if (!s.canSee(channel) || !s.canSeeContract(channel, name)) return notFound(reply, s.site, "No published transactions call that contract.");
       const before = int(request.query.before);
-      const txs = db.transactions(channels, { channel, chaincode: name, before, limit: 50 });
-      if (txs.length === 0 && before === undefined) return notFound(reply, "No published transactions call that contract.");
-      return send(reply, pages.contractPage(site, channel, name, txs, before));
+      const txs = db.transactions(s.visible, { channel, chaincode: name, before, limit: 50 }).map(s.view);
+      if (txs.length === 0 && before === undefined) return notFound(reply, s.site, "No published transactions call that contract.");
+      return send(reply, pages.contractPage(s.site, channel, name, txs, before));
     },
   );
 
   app.get<{ Querystring: { q?: string } }>("/search", async (request, reply) => {
+    const s = scope(request);
     const query = (request.query.q ?? "").trim();
-    const results = { blocks: [] as ReturnType<typeof db.blocks>, txs: [] as ReturnType<typeof db.transactions>, contracts: [] as { channel: string; chaincode: string }[] };
+    const results = { blocks: [] as ReturnType<typeof db.blocks>, txs: [] as TransactionRow[], contracts: [] as { channel: string; chaincode: string }[] };
     if (query) {
       const number = int(query.replace(/^#/, ""));
       if (number !== undefined) {
-        for (const c of channels) {
+        for (const c of s.visible) {
           const found = db.block(c, number);
           if (found) results.blocks.push(found.block);
         }
       }
-      if (/^[0-9a-f]{6,64}$/i.test(query)) results.txs = db.findTransactions(channels, query.toLowerCase());
-      for (const c of channels) {
-        for (const contract of db.contracts(c)) {
+      if (/^[0-9a-f]{6,64}$/i.test(query)) results.txs = db.findTransactions(s.visible, query.toLowerCase()).map(s.view);
+      for (const c of s.visible) {
+        for (const contract of db.contracts(c, s.memberOf(c))) {
           if (contract.chaincode.toLowerCase().includes(query.toLowerCase())) results.contracts.push({ channel: c, chaincode: contract.chaincode });
         }
       }
@@ -139,58 +208,72 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           return reply.redirect(`/channels/${encodeURIComponent(results.txs[0].channel)}/transactions/${results.txs[0].txId}`);
       }
     }
-    return send(reply, pages.searchPage(site, query, results));
+    return send(reply, pages.searchPage(s.site, query, results));
   });
 
-  /* API -------------------------------------------------------------- */
+  /* API: the same view as the pages, for whoever is asking ------------ */
 
-  app.get("/api/v1/status", async () => ({
-    name: options.name,
-    channels: db.channels(channels).map((c) => {
-      const s = statusOf(c.channel);
-      return { ...c, peerHeight: s?.peerHeight ?? null, state: s?.state ?? "starting" };
-    }),
-  }));
+  app.get("/api/v1/status", async (request) => {
+    const s = scope(request);
+    return {
+      name: options.name,
+      viewer: s.viewer ? { mspId: s.viewer.mspId, name: s.viewer.name } : null,
+      channels: db.channels(s.visible).map((c) => {
+        const st = statusOf(c.channel);
+        return { ...c, level: channelLevel(policy, c.channel), peerHeight: st?.peerHeight ?? null, state: st?.state ?? "starting" };
+      }),
+    };
+  });
 
   app.get<{ Params: { channel: string }; Querystring: { before?: string; limit?: string } }>(
     "/api/v1/channels/:channel/blocks",
     async (request, reply) => {
-      if (!published(request.params.channel)) return reply.code(404).send({ error: "not published" });
+      if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
       const limit = Math.min(int(request.query.limit) ?? PAGE, 100);
       return db.blocks(request.params.channel, { before: int(request.query.before), limit });
     },
   );
 
   app.get<{ Params: { channel: string; number: string } }>("/api/v1/channels/:channel/blocks/:number", async (request, reply) => {
+    const s = scope(request);
     const number = int(request.params.number);
-    const found = published(request.params.channel) && number !== undefined ? db.block(request.params.channel, number) : null;
-    return found ?? reply.code(404).send({ error: "not found" });
+    const found = s.canSee(request.params.channel) && number !== undefined ? db.block(request.params.channel, number) : null;
+    return found ? { block: found.block, transactions: found.transactions.map(s.view) } : reply.code(404).send({ error: "not found" });
   });
 
   app.get<{ Params: { channel: string }; Querystring: { contract?: string; org?: string; before?: string; limit?: string } }>(
     "/api/v1/channels/:channel/transactions",
     async (request, reply) => {
+      const s = scope(request);
       const { channel } = request.params;
-      if (!published(channel)) return reply.code(404).send({ error: "not published" });
+      if (!s.canSee(channel)) return reply.code(404).send({ error: "not found" });
       const q = request.query;
-      return db.transactions(channels, {
-        channel,
-        chaincode: q.contract,
-        mspId: q.org,
-        before: int(q.before),
-        limit: Math.min(int(q.limit) ?? PAGE, 100),
-      });
+      if (q.contract && !s.canSeeContract(channel, q.contract)) return [];
+      return db
+        .transactions(s.visible, {
+          channel,
+          chaincode: q.contract,
+          mspId: q.org,
+          // Filtering by organisation mustn't reveal who submitted members-only transactions.
+          publicOnly: !!q.org && !s.memberOf(channel),
+          before: int(q.before),
+          limit: Math.min(int(q.limit) ?? PAGE, 100),
+        })
+        .map(s.view);
     },
   );
 
   app.get<{ Params: { channel: string; txId: string } }>("/api/v1/channels/:channel/transactions/:txId", async (request, reply) => {
-    const tx = published(request.params.channel) ? db.transaction(request.params.channel, request.params.txId) : null;
-    return tx ?? reply.code(404).send({ error: "not found" });
+    const s = scope(request);
+    const tx = s.canSee(request.params.channel) ? db.transaction(request.params.channel, request.params.txId) : null;
+    return tx ? s.view(tx) : reply.code(404).send({ error: "not found" });
   });
 
   app.setNotFoundHandler((request, reply) =>
-    request.url.startsWith("/api/") ? reply.code(404).send({ error: "not found" }) : notFound(reply, "There's no page here."),
+    request.url.startsWith("/api/") ? reply.code(404).send({ error: "not found" }) : notFound(reply, scope(request).site, "There's no page here."),
   );
 
   return app;
 }
+
+export type { Viewer };

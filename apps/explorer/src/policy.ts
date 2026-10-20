@@ -73,22 +73,26 @@ export function loadPolicy(path: string): Policy {
   return parsePolicy(parse(readFileSync(path, "utf8")));
 }
 
-/**
- * Phase 1 shows `public` only. `members` needs sign-in with Weft (phase 2),
- * so until then it's treated as hidden: nothing is shown that the policy
- * didn't make public.
- */
+/** Channels the explorer indexes: everything not hidden. */
 export function publishedChannels(policy: Policy): string[] {
   return Object.entries(policy.channels)
-    .filter(([, c]) => c.level === "public")
+    .filter(([, c]) => c.level !== "hidden")
     .map(([name]) => name);
 }
 
+export function channelLevel(policy: Policy, channel: string): Level {
+  return policy.channels[channel]?.level ?? "hidden";
+}
+
+const OPENNESS: Record<Level, number> = { hidden: 0, members: 1, public: 2 };
+
+/** A contract is never more open than its channel. */
 export function contractLevel(policy: Policy, channel: string, contract: string | null): Level {
   const c = policy.channels[channel];
-  if (!c || c.level !== "public") return "hidden";
+  if (!c || c.level === "hidden") return "hidden";
   if (contract === null) return c.level;
-  return c.contracts[contract] ?? c.level;
+  const own = c.contracts[contract] ?? c.level;
+  return OPENNESS[own] < OPENNESS[c.level] ? own : c.level;
 }
 
 /** A value as it's stored and shown: text where it's text, otherwise hex, or only its hash. */
@@ -118,15 +122,19 @@ export interface PublishedTransaction {
   typeName: string;
   timestamp: number | null;
   validation: string;
-  /** The contract isn't published: only the ID, time and status are shown. */
+  /** Who may see the details: "members" means signed-in members of the channel. */
+  level: "public" | "members";
+  /** Details withheld: a hidden contract, or members-only details for someone not signed in as a member. */
   redacted: boolean;
+  /** Set when the details are withheld only because the viewer isn't a signed-in member. */
+  membersOnly?: boolean;
   creator: PublishedParty | null;
   chaincode: string | null;
   fn: string | null;
   args: ShownValue[];
   endorsers: PublishedParty[];
   reads: number;
-  writes: { namespace: string; key: string; isDelete: boolean; value: ShownValue | null }[];
+  writes: { namespace: string; key: string; isDelete: boolean; value: ShownValue | null; level: "public" | "members" }[];
   response: { status: number; message: string; payload: ShownValue } | null;
   event: { name: string; payload: ShownValue } | null;
 }
@@ -149,15 +157,19 @@ export function publishTransaction(policy: Policy, channel: string, tx: DecodedT
     validation: tx.validation,
   };
   const empty = { creator: null, chaincode: null, fn: null, args: [], endorsers: [], reads: 0, writes: [], response: null, event: null };
+  const channelOpen = c.level === "public" ? "public" : "members";
 
   // Channel configuration: who made the change matters; the config itself is a later feature.
   if (tx.type !== "endorser") {
-    return { ...base, ...empty, redacted: false, creator: c.submitter === "show" && tx.creator ? partyView(tx.creator) : null };
+    return { ...base, ...empty, level: channelOpen, redacted: false, creator: c.submitter === "show" && tx.creator ? partyView(tx.creator) : null };
   }
-  if (contractLevel(policy, channel, tx.chaincode) !== "public") return { ...base, ...empty, redacted: true };
+  const level = contractLevel(policy, channel, tx.chaincode);
+  // A hidden contract's transaction is listed with its ID, time and status, so block counts stay true.
+  if (level === "hidden") return { ...base, ...empty, level: channelOpen, redacted: true };
 
   return {
     ...base,
+    level,
     redacted: false,
     creator: c.submitter === "show" && tx.creator ? partyView(tx.creator) : null,
     chaincode: tx.chaincode,
@@ -167,9 +179,11 @@ export function publishTransaction(policy: Policy, channel: string, tx: DecodedT
     endorsers: tx.endorsers.map(partyView),
     reads: tx.reads,
     // A transaction can write to other contracts it called; each keeps its own level.
-    writes: tx.writes
-      .filter((w) => contractLevel(policy, channel, w.namespace) === "public")
-      .map((w) => ({ namespace: w.namespace, key: w.key, isDelete: w.isDelete, value: w.isDelete ? null : shown(w.value, c.values) })),
+    writes: tx.writes.flatMap((w) => {
+      const writeLevel = contractLevel(policy, channel, w.namespace);
+      if (writeLevel === "hidden") return [];
+      return [{ namespace: w.namespace, key: w.key, isDelete: w.isDelete, value: w.isDelete ? null : shown(w.value, c.values), level: writeLevel }];
+    }),
     response: tx.response
       ? { status: tx.response.status, message: tx.response.message, payload: shown(tx.response.payload, c.values) }
       : null,
@@ -179,4 +193,29 @@ export function publishTransaction(policy: Policy, channel: string, tx: DecodedT
 
 export function publishBlock(policy: Policy, block: DecodedBlock): PublishedBlock {
   return { ...block, transactions: block.transactions.map((tx) => publishTransaction(policy, block.channel, tx)) };
+}
+
+/**
+ * What one viewer sees of a stored transaction. Members of the channel, signed
+ * in, see members-level details; everyone else sees those as withheld.
+ */
+export function viewTransaction<T extends PublishedTransaction>(tx: T, member: boolean): T {
+  if (member) return tx;
+  if (tx.level === "members") {
+    return {
+      ...tx,
+      redacted: true,
+      membersOnly: true,
+      creator: null,
+      chaincode: null,
+      fn: null,
+      args: [],
+      endorsers: [],
+      reads: 0,
+      writes: [],
+      response: null,
+      event: null,
+    };
+  }
+  return { ...tx, writes: tx.writes.filter((w) => w.level === "public") };
 }

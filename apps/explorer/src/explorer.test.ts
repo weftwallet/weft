@@ -27,7 +27,7 @@ const policy = parsePolicy({
   organisation: "Org1",
   channels: {
     mychannel: { level: "public", contracts: { ballot: "hidden" } },
-    other: { level: "members" },
+    other: { level: "hidden" },
   },
 });
 
@@ -72,6 +72,7 @@ describe("policy", () => {
   it("starts hidden and publishes only public channels for now", () => {
     expect(parsePolicy({ channels: { a: {} } }).channels.a!.level).toBe("hidden");
     expect(publishedChannels(policy)).toEqual(["mychannel"]);
+    expect(publishedChannels(parsePolicy({ channels: { a: { level: "members" }, b: { level: "hidden" } } }))).toEqual(["a"]);
     expect(() => parsePolicy({ channels: { a: { level: "open" } } })).toThrow(/public, members, hidden/);
   });
 
@@ -80,7 +81,7 @@ describe("policy", () => {
     const [vote, del] = published[2]!.transactions;
     expect(vote).toMatchObject({ txId: "cc3300", redacted: true, chaincode: null, fn: null, args: [], writes: [], creator: null });
     // A public contract's call keeps its own writes but not the hidden contract's.
-    expect(del!.writes).toEqual([{ namespace: "basic", key: "asset1", isDelete: true, value: null }]);
+    expect(del!.writes).toEqual([{ namespace: "basic", key: "asset1", isDelete: true, value: null, level: "public" }]);
   });
 
   it("can publish values as hashes and hide submitters", () => {
@@ -97,7 +98,7 @@ describe("server", () => {
   const setup = () => {
     const db = new ExplorerDb(":memory:");
     for (const b of blocks()) db.addBlock(publishBlock(policy, decodeBlock(b)));
-    const app = buildServer({ name: "Org1", channels: publishedChannels(policy), db, status: () => [] });
+    const app = buildServer({ name: "Org1", channels: publishedChannels(policy), policy, db, status: () => [] });
     return { db, app };
   };
 
@@ -122,7 +123,7 @@ describe("server", () => {
     expect(conflict.body).toContain("Someone else changed the same data first");
 
     const hidden = await app.inject("/channels/mychannel/transactions/cc3300");
-    expect(hidden.body).toContain("doesn't publish");
+    expect(hidden.body).toContain("doesn&#39;t publish");
     expect(hidden.body).not.toContain("secret");
 
     expect((await app.inject("/channels/other")).statusCode).toBe(404);
@@ -147,7 +148,7 @@ describe("server", () => {
     const db = new ExplorerDb(":memory:");
     const evil = chain("mychannel", [{ txs: [{ txId: "ee55", chaincode: "basic", args: ["<script>alert(1)</script>"] }] }]);
     db.addBlock(publishBlock(policy, decodeBlock(evil[0]!)));
-    const app = buildServer({ name: "Org1", channels: ["mychannel"], db, status: () => [] });
+    const app = buildServer({ name: "Org1", channels: ["mychannel"], policy, db, status: () => [] });
     const page = await app.inject("/channels/mychannel/transactions/ee55");
     expect(page.body).not.toContain("<script>alert(1)");
     expect(page.body).toContain("&#60;script&#62;");

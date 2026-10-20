@@ -115,7 +115,8 @@ export class Wallet {
 
   /** Calls the background worker the way the popup does. */
   async ui<T = any>(method: string, payload?: unknown): Promise<T> {
-    const page = this.context.pages().find((p) => p.url().startsWith(this.url(""))) ?? (await this.popup());
+    // Use a popup tab: approval and passkey windows close themselves when they finish.
+    const page = this.context.pages().find((p) => p.url().startsWith(this.url("popup.html"))) ?? (await this.popup());
     const response = await page.evaluate(
       ([m, p]) => (globalThis as any).chrome.runtime.sendMessage({ channel: "weft-ui", method: m, payload: p }),
       [method, payload] as const,

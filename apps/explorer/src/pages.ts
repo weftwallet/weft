@@ -7,11 +7,16 @@ import { explainStatus } from "@weftwallet/core";
 import type { BlockRow, ChannelSummary, TransactionRow } from "./db.ts";
 import { html, raw, type Html } from "./html.ts";
 import type { ChannelStatus } from "./indexer.ts";
+import type { Viewer } from "./auth.ts";
 import type { PublishedParty, ShownValue } from "./policy.ts";
 
 export interface Site {
   name: string;
+  /** Channels this viewer can see. */
   channels: string[];
+  viewer: Viewer | null;
+  /** Whether anything is published to members, so signing in is worth offering. */
+  signIn: boolean;
 }
 
 const MARK = raw(`<svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
@@ -65,6 +70,7 @@ function value(v: ShownValue | null): Html {
 }
 
 function call(tx: TransactionRow): Html {
+  if (tx.membersOnly) return html`<span class="subtle">members only</span>`;
   if (tx.redacted) return html`<span class="subtle">unpublished contract</span>`;
   if (tx.type === "config") return html`<span>Channel configuration</span>`;
   if (!tx.chaincode) return html`<span class="subtle">${tx.typeName.toLowerCase()}</span>`;
@@ -89,8 +95,10 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
     <form class="search" action="/search" role="search">
       <input name="q" type="search" value="${options.query ?? ""}" placeholder="Transaction ID, block number or contract" aria-label="Search" spellcheck="false" autocomplete="off">
     </form>
+    ${account(site)}
   </div>
 </header>
+<p class="signin-note" id="signin-note" role="alert" hidden></p>
 <main class="wrap">${body}</main>
 <footer class="wrap foot">
   <span>Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish.</span>
@@ -103,9 +111,59 @@ document.querySelectorAll("time[datetime]").forEach(function (el) {
   if (t) el.textContent = t;
 });
 ${options.live ? raw(LIVE) : ""}
+${site.signIn && !site.viewer ? raw(signInScript(site.name)) : ""}
 </script>
 </body>
 </html>`.value;
+}
+
+function account(site: Site): Html {
+  if (site.viewer) {
+    return html`<div class="account">
+      <a href="/me" title="Your transactions">${site.viewer.name ?? "Signed in"} <span class="mono subtle">${site.viewer.mspId}</span></a>
+      <form method="post" action="/auth/sign-out"><button type="submit" class="link-button">Sign out</button></form>
+    </div>`;
+  }
+  if (!site.signIn) return html``;
+  return html`<button type="button" class="signin" id="signin">${MARK_SMALL}<span>Sign in with Weft</span></button>`;
+}
+
+const MARK_SMALL = raw(MARK.value.replace('width="24" height="24"', 'width="16" height="16"'));
+
+/**
+ * Sign-in: connect, get a nonce, ask Weft to sign in, send the result back.
+ * The server checks the signature and that the certificate belongs to a
+ * member organisation, then sets a session cookie.
+ */
+function signInScript(name: string): string {
+  const statement = JSON.stringify(`Sign in to ${name}'s explorer`).replace(/</g, "\\u003c");
+  return `
+(function () {
+  var button = document.getElementById("signin");
+  var note = document.getElementById("signin-note");
+  if (!button) return;
+  var label = button.querySelector("span");
+  function say(text) { note.textContent = text; note.hidden = false; }
+  button.addEventListener("click", async function () {
+    note.hidden = true;
+    var weft = window.weft;
+    if (!weft) { say("Install Weft to sign in. This explorer checks your organisation's identity, which Weft holds."); return; }
+    button.disabled = true;
+    label.textContent = "Waiting for Weft…";
+    try {
+      await weft.request({ method: "weft_connect" });
+      var nonce = (await (await fetch("/auth/nonce")).json()).nonce;
+      var signed = await weft.request({ method: "weft_signIn", params: { nonce: nonce, statement: ${statement} } });
+      var res = await fetch("/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(signed) });
+      if (!res.ok) throw new Error((await res.json()).error);
+      location.reload();
+    } catch (error) {
+      say(error && error.code === 4001 ? "Sign-in cancelled." : (error && error.message) || "Sign-in didn't work. Try again.");
+      button.disabled = false;
+      label.textContent = "Sign in with Weft";
+    }
+  });
+})();`;
 }
 
 /**
@@ -210,12 +268,12 @@ function txRows(txs: TransactionRow[], options: { showBlock?: boolean } = {}): H
 
 export function homePage(site: Site, channels: ChannelSummary[], statuses: ChannelStatus[], latest: BlockRow[], txs: TransactionRow[]): string {
   if (site.channels.length === 0) {
-    return layout(
-      site,
-      "Nothing published",
-      html`<section class="hero"><h1>Nothing is published yet</h1>
-<p class="lead">${site.name} hasn't made any channel public. Operators: set <code>level: public</code> for a channel in the explorer's policy file and restart it.</p></section>`,
-    );
+    const lead = site.signIn && !site.viewer
+      ? html`${site.name} publishes its channels to members only. Sign in with Weft, with an identity from a member organisation, to see them.`
+      : site.viewer
+        ? html`None of the channels ${site.name} publishes lists ${site.viewer.mspId} as a member.`
+        : html`${site.name} hasn't published any channel. Operators: set <code>level: public</code> or <code>level: members</code> for a channel in the explorer's policy file and restart it.`;
+    return layout(site, "Nothing to show", html`<section class="hero"><h1>Nothing to show yet</h1><p class="lead">${lead}</p></section>`);
   }
   return layout(
     site,
@@ -312,7 +370,13 @@ export function transactionPage(site: Site, tx: TransactionRow): string {
   ${ok ? "" : html`<span>It's recorded in the block, but none of its changes were applied. <span class="mono">${tx.validation}</span></span>`}
 </section>
 ${tx.redacted
-  ? html`<section class="card"><p>This transaction called a contract ${site.name} doesn't publish. Only its ID, block, time and status are shown.</p>
+  ? html`<section class="card"><p>${
+      tx.membersOnly
+        ? site.viewer
+          ? `Only members of ${tx.channel} can see this transaction's details, and ${site.viewer.mspId} isn't one.`
+          : `Only members of ${tx.channel} can see this transaction's details. Sign in with Weft if your organisation is one.`
+        : `This transaction called a contract ${site.name} doesn't publish. Only its ID, block, time and status are shown.`
+    }</p>
 <dl class="details"><dt>Block</dt><dd><a class="mono" href="${blockUrl(tx.channel, tx.blockNumber)}">#${tx.blockNumber}</a></dd><dt>Time</dt><dd>${time(tx.timestamp)}</dd></dl></section>`
   : html`<section class="card">
   <dl class="details">
@@ -371,4 +435,17 @@ ${results.txs.length ? html`<section><h2>Transactions</h2>${txRows(results.txs)}
 
 export function notFoundPage(site: Site, what: string): string {
   return layout(site, "Not found", html`<h1>Not found</h1><p class="empty">${what}</p><p><a href="/">Back to the overview</a></p>`);
+}
+
+export function mePage(site: Site, viewer: Viewer, txs: TransactionRow[]): string {
+  return layout(
+    site,
+    "Your transactions",
+    html`<nav class="crumbs"><a href="/">Overview</a></nav>
+<h1>${viewer.name ?? "Your identity"}</h1>
+<p class="lead">Signed in with Weft as <span class="mono">${viewer.mspId}</span>. You see what ${site.name} publishes to the members of ${
+      site.channels.length === 1 ? site.channels[0] : "your channels"
+    }.</p>
+<section><h2>Transactions you submitted</h2>${txRows(txs)}</section>`,
+  );
 }

@@ -17,6 +17,10 @@ export interface ExplorerConfig {
   policy: Policy;
   /** Shown in the page header, e.g. "Org1". Defaults to the policy's organisation or the MSP ID. */
   name: string;
+  /** The origin people open the explorer at. Sign-ins must name it. Defaults to the request's own. */
+  publicUrl: string | undefined;
+  /** Signs session cookies. Random per start if unset, which signs everyone out on restart. */
+  sessionSecret: string | undefined;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string, example: string): string {
@@ -55,5 +59,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
     databasePath: env.WEFT_EXPLORER_DB ?? "explorer.db",
     policy,
     name: env.WEFT_EXPLORER_NAME || policy.organisation || mspId,
+    publicUrl: env.WEFT_EXPLORER_PUBLIC_URL ? new URL(env.WEFT_EXPLORER_PUBLIC_URL).origin : undefined,
+    sessionSecret: env.WEFT_EXPLORER_SESSION_SECRET || undefined,
   };
 }

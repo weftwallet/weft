@@ -22,7 +22,7 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const EXTENSION = join(ROOT, "apps/extension/.output-e2e/chrome-mv3");
 const DOCS_DIST = join(ROOT, "apps/docs/dist");
 
-export const PORTS = { ca: 7054, caShort: 7055, proxy: 7080, proxyShort: 7081, relay: 8787, docs: 4321, site: 5175 } as const;
+export const PORTS = { ca: 7054, caShort: 7055, proxy: 7080, proxyShort: 7081, relay: 8787, docs: 4321, site: 5175, explorer: 8790 } as const;
 
 export interface StackInfo {
   mode: "ca" | "playground";
@@ -38,6 +38,8 @@ export interface StackInfo {
   shortUsers: Record<string, string>;
   /** Base URL of the built docs site, or null when it isn't built. */
   docsUrl: string | null;
+  /** The playground's explorer, when it's running (playground mode only). */
+  explorerUrl: string | null;
 }
 
 const processes: ChildProcess[] = [];
@@ -176,10 +178,14 @@ export async function startStack(): Promise<StackInfo> {
   if (mode === "playground") {
     const inviteUrl = `http://localhost:${PORTS.relay}/.well-known/weft-invite.json`;
     await waitFor(inviteUrl, "The playground relay (run pnpm playground:up first)", 5000);
+    const explorerUrl = await fetch(`http://localhost:${PORTS.explorer}/api/v1/status`).then(
+      (r) => (r.ok ? `http://localhost:${PORTS.explorer}` : null),
+      () => null,
+    );
     return {
       mode, inviteUrl, shortInviteUrl: null,
       caUrl: `http://localhost:${PORTS.proxy}`, relayUrl: `http://localhost:${PORTS.relay}`,
-      users: { alice: "alicepw", bob: "bobpw" }, shortUsers: {}, docsUrl,
+      users: { alice: "alicepw", bob: "bobpw" }, shortUsers: {}, docsUrl, explorerUrl,
     };
   }
 
@@ -225,7 +231,7 @@ export async function startStack(): Promise<StackInfo> {
   return {
     mode, inviteUrl: `${relayUrl}/.well-known/weft-invite.json`,
     shortInviteUrl: `http://localhost:${PORTS.proxyShort + 1000}/invite.json`,
-    caUrl: invite.caUrl, relayUrl, users, shortUsers, docsUrl,
+    caUrl: invite.caUrl, relayUrl, users, shortUsers, docsUrl, explorerUrl: null,
   };
 }
 
