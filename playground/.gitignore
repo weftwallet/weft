@@ -1,0 +1,3 @@
+# Downloaded Fabric samples, binaries and the stack's runtime state
+.fabric/
+.state/
