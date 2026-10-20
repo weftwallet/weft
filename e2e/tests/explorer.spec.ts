@@ -39,3 +39,16 @@ test("signing in to the explorer with Weft shows what members see", { tag: "@fab
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("button", { name: "Sign in with Weft" })).toBeVisible();
 });
+
+// The playground runs explorers for Org1 and Org2, each from its own peer.
+test("the playground's two explorers agree on mychannel", { tag: "@fabric" }, async ({ wallet }) => {
+  const s = stack();
+  test.skip(!s.explorerUrl, "The playground explorer isn't running.");
+  const page = await wallet.context.newPage();
+  await page.goto(s.explorerUrl!);
+  await expect
+    .poll(async () => page.evaluate(async () => (await (await fetch("/api/v1/channels/mychannel/organisations")).json())), { timeout: 40_000 })
+    .toEqual([expect.objectContaining({ mspId: "Org2MSP", state: "agree" })]);
+  await page.goto(`${s.explorerUrl}/channels/mychannel/blocks/1`);
+  await expect(page.getByText("2 of 2 organisations report this block")).toBeVisible();
+});

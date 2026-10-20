@@ -8,6 +8,7 @@ import type { BlockRow, ChannelSummary, TransactionRow } from "./db.ts";
 import { html, raw, type Html } from "./html.ts";
 import type { ChannelStatus } from "./indexer.ts";
 import type { Viewer } from "./auth.ts";
+import { agreementFor, type PeerStatus } from "./checkpoints.ts";
 import type { PublishedParty, ShownValue } from "./policy.ts";
 
 export interface Site {
@@ -17,6 +18,8 @@ export interface Site {
   viewer: Viewer | null;
   /** Whether anything is published to members, so signing in is worth offering. */
   signIn: boolean;
+  /** The other organisations' explorers' reports for a channel. Empty when none are configured. */
+  peers: (channel: string) => PeerStatus[];
 }
 
 const MARK = raw(`<svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
@@ -213,7 +216,7 @@ const LIVE = `
   setInterval(relative, 30000);
 })();`;
 
-function channelCard(c: ChannelSummary, s: ChannelStatus | undefined): Html {
+function channelCard(site: Site, c: ChannelSummary, s: ChannelStatus | undefined): Html {
   const behind = s?.peerHeight != null ? s.peerHeight - c.height : 0;
   const problems = c.brokenLinks + c.badDataHashes;
   return html`<section class="card channel">
@@ -233,18 +236,62 @@ function channelCard(c: ChannelSummary, s: ChannelStatus | undefined): Html {
         ? `Each of the ${c.height.toLocaleString("en")} blocks carries the hash of the one before, and every one checks out.`
         : "No blocks indexed yet."}
   </p>
+  ${crossCheckSummary(site.peers(c.channel), c.height)}
 </section>`;
 }
 
-function blockRows(blocks: BlockRow[]): Html {
+const ORG_STATE: Record<PeerStatus["state"], string> = {
+  agree: "agrees",
+  pending: "waiting for a checkpoint",
+  mismatch: "disagrees",
+  invalid: "sent a checkpoint that failed the checks",
+  unreachable: "couldn't be reached",
+};
+
+/** One line per organisation the explorer compares with, and how far they agree. */
+function crossCheckSummary(peers: PeerStatus[], height: number): Html {
+  if (peers.length === 0) return html``;
+  const latest = height - 1;
+  const agreeing = peers.filter((p) => p.state === "agree" && p.agreedUpTo !== null).length;
+  return html`<div class="orgs">
+    <div class="orgs__head"><span>Compared with other organisations</span><span class="mono subtle">${agreeing + 1} of ${peers.length + 1} agree</span></div>
+    <ul>${peers.map(
+      (p) => html`<li class="peer peer--${p.state}" title="${p.detail ?? ""}">
+        <span class="peer__dot"></span>
+        <span class="mono">${p.mspId ?? new URL(p.url).host}</span>
+        <span class="subtle">${
+          p.state === "agree" && p.agreedUpTo !== null
+            ? p.agreedUpTo >= latest
+              ? "agrees on every block"
+              : `agrees up to #${p.agreedUpTo}`
+            : p.state === "mismatch" && p.mismatchAt !== null
+              ? `disagrees at #${p.mismatchAt}`
+              : ORG_STATE[p.state]
+        }</span>
+      </li>`,
+    )}</ul>
+  </div>`;
+}
+
+function agreementCell(site: Site, b: BlockRow): Html {
+  const peers = site.peers(b.channel);
+  if (peers.length === 0) return html``;
+  const a = agreementFor(b.number, peers);
+  const cls = a.mismatched.length ? "pill--bad" : a.agree === a.total ? "pill--ok" : "pill--quiet";
+  return html`<td><span class="pill ${cls}" title="${a.mismatched.length ? `Disagree: ${a.mismatched.join(", ")}` : `${a.agree} of ${a.total} organisations report this block`}">${a.agree}/${a.total}</span></td>`;
+}
+
+function blockRows(site: Site, blocks: BlockRow[]): Html {
+  const compared = blocks.some((b) => site.peers(b.channel).length > 0);
   return html`<table class="table">
-  <thead><tr><th>Block</th><th>Time</th><th class="num">Transactions</th><th>Hash</th></tr></thead>
+  <thead><tr><th>Block</th><th>Time</th><th class="num">Transactions</th><th>Hash</th>${compared ? html`<th>Agree</th>` : ""}</tr></thead>
   <tbody>${blocks.map(
     (b) => html`<tr>
     <td><a class="mono" href="${blockUrl(b.channel, b.number)}">#${b.number}</a>${b.linked === false || !b.dataHashValid ? html` <span class="pill pill--bad">mismatch</span>` : ""}</td>
     <td>${time(b.timestamp)}</td>
     <td class="num mono">${b.txCount}${b.validCount < b.txCount ? html` <span class="subtle">(${b.txCount - b.validCount} invalid)</span>` : ""}</td>
     <td class="mono subtle">${short(b.hash)}</td>
+    ${agreementCell(site, b)}
   </tr>`,
   )}</tbody>
 </table>`;
@@ -282,9 +329,9 @@ export function homePage(site: Site, channels: ChannelSummary[], statuses: Chann
   <h1>${site.name}'s view of the ledger</h1>
   <p class="lead">Blocks and transactions as ${site.name}'s peers recorded them, checked block by block here.</p>
 </section>
-<div class="grid">${channels.map((c) => channelCard(c, statuses.find((s) => s.channel === c.channel)))}</div>
+<div class="grid">${channels.map((c) => channelCard(site, c, statuses.find((s) => s.channel === c.channel)))}</div>
 <div class="split">
-  <section><h2>Latest blocks</h2>${blockRows(latest)}</section>
+  <section><h2>Latest blocks</h2>${blockRows(site, latest)}</section>
   <section><h2>Latest transactions</h2>${txRows(txs, { showBlock: false })}</section>
 </div>`,
     { live: true },
@@ -304,7 +351,7 @@ export function channelPage(
     channel.channel,
     html`<nav class="crumbs"><a href="/">Overview</a></nav>
 <h1 class="mono">${channel.channel}</h1>
-<div class="grid">${channelCard(channel, s)}
+<div class="grid">${channelCard(site, channel, s)}
   <section class="card">
     <h2 class="card__title">Contracts</h2>
     ${contracts.length === 0
@@ -314,7 +361,7 @@ export function channelPage(
         )}</ul>`}
   </section>
 </div>
-<section><h2>Blocks</h2>${blockRows(blocks)}
+<section><h2>Blocks</h2>${blockRows(site, blocks)}
 ${oldest !== undefined && oldest > 0 ? html`<a class="more" href="/channels/${enc(channel.channel)}?before=${oldest}">Older blocks</a>` : ""}
 </section>`,
     { live: true },
@@ -325,6 +372,23 @@ function hashLine(label: string, value: string, check: boolean | null, okText: s
   return html`<dt>${label}</dt><dd><span class="mono hash">${value}</span>${
     check === null ? "" : check ? html`<div class="ok small">${okText}</div>` : html`<div class="bad small">${badText}</div>`
   }</dd>`;
+}
+
+/** Which organisations report this block with the same hash. */
+function blockAgreement(site: Site, block: BlockRow): Html {
+  const peers = site.peers(block.channel);
+  if (peers.length === 0) return html``;
+  const a = agreementFor(block.number, peers);
+  const verdict = a.mismatched.length
+    ? `${a.mismatched.join(", ")} ${a.mismatched.length === 1 ? "has" : "have"} a different block here. One of the ledgers isn't what was originally recorded.`
+    : a.agree === a.total
+      ? `Every organisation compared reports this block with the same hash.`
+      : `${a.agree} of ${a.total} organisations report this block with the same hash so far. The others haven't sent a checkpoint that covers it yet.`;
+  return html`<section class="banner ${a.mismatched.length ? "banner--bad" : a.agree === a.total ? "banner--ok" : "banner--quiet"}">
+  <strong>${a.agree} of ${a.total} organisations report this block</strong>
+  <span>${verdict}</span>
+  <span class="small">Each organisation's explorer signs the latest block it has. Because every block carries the hash of the one before, one matching signature covers every block up to it.</span>
+</section>`;
 }
 
 export function blockPage(site: Site, block: BlockRow, txs: TransactionRow[], hasNext: boolean): string {
@@ -355,6 +419,7 @@ export function blockPage(site: Site, block: BlockRow, txs: TransactionRow[], ha
   </dl>
   <p class="subtle small">The hash is computed here from the block header. Every block stores the hash of the one before it, so changing an old block breaks every link after it.</p>
 </section>
+${blockAgreement(site, block)}
 <section><h2>Transactions</h2>${txRows(txs, { showBlock: false })}</section>`,
   );
 }
@@ -426,7 +491,7 @@ ${query === ""
   ? html`<p class="empty">Search by transaction ID (or its start), block number, or contract name.</p>`
   : none
     ? html`<p class="empty">Nothing published matches <span class="mono">${query}</span>.</p>`
-    : html`${results.blocks.length ? html`<section><h2>Blocks</h2>${blockRows(results.blocks)}</section>` : ""}
+    : html`${results.blocks.length ? html`<section><h2>Blocks</h2>${blockRows(site, results.blocks)}</section>` : ""}
 ${results.contracts.length ? html`<section><h2>Contracts</h2><ul class="contracts">${results.contracts.map((c) => html`<li><a class="mono" href="${contractUrl(c.channel, c.chaincode)}">${c.chaincode}</a><span class="subtle mono">${c.channel}</span></li>`)}</ul></section>` : ""}
 ${results.txs.length ? html`<section><h2>Transactions</h2>${txRows(results.txs)}</section>` : ""}`}`,
     { query },

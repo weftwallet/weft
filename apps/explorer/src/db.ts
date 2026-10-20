@@ -5,6 +5,7 @@
  */
 
 import { DatabaseSync } from "node:sqlite";
+import type { PeerStatus } from "./checkpoints.ts";
 import type { ChannelMember } from "./decode.ts";
 import type { PublishedBlock, PublishedTransaction } from "./policy.ts";
 
@@ -114,9 +115,25 @@ export class ExplorerDb {
   usePolicy(fingerprint: string): boolean {
     const row = this.db.prepare("SELECT value FROM meta WHERE key = 'policy'").get() as Row | undefined;
     if (row?.value === fingerprint) return false;
-    this.db.exec("DELETE FROM blocks; DELETE FROM transactions; DELETE FROM meta WHERE key LIKE 'members:%';");
+    this.db.exec("DELETE FROM blocks; DELETE FROM transactions; DELETE FROM meta WHERE key LIKE 'members:%' OR key LIKE 'peers:%';");
     this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('policy', ?)").run(fingerprint);
     return row !== undefined;
+  }
+
+  /** A block's header hash, or null when it isn't indexed (yet). */
+  blockHash(channel: string, number: number): string | null {
+    const row = this.db.prepare("SELECT hash FROM blocks WHERE channel = ? AND number = ?").get(channel, number) as Row | undefined;
+    return row ? (row.hash as string) : null;
+  }
+
+  /** What the other organisations' explorers last reported for a channel. */
+  savePeerStatuses(channel: string, statuses: PeerStatus[]): void {
+    this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(`peers:${channel}`, JSON.stringify(statuses));
+  }
+
+  peerStatuses(channel: string): PeerStatus[] {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = ?").get(`peers:${channel}`) as Row | undefined;
+    return row ? (JSON.parse(row.value as string) as PeerStatus[]) : [];
   }
 
   /** The channel's application organisations, from its latest config block. */

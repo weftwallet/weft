@@ -26,7 +26,7 @@ pnpm playground:explorer # start or restart only the explorer, on a running stac
 | `basic` contract | `mychannel` | fabric-samples' asset-transfer (TypeScript) |
 | Org1 CA proxy | `http://localhost:7080`, or `https://localhost:7443` with `--https` | Forwards to the CA's HTTPS on 7054, so the browser can enrol (see below) |
 | Weft relay | `http://localhost:8787` | Talks to `peer0.org1`; serves the invite at `/.well-known/weft-invite.json` |
-| Explorer | `http://localhost:8790` | Reads `mychannel` as Org1's `User1`; publishes what `explorer.yaml` allows |
+| Explorers | `http://localhost:8790` (Org1), `http://localhost:8791` (Org2) | Each reads `mychannel` from its own organisation's peer, publishes what `explorer.yaml` or `explorer-org2.yaml` allows, and cross-checks with the other |
 
 ## Demo users (Org1)
 

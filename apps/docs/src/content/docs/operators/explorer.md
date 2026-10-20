@@ -16,7 +16,7 @@ The explorer doesn't sign transactions and holds no wallet keys. Its identity on
 
 Each block stores the hash of the block before it. The explorer recomputes every block's header hash and data hash itself, rather than trusting what it's given, and shows any block that doesn't match the one before it or its own transactions. A ledger that was changed after the fact shows up as a broken link.
 
-This shows what your peers recorded. Comparing your view with other organisations' explorers is a later phase.
+That shows what your peers recorded. To show that other organisations recorded the same, explorers compare notes: see [Cross-checking](#cross-checking).
 
 ## Choose what to publish
 
@@ -63,6 +63,7 @@ Private data collections never reach the shared ledger, only their hashes, so th
 | `WEFT_EXPLORER_NAME` | No | Name shown on the pages. Defaults to the policy's `organisation`, then the MSP ID. |
 | `WEFT_EXPLORER_PUBLIC_URL` | Behind a proxy | The address people open, e.g. `https://explorer.org1.example`. Sign-ins must name it. Defaults to the address each request arrived at. |
 | `WEFT_EXPLORER_SESSION_SECRET` | No | Signs session cookies. Without it, a random secret is made at start, which signs everyone out when the explorer restarts. |
+| `WEFT_EXPLORER_PEERS` | No | Other organisations' explorers to cross-check with, comma-separated base URLs. HTTPS, except `localhost`. |
 | `PORT` | No | Default `8790`. |
 
 Register a client identity for the explorer with your CA rather than reusing a person's. It needs to satisfy the channel's `Readers` policy, which a client of a member organisation does.
@@ -97,9 +98,23 @@ A signed-in person is a member of every published channel whose configuration li
 
 Certificate revocation lists aren't checked yet, so a revoked certificate that is still in date can sign in until its session ends.
 
+## Cross-checking
+
+Each explorer signs a checkpoint for every public channel: its latest block number and that block's hash, signed with the explorer's identity. Every block carries the hash of the one before, so one matching checkpoint at block 1,000 means both ledgers agree on all 1,001 blocks.
+
+List the other organisations' explorers in `WEFT_EXPLORER_PEERS`. Every 15 seconds the explorer fetches their checkpoints and checks each one:
+
+- the signature matches the certificate;
+- the certificate was issued by the CA of the MSP it names, read from the channel's configuration blocks, and is in date;
+- the block hash matches its own at that height.
+
+Pages then say how many organisations agree: each block shows "3 of 4 organisations report this block", and the channel card lists each organisation as agreeing, still catching up, unreachable, or disagreeing from a given block. When a checkpoint disagrees, the explorer searches the other explorer's public block hashes for the first block that differs.
+
+Only public channels have checkpoints. A members-only channel's height and hashes are for its members, so it isn't cross-checked yet.
+
 ## In the playground
 
-`pnpm playground:up` starts an explorer for Org1 on [localhost:8790](http://localhost:8790), reading as Org1's `User1` and publishing `mychannel` with the policy in `playground/explorer.yaml`. The contract approvals (`_lifecycle`) are members-only there, so sign in with a demo user to see them. If your playground was already running, start just the explorer with `pnpm playground:explorer`.
+`pnpm playground:up` starts an explorer for Org1 on [localhost:8790](http://localhost:8790), reading as Org1's `User1` and publishing `mychannel` with the policy in `playground/explorer.yaml`. The contract approvals (`_lifecycle`) are members-only there, so sign in with a demo user to see them. A second explorer for Org2 runs on [localhost:8791](http://localhost:8791), reading from Org2's own peer; the two cross-check each other. If your playground was already running, start just the explorer with `pnpm playground:explorer`.
 
 ## API
 
@@ -112,5 +127,7 @@ Everything the pages show is also JSON, readable from any origin, since it's pub
 | `GET /api/v1/channels/:channel/blocks/:number` | One block and its transactions. |
 | `GET /api/v1/channels/:channel/transactions?contract=&org=&before=&limit=` | Transactions, newest first, optionally for one contract or submitting MSP. |
 | `GET /api/v1/channels/:channel/transactions/:txId` | One transaction. |
+| `GET /api/v1/channels/:channel/checkpoint` | This explorer's signed checkpoint: `{ channel, mspId, number, hash, signedAt, message, signature, certificate }`. Public channels only. |
+| `GET /api/v1/channels/:channel/organisations` | What each cross-checked organisation last reported, and how far it agrees. |
 
 Channels that aren't published answer 404, the same as channels that don't exist.

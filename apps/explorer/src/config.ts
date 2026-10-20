@@ -21,6 +21,8 @@ export interface ExplorerConfig {
   publicUrl: string | undefined;
   /** Signs session cookies. Random per start if unset, which signs everyone out on restart. */
   sessionSecret: string | undefined;
+  /** Other organisations' explorers to cross-check with, as base URLs. */
+  peers: string[];
 }
 
 function required(env: NodeJS.ProcessEnv, name: string, example: string): string {
@@ -61,5 +63,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
     name: env.WEFT_EXPLORER_NAME || policy.organisation || mspId,
     publicUrl: env.WEFT_EXPLORER_PUBLIC_URL ? new URL(env.WEFT_EXPLORER_PUBLIC_URL).origin : undefined,
     sessionSecret: env.WEFT_EXPLORER_SESSION_SECRET || undefined,
+    peers: (env.WEFT_EXPLORER_PEERS ?? "")
+      .split(",")
+      .map((u) => u.trim().replace(/\/+$/, ""))
+      .filter(Boolean)
+      .map((u) => {
+        const url = new URL(u);
+        if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
+          throw new Error(`WEFT_EXPLORER_PEERS: ${u} must use HTTPS (plain HTTP is only allowed for localhost).`);
+        }
+        return url.toString().replace(/\/+$/, "");
+      }),
   };
 }

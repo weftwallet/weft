@@ -9,6 +9,7 @@ import type { ExplorerDb, TransactionRow } from "./db.ts";
 import type { ChannelStatus } from "./indexer.ts";
 import * as pages from "./pages.ts";
 import { channelLevel, contractLevel, viewTransaction, type Policy } from "./policy.ts";
+import type { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
 
 export interface ServerOptions {
   name: string;
@@ -20,6 +21,10 @@ export interface ServerOptions {
   auth?: Auth;
   /** This explorer's public origin, e.g. https://explorer.org1.example. Sign-in messages must name it. */
   publicUrl?: string;
+  /** Signs this explorer's checkpoints for other organisations to compare. */
+  signer?: CheckpointSigner;
+  /** The other organisations' explorers, polled for their checkpoints. */
+  crossCheck?: CrossCheck;
   logger?: boolean;
 }
 
@@ -55,6 +60,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   const { db, channels, policy } = options;
   const auth = options.auth ?? new Auth();
   const app = Fastify({ logger: options.logger ?? false });
+  // Requests are logged only when something goes wrong: the pages poll, and
+  // other explorers check in every few seconds.
+  app.addHook("onRoute", (route) => {
+    route.logLevel = "warn";
+  });
   const statusOf = (channel: string) => options.status().find((s) => s.channel === channel);
   // Sign-in only matters when something is published to members.
   const membersLevelExists = channels.some(
@@ -72,7 +82,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       return level === "public" || (level === "members" && memberOf(channel));
     };
     const view = (tx: TransactionRow) => viewTransaction(tx, memberOf(tx.channel));
-    const site: pages.Site = { name: options.name, channels: visible, viewer, signIn: membersLevelExists };
+    const site: pages.Site = {
+      name: options.name,
+      channels: visible,
+      viewer,
+      signIn: membersLevelExists,
+      peers: (channel) => options.crossCheck?.peersFor(channel) ?? [],
+    };
     return { viewer, memberOf, visible, canSee, canSeeContract, view, site };
   }
 
@@ -223,6 +239,28 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         return { ...c, level: channelLevel(policy, c.channel), peerHeight: st?.peerHeight ?? null, state: st?.state ?? "starting" };
       }),
     };
+  });
+
+  /*
+   * Cross-checking (phase 3). The checkpoint is signed by this explorer's
+   * identity and covers every block up to it, through the hash chain. Only
+   * public channels have one: a members-only channel's height and hashes are
+   * for its members.
+   */
+  app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/checkpoint", async (request, reply) => {
+    const { channel } = request.params;
+    if (!options.signer || !channels.includes(channel) || channelLevel(policy, channel) !== "public") {
+      return reply.code(404).send({ error: "not found" });
+    }
+    const top = db.nextBlock(channel) - 1;
+    const hash = top >= 0 ? db.blockHash(channel, top) : null;
+    if (hash === null) return reply.code(404).send({ error: "no blocks indexed yet" });
+    return reply.header("cache-control", "no-store").send(options.signer.sign(channel, top, hash));
+  });
+
+  app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/organisations", async (request, reply) => {
+    if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
+    return options.crossCheck?.peersFor(request.params.channel) ?? [];
   });
 
   app.get<{ Params: { channel: string }; Querystring: { before?: string; limit?: string } }>(

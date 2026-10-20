@@ -22,8 +22,9 @@
  *      With --https it serves https://localhost:7443 instead, using a
  *      certificate from mkcert, whose root your system already trusts.
  *   5. Starts the Weft relay for Org1, serving the playground invite.
- *   6. Starts the explorer for Org1, reading as Org1's User1 and publishing
- *      what playground/explorer.yaml allows.
+ *   6. Starts an explorer for each organisation, reading as its User1,
+ *      publishing what explorer.yaml / explorer-org2.yaml allow, and
+ *      cross-checking with the other.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -41,7 +42,7 @@ const samples = resolve(process.env.WEFT_FABRIC_SAMPLES ?? join(here, ".fabric",
 const testNetwork = join(samples, "test-network");
 const org1 = join(testNetwork, "organizations", "peerOrganizations", "org1.example.com");
 
-const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, docs: 4321, explorer: 8790 };
+const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, docs: 4321, explorer: 8790, explorerOrg2: 8791 };
 const CHANNEL = "mychannel";
 const DEMO_USERS = [
   { id: "alice", secret: "alicepw", attrs: "role=auditor:ecert" },
@@ -320,27 +321,41 @@ async function startRelay(caUrl) {
   ensureStillRunning("relay");
 }
 
+/**
+ * Two explorers, one per organisation, each reading from its own peer and
+ * comparing signed checkpoints with the other (docs/adr/0004, phase 3).
+ */
 async function startExplorer(stepNumber = 6) {
-  step(stepNumber, "Explorer for Org1");
+  step(stepNumber, "Explorers for Org1 and Org2");
   if (!existsSync(join(repo, "apps", "explorer", "dist", "main.js"))) {
     note("building the explorer");
     run("pnpm", ["--filter", "@weftwallet/explorer...", "build"], { cwd: repo });
   }
-  const user = join(org1, "users", "User1@org1.example.com", "msp");
-  startBackground("explorer", join(repo, "apps", "explorer", "dist", "main.js"), [], {
-    PORT: String(PORTS.explorer),
-    WEFT_PEER_ENDPOINT: "localhost:7051",
-    WEFT_PEER_HOST_ALIAS: "peer0.org1.example.com",
-    WEFT_PEER_TLS_CA_CERT: join(org1, "peers", "peer0.org1.example.com", "tls", "ca.crt"),
-    WEFT_EXPLORER_MSP_ID: "Org1MSP",
-    WEFT_EXPLORER_CERT: join(user, "signcerts"),
-    WEFT_EXPLORER_KEY: join(user, "keystore"),
-    WEFT_EXPLORER_POLICY: join(here, "explorer.yaml"),
-    WEFT_EXPLORER_DB: join(state, "explorer.db"),
-    NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
-  });
-  await waitFor(`http://localhost:${PORTS.explorer}/api/v1/status`, "The explorer");
-  ensureStillRunning("explorer");
+  const orgs = [
+    { name: "explorer", org: "org1", msp: "Org1MSP", peer: 7051, port: PORTS.explorer, other: PORTS.explorerOrg2, policy: "explorer.yaml" },
+    { name: "explorer-org2", org: "org2", msp: "Org2MSP", peer: 9051, port: PORTS.explorerOrg2, other: PORTS.explorer, policy: "explorer-org2.yaml" },
+  ];
+  for (const o of orgs) {
+    const orgDir = join(testNetwork, "organizations", "peerOrganizations", `${o.org}.example.com`);
+    const user = join(orgDir, "users", `User1@${o.org}.example.com`, "msp");
+    startBackground(o.name, join(repo, "apps", "explorer", "dist", "main.js"), [], {
+      PORT: String(o.port),
+      WEFT_PEER_ENDPOINT: `localhost:${o.peer}`,
+      WEFT_PEER_HOST_ALIAS: `peer0.${o.org}.example.com`,
+      WEFT_PEER_TLS_CA_CERT: join(orgDir, "peers", `peer0.${o.org}.example.com`, "tls", "ca.crt"),
+      WEFT_EXPLORER_MSP_ID: o.msp,
+      WEFT_EXPLORER_CERT: join(user, "signcerts"),
+      WEFT_EXPLORER_KEY: join(user, "keystore"),
+      WEFT_EXPLORER_POLICY: join(here, o.policy),
+      WEFT_EXPLORER_DB: join(state, `${o.name}.db`),
+      WEFT_EXPLORER_PEERS: `http://localhost:${o.other}`,
+      NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
+    });
+  }
+  for (const o of orgs) {
+    await waitFor(`http://localhost:${o.port}/api/v1/status`, `The ${o.msp} explorer`);
+    ensureStillRunning(o.name);
+  }
 }
 
 function summary(caUrl) {
@@ -351,7 +366,7 @@ ${bold("Weft playground is running.")}
 
   Invite      ${inviteUrl}
   Relay       http://localhost:${PORTS.relay}
-  Explorer    http://localhost:${PORTS.explorer}
+  Explorers   http://localhost:${PORTS.explorer} (Org1), http://localhost:${PORTS.explorerOrg2} (Org2)
   Org1 CA     ${caUrl}
   Channel     ${CHANNEL}, contract ${bold("basic")}
 
@@ -391,14 +406,16 @@ async function explorer() {
   mkdirSync(state, { recursive: true });
   if (!existsSync(org1)) fail("The playground network isn't set up.", "Run pnpm playground:up first.");
   stopBackground("explorer");
+  stopBackground("explorer-org2");
   await new Promise((r) => setTimeout(r, 500)); // let the old process free the port
   await startExplorer(1);
-  console.log(`\n${bold("Explorer")} ${teal(`http://localhost:${PORTS.explorer}`)}\n`);
+  console.log(`\n${bold("Explorers")} ${teal(`http://localhost:${PORTS.explorer}`)} (Org1), ${teal(`http://localhost:${PORTS.explorerOrg2}`)} (Org2)\n`);
 }
 
 function down() {
   console.log(bold("Stopping the Weft playground"));
   stopBackground("explorer");
+  stopBackground("explorer-org2");
   stopBackground("relay");
   stopBackground("ca-proxy");
   if (existsSync(testNetwork)) {
@@ -407,7 +424,9 @@ function down() {
   }
   rmSync(join(state, "invite.json"), { force: true });
   // The next network starts from block 0, so the old index would be wrong.
-  for (const suffix of ["", "-wal", "-shm"]) rmSync(join(state, `explorer.db${suffix}`), { force: true });
+  for (const name of ["explorer", "explorer-org2"]) {
+    for (const suffix of ["", "-wal", "-shm"]) rmSync(join(state, `${name}.db${suffix}`), { force: true });
+  }
   console.log("Done. Downloads in playground/.fabric are kept; delete that folder to remove them.");
 }
 
@@ -423,7 +442,8 @@ async function status() {
   const relayUp = await ok(`http://localhost:${PORTS.relay}/v1/health`);
   line("Relay", relayUp, `http://localhost:${PORTS.relay}`);
   line("Invite", await ok(`http://localhost:${PORTS.relay}/.well-known/weft-invite.json`), "served by the relay");
-  line("Explorer", await ok(`http://localhost:${PORTS.explorer}/api/v1/status`), `http://localhost:${PORTS.explorer}`);
+  line("Explorer", await ok(`http://localhost:${PORTS.explorer}/api/v1/status`), `http://localhost:${PORTS.explorer} (Org1)`);
+  line("Explorer", await ok(`http://localhost:${PORTS.explorerOrg2}/api/v1/status`), `http://localhost:${PORTS.explorerOrg2} (Org2)`);
 }
 
 const [command, ...flags] = process.argv.slice(2).filter((a) => a !== "--");

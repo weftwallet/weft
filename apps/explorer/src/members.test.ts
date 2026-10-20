@@ -1,6 +1,6 @@
 import "reflect-metadata";
-import { X509CertificateGenerator, BasicConstraintsExtension, KeyUsagesExtension, KeyUsageFlags } from "@peculiar/x509";
-import { buildSignInMessage, generateKeyPair, signForFabric, toBase64, utf8 } from "@weftwallet/core";
+import { buildSignInMessage, signForFabric, toBase64, utf8 } from "@weftwallet/core";
+import { ca, user } from "./test/certs.ts";
 import { describe, expect, it } from "vitest";
 import { Auth, chainsTo } from "./auth.ts";
 import { ExplorerDb } from "./db.ts";
@@ -10,35 +10,6 @@ import { buildServer } from "./server.ts";
 import { chain } from "./test/blocks.ts";
 
 const ORIGIN = "http://explorer.test";
-
-async function ca(name: string) {
-  const keys = await generateKeyPair("P-256", { extractable: true });
-  const cert = await X509CertificateGenerator.createSelfSigned({
-    serialNumber: "01",
-    name: `CN=${name}`,
-    notBefore: new Date(Date.now() - 60_000),
-    notAfter: new Date(Date.now() + 86_400_000),
-    signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
-    keys,
-    extensions: [new BasicConstraintsExtension(true, undefined, true), new KeyUsagesExtension(KeyUsageFlags.keyCertSign, true)],
-  });
-  return { keys, cert, pem: cert.toString("pem") };
-}
-
-async function user(issuer: Awaited<ReturnType<typeof ca>>, name: string, validFor = 86_400_000) {
-  const keys = await generateKeyPair("P-256", { extractable: true });
-  const cert = await X509CertificateGenerator.create({
-    serialNumber: "02",
-    subject: `CN=${name}`,
-    issuer: issuer.cert.subject,
-    notBefore: new Date(Date.now() - 60_000),
-    notAfter: new Date(Date.now() + validFor),
-    signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
-    publicKey: keys.publicKey,
-    signingKey: issuer.keys.privateKey,
-  });
-  return { keys, pem: cert.toString("pem") };
-}
 
 async function signIn(who: { keys: CryptoKeyPair; pem: string }, mspId: string, nonce: string, origin = ORIGIN) {
   const issuedAt = new Date();

@@ -1,0 +1,6 @@
+# Org2's explorer in the playground. It publishes mychannel too, so the two
+# explorers can compare signed checkpoints and show that they agree.
+organisation: Org2
+channels:
+  mychannel:
+    level: public

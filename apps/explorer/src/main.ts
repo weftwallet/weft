@@ -1,4 +1,5 @@
 import { Auth } from "./auth.ts";
+import { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
 import { loadConfig } from "./config.ts";
 import { ExplorerDb } from "./db.ts";
 import { Indexer } from "./indexer.ts";
@@ -9,6 +10,13 @@ const config = loadConfig();
 const db = new ExplorerDb(config.databasePath);
 const rebuilt = db.usePolicy(policyFingerprint(config.policy));
 const channels = publishedChannels(config.policy);
+const signer = new CheckpointSigner(config);
+// Only public channels are compared; members-only channels have no public checkpoint.
+const crossCheck = new CrossCheck(
+  db,
+  channels.filter((c) => config.policy.channels[c]?.level === "public"),
+  config.peers,
+);
 const app = buildServer({
   name: config.name,
   channels,
@@ -16,6 +24,8 @@ const app = buildServer({
   db,
   status: () => indexer.statuses(),
   auth: new Auth(config.sessionSecret),
+  signer,
+  crossCheck,
   ...(config.publicUrl ? { publicUrl: config.publicUrl } : {}),
   logger: true,
 });
@@ -23,6 +33,7 @@ const indexer = new Indexer(config, config.policy, db, { info: (m) => app.log.in
 
 const shutdown = async () => {
   indexer.stop();
+  crossCheck.stop();
   await app.close();
   db.close();
   process.exit(0);
@@ -38,3 +49,5 @@ if (channels.length === 0) {
 }
 if (rebuilt) app.log.info("The policy changed since the last run, so the index is being rebuilt from block 0.");
 indexer.start();
+crossCheck.start();
+if (config.peers.length) app.log.info(`Cross-checking with ${config.peers.join(", ")}`);
