@@ -14,6 +14,8 @@ import {
   utf8,
   toBase64,
   fromBase64,
+  fromBase64Url,
+  toBase64Url,
 } from "./index.js";
 
 const P256_N = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
@@ -51,6 +53,15 @@ describe("base64", () => {
   it("round-trips binary", () => {
     const bytes = Uint8Array.from({ length: 300 }, (_, i) => i % 256);
     expect(fromBase64(toBase64(bytes))).toEqual(bytes);
+  });
+
+  it("round-trips base64url without padding", () => {
+    for (const length of [1, 2, 3, 31, 32, 33]) {
+      const bytes = Uint8Array.from({ length }, (_, i) => (i * 97 + 251) % 256);
+      const text = toBase64Url(bytes);
+      expect(text).not.toMatch(/[+/=]/);
+      expect(fromBase64Url(text)).toEqual(bytes);
+    }
   });
 });
 

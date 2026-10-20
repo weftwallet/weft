@@ -31,6 +31,16 @@ export function fromBase64(text: string): Uint8Array {
   return out;
 }
 
+/** base64url without padding, as WebAuthn uses for credential IDs. */
+export function toBase64Url(bytes: Uint8Array): string {
+  return toBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function fromBase64Url(text: string): Uint8Array {
+  const padded = text.replace(/-/g, "+").replace(/_/g, "/");
+  return fromBase64(padded + "=".repeat((4 - (padded.length % 4)) % 4));
+}
+
 export function toHex(bytes: Uint8Array, separator = ""): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(separator);
 }

@@ -98,15 +98,27 @@ export function isLowS(der: Uint8Array, curve: FabricCurve = "P-256"): boolean {
 }
 
 /**
- * Generates a key pair. The private key is non-extractable: it can sign but
- * its material can never be read back by script.
+ * Generates a key pair. By default the private key is non-extractable: it can
+ * sign but its material can never be read back by script. The wallet asks for
+ * an extractable key only to encrypt it with the vault key straight away
+ * (see vault.ts); what it keeps and signs with is non-extractable.
  */
-export async function generateKeyPair(curve: FabricCurve = "P-256"): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey({ name: "ECDSA", namedCurve: curve }, false, ["sign", "verify"]);
+export async function generateKeyPair(
+  curve: FabricCurve = "P-256",
+  options: { extractable?: boolean } = {},
+): Promise<CryptoKeyPair> {
+  return crypto.subtle.generateKey({ name: "ECDSA", namedCurve: curve }, options.extractable ?? false, ["sign", "verify"]);
 }
 
-/** Imports a PKCS#8 PEM private key as a non-extractable signing key. */
-export async function importPrivateKeyPem(pem: string, curve: FabricCurve = "P-256"): Promise<CryptoKey> {
+/**
+ * Imports a PKCS#8 PEM private key as a signing key, non-extractable unless
+ * asked (the wallet asks only to encrypt it with the vault key).
+ */
+export async function importPrivateKeyPem(
+  pem: string,
+  curve: FabricCurve = "P-256",
+  options: { extractable?: boolean } = {},
+): Promise<CryptoKey> {
   const body = pem
     .replace(/-----BEGIN (?:EC )?PRIVATE KEY-----/, "")
     .replace(/-----END (?:EC )?PRIVATE KEY-----/, "")
@@ -117,7 +129,7 @@ export async function importPrivateKeyPem(pem: string, curve: FabricCurve = "P-2
     );
   }
   const der = Uint8Array.from(atob(body), (c) => c.charCodeAt(0));
-  return crypto.subtle.importKey("pkcs8", toArrayBuffer(der), { name: "ECDSA", namedCurve: curve }, false, ["sign"]);
+  return crypto.subtle.importKey("pkcs8", toArrayBuffer(der), { name: "ECDSA", namedCurve: curve }, options.extractable ?? false, ["sign"]);
 }
 
 export function curveOf(key: CryptoKey): FabricCurve {

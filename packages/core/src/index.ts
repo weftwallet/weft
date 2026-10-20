@@ -9,3 +9,4 @@ export * from "./invite.js";
 export * from "./relay-client.js";
 export { Message, ProtobufError, readFields } from "./protobuf.js";
 export * from "./connection-profile.js";
+export * from "./vault.js";

@@ -4,7 +4,8 @@ Runtime-agnostic wallet logic, used by the extension's background worker (and te
 
 | Module | What it does |
 |---|---|
-| `signing.ts` | Non-extractable WebCrypto keys; ECDSA signatures converted to the low-S DER form Fabric requires. |
+| `signing.ts` | WebCrypto keys; ECDSA signatures converted to the low-S DER form Fabric requires. |
+| `vault.ts` | Encryption at rest: password (PBKDF2) and passkey (PRF) keys that seal the vault key, which wraps private keys. |
 | `certificate.ts` | Reads name, NodeOU role, Fabric CA attributes, expiry and fingerprint from X.509 certificates; builds CSRs. |
 | `ca.ts` | Fabric CA REST client: enrol with a secret, re-enrol with a signed token. |
 | `protobuf.ts`, `fabric-messages.ts` | A minimal protobuf reader and decoders for the Gateway messages the wallet signs. |
