@@ -20,3 +20,9 @@ P-256 keys live in IndexedDB as non-extractable `CryptoKey` objects. Weft conver
 ## 0003: A request-based provider, and org invites
 
 dApps talk to `window.weft.request({ method, params })` with `weft_*` methods and EIP-1193-style error codes, so they're unaffected if the transport under the wallet changes. Organisations publish an **invite** (JSON over HTTPS) so users join a network from one link instead of typing CA and relay URLs.
+
+## 0004: An explorer that each organisation hosts (proposed)
+
+A Fabric ledger is readable only by channel members, so an explorer runs as an organisation, from its own peers, with a read-only identity. Each organisation publishes channels and contracts at `public`, `members` (sign in with Weft) or `hidden`. Instances publish signed checkpoints of block hashes and cross-check each other, so a page shows how many organisations agree on each block.
+
+**Trade-off:** a second service per organisation, with its own identity and database. Publishing is a disclosure decision, so everything starts hidden. For voting, the explorer can prove ballots were counted, not hide who voted from member organisations.
