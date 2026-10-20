@@ -42,11 +42,13 @@ export type NetworkInput = Omit<NetworkRecord, "id">;
 export interface ApprovalView {
   id: string;
   origin: string;
-  method: Extract<WeftMethod, "weft_connect" | "weft_evaluate" | "weft_submit" | "weft_addNetwork">;
+  method: Extract<WeftMethod, "weft_connect" | "weft_evaluate" | "weft_submit" | "weft_addNetwork" | "weft_signIn">;
   call: ContractCall | null;
   identity: IdentityView | null;
   /** weft_addNetwork only: the resolved HTTPS URL of the invite. */
   inviteUrl?: string;
+  /** weft_signIn only: the site's one-line statement. */
+  statement?: string;
 }
 
 export type ApprovalOutcome =

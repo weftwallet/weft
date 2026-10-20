@@ -6,6 +6,12 @@
 import {
   CommitError,
   InviteError,
+  SIGN_IN_LIFETIME_MS,
+  SignInError,
+  buildSignInMessage,
+  checkSignInParams,
+  toBase64,
+  utf8,
   resolveInviteUrl,
   RelayClient,
   RelayError,
@@ -312,6 +318,54 @@ async function addNetwork(origin: string, params: unknown) {
   return { added: true as const };
 }
 
+/**
+ * weft_signIn: proves to the site that the user holds the active identity.
+ * The wallet writes the message (docs/adr/0004); the site supplies only a
+ * nonce and a one-line statement, so it can't get anything else signed.
+ */
+async function signIn(origin: string, params: unknown) {
+  await requireConnected(origin);
+  let checked: { nonce: string; statement?: string };
+  try {
+    checked = checkSignInParams(params);
+  } catch (error) {
+    throw new WeftError(ErrorCode.InvalidParams, error instanceof SignInError ? error.message : "Invalid sign-in request");
+  }
+  const active = await requireUsableIdentity();
+  const view: ApprovalView = {
+    id: newId(),
+    origin,
+    method: "weft_signIn",
+    call: null,
+    identity: await identityView(active.record.id),
+    ...(checked.statement ? { statement: checked.statement } : {}),
+  };
+  const approval = await openApproval(view);
+  if (!(await approval.decision.promise)) {
+    finish(approval, { status: "rejected" });
+    throw new WeftError(ErrorCode.UserRejected, "The user declined to sign in.");
+  }
+  try {
+    const issuedAt = new Date();
+    const message = buildSignInMessage({
+      origin,
+      mspId: active.record.mspId,
+      nonce: checked.nonce,
+      issuedAt,
+      expiresAt: new Date(issuedAt.getTime() + SIGN_IN_LIFETIME_MS),
+      ...(checked.statement ? { statement: checked.statement } : {}),
+    });
+    const sign = await signerFor(active.record);
+    const signature = await sign(utf8(message));
+    finish(approval, { status: "approved", activityId: null });
+    return { message, signature: toBase64(signature), certificate: active.record.certificate.trim(), mspId: active.record.mspId };
+  } catch (error) {
+    const failure = describeFailure(error);
+    finish(approval, { status: "failed", activityId: null, title: failure.record.title, detail: failure.record.detail });
+    throw failure.error;
+  }
+}
+
 export async function handleProviderRequest(origin: string, method: unknown, params: unknown): Promise<unknown> {
   if (!isWeftMethod(method)) {
     throw new WeftError(ErrorCode.UnsupportedMethod, `Unknown method ${String(method)}`);
@@ -328,6 +382,8 @@ export async function handleProviderRequest(origin: string, method: unknown, par
       return runCall(origin, method, params);
     case "weft_addNetwork":
       return addNetwork(origin, params);
+    case "weft_signIn":
+      return signIn(origin, params);
     case "weft_disconnect":
       if ((await connectedIdentityIds(origin)).length > 0) await disconnectSites([origin], "site");
       return null;

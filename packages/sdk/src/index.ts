@@ -16,6 +16,7 @@ import {
   type EvaluateResult,
   type IdentitySummary,
   type NetworkSummary,
+  type SignInResult,
   type SubmitResult,
   type WeftEvent,
   type WeftEvents,
@@ -114,6 +115,18 @@ export class WeftClient {
    */
   async addNetwork(inviteUrl: string): Promise<AddNetworkResult> {
     return this.provider.request({ method: "weft_addNetwork", params: { url: inviteUrl } }).catch(rethrow);
+  }
+
+  /**
+   * Asks the user to prove they hold their active identity, for signing in to
+   * your site. Get a fresh nonce from your server, then send the result back
+   * for it to verify (verifySignIn and parseSignInMessage in @weftwallet/core).
+   * Requires connect().
+   */
+  async signIn(nonce: string, statement?: string): Promise<SignInResult> {
+    return this.provider
+      .request({ method: "weft_signIn", params: statement ? { nonce, statement } : { nonce } })
+      .catch(rethrow);
   }
 
   /** Binds a channel and chaincode so calls read like function calls. */

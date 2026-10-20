@@ -45,6 +45,10 @@ Any mismatch stops the flow with "Weft refused to sign". This is covered by test
 
 Connecting a site doesn't authorise signing. Each evaluate and submit opens an approval window; closing it rejects. Reads and writes look different (teal and amber) so a write can't pass as a read.
 
+### Sign-in signs text, never a transaction
+
+`weft_signIn` signs a message Weft writes from fixed fields: the site's origin as the browser reports it, the MSP ID, the site's nonce, and five minutes of validity. A site can add one line of text and nothing else. The message is text starting `weft-sign-in:v1`, so its signature can't be used as a signature over a Fabric proposal or transaction, which are protobuf bytes. The approval window says it doesn't sign a transaction.
+
 ### Hosts are granted one by one
 
 The extension's manifest asks for no host access up front. When you add a network, the browser asks you to allow its CA and relay hosts.

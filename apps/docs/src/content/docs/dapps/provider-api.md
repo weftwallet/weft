@@ -28,12 +28,15 @@ The provider may be injected after your script runs. Wait for the `weft#initiali
 | `weft_submit` | `ContractCall` | `SubmitResult` | Every time |
 | `weft_addNetwork` | `{ url }` | `{ added: true }` | Every time |
 | `weft_disconnect` | – | `null` | No |
+| `weft_signIn` | `{ nonce, statement? }` | `SignInResult` | Every time |
 
 `weft_addNetwork` asks the user to join a network from an [org invite](/operators/invites/). `url` is the invite's HTTPS URL, a `weft://` link or a join link. Weft fetches the invite itself from that address, shows it, and the user enrols. It doesn't need the site to be connected, which suits an admin portal's "Set up Weft" button.
 
 A connection is to one identity. If the user switches to an identity your site hasn't been approved for, your site gets `disconnect` with reason `"identity-changed"` and has to call `weft_connect` again; switching back to an approved identity sends `identityChanged` instead. Your site never sees identities the user didn't approve for it.
 
 `weft_identity` returns `null` for sites that aren't connected. `weft_networks`, `weft_evaluate` and `weft_submit` fail with `4100` until the site is connected.
+
+`weft_signIn` proves to your site that the user holds the active identity, for signing in. It needs a connected site. See [Sign in with Weft](#sign-in-with-weft).
 
 `weft_networks` lists the networks of the identities approved for your site, the active one first (`active: true`). The user's other networks stay private: they would reveal organisations your site wasn't shown.
 
@@ -75,12 +78,56 @@ interface EvaluateResult {
   base64: string;
 }
 
+interface SignInParams {
+  nonce: string;                        // 16 to 128 of A-Z a-z 0-9 - _, from your server, used once
+  statement?: string;                   // one line shown to the user, at most 200 characters
+}
+
+interface SignInResult {
+  message: string;                      // the exact text signed, starting "weft-sign-in:v1"
+  signature: string;                    // base64 DER ECDSA over the message's UTF-8 bytes
+  certificate: string;                  // PEM
+  mspId: string;
+}
+
 interface SubmitResult extends EvaluateResult {
   transactionId: string;
   blockNumber: string;                  // a string, because Fabric block numbers are 64-bit
   status: string;                       // "VALID"
 }
 ```
+
+## Sign in with Weft
+
+`weft_signIn` lets your server know who is using your site, with the certificate their organisation's CA issued. The wallet writes the message itself, so your site can't get anything else signed:
+
+```text
+weft-sign-in:v1
+origin: https://explorer.org1.example
+msp: Org1MSP
+nonce: 3kQ9xPbD7wFh2LmN8aZ1
+issued: 2026-10-20T05:00:00.000Z
+expires: 2026-10-20T05:05:00.000Z
+statement: Sign in to Org1's explorer
+```
+
+The origin is the one the browser reports for your page, never a value your page passes. The message is text, so its signature can't be passed off as a Fabric transaction signature, which signs protobuf bytes.
+
+```ts
+const weft = await getWeft();
+await weft.connect();
+const { nonce } = await (await fetch("/auth/nonce")).json();
+const signed = await weft.signIn(nonce, "Sign in to Org1's explorer");
+await fetch("/auth/verify", { method: "POST", body: JSON.stringify(signed) });
+```
+
+On your server, with `@weftwallet/core`:
+
+1. `parseSignInMessage(message)`, and check the origin is yours, the nonce is one you issued and haven't seen, and the time is between `issued` and `expires`.
+2. `verifySignIn(message, signature, certificate)` checks the signature against the certificate's key.
+3. Check the certificate chains to a root you trust for that MSP ID, for example the MSP's root certificates from your channel's configuration block. Without this step, anyone could sign in with a certificate they made themselves.
+
+The [explorer](/operators/explorer/) does all three; its `src/auth.ts` is a complete example.
 
 ## Events
 

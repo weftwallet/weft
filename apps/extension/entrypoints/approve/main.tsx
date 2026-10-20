@@ -109,6 +109,7 @@ function Approve() {
   } else if (phase !== "review") screen = <Progress view={view} phase={phase} outcome={outcome} />;
   else if (view.method === "weft_addNetwork") screen = <AddNetworkRequest view={view} onDecide={decide} />;
   else if (view.method === "weft_connect") screen = <ConnectRequest view={view} onDecide={decide} deciding={deciding} />;
+  else if (view.method === "weft_signIn") screen = <SignInRequest view={view} onDecide={decide} deciding={deciding} />;
   else screen = <SignRequest view={view} onDecide={decide} deciding={deciding} />;
   return (
     // Working and done share one screen, so the mark settles in place rather than reloading.
@@ -225,6 +226,54 @@ function ConnectRequest({
         </div>
       </main>
       <Footer onDecide={onDecide} cta="Connect" ctaClass="btn--primary" deciding={deciding} />
+    </>
+  );
+}
+
+/**
+ * weft_signIn: proves who the user is to the site. It signs a message Weft
+ * writes, never a transaction, and the window says so plainly.
+ */
+function SignInRequest({
+  view,
+  onDecide,
+  deciding,
+}: {
+  view: ApprovalView;
+  onDecide: (approved: boolean) => void;
+  deciding: boolean;
+}) {
+  const host = new URL(view.origin).host;
+  return (
+    <>
+      <header className="header" style={{ height: "auto", padding: "18px 16px 14px", flexDirection: "column", alignItems: "stretch", gap: 12 }}>
+        <div style={{ fontSize: 18, fontWeight: 600 }}>Sign in to {host}?</div>
+        <Origin origin={view.origin} subtitle="wants to know it's you" />
+      </header>
+      <main className="page">
+        {view.statement && (
+          <div className="card" style={{ fontSize: 14 }}>
+            <span className="eyebrow">The site says</span>
+            <div style={{ overflowWrap: "anywhere" }}>{view.statement}</div>
+          </div>
+        )}
+        <dl className="details">
+          <dt>Signing in as</dt>
+          <dd>
+            <IdentityLine identity={view.identity} />
+          </dd>
+          <dt>Valid for</dt>
+          <dd>5 minutes, for {host} only</dd>
+        </dl>
+        <div className="notice notice--thread">
+          <Icon name="shield" size={18} color="var(--weft-thread)" />
+          <span>
+            This proves to the site that you hold this identity. It doesn't sign a transaction or change anything on the
+            ledger.
+          </span>
+        </div>
+      </main>
+      <Footer onDecide={onDecide} cta="Sign in" ctaClass="btn--primary" deciding={deciding} />
     </>
   );
 }
@@ -494,6 +543,8 @@ function Progress({
         title={
           view.method === "weft_connect"
             ? "Connecting…"
+            : view.method === "weft_signIn"
+              ? "Signing in…"
             : view.method === "weft_addNetwork"
               ? "Finishing…"
               : submit
@@ -527,7 +578,17 @@ function Progress({
   return (
     <StatusScreen
       mark={<WeaveMark size={72} mode="settle" />}
-      title={view.method === "weft_connect" ? "Connected" : view.method === "weft_addNetwork" ? "Network added" : submit ? "Committed" : "Done"}
+      title={
+        view.method === "weft_connect"
+          ? "Connected"
+          : view.method === "weft_signIn"
+            ? "Signed in"
+            : view.method === "weft_addNetwork"
+              ? "Network added"
+              : submit
+                ? "Committed"
+                : "Done"
+      }
       detail="This window closes on its own."
     />
   );

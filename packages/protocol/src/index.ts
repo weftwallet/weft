@@ -88,6 +88,27 @@ export interface AddNetworkResult {
   added: true;
 }
 
+/**
+ * Params for weft_signIn. The wallet builds the message itself from these and
+ * fixed fields; a site can't choose the bytes that get signed.
+ */
+export interface SignInParams {
+  /** 16 to 128 characters of [A-Za-z0-9_-], chosen by the site and used once. */
+  nonce: string;
+  /** One line shown in the approval window, e.g. "Sign in to Org1's explorer". */
+  statement?: string;
+}
+
+export interface SignInResult {
+  /** The exact text signed, starting "weft-sign-in:v1". */
+  message: string;
+  /** Base64 of the DER ECDSA signature over the message's UTF-8 bytes. */
+  signature: string;
+  /** PEM of the identity's certificate. */
+  certificate: string;
+  mspId: string;
+}
+
 export interface SubmitResult extends EvaluateResult {
   transactionId: string;
   blockNumber: string;
@@ -105,6 +126,8 @@ export interface WeftMethods {
   weft_addNetwork: { params: AddNetworkParams; result: AddNetworkResult };
   /** Disconnects this site. It must call weft_connect again to use the wallet. */
   weft_disconnect: { params: undefined; result: null };
+  /** Proves to the site that the user holds the active identity. Signs no transaction. */
+  weft_signIn: { params: SignInParams; result: SignInResult };
 }
 
 export type WeftMethod = keyof WeftMethods;
@@ -121,6 +144,7 @@ export const METHODS: readonly WeftMethod[] = [
   "weft_submit",
   "weft_addNetwork",
   "weft_disconnect",
+  "weft_signIn",
 ] as const;
 
 /** Methods that always show the user an approval screen. */
@@ -129,6 +153,7 @@ export const APPROVAL_METHODS: ReadonlySet<WeftMethod> = new Set([
   "weft_evaluate",
   "weft_submit",
   "weft_addNetwork",
+  "weft_signIn",
 ]);
 
 export function isWeftMethod(value: unknown): value is WeftMethod {
