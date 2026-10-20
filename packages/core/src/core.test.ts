@@ -104,6 +104,12 @@ describe("explanations", () => {
     expect(explainStatus("SOMETHING_NEW")).toMatchObject({ code: "SOMETHING_NEW", retryable: false });
   });
 
+  it("treats gRPC timeouts as the network being unreachable", () => {
+    expect(explainEndorseError("4 DEADLINE_EXCEEDED: Deadline exceeded after 5.003s, Waiting for LB pick").code).toBe(
+      "UNAVAILABLE",
+    );
+  });
+
   it("recognises access-denied endorsement errors", () => {
     expect(explainEndorseError("rpc error: code = PermissionDenied desc = access denied").code).toBe("ACCESS_DENIED");
   });

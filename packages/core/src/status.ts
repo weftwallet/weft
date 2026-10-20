@@ -107,10 +107,15 @@ export function explainEndorseError(message: string): StatusExplanation {
       code: "ACCESS_DENIED",
     };
   }
-  if (m.includes("no peers available") || m.includes("unavailable") || m.includes("failed to connect")) {
+  if (
+    m.includes("no peers available") ||
+    m.includes("unavailable") ||
+    m.includes("failed to connect") ||
+    m.includes("deadline exceeded")
+  ) {
     return {
       title: "The network could not be reached",
-      detail: "No peer answered. The network may be down or the relay misconfigured. Try again shortly.",
+      detail: "No peer answered in time. The network may be down or the relay misconfigured. Try again shortly.",
       retryable: true,
       code: "UNAVAILABLE",
     };
