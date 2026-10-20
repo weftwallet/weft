@@ -87,11 +87,24 @@ export class FabricCaClient {
   }
 
   private async post(path: string, body: unknown, authorization: string): Promise<FabricCaResult> {
-    const response = await this.fetch(`${this.url}${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization },
-      body: JSON.stringify(body),
-    });
+    let response: Response;
+    try {
+      response = await this.fetch(`${this.url}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // Browsers report TLS and connection failures only as "Failed to fetch".
+      throw new FabricCaError(0, [
+        {
+          code: 0,
+          message:
+            `Couldn't reach the CA at ${this.url}. Check it's running, and that its HTTPS certificate is one this ` +
+            "computer trusts: browsers refuse self-signed CA certificates.",
+        },
+      ]);
+    }
     let json: CaResponse;
     try {
       json = (await response.json()) as CaResponse;

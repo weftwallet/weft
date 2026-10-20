@@ -114,3 +114,16 @@ describe("explanations", () => {
     expect(explainEndorseError("rpc error: code = PermissionDenied desc = access denied").code).toBe("ACCESS_DENIED");
   });
 });
+
+describe("Fabric CA client", () => {
+  it("explains an unreachable CA instead of 'Failed to fetch'", async () => {
+    const { FabricCaClient } = await import("./index.js");
+    const ca = new FabricCaClient({
+      url: "https://localhost:7054",
+      fetch: () => Promise.reject(new TypeError("Failed to fetch")),
+    });
+    await expect(ca.enroll("alice", "alicepw", await generateKeyPair())).rejects.toThrow(
+      /Couldn't reach the CA at https:\/\/localhost:7054.*self-signed/,
+    );
+  });
+});
