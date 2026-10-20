@@ -40,13 +40,14 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 |---|---|---|
 | `apps/extension` | `@weftwallet/extension` | The MV3 browser extension (WXT + React). |
 | `apps/relay` | `@weftwallet/relay` | The relay service (Fastify + fabric-gateway). Dockerfile included. |
+| `apps/explorer` | `@weftwallet/explorer` | A block explorer one organisation runs for the channels it publishes. |
 | `apps/docs` | `@weftwallet/docs` | The documentation site (Astro Starlight). |
 | `packages/protocol` | `@weftwallet/protocol` | Types shared by everything: provider API, errors, relay API, invites. |
 | `packages/core` | `@weftwallet/core` | Signing, certificates, Fabric CA client, message decoding and verification, relay client. |
 | `packages/sdk` | `@weftwallet/sdk` | What dApps import to talk to the wallet. |
 | `packages/cli` | `@weftwallet/cli` | `weft` command for operators: build invites from connection profiles, share links and QR codes, check a deployment. |
 | `packages/brand` | `@weftwallet/brand` | Logo files and design tokens. |
-| `playground/` | – | `pnpm playground:up`: a local Fabric network with the relay and demo users, for the docs' playground page. |
+| `playground/` | – | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the docs' playground page. |
 | `examples/` | – | A plain-HTML demo dApp and a sample org invite. |
 | `docs/adr/` | – | Architecture decision records. |
 
@@ -72,8 +73,9 @@ pnpm dev:docs       # http://localhost:4321
 To try everything against a real network on your machine:
 
 ```sh
-pnpm playground:up   # Fabric test-network, the basic contract, demo users and the relay (needs Docker)
+pnpm playground:up   # Fabric test-network, the basic contract, demo users, the relay and an explorer (needs Docker)
 pnpm dev:docs        # then open http://localhost:4321/playground/
+                     # the explorer is at http://localhost:8790
 ```
 
 See [`playground/README.md`](playground/README.md).

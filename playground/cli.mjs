@@ -6,6 +6,8 @@
  *   pnpm playground:up --https
  *                           the same, but the CA proxy serves HTTPS with a mkcert
  *                           certificate, so the CA URL looks like production's
+ *   pnpm playground:explorer
+ *                           start (or restart) only the explorer, on a running stack
  *   pnpm playground:status  what's running
  *   pnpm playground:down    stop everything and remove the network
  *
@@ -20,6 +22,8 @@
  *      With --https it serves https://localhost:7443 instead, using a
  *      certificate from mkcert, whose root your system already trusts.
  *   5. Starts the Weft relay for Org1, serving the playground invite.
+ *   6. Starts the explorer for Org1, reading as Org1's User1 and publishing
+ *      what playground/explorer.yaml allows.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -37,7 +41,7 @@ const samples = resolve(process.env.WEFT_FABRIC_SAMPLES ?? join(here, ".fabric",
 const testNetwork = join(samples, "test-network");
 const org1 = join(testNetwork, "organizations", "peerOrganizations", "org1.example.com");
 
-const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, docs: 4321 };
+const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, docs: 4321, explorer: 8790 };
 const CHANNEL = "mychannel";
 const DEMO_USERS = [
   { id: "alice", secret: "alicepw", attrs: "role=auditor:ecert" },
@@ -316,6 +320,29 @@ async function startRelay(caUrl) {
   ensureStillRunning("relay");
 }
 
+async function startExplorer(stepNumber = 6) {
+  step(stepNumber, "Explorer for Org1");
+  if (!existsSync(join(repo, "apps", "explorer", "dist", "main.js"))) {
+    note("building the explorer");
+    run("pnpm", ["--filter", "@weftwallet/explorer...", "build"], { cwd: repo });
+  }
+  const user = join(org1, "users", "User1@org1.example.com", "msp");
+  startBackground("explorer", join(repo, "apps", "explorer", "dist", "main.js"), [], {
+    PORT: String(PORTS.explorer),
+    WEFT_PEER_ENDPOINT: "localhost:7051",
+    WEFT_PEER_HOST_ALIAS: "peer0.org1.example.com",
+    WEFT_PEER_TLS_CA_CERT: join(org1, "peers", "peer0.org1.example.com", "tls", "ca.crt"),
+    WEFT_EXPLORER_MSP_ID: "Org1MSP",
+    WEFT_EXPLORER_CERT: join(user, "signcerts"),
+    WEFT_EXPLORER_KEY: join(user, "keystore"),
+    WEFT_EXPLORER_POLICY: join(here, "explorer.yaml"),
+    WEFT_EXPLORER_DB: join(state, "explorer.db"),
+    NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
+  });
+  await waitFor(`http://localhost:${PORTS.explorer}/api/v1/status`, "The explorer");
+  ensureStillRunning("explorer");
+}
+
 function summary(caUrl) {
   const inviteUrl = `http://localhost:${PORTS.relay}/.well-known/weft-invite.json`;
   const playground = `http://localhost:${PORTS.docs}/playground/?invite=${encodeURIComponent(inviteUrl)}`;
@@ -324,6 +351,7 @@ ${bold("Weft playground is running.")}
 
   Invite      ${inviteUrl}
   Relay       http://localhost:${PORTS.relay}
+  Explorer    http://localhost:${PORTS.explorer}
   Org1 CA     ${caUrl}
   Channel     ${CHANNEL}, contract ${bold("basic")}
 
@@ -354,11 +382,23 @@ async function up(flags) {
   await waitForPort(proxy.port, "The CA proxy");
   ensureStillRunning("ca-proxy");
   await startRelay(proxy.url);
+  await startExplorer();
   summary(proxy.url);
+}
+
+/** The explorer alone, for a stack started before it existed or after a rebuild. */
+async function explorer() {
+  mkdirSync(state, { recursive: true });
+  if (!existsSync(org1)) fail("The playground network isn't set up.", "Run pnpm playground:up first.");
+  stopBackground("explorer");
+  await new Promise((r) => setTimeout(r, 500)); // let the old process free the port
+  await startExplorer(1);
+  console.log(`\n${bold("Explorer")} ${teal(`http://localhost:${PORTS.explorer}`)}\n`);
 }
 
 function down() {
   console.log(bold("Stopping the Weft playground"));
+  stopBackground("explorer");
   stopBackground("relay");
   stopBackground("ca-proxy");
   if (existsSync(testNetwork)) {
@@ -366,6 +406,8 @@ function down() {
     run("./network.sh", ["down"], { cwd: testNetwork, env });
   }
   rmSync(join(state, "invite.json"), { force: true });
+  // The next network starts from block 0, so the old index would be wrong.
+  for (const suffix of ["", "-wal", "-shm"]) rmSync(join(state, `explorer.db${suffix}`), { force: true });
   console.log("Done. Downloads in playground/.fabric are kept; delete that folder to remove them.");
 }
 
@@ -381,13 +423,14 @@ async function status() {
   const relayUp = await ok(`http://localhost:${PORTS.relay}/v1/health`);
   line("Relay", relayUp, `http://localhost:${PORTS.relay}`);
   line("Invite", await ok(`http://localhost:${PORTS.relay}/.well-known/weft-invite.json`), "served by the relay");
+  line("Explorer", await ok(`http://localhost:${PORTS.explorer}/api/v1/status`), `http://localhost:${PORTS.explorer}`);
 }
 
 const [command, ...flags] = process.argv.slice(2).filter((a) => a !== "--");
-const commands = { up, down, status };
+const commands = { up, down, status, explorer };
 const unknown = flags.filter((f) => !(command === "up" && f === "--https"));
 if (!commands[command] || unknown.length) {
-  console.log("Usage: node playground/cli.mjs <up [--https]|down|status>");
+  console.log("Usage: node playground/cli.mjs <up [--https]|explorer|down|status>");
   if (unknown.length) console.log(`Unknown option: ${unknown.join(" ")}`);
   process.exit(command ? 1 : 0);
 }

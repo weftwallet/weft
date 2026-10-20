@@ -1,0 +1,9 @@
+# What the playground's explorer publishes. Real deployments start with
+# everything hidden and turn on only what the organisation means to share.
+# The options are described in docs: Operators > Explorer.
+organisation: Org1
+channels:
+  mychannel:
+    level: public
+    values: show
+    submitter: show

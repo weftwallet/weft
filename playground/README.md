@@ -9,6 +9,7 @@ pnpm dev:docs            # in another terminal
 # open http://localhost:4321/playground/
 pnpm playground:down     # stop everything and remove the network
 pnpm playground:status   # what's running
+pnpm playground:explorer # start or restart only the explorer, on a running stack
 ```
 
 ## Requirements
@@ -25,6 +26,7 @@ pnpm playground:status   # what's running
 | `basic` contract | `mychannel` | fabric-samples' asset-transfer (TypeScript) |
 | Org1 CA proxy | `http://localhost:7080`, or `https://localhost:7443` with `--https` | Forwards to the CA's HTTPS on 7054, so the browser can enrol (see below) |
 | Weft relay | `http://localhost:8787` | Talks to `peer0.org1`; serves the invite at `/.well-known/weft-invite.json` |
+| Explorer | `http://localhost:8790` | Reads `mychannel` as Org1's `User1`; publishes what `explorer.yaml` allows |
 
 ## Demo users (Org1)
 

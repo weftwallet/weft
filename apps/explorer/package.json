@@ -1,0 +1,32 @@
+{
+  "name": "@weftwallet/explorer",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "A block explorer that one Fabric organisation runs for the channels it chooses to publish",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --watch src/main.ts",
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning dist/main.js",
+    "test": "vitest run",
+    "sample": "node --disable-warning=ExperimentalWarning src/test/serve-sample.ts"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@grpc/grpc-js": "^1.14.6",
+    "@hyperledger/fabric-gateway": "^1.13.0",
+    "@hyperledger/fabric-protos": "^0.3.7",
+    "@weftwallet/core": "workspace:*",
+    "fastify": "^5.12.7",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/google-protobuf": "^3.15.12",
+    "@types/node": "^26.6.5",
+    "google-protobuf": "^3.21.4",
+    "vitest": "^5.0.5"
+  }
+}

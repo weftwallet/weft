@@ -1,6 +1,6 @@
 # 0004: An explorer that each organisation hosts
 
-**Status:** Proposed
+**Status:** Accepted. Phase 1 is built (`apps/explorer`).
 **Date:** 2026-10-20
 
 ## Context

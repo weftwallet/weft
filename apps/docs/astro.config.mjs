@@ -59,6 +59,7 @@ export default defineConfig({
             { label: "Deploy the relay", slug: "operators/relay" },
             { label: "Publish an org invite", slug: "operators/invites" },
             { label: "Invite maker", slug: "operators/invite-maker" },
+            { label: "Run an explorer", slug: "operators/explorer" },
           ],
         },
         {
