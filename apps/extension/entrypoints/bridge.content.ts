@@ -16,6 +16,27 @@ export default defineContentScript({
   main() {
     const post = (message: WalletToPageMessage) => window.postMessage(message, window.location.origin);
 
+    // When Weft is updated or reloaded, Chrome cuts this script off from it:
+    // no more events, and requests fail. Nothing tells the page, so it would
+    // keep showing "connected". Notice it and say so once.
+    let cutOff = false;
+    const stillAttached = () => {
+      try {
+        return Boolean(browser.runtime?.id);
+      } catch {
+        return false;
+      }
+    };
+    const checkAttached = () => {
+      if (cutOff || stillAttached()) return;
+      cutOff = true;
+      clearInterval(timer);
+      post({ target: MESSAGE_TARGET.toPage, kind: "event", event: "disconnect", payload: { reason: "wallet-updated" } });
+    };
+    const timer = setInterval(checkAttached, 2000);
+    document.addEventListener("visibilitychange", checkAttached);
+    window.addEventListener("focus", checkAttached);
+
     window.addEventListener("message", (event: MessageEvent) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       const data = event.data as Partial<PageToWalletMessage> | null;
@@ -23,8 +44,9 @@ export default defineContentScript({
 
       const request: ProviderRequest = { channel: "weft-provider", method: data.method, params: data.params };
       const id = data.id;
-      browser.runtime
-        .sendMessage(request)
+      // Promise.resolve().then: once cut off, sendMessage throws synchronously.
+      Promise.resolve()
+        .then(() => browser.runtime.sendMessage(request))
         .then((response: ProviderResponse | undefined) => {
           if (!response) {
             post({ target: MESSAGE_TARGET.toPage, kind: "response", id, error: { code: -32603, message: "Weft did not respond" } });
@@ -44,7 +66,10 @@ export default defineContentScript({
               code: -32603,
               // After Weft is updated or reloaded, this page's old connection
               // to it is dead until the page reloads.
-              message: /context invalidated/i.test(message) ? "Weft was updated. Reload this page to keep using it." : message,
+              message:
+                cutOff || /context invalidated|undefined/i.test(message) || !stillAttached()
+                  ? "Weft was updated. Reload this page to keep using it."
+                  : message,
             },
           });
         });

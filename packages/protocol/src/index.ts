@@ -144,7 +144,12 @@ export type DisconnectReason =
   /** The site called weft_disconnect (possibly from another tab). */
   | "site"
   /** The user removed their last identity. */
-  | "no-identity";
+  | "no-identity"
+  /**
+   * Weft was updated or reloaded while this page was open. The page must
+   * reload to use Weft again.
+   */
+  | "wallet-updated";
 
 export interface WeftEvents {
   /** The user switched, renewed or removed the active identity. Sent to connected sites. */
