@@ -141,7 +141,7 @@ export function AddIdentityOptions({ navigate }: { navigate: Navigate }) {
       <div className="add-grid">
         <button type="button" className="add-tile" onClick={() => navigate({ name: "enroll" })}>
           <Icon name="key" size={18} />
-          Enroll with CA
+          Enrol with CA
         </button>
         <button type="button" className="add-tile" onClick={() => navigate({ name: "import" })}>
           <Icon name="file" size={18} />

@@ -117,7 +117,7 @@ function Welcome({ navigate }: { navigate: (r: Route) => void }) {
             weft
           </div>
           <p className="muted" style={{ margin: "10px 0 0", fontSize: 15 }}>
-            The network is the warp. Your identity and transactions are the weft, woven through it.
+            An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the transactions you approve.
           </p>
         </div>
       </div>

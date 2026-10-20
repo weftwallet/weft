@@ -1,9 +1,9 @@
 ---
 title: weft
-description: An identity wallet for Hyperledger Fabric. Hold your organisation's certificate in the browser and sign transactions you can actually read.
+description: An identity wallet for Hyperledger Fabric. Every transaction Weft signs is decoded and shown to you first.
 template: splash
 hero:
-  tagline: An identity wallet for Hyperledger Fabric. The network is the warp; your identity and transactions are the weft, woven through it.
+  tagline: An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the transactions you approve.
   image:
     # Served as-is: Starlight would shrink a hero `file` to a 400px WebP.
     html: '<img src="/hero-product.png" width="953" height="1020" alt="The Weft wallet showing an identity and its recent transactions, next to a signature request for a TransferShipment transaction." />'
@@ -19,11 +19,11 @@ hero:
 import { Card, CardGrid } from "@astrojs/starlight/components";
 
 <CardGrid>
-  <Card title="Identity, not tokens" icon="seti:lock">
-    Fabric has no coins and no gas. Weft holds the X.509 certificate your organisation's CA issued you, shows you when it
+  <Card title="X.509 identities" icon="seti:lock">
+    Weft holds the X.509 certificate your organisation's CA issued you, shows you when it
     expires, and renews it in one click.
   </Card>
-  <Card title="Sign what you can read" icon="document">
+  <Card title="Decoded requests" icon="document">
     Every request shows the channel, contract, function and decoded arguments, and says plainly whether it reads or
     writes the ledger.
   </Card>

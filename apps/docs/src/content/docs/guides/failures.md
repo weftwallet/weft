@@ -14,7 +14,7 @@ Open the failed item in **Activity** to see:
 
 ## Common cases
 
-**Someone else changed the same data first** (`MVCC_READ_CONFLICT`). Two transactions touched the same record at the same time and the other won. Nothing was written. Trying again almost always works.
+**Someone else changed the same data first** (`MVCC_READ_CONFLICT`). Two transactions changed the same record at the same time and the other was committed first. Nothing was written. A retry usually succeeds.
 
 **Not enough organisations approved it** (`ENDORSEMENT_POLICY_FAILURE`). The contract needs approval from more organisations than responded. Usually a peer is down. Try again later, or ask the administrator which organisation is missing.
 

@@ -4,7 +4,7 @@ Logo files and design tokens shared by the extension and the docs site.
 
 ## The mark
 
-Weft threads passing over and under warp threads: the network is the warp, your identity and transactions are the weft woven through it.
+The mark shows weft threads passing over and under warp threads. The [Brand page](https://weft.ifeanyiugwu.dev/reference/brand/#the-name) explains the name.
 
 There are two drawings of the same idea. Above 32px use the full mark: three wefts over two warps. At 32px and below the full mark's gaps fall under a pixel and blur, so use the small mark: a simpler 2×2 weave fitted to the pixel grid.
 
@@ -18,7 +18,7 @@ There are two drawings of the same idea. Above 32px use the full mark: three wef
 
 The wordmark is always lowercase `weft` in IBM Plex Mono, weight 500.
 
-When naming the project next to Fabric, write "weft — an identity wallet for Hyperledger Fabric". Keep "Hyperledger" and "Fabric" out of the name and logo themselves: they are Linux Foundation trademarks.
+When naming the project next to Fabric, write "weft, an identity wallet for Hyperledger Fabric". Keep "Hyperledger" and "Fabric" out of the name and logo themselves: they are Linux Foundation trademarks.
 
 ## Colour
 

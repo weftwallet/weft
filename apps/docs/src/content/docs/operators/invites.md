@@ -37,7 +37,7 @@ Host `invite.json` anywhere over HTTPS, then make the share links and a QR code:
 npx @weftwallet/cli invite share https://org1.example.com/invite.json --qr invite.svg
 ```
 
-No connection profile? Use `--msp Org1MSP --ca https://ca.org1.example.com:7054 --ca-name ca-org1` instead of `--profile`.
+Without a connection profile, use `--msp Org1MSP --ca https://ca.org1.example.com:7054 --ca-name ca-org1` instead of `--profile`.
 
 ### In the browser
 
@@ -108,6 +108,6 @@ It validates the invite and confirms the relay and CA answer, exiting non-zero o
 
 ## Good practice
 
-- **Never put secrets in an invite.** Send enrollment secrets through a separate channel.
-- **One invite per organisation**, or per person when you pre-fill `enrollmentId`.
-- **Keep the URLs stable.** Moving the CA or relay means re-sharing links; the relay-served invite moves with the relay.
+- Never put secrets in an invite. Send enrollment secrets through a separate channel.
+- One invite per organisation, or per person when you pre-fill `enrollmentId`.
+- Keep the URLs stable. Moving the CA or relay means re-sharing links; the relay-served invite moves with the relay.

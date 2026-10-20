@@ -1,7 +1,5 @@
 # Contributing
 
-Thanks for helping. A few things make reviews quick.
-
 ## Setup
 
 ```sh
@@ -25,4 +23,4 @@ pnpm test
 
 ## Commits and pull requests
 
-Small, focused pull requests with a clear description of the user-visible effect. Mention any change to the security model explicitly.
+Keep each pull request to one change and describe its user-visible effect. Mention any change to the security model explicitly.

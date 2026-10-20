@@ -206,13 +206,13 @@ export function JoinInvite({ navigate, onDone }: FormProps) {
         <Field label="Enrollment secret" hint="From your registrar. Used once, never stored.">
           <SecretInput required value={secret} onChange={(e) => setSecret(e.target.value)} />
         </Field>
-        <Submit busy={join.busy} label="Enroll" busyLabel="Enrolling…" error={join.error} />
+        <Submit busy={join.busy} label="Enrol" busyLabel="Enrolling…" error={join.error} />
       </form>
     </>
   );
 }
 
-/* Enroll manually -------------------------------------------------- */
+/* Enrol manually -------------------------------------------------- */
 
 export function EnrollForm({ navigate, onDone }: FormProps) {
   const [draft, setDraft] = useState(EMPTY_NETWORK);
@@ -228,7 +228,7 @@ export function EnrollForm({ navigate, onDone }: FormProps) {
 
   return (
     <>
-      <BackHeader title="Enroll with CA" onBack={() => void back()} />
+      <BackHeader title="Enrol with CA" onBack={() => void back()} />
       <form
         className="page"
         onSubmit={(e: FormEvent) => {
@@ -243,7 +243,7 @@ export function EnrollForm({ navigate, onDone }: FormProps) {
           <SecretInput required value={secret} onChange={(e) => setSecret(e.target.value)} />
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa />
-        <Submit busy={action.busy} label="Enroll" busyLabel="Enrolling…" error={action.error} />
+        <Submit busy={action.busy} label="Enrol" busyLabel="Enrolling…" error={action.error} />
       </form>
     </>
   );

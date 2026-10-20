@@ -2,7 +2,7 @@
 /**
  * The Weft playground stack: a local Fabric network you can point Weft at.
  *
- *   pnpm playground:up      start everything (first run downloads Fabric, ~5–10 min)
+ *   pnpm playground:up      start everything (first run downloads Fabric, 5 to 10 min)
  *   pnpm playground:up --https
  *                           the same, but the CA proxy serves HTTPS with a mkcert
  *                           certificate, so the CA URL looks like production's

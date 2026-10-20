@@ -163,7 +163,7 @@ function IdentityCard({
                 <Spinner small tone={health.state === "expired" ? "thread" : "amber"} /> Renewing…
               </>
             ) : (
-              `Re-enroll as ${identity.enrollmentId}`
+              `Re-enrol as ${identity.enrollmentId}`
             )}
           </button>
         )}
@@ -211,7 +211,7 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
               ) : (
                 <span className="mono subtle" style={{ fontSize: 11 }}>
                   {item.call.chaincode}
-                  {item.blockNumber ? ` · block ${Number(item.blockNumber).toLocaleString()}` : item.kind === "evaluate" ? " · query, not recorded" : ""}
+                  {item.blockNumber ? ` · block ${Number(item.blockNumber).toLocaleString()}` : item.kind === "evaluate" ? " · query" : ""}
                 </span>
               )}
             </span>

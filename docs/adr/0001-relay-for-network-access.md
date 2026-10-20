@@ -15,7 +15,7 @@ A Fabric client talks to the peer Gateway service over gRPC (HTTP/2 with trailer
 
 Use option 2. `apps/relay` is a small HTTP service that each organisation (or a network operator) runs next to its peers.
 
-The relay is **stateless**. Every request carries the bytes it needs, so any replica can serve any step, and nothing in flight is lost on restart. The four steps are:
+The relay is **stateless**. Every request carries the bytes it needs, so any replica can serve any step, and a restart loses nothing. A submit takes four calls and an evaluate takes two:
 
 | Step | Wallet sends | Relay returns |
 |---|---|---|
@@ -29,5 +29,5 @@ The relay is **stateless**. Every request carries the bytes it needs, so any rep
 
 - **Private keys never leave the wallet.** The relay only ever sees public certificates, unsigned messages and signatures.
 - The relay sees transaction contents. That is acceptable because it runs inside the organisation's own boundary, next to peers that see the same data.
-- A malicious relay could hand the wallet a different proposal from the one the dApp asked for. The wallet therefore **decodes the proposal bytes it is asked to sign and checks channel, contract, function and arguments** against the approved request before signing. This check lives in `@weftwallet/core` (`verifyProposal`) and is a hard requirement, not an optimisation.
+- A malicious relay could hand the wallet a different proposal from the one the dApp asked for. The wallet therefore **decodes the proposal bytes it is asked to sign and checks channel, contract, function and arguments** against the approved request before signing. This check lives in `@weftwallet/core` (`verifyProposal`) and is mandatory.
 - Organisations get one more small service to run. The org invite (see ADR 0003) carries its URL, so users never type it.

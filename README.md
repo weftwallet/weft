@@ -5,17 +5,19 @@
 <h1 align="center">weft</h1>
 
 <p align="center">An identity wallet for Hyperledger Fabric.<br>
-The network is the warp. Your identity and transactions are the weft, woven through it.</p>
+It holds the certificate your organisation's CA issued and signs only the transactions you approve.</p>
 
 ---
 
-Weft is a browser extension that does for permissioned Fabric networks what MetaMask does for Ethereum: web apps ask, you see exactly what they want, you approve or reject. Fabric has no coins, gas or addresses, so Weft is built around what Fabric actually has: X.509 identities issued by your organisation's CA, channels, contracts, and endorsement.
+Weft is a browser extension that does for permissioned Fabric networks what MetaMask does for Ethereum. A web app sends a request and Weft shows exactly what it would sign. You approve or reject it.
 
-- **Identity first.** Your certificate, MSP ID, role and attributes, with expiry shown up front and one-click renewal.
-- **Readable approvals.** Channel, contract, function and decoded arguments; reads (teal) look different from ledger writes (amber).
-- **Keys never leave the browser.** Non-extractable WebCrypto keys. The relay sees only certificates, unsigned messages and signatures.
-- **Verified before signing.** Weft decodes every Fabric message it's asked to sign and refuses anything that doesn't match what you approved.
-- **Failures in plain English.** `ENDORSEMENT_POLICY_FAILURE` becomes "Not enough organisations approved it", with per-peer details.
+Fabric has no coins, gas or addresses. Weft is built around X.509 identities issued by your organisation's CA, channels, contracts and endorsement.
+
+- The home screen shows your certificate, MSP ID, role and attributes, with the expiry date and one-click renewal.
+- Every request shows the channel, contract, function and decoded arguments. Reads are teal and ledger writes are amber.
+- Private keys are non-extractable WebCrypto keys. The relay sees only certificates, unsigned messages and signatures.
+- Weft decodes every Fabric message it's asked to sign and refuses anything that doesn't match what you approved.
+- Failures are explained in plain English: `ENDORSEMENT_POLICY_FAILURE` becomes "Not enough organisations approved it", with per-peer details.
 
 ## How it works
 
@@ -78,8 +80,8 @@ See [`playground/README.md`](playground/README.md).
 
 ## Status
 
-Early. The extension, relay, SDK and docs work end to end; see the security model's "Not covered yet" list before trusting it with production identities. Notably, keys are protected at rest only by the browser profile until passkey wrapping lands.
+Weft is in early development. The extension, relay, SDK and docs work end to end; see the security model's "Not covered yet" list before trusting it with production identities. Keys are protected at rest only by the browser profile until passkey wrapping is implemented.
 
-## License
+## Licence
 
 [Apache-2.0](LICENSE). Hyperledger and Fabric are trademarks of the Linux Foundation; Weft is an independent project and is not affiliated with or endorsed by it.

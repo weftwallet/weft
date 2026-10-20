@@ -1,6 +1,6 @@
 # Security policy
 
-Weft holds signing keys for permissioned networks, so we take reports seriously.
+Weft holds signing keys for permissioned networks.
 
 ## Reporting
 
@@ -25,4 +25,4 @@ In scope: the extension (`apps/extension`), the relay (`apps/relay`), and the pa
 - ways to get a signature over anything other than what the approval window showed,
 - ways for a page to impersonate another origin or reach a connected site's data.
 
-Known gaps are listed under "Not covered yet" in the [security model](apps/docs/src/content/docs/reference/security.md); reports that go beyond them are still welcome.
+Known gaps are listed under "Not covered yet" in the [security model](apps/docs/src/content/docs/reference/security.md). Reports of issues beyond those gaps are in scope.

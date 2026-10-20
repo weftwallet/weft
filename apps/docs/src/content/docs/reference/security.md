@@ -3,11 +3,11 @@ title: Security model
 description: What Weft protects against, how, and what it does not cover yet.
 ---
 
-## What we protect
+## What Weft protects
 
-1. **Private keys.** Nobody, including web pages, the relay and Weft's own UI code, should be able to read them.
-2. **Intent.** Nothing should be signed that the user didn't see and approve.
-3. **Identity privacy.** Sites learn who you are only after you connect them.
+1. Nobody, including web pages, the relay and Weft's own UI code, should be able to read private keys.
+2. Nothing should be signed that the user didn't see and approve.
+3. Sites learn who you are only after you connect them, and only for the identities you connect them to.
 
 ## How
 
@@ -41,10 +41,10 @@ The extension's manifest asks for no host access up front. When you add a networ
 
 ## Not covered yet
 
-- **Protection at rest.** v0 relies on your browser profile and OS account. Anyone who can use your unlocked browser profile can use Weft. The plan is to wrap keys with a passkey-derived key (WebAuthn PRF), so each session needs a passkey touch.
-- **Lock timeout.** Related to the above: there's no "lock wallet" yet.
-- **Revocation checks.** Weft doesn't check CRLs. The network rejects revoked certificates at endorsement.
-- **Relay authentication.** Any wallet can ask a relay to build proposals; peers enforce who may actually transact. Restrict signers with `WEFT_ALLOWED_MSP_IDS`.
+- v0 relies on your browser profile and OS account for protection at rest. Anyone who can use your unlocked browser profile can use Weft. The plan is to wrap keys with a passkey-derived key (WebAuthn PRF), so each session needs a passkey touch.
+- There is no lock timeout and no "lock wallet" action yet.
+- Weft doesn't check CRLs. The network rejects revoked certificates at endorsement.
+- Relays don't authenticate wallets: any wallet can ask a relay to build proposals, and peers enforce which identities may transact. Restrict signers with `WEFT_ALLOWED_MSP_IDS`.
 
 ## Reporting a vulnerability
 

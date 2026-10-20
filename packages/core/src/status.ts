@@ -28,7 +28,7 @@ const EXPLANATIONS: Record<string, Omit<StatusExplanation, "code">> = {
     retryable: true,
   },
   PHANTOM_READ_CONFLICT: {
-    title: "The data changed while this was in flight",
+    title: "The data changed before this transaction committed",
     detail: "A range of keys this transaction read was modified before it committed. Nothing was written. Try again.",
     retryable: true,
   },
@@ -50,17 +50,17 @@ const EXPLANATIONS: Record<string, Omit<StatusExplanation, "code">> = {
   },
   BAD_PROPOSAL_TXID: {
     title: "The request was malformed",
-    detail: "The transaction ID did not match its contents. This is a bug in the app or the relay, not something you did.",
+    detail: "The transaction ID did not match its contents. The app or the relay has a bug.",
     retryable: false,
   },
   EXPIRED_CHAINCODE: {
     title: "The contract version changed",
-    detail: "The contract was upgraded while this transaction was in flight. Try again.",
+    detail: "The contract was upgraded before this transaction committed. Try again.",
     retryable: true,
   },
   CHAINCODE_VERSION_CONFLICT: {
     title: "The contract version changed",
-    detail: "The contract was upgraded while this transaction was in flight. Try again.",
+    detail: "The contract was upgraded before this transaction committed. Try again.",
     retryable: true,
   },
   INVALID_ENDORSER_TRANSACTION: {

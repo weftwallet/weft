@@ -7,8 +7,8 @@ import type { Navigate } from "./state";
 
 const HEADLINE = {
   committed: { color: "var(--weft-thread)", text: "Committed to the ledger" },
-  evaluated: { color: "var(--weft-text-muted)", text: "Read only · not recorded" },
-  failed: { color: "var(--weft-signal)", text: "Failed · not committed" },
+  evaluated: { color: "var(--weft-text-muted)", text: "Read only" },
+  failed: { color: "var(--weft-signal)", text: "Not committed" },
   rejected: { color: "var(--weft-text-subtle)", text: "Rejected by you" },
 } as const;
 

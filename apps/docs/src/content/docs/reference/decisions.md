@@ -3,7 +3,7 @@ title: Architecture decisions
 description: The decisions that shape Weft, and why.
 ---
 
-Full records live in [`docs/adr`](https://github.com/ifeanyi-ugwu/weft/tree/main/docs/adr) in the repository. In short:
+Full records live in [`docs/adr`](https://github.com/ifeanyi-ugwu/weft/tree/main/docs/adr) in the repository.
 
 ## 0001: A stateless relay reaches the network
 

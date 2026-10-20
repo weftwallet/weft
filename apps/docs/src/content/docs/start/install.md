@@ -27,11 +27,11 @@ If your administrator sent a link that opens a "Join a network" page, click **Op
 1. Choose **Join from an org invite** and paste the link (it starts with `weft://invite` or `https://`). If you were given a QR code instead, show it on screen and choose **Scan QR code on this tab**, or paste a screenshot of it into the link field.
 2. Weft asks your browser for permission to reach the invite's host. Allow it.
 3. Check the network, organisation, MSP ID and channels shown. If anything looks wrong, stop and ask your administrator.
-4. Enter your **enrollment ID** and **enrollment secret**, then **Enroll**. Weft asks for access to the CA and relay hosts, creates a key pair, and asks the CA for a certificate.
+4. Enter your **enrollment ID** and **enrollment secret**, then **Enrol**. Weft asks for access to the CA and relay hosts, creates a key pair, and asks the CA for a certificate.
 
 The secret is used once and never stored.
 
-### Enroll with CA
+### Enrol with CA
 
 The same as an invite, but you type the details yourself: MSP ID, channels, relay URL, CA URL and, if your CA server hosts more than one CA, the CA name.
 
@@ -46,7 +46,7 @@ For an identity you already have as files, for example from `fabric-samples`:
   openssl pkcs8 -topk8 -nocrypt -in key.pem -out key-pkcs8.pem
   ```
 
-Weft checks the key belongs to the certificate, then imports it as a non-exportable key. Delete the key file afterwards; Weft cannot give it back to you.
+Weft checks the key belongs to the certificate, then imports it as a non-extractable key. Delete the key file afterwards; Weft cannot give it back to you.
 
 ### Generate CSR
 

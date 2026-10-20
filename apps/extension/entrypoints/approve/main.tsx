@@ -431,7 +431,7 @@ function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (
                   <Spinner small /> Enrolling…
                 </>
               ) : (
-                "Enroll"
+                "Enrol"
               )}
             </button>
           </footer>

@@ -11,7 +11,7 @@ From the Weft repository:
 
 ```sh
 pnpm install
-pnpm playground:up      # first run downloads Fabric, ~5–10 minutes
+pnpm playground:up      # first run downloads Fabric, 5 to 10 minutes
 pnpm dev:docs           # in another terminal
 ```
 
@@ -64,7 +64,7 @@ fabric-ca-client register --caname ca-org1 \
 
 ### 4. Enrol in Weft
 
-In the extension choose **Enroll with CA** and enter:
+In the extension choose **Enrol with CA** and enter:
 
 | Field | Value |
 |---|---|

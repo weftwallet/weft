@@ -1,9 +1,9 @@
 # Weft playground stack
 
-A local Hyperledger Fabric network ready for Weft, in one command. Use it to try the wallet, build a dApp, or run the docs' playground page against a real network on your machine.
+`pnpm playground:up` starts a local Hyperledger Fabric network configured for Weft. Use it to try the wallet, build a dApp, or run the docs' playground page against a real network on your machine.
 
 ```sh
-pnpm playground:up       # first run downloads Fabric (~5–10 minutes)
+pnpm playground:up       # first run downloads Fabric (5 to 10 minutes)
 pnpm playground:up --https   # the same, with the CA on https://localhost:7443 (needs mkcert)
 pnpm dev:docs            # in another terminal
 # open http://localhost:4321/playground/
@@ -33,9 +33,9 @@ pnpm playground:status   # what's running
 | `alice` | `alicepw` | `role=auditor` |
 | `bob` | `bobpw` | `role=trader` |
 
-## Why a CA proxy?
+## Why the playground uses a CA proxy
 
-The test network's CA serves HTTPS with a self-signed certificate. Browsers reject it, and accepting it in a tab doesn't help: the extension's background worker still refuses it, so enrolment fails with "Failed to fetch". The proxy talks HTTPS to the CA, verifying it against the CA's own root certificate, and serves plain HTTP on `localhost`, which browsers allow. Nothing to install or trust.
+The test network's CA serves HTTPS with a self-signed certificate. Browsers reject it, and accepting it in a tab doesn't help: the extension's background worker still refuses it, so enrolment fails with "Failed to fetch". The proxy talks HTTPS to the CA, verifying it against the CA's own root certificate, and serves plain HTTP on `localhost`, which browsers allow. This mode needs no certificate installed or trusted.
 
 ### HTTPS with `--https`
 

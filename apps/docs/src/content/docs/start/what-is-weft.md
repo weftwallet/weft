@@ -7,7 +7,7 @@ Weft is a browser extension that lets you use web apps built on [Hyperledger Fab
 
 ## How it differs from a crypto wallet
 
-Fabric is a **permissioned** network. There are no coins, no gas and no public addresses. Instead:
+Fabric is a **permissioned** network with no coins, gas or public addresses:
 
 | Ethereum wallet | Weft |
 |---|---|
@@ -17,7 +17,7 @@ Fabric is a **permissioned** network. There are no coins, no gas and no public a
 | A balance | Certificate health: when it expires and whether it still works |
 | "Send 0.1 ETH" | "Call `TransferAsset("asset6", "Christopher")` on the `basic` contract" |
 
-So Weft's home screen shows who you are on the network, not how much you hold.
+Weft's home screen shows your identity on the network and its certificate health.
 
 ## The three pieces
 
@@ -33,7 +33,7 @@ So Weft's home screen shows who you are on the network, not how much you hold.
 ```
 
 1. **The extension** holds your identities and signs. It shows every request before signing.
-2. **The relay** runs inside your organisation, next to its peers. Browsers can't speak Fabric's gRPC protocol, so the relay builds the unsigned messages, the extension signs them, and the relay forwards the signed bytes. The relay never sees your private key. [Why a relay?](/reference/decisions/)
+2. **The relay** runs inside your organisation, next to its peers. Browsers can't speak Fabric's gRPC protocol, so the relay builds the unsigned messages, the extension signs them, and the relay forwards the signed bytes. The relay never sees your private key. The reasoning is in [Architecture decisions](/reference/decisions/).
 3. **The org invite** is a link your network administrator shares. It tells Weft where your CA and relay are, so you never type a URL.
 
 ## What you'll need

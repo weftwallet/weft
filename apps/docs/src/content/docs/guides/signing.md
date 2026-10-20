@@ -5,9 +5,9 @@ description: What each part of Weft's approval window means, and what to check b
 
 When an app asks Weft to sign, a window opens with everything you need to decide.
 
-## Read or write?
+## Reads and writes
 
-The coloured banner at the top is the most important part.
+The coloured banner at the top shows whether the request reads or writes.
 
 - **EVALUATE** (teal): a read-only query. It asks one peer to run the function and return the result. Nothing is written to the ledger and nothing is shared with other organisations' ledgers. The button says **Sign & query**.
 - **SUBMIT** (amber): a write. The request goes to the organisations the contract's endorsement policy requires; if they agree, it is ordered into a block and committed. Once committed it cannot be undone. The button says **Sign & submit**.
@@ -24,7 +24,7 @@ The coloured banner at the top is the most important part.
 | Arguments | The inputs, in order, decoded into text. |
 | Private | Names of private (transient) inputs. Their values are not shown and never reach the ledger. |
 
-**View raw request** shows the same information as JSON, which is useful when reporting a problem.
+**View raw request** shows the same information as JSON, for attaching to a problem report.
 
 ## What Weft checks for you
 

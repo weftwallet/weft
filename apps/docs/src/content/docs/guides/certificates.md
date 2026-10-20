@@ -3,7 +3,7 @@ title: Certificates and renewal
 description: How Weft tracks certificate expiry, and how to renew before signing stops working.
 ---
 
-Fabric certificates expire, often after a year, sometimes much sooner. An expired certificate can't sign, and the network rejects it. Weft makes expiry hard to miss.
+Fabric certificates expire, often after a year. An expired certificate can't sign, and the network rejects it. Weft shows each certificate's expiry on the home screen and warns 30 days ahead.
 
 ## The health bar
 
@@ -12,12 +12,12 @@ The identity card on the home screen shows:
 | Colour | Meaning |
 |---|---|
 | Teal | Valid, more than 30 days left. |
-| Amber | Expires within 30 days. A **Re-enroll** button appears. |
+| Amber | Expires within 30 days. A **Re-enrol** button appears. |
 | Red | Expired. Weft refuses to sign and apps receive error `4301`. |
 
 ## Renewing
 
-**Re-enroll** asks your organisation's CA for a new certificate:
+**Re-enrol** asks your organisation's CA for a new certificate:
 
 1. Weft creates a **new** key pair.
 2. It signs the request with your **current** key, which proves to the CA that you are the same identity.
@@ -25,7 +25,7 @@ The identity card on the home screen shows:
 
 You don't need your enrollment secret. You do need the CA URL, which comes from your invite or the details you entered when enrolling. Identities imported from PEM files without a CA URL can't be renewed from Weft; import the new certificate and key instead.
 
-Re-enrolment only works while the current certificate is still valid. If it has already expired, ask your registrar for a new enrollment secret and enroll again.
+Re-enrolment only works while the current certificate is still valid. If it has already expired, ask your registrar for a new enrollment secret and enrol again.
 
 ## Fingerprints
 

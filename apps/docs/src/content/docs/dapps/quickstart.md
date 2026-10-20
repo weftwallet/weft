@@ -113,6 +113,6 @@ weft.on("certificateStatus", ({ state, daysLeft }) => {
 });
 ```
 
-Give users a way out too: `await weft.disconnect()` disconnects your site, and every open tab of it gets the `disconnect` event.
+To disconnect, call `await weft.disconnect()`; every open tab of your site gets the `disconnect` event.
 
 Next: [run everything locally against Fabric's test network](/dapps/test-network/).

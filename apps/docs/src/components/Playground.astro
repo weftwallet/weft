@@ -148,7 +148,7 @@
   function setWeftPill(state: "ok" | "missing") {
     const pill = $("pg-weft");
     pill.dataset.state = state;
-    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Weft not installed · how to install";
+    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Install Weft";
     if (state === "missing") {
       // Turn the pill into a link to the install guide.
       const link = Object.assign(document.createElement("a"), {
@@ -197,8 +197,8 @@
     user: "Disconnected in Weft",
     site: "Disconnected",
     "no-identity": "No identity in Weft",
-    "wallet-updated": "Weft was updated · reload this page",
-    "identity-changed": "Switched identity in Weft · connect again",
+    "wallet-updated": "Weft was updated. Reload this page.",
+    "identity-changed": "Identity switched in Weft. Connect again.",
   };
 
   function setConnected(value: boolean, label?: string) {

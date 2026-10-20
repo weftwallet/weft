@@ -38,10 +38,10 @@ An organisation publishes an **invite**: a small JSON document, optionally signe
 ## Consequences
 
 - dApps written against `@weftwallet/sdk` work unchanged if the transport under the wallet changes.
-- Invites move the "which URL do I type?" problem to network administrators, who already have the answers.
+- Network administrators, who already hold the connection details, supply them once in the invite, and users no longer type URLs.
 
 ## Update (2026-10-20): publishing and accepting invites
 
-- **Publishing.** Operators build invites from the Fabric connection profile they already have: the relay can serve one at `/.well-known/weft-invite.json`, `@weftwallet/cli` can write one, and the docs site has an in-browser invite maker. The relay URL and, often, the channels aren't in connection profiles, so the operator supplies them.
-- **Accepting.** `weft_addNetwork({ url })` lets a page, typically the hosted join page or an org portal, hand an invite URL to the wallet. The wallet fetches the invite itself from that URL after the user agrees, so a page can't alter what the user sees. Like MetaMask's add-network flow, it doesn't require `weft_connect`.
-- **QR codes** encode the join link. Because the wallet is a desktop extension, it reads codes from the visible tab or a pasted screenshot rather than a camera.
+- Operators build invites from the Fabric connection profile they already have: the relay can serve one at `/.well-known/weft-invite.json`, `@weftwallet/cli` can write one, and the docs site has an in-browser invite maker. The relay URL and, often, the channels aren't in connection profiles, so the operator supplies them.
+- `weft_addNetwork({ url })` lets a page, typically the hosted join page or an org portal, hand an invite URL to the wallet. The wallet fetches the invite itself from that URL after the user agrees, so a page can't alter what the user sees. Like MetaMask's add-network flow, it doesn't require `weft_connect`.
+- QR codes encode the join link. Because the wallet is a desktop extension, it reads codes from the visible tab or a pasted screenshot rather than a camera.

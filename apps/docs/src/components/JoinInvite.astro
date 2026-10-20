@@ -93,7 +93,7 @@
       $("join-status").textContent = "Continue in the Weft window…";
       try {
         await weft.request({ method: "weft_addNetwork", params: { url } });
-        $("join-status").textContent = "Done. You're enrolled; the network is in Weft.";
+        $("join-status").textContent = "You're enrolled. The network is in Weft.";
       } catch (error: any) {
         $("join-status").textContent =
           error?.code === 4001 ? "Cancelled. You can try again any time." : `Weft couldn't add the network: ${error?.message ?? error}`;
