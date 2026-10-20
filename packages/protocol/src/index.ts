@@ -41,6 +41,8 @@ export interface NetworkSummary {
   name: string;
   mspId: string;
   channels: string[];
+  /** True for the network of the identity the site is using now. */
+  active: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -143,6 +145,11 @@ export type DisconnectReason =
   | "user"
   /** The site called weft_disconnect (possibly from another tab). */
   | "site"
+  /**
+   * The user switched to an identity this site isn't connected to. Call
+   * weft_connect to ask for it.
+   */
+  | "identity-changed"
   /** The user removed their last identity. */
   | "no-identity"
   /**
@@ -158,6 +165,12 @@ export interface WeftEvents {
   networkChanged: { networkId: string; channel: string };
   /** The site is no longer connected; calls fail until it connects again. */
   disconnect: { reason: DisconnectReason };
+  /**
+   * The certificate of the identity this site uses is close to expiring
+   * ("expiring", within 30 days) or has expired. Sent once per state, at most
+   * an hour late. After the user renews, identityChanged carries the new one.
+   */
+  certificateStatus: { identityId: string; state: "expiring" | "expired"; notAfter: string; daysLeft: number };
 }
 
 export type WeftEvent = keyof WeftEvents;

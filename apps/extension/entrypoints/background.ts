@@ -6,37 +6,32 @@ import { defineBackground } from "wxt/utils/define-background";
 import { db, type ActivityRecord } from "../lib/db";
 import type { ProviderResponse, UiApi, UiMethod, UiResponse } from "../lib/messages";
 import {
-  broadcast,
   decideApproval,
-  disconnectSites,
   getApproval,
   handleProviderRequest,
   registerApprovalListeners,
 } from "../lib/provider";
+import {
+  disconnectSites,
+  forgetIdentity,
+  migrateSites,
+  notifyNetworkChanged,
+  originsConnectedTo,
+  sendTo,
+  withActiveChange,
+} from "../lib/sites";
+import { checkCertificates, registerCertificateWatch } from "../lib/certificate-watch";
 import * as wallet from "../lib/wallet";
 
 type Handlers = { [M in UiMethod]: (payload: UiApi[M][0]) => Promise<UiApi[M][1]> };
-
-async function notifyIdentityChanged() {
-  await broadcast("identityChanged", await wallet.activeSummary());
-}
-
-async function notifyNetworkChanged() {
-  const active = await wallet.activeIdentity();
-  if (!active) return;
-  const { activeChannel } = await db.settings();
-  const channel = activeChannel && active.network.channels.includes(activeChannel) ? activeChannel : active.network.channels[0];
-  if (channel) await broadcast("networkChanged", { networkId: active.network.id, channel });
-}
 
 const handlers: Handlers = {
   state: () => wallet.getState(),
   activity: () => db.recentActivity(),
   activityItem: async ({ id }) => (await db.get<ActivityRecord>("activity", id)) ?? null,
   setActive: async ({ identityId, channel }) => {
-    await db.saveSettings({ activeIdentityId: identityId, activeChannel: channel ?? null });
-    await notifyIdentityChanged();
-    await notifyNetworkChanged();
+    await withActiveChange(() => db.saveSettings({ activeIdentityId: identityId, activeChannel: channel ?? null }));
+    await checkCertificates();
     return wallet.getState();
   },
   setChannel: async ({ channel }) => {
@@ -45,27 +40,30 @@ const handlers: Handlers = {
     return wallet.getState();
   },
   fetchInvite: ({ link }) => wallet.fetchInvite(link),
-  joinInvite: ({ invite, enrollmentId, secret }) => wallet.enroll(wallet.inviteToNetwork(invite), enrollmentId, secret),
-  enroll: ({ network, enrollmentId, secret }) => wallet.enroll(network, enrollmentId, secret),
-  importIdentity: ({ network, certificate, privateKeyPem }) => wallet.importIdentity(network, certificate, privateKeyPem),
+  // Adding the first identity makes it active, so these can change what sites see.
+  joinInvite: ({ invite, enrollmentId, secret }) =>
+    withActiveChange(() => wallet.enroll(wallet.inviteToNetwork(invite), enrollmentId, secret)),
+  enroll: ({ network, enrollmentId, secret }) => withActiveChange(() => wallet.enroll(network, enrollmentId, secret)),
+  importIdentity: ({ network, certificate, privateKeyPem }) =>
+    withActiveChange(() => wallet.importIdentity(network, certificate, privateKeyPem)),
   createCsr: ({ network, commonName }) => wallet.startCsr(network, commonName),
-  completeCsr: ({ pendingId, certificate }) => wallet.completeCsr(pendingId, certificate),
+  completeCsr: ({ pendingId, certificate }) => withActiveChange(() => wallet.completeCsr(pendingId, certificate)),
   reenroll: async ({ identityId }) => {
     const view = await wallet.reenroll(identityId);
-    await notifyIdentityChanged();
+    // Sites using this identity get the new certificate.
+    const active = await wallet.activeIdentity();
+    if (active?.record.id === identityId) {
+      const summary = await wallet.activeSummary();
+      if (summary) await sendTo(await originsConnectedTo(identityId), "identityChanged", summary);
+    }
     return view;
   },
   removeIdentity: async ({ identityId }) => {
-    await wallet.removeIdentity(identityId);
-    const state = await wallet.getState();
-    if (state.identities.length === 0) {
-      // Nothing left to sign with: connected sites would only get errors.
-      await disconnectSites(state.sites.map((s) => s.origin), "no-identity");
-      return wallet.getState();
-    }
-    await notifyIdentityChanged();
-    await notifyNetworkChanged();
-    return state;
+    await withActiveChange(async () => {
+      await wallet.removeIdentity(identityId);
+      await forgetIdentity(identityId);
+    });
+    return wallet.getState();
   },
   disconnectSite: async ({ origin }) => {
     await disconnectSites([origin], "user");
@@ -79,6 +77,8 @@ const handlers: Handlers = {
 export default defineBackground(() => {
   const extensionOrigin = new URL(browser.runtime.getURL("/")).origin;
   registerApprovalListeners();
+  void migrateSites();
+  registerCertificateWatch();
 
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id) return false;

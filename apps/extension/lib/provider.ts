@@ -20,15 +20,13 @@ import {
   WeftError,
   isWeftMethod,
   type ContractCall,
-  type DisconnectReason,
   type NetworkSummary,
-  type WeftEvent,
-  type WeftEvents,
   type WeftMethod,
 } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
-import { db, newId, type ActivityRecord, type SiteRecord } from "./db";
-import type { ApprovalOutcome, ApprovalView, ProviderEventMessage } from "./messages";
+import { db, newId, type ActivityRecord, type NetworkRecord } from "./db";
+import type { ApprovalOutcome, ApprovalView } from "./messages";
+import { connectSite, connectedIdentityIds, disconnectSites, isConnected } from "./sites";
 import { activeIdentity, activeSummary, identityView, signerFor } from "./wallet";
 
 /* ------------------------------------------------------------------ */
@@ -117,40 +115,10 @@ function finish(approval: PendingApproval, outcome: ApprovalOutcome) {
 /* Sites                                                               */
 /* ------------------------------------------------------------------ */
 
-async function isConnected(origin: string): Promise<boolean> {
-  return (await db.get<SiteRecord>("sites", origin)) !== undefined;
-}
-
 async function requireConnected(origin: string): Promise<void> {
   if (!(await isConnected(origin))) {
     throw new WeftError(ErrorCode.Unauthorized, "Call weft_connect first; this site is not connected.");
   }
-}
-
-/** Sends an event to every connected site's tabs. */
-export async function broadcast<E extends WeftEvent>(event: E, payload: WeftEvents[E]): Promise<void> {
-  await sendTo((await db.all<SiteRecord>("sites")).map((s) => s.origin), event, payload);
-}
-
-/** Sends an event to these sites' tabs only. The bridge drops it in any other origin. */
-async function sendTo<E extends WeftEvent>(origins: string[], event: E, payload: WeftEvents[E]): Promise<void> {
-  if (origins.length === 0) return;
-  const message: ProviderEventMessage & { origins: string[] } = { channel: "weft-provider-event", event, payload, origins };
-  for (const tab of await browser.tabs.query({})) {
-    if (tab.id === undefined) continue;
-    browser.tabs.sendMessage(tab.id, message).catch(() => {
-      /* Tab without our content script. */
-    });
-  }
-}
-
-/**
- * Forgets sites and tells their open tabs, so a page never shows "connected"
- * after Weft has stopped answering it.
- */
-export async function disconnectSites(origins: string[], reason: DisconnectReason): Promise<void> {
-  for (const origin of origins) await db.delete("sites", origin);
-  await sendTo(origins, "disconnect", { reason });
 }
 
 /* ------------------------------------------------------------------ */
@@ -210,7 +178,7 @@ async function connect(origin: string) {
     finish(approval, { status: "rejected" });
     throw new WeftError(ErrorCode.UserRejected, "The user declined to connect.");
   }
-  await db.put<SiteRecord>("sites", { origin, connectedAt: Date.now() });
+  await connectSite(origin, active.record.id);
   finish(approval, { status: "approved", activityId: null });
   return summarizeIdentity(active.record);
 }
@@ -328,12 +296,13 @@ async function addNetwork(origin: string, params: unknown) {
     inviteUrl,
   };
   const approval = await openApproval(view);
+  // The window enrols through the joinInvite UI call, which tells sites about
+  // any change of active identity.
   if (!(await approval.decision.promise)) {
     finish(approval, { status: "rejected" });
     throw new WeftError(ErrorCode.UserRejected, "The user did not add the network.");
   }
   finish(approval, { status: "approved", activityId: null });
-  await broadcast("identityChanged", await activeSummary());
   return { added: true as const };
 }
 
@@ -346,25 +315,41 @@ export async function handleProviderRequest(origin: string, method: unknown, par
       return connect(origin);
     case "weft_identity":
       return (await isConnected(origin)) ? activeSummary() : null;
-    case "weft_networks": {
-      await requireConnected(origin);
-      const active = await activeIdentity();
-      if (!active) return [];
-      const network: NetworkSummary = {
-        id: active.network.id,
-        name: active.network.name,
-        mspId: active.network.mspId,
-        channels: active.network.channels,
-      };
-      return [network];
-    }
+    case "weft_networks":
+      return networksFor(origin);
     case "weft_evaluate":
     case "weft_submit":
       return runCall(origin, method, params);
     case "weft_addNetwork":
       return addNetwork(origin, params);
     case "weft_disconnect":
-      if (await isConnected(origin)) await disconnectSites([origin], "site");
+      if ((await connectedIdentityIds(origin)).length > 0) await disconnectSites([origin], "site");
       return null;
   }
+}
+
+/**
+ * The networks of the identities this site is connected to, active first.
+ * Never the user's other networks: those would reveal organisations the site
+ * wasn't shown.
+ */
+async function networksFor(origin: string): Promise<NetworkSummary[]> {
+  await requireConnected(origin);
+  const active = await activeIdentity();
+  const ids = await connectedIdentityIds(origin);
+  const identities = await Promise.all(ids.map((id) => identityView(id)));
+  const out = new Map<string, NetworkSummary>();
+  for (const identity of identities) {
+    if (!identity || out.has(identity.networkId)) continue;
+    const network = await db.get<NetworkRecord>("networks", identity.networkId);
+    if (!network) continue;
+    out.set(network.id, {
+      id: network.id,
+      name: network.name,
+      mspId: network.mspId,
+      channels: network.channels,
+      active: network.id === active?.network.id,
+    });
+  }
+  return [...out.values()].sort((a, b) => Number(b.active) - Number(a.active));
 }

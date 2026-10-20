@@ -21,7 +21,7 @@ The provider may be injected after your script runs. Wait for the `weft#initiali
 
 | Method | Params | Result | Asks the user |
 |---|---|---|---|
-| `weft_connect` | – | `IdentitySummary` | Yes, once per site |
+| `weft_connect` | – | `IdentitySummary` | Yes, once per site and identity |
 | `weft_identity` | – | `IdentitySummary \| null` | No |
 | `weft_networks` | – | `NetworkSummary[]` | No |
 | `weft_evaluate` | `ContractCall` | `EvaluateResult` | Every time |
@@ -31,7 +31,11 @@ The provider may be injected after your script runs. Wait for the `weft#initiali
 
 `weft_addNetwork` asks the user to join a network from an [org invite](/operators/invites/). `url` is the invite's HTTPS URL, a `weft://` link or a join link. Weft fetches the invite itself from that address, shows it, and the user enrols. It doesn't need the site to be connected, which suits an admin portal's "Set up Weft" button.
 
+A connection is to one identity. If the user switches to an identity your site hasn't been approved for, your site gets `disconnect` with reason `"identity-changed"` and has to call `weft_connect` again; switching back to an approved identity sends `identityChanged` instead. Your site never sees identities the user didn't approve for it.
+
 `weft_identity` returns `null` for sites that aren't connected. `weft_networks`, `weft_evaluate` and `weft_submit` fail with `4100` until the site is connected.
+
+`weft_networks` lists the networks of the identities approved for your site, the active one first (`active: true`). The user's other networks stay private: they would reveal organisations your site wasn't shown.
 
 ### Types
 
@@ -53,6 +57,7 @@ interface NetworkSummary {
   name: string;
   mspId: string;
   channels: string[];
+  active: boolean;                      // the network of the identity in use now
 }
 
 interface ContractCall {
@@ -83,9 +88,18 @@ interface SubmitResult extends EvaluateResult {
 |---|---|---|
 | `identityChanged` | `IdentitySummary \| null` | The user switched, renewed or removed the active identity. |
 | `networkChanged` | `{ networkId, channel }` | The user picked a different channel, or switched to an identity on another network. |
-| `disconnect` | `{ reason }` | The site is no longer connected. `reason` is `"user"` (disconnected in Weft), `"site"` (your page called `weft_disconnect`, maybe in another tab) or `"no-identity"` (the user removed their last identity). |
+| `disconnect` | `{ reason }` | The site is no longer connected. See the reasons below. |
+| `certificateStatus` | `{ identityId, state, notAfter, daysLeft }` | The certificate your site uses is close to expiring (`state: "expiring"`, within 30 days) or has expired (`"expired"`). Sent once per state, at most an hour late. Prompt the user to renew in Weft; the renewed certificate arrives as `identityChanged`. |
 
-`identityChanged` and `networkChanged` reach connected sites only. `disconnect` reaches the site being disconnected, in every open tab. After it, show your "Connect" state again: calls fail with `4100` until the user reconnects.
+`identityChanged`, `networkChanged` and `certificateStatus` reach sites connected to the identity in use. `disconnect` reaches the site being disconnected, in every open tab. After it, show your "Connect" state again: calls fail with `4100` until the user reconnects.
+
+| `disconnect` reason | Meaning | What to do |
+|---|---|---|
+| `"user"` | The user disconnected your site in Weft. | Show "Connect". |
+| `"site"` | Your page called `weft_disconnect`, maybe in another tab. | Show "Connect". |
+| `"identity-changed"` | The user switched to an identity your site isn't approved for. | Show "Connect"; connecting asks for the new identity. |
+| `"no-identity"` | The user removed their last identity. | Show "Connect"; Weft will ask them to add one. |
+| `"wallet-updated"` | Weft was updated or reloaded while your page was open. | Ask the user to reload the page. |
 
 ## Errors
 

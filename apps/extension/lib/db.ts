@@ -44,6 +44,8 @@ export interface PendingCsrRecord {
 export interface SiteRecord {
   origin: string;
   connectedAt: number;
+  /** Identities the user has approved for this site. Missing on records from before 0.1. */
+  identityIds?: string[];
 }
 
 export type ActivityStatus = "committed" | "evaluated" | "failed" | "rejected";

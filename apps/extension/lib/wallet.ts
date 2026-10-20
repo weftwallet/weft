@@ -16,7 +16,7 @@ import {
   summarizeIdentity,
 } from "@weftwallet/core";
 import type { IdentitySummary, OrgInvite } from "@weftwallet/protocol";
-import { db, newId, type IdentityRecord, type NetworkRecord, type PendingCsrRecord } from "./db";
+import { db, newId, type IdentityRecord, type NetworkRecord, type PendingCsrRecord, type SiteRecord } from "./db";
 import type { IdentityView, NetworkInput, PendingCsrView, WalletState } from "./messages";
 
 /* ------------------------------------------------------------------ */
@@ -50,7 +50,7 @@ export async function getState(): Promise<WalletState> {
     db.all<IdentityRecord>("identities"),
     db.all<NetworkRecord>("networks"),
     db.all<PendingCsrRecord>("pendingCsrs"),
-    db.all<{ origin: string; connectedAt: number }>("sites"),
+    db.all<SiteRecord>("sites"),
     db.settings(),
   ]);
   const byId = new Map(networks.map((n) => [n.id, n]));

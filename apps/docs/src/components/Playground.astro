@@ -175,6 +175,11 @@
         log("•", "event networkChanged", payload);
         selectChannel(payload.channel);
       });
+      weft.on("certificateStatus", (payload: any) => {
+        log("•", "event certificateStatus", payload);
+        $("pg-id-exp").textContent =
+          payload.state === "expired" ? "Expired, renew it in Weft" : `${new Date(payload.notAfter).toLocaleDateString()} (${payload.daysLeft} days left)`;
+      });
       weft.on("disconnect", (payload: any) => {
         log("•", "event disconnect", payload);
         setConnected(false, DISCONNECT_REASONS[payload?.reason] ?? "Disconnected");
@@ -193,6 +198,7 @@
     site: "Disconnected",
     "no-identity": "No identity in Weft",
     "wallet-updated": "Weft was updated · reload this page",
+    "identity-changed": "Switched identity in Weft · connect again",
   };
 
   function setConnected(value: boolean, label?: string) {

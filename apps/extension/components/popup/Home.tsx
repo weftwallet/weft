@@ -297,7 +297,7 @@ function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletS
     const host = new URL(origin).host;
     const ok = await confirm({
       title: `Disconnect ${host}?`,
-      body: "The site loses access to your identity and must ask again before it can request anything. Any open tabs of it are told straight away.",
+      body: "The site loses access to all your identities and must ask again before it can request anything. Any open tabs of it are told straight away.",
       confirmLabel: "Disconnect",
       icon: "unlink",
     });
@@ -315,7 +315,12 @@ function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletS
           <span className="list-item__body">
             <span className="list-item__title">{new URL(site.origin).host}</span>
             <span className="subtle" style={{ fontSize: 11 }}>
-              Connected {timeAgo(site.connectedAt)}
+              {(() => {
+                const names = (site.identityIds ?? [])
+                  .map((id) => state.identities.find((i) => i.id === id)?.name)
+                  .filter(Boolean);
+                return names.length ? `As ${names.join(", ")} · ${timeAgo(site.connectedAt)}` : `Connected ${timeAgo(site.connectedAt)}`;
+              })()}
             </span>
           </span>
           <button type="button" className="small-btn" onClick={() => void disconnect(site.origin)}>

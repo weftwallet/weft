@@ -107,6 +107,10 @@ weft.on("disconnect", ({ reason }) => {
 weft.on("networkChanged", ({ channel }) => {
   // The user picked another channel. Point your contract at it, or tell them.
 });
+
+weft.on("certificateStatus", ({ state, daysLeft }) => {
+  // "expiring" (within 30 days) or "expired": ask the user to renew in Weft.
+});
 ```
 
 Give users a way out too: `await weft.disconnect()` disconnects your site, and every open tab of it gets the `disconnect` event.

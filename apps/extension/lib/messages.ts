@@ -6,7 +6,7 @@
 
 import type { ContractCall, IdentitySummary, OrgInvite, WeftErrorShape, WeftMethod } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
-import type { ActivityRecord, NetworkRecord, Settings } from "./db";
+import type { ActivityRecord, NetworkRecord, Settings, SiteRecord } from "./db";
 
 export interface IdentityView extends IdentitySummary {
   networkId: string;
@@ -29,7 +29,7 @@ export interface WalletState {
   identities: IdentityView[];
   networks: NetworkRecord[];
   pendingCsrs: PendingCsrView[];
-  sites: { origin: string; connectedAt: number }[];
+  sites: SiteRecord[];
   settings: Settings;
 }
 

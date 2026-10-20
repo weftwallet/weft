@@ -56,4 +56,4 @@ For CAs where an administrator issues certificates by hand. Weft creates the key
 
 The first time a web app needs your identity, Weft opens a window asking whether to connect. The site then sees your public identity: name, MSP ID, role, attributes and certificate. Connecting does **not** let it sign anything; each query and transaction asks again.
 
-You can disconnect a site under **Sites** on the home screen.
+A connection is for one identity. If you switch to another identity, sites you haven't connected it to are disconnected and must ask again, so a site only ever sees the identities you chose for it. **Sites** on the home screen shows which identities each site can use, and disconnects it.
