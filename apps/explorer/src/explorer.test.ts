@@ -134,6 +134,13 @@ describe("server", () => {
     expect(api.json().transactions.map((t: { txId: string }) => t.txId)).toEqual(["aa1100", "bb2200"]);
   });
 
+  it("says what it publishes, without naming hidden contracts", async () => {
+    const { app } = setup();
+    const [channel] = (await app.inject("/api/v1/status")).json().channels;
+    expect(channel).toMatchObject({ channel: "mychannel", level: "public", publishes: { values: "show", submitter: "show", membersOnly: [], elections: false } });
+    expect(JSON.stringify(channel)).not.toContain("ballot");
+  });
+
   it("finds transactions by ID prefix, blocks by number and contracts by name", async () => {
     const { app } = setup();
     expect((await app.inject("/search?q=2")).headers.location).toBe("/channels/mychannel/blocks/2");

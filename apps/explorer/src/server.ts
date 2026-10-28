@@ -288,7 +288,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       viewer: s.viewer ? { mspId: s.viewer.mspId, name: s.viewer.name } : null,
       channels: db.channels(s.visible).map((c) => {
         const st = statusOf(c.channel);
-        return { ...c, level: channelLevel(policy, c.channel), peerHeight: st?.peerHeight ?? null, state: st?.state ?? "starting" };
+        const cp = policy.channels[c.channel]!;
+        // What this explorer publishes, without naming hidden contracts.
+        const publishes = {
+          values: cp.values,
+          submitter: cp.submitter,
+          membersOnly: Object.entries(cp.contracts).filter(([, l]) => l === "members").map(([name]) => name),
+          elections: s.site.elections(c.channel),
+        };
+        return { ...c, level: channelLevel(policy, c.channel), publishes, peerHeight: st?.peerHeight ?? null, state: st?.state ?? "starting" };
       }),
     };
   });

@@ -191,7 +191,9 @@ const LIVE = `
   function relative() {
     document.querySelectorAll("time[datetime]").forEach(function (el) {
       var s = Math.round((Date.now() - new Date(el.getAttribute("datetime")).getTime()) / 1000);
-      var t = s < 45 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : null;
+      // Future times (an election's closing time) keep their date, except when close.
+      var t = s < -86400 ? null : s < -3600 ? "in " + Math.round(-s / 3600) + " h" : s < -45 ? "in " + Math.round(-s / 60) + " min" : s < 0 ? "in a moment" :
+        s < 45 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : null;
       if (t) el.textContent = t;
     });
   }
@@ -616,6 +618,17 @@ ${e.tally
     out.textContent = hash === expected ? "It matches: this commitment is a vote for " + option + "." : "It doesn't match. Check the choice and the salt.";
     out.className = "small " + (hash === expected ? "ok" : "bad");
   });
+  // A voting app can link here with the choice and salt in the fragment,
+  // which browsers never send to the server. Check them, then drop them from
+  // the address bar.
+  var given = new URLSearchParams(location.hash.slice(1));
+  if (given.get("salt") && expected) {
+    document.getElementById("local-option").value = given.get("option") || "";
+    document.getElementById("local-salt").value = given.get("salt");
+    history.replaceState(null, "", location.pathname + location.search + "#receipt");
+    document.getElementById("receipt").scrollIntoView();
+    button.click();
+  }
 })();
 </script>`,
   );
