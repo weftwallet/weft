@@ -94,6 +94,26 @@ WEFT_EXPLORER_DB=/var/lib/weft/explorer.db \
 node apps/explorer/dist/main.js
 ```
 
+With Docker, from the repository root:
+
+```sh
+docker build -f apps/explorer/Dockerfile -t weft-explorer .
+docker run -p 8790:8790 \
+  -e WEFT_PEER_ENDPOINT=peer0.org1.example.com:7051 \
+  -e WEFT_PEER_TLS_CA_CERT=/etc/weft/peer-tls-ca.pem \
+  -e WEFT_EXPLORER_MSP_ID=Org1MSP \
+  -e WEFT_EXPLORER_CERT=/etc/weft/explorer/signcerts \
+  -e WEFT_EXPLORER_KEY=/etc/weft/explorer/keystore \
+  -e WEFT_EXPLORER_POLICY=/etc/weft/explorer.yaml \
+  -e WEFT_EXPLORER_PUBLIC_URL=https://explorer.org1.example.com \
+  -e WEFT_EXPLORER_SESSION_SECRET=… \
+  -v /etc/weft:/etc/weft:ro \
+  -v weft-explorer:/data \
+  weft-explorer
+```
+
+The image keeps its index in `/data`, a volume, so a new image picks up where the last one stopped. It runs as an unprivileged user and reports its health from `/api/v1/status`. Put it behind your usual TLS-terminating proxy, at the root of its address.
+
 The first start reads the whole channel from block 0. After that it carries on from the last stored block. If the database comes from a different network (block 0 doesn't match), the explorer stops indexing that channel and says so; delete the file to start again.
 
 The database holds only what the policy published. When you change the policy and restart, the explorer clears the database and indexes every block again under the new policy, so nothing you've since hidden stays visible.

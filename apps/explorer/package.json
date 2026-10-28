@@ -5,6 +5,10 @@
   "license": "Apache-2.0",
   "type": "module",
   "description": "A block explorer that one Fabric organisation runs for the channels it chooses to publish",
+  "files": [
+    "dist",
+    "assets"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
