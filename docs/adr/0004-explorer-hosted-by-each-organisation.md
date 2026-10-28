@@ -56,6 +56,7 @@ One organisation's explorer only says "trust us". The explorer's main feature is
 
 - Each instance publishes signed **checkpoints**: channel, block number, and block header hash, signed with the instance's identity.
 - Each instance is configured with the other organisations' explorer URLs. It fetches their checkpoints and shows, per block, how many agree: "3 of 4 organisations report this block".
+- For members-only channels, an instance signs its requests to the others with its identity, and the others serve checkpoints and blocks only to a member organisation's explorer.
 - A mismatch or a missing block shows as a warning on that block and on the channel page.
 
 The browser checks what it can without trusting the server it came from. Each block header carries the previous block's hash, so a run of blocks either links up or it doesn't. Endorsement signatures can be verified against the certificates in the channel's configuration block. The same decoder Weft uses before signing does this in the page.

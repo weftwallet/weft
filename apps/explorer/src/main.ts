@@ -11,12 +11,9 @@ const db = new ExplorerDb(config.databasePath);
 const rebuilt = db.usePolicy(policyFingerprint(config.policy));
 const channels = publishedChannels(config.policy);
 const signer = new CheckpointSigner(config);
-// Only public channels are compared; members-only channels have no public checkpoint.
-const crossCheck = new CrossCheck(
-  db,
-  channels.filter((c) => config.policy.channels[c]?.level === "public"),
-  config.peers,
-);
+// Every published channel is compared. Requests are signed, so other
+// organisations' explorers share members-only channels with this one too.
+const crossCheck = new CrossCheck(db, channels, config.peers, undefined, signer);
 const app = buildServer({
   name: config.name,
   mspId: config.mspId,

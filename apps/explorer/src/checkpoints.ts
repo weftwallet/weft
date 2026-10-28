@@ -12,6 +12,7 @@
  */
 
 import { createPrivateKey, sign as signBytes, verify as verifyBytes, X509Certificate } from "node:crypto";
+import type { ChannelMember } from "./decode.ts";
 import { chainsTo } from "./auth.ts";
 import type { ExplorerDb } from "./db.ts";
 
@@ -69,12 +70,84 @@ export class CheckpointSigner {
     this.mspId = options.mspId;
   }
 
+  /**
+   * Headers that let another organisation's explorer serve this one what it
+   * publishes to members: a signed statement of which path is asked for,
+   * when, and by whom. See verifyExplorerRequest.
+   */
+  requestHeaders(path: string, now = new Date()): Record<string, string> {
+    const message = explorerRequestMessage(path, this.mspId, now.toISOString());
+    return {
+      "x-weft-request": Buffer.from(message, "utf8").toString("base64"),
+      "x-weft-signature": signBytes("sha256", Buffer.from(message, "utf8"), this.key).toString("base64"),
+      "x-weft-certificate": Buffer.from(this.certificate, "utf8").toString("base64"),
+    };
+  }
+
   sign(channel: string, number: number, hash: string, now = new Date()): SignedCheckpoint {
     const checkpoint: Checkpoint = { channel, mspId: this.mspId, number, hash, signedAt: now.toISOString() };
     const message = checkpointMessage(checkpoint);
     const signature = signBytes("sha256", Buffer.from(message, "utf8"), this.key).toString("base64");
     return { ...checkpoint, message, signature, certificate: this.certificate };
   }
+}
+
+/* Explorer-to-explorer requests ----------------------------------------- */
+
+export const REQUEST_PREFIX = "weft-explorer-request:v1";
+/** How far a request's time may be from this explorer's clock. */
+const REQUEST_SKEW_MS = 5 * 60_000;
+
+export function explorerRequestMessage(path: string, mspId: string, signedAt: string): string {
+  return [REQUEST_PREFIX, `path: ${path}`, `msp: ${mspId}`, `signed: ${signedAt}`].join("\n");
+}
+
+/** An organisation's explorer, identified by a signed request. */
+export interface ExplorerRequester {
+  mspId: string;
+  certificate: string;
+}
+
+/**
+ * Checks a signed explorer request: well formed, for this exact path, recent,
+ * and signed by the certificate it carries. Whether that certificate belongs
+ * to a member of a channel is checked per channel, with requesterIsMember.
+ */
+export function verifyExplorerRequest(
+  headers: Record<string, string | string[] | undefined>,
+  path: string,
+  now = Date.now(),
+): ExplorerRequester | null {
+  const one = (name: string) => {
+    const v = headers[name];
+    return typeof v === "string" ? v : undefined;
+  };
+  const request = one("x-weft-request");
+  const signature = one("x-weft-signature");
+  const certificate = one("x-weft-certificate");
+  if (!request || !signature || !certificate) return null;
+  try {
+    const message = Buffer.from(request, "base64").toString("utf8");
+    const lines = message.split("\n");
+    if (lines.length !== 4 || lines[0] !== REQUEST_PREFIX) return null;
+    const field = (i: number, key: string) => (lines[i]!.startsWith(`${key}: `) ? lines[i]!.slice(key.length + 2) : null);
+    const [askedPath, mspId, signedAt] = [field(1, "path"), field(2, "msp"), field(3, "signed")];
+    if (askedPath !== path || !mspId || !signedAt) return null;
+    if (explorerRequestMessage(askedPath, mspId, signedAt) !== message) return null;
+    const at = Date.parse(signedAt);
+    if (Number.isNaN(at) || Math.abs(now - at) > REQUEST_SKEW_MS) return null;
+    const pem = Buffer.from(certificate, "base64").toString("utf8");
+    const ok = verifyBytes("sha256", Buffer.from(message, "utf8"), new X509Certificate(pem).publicKey, Buffer.from(signature, "base64"));
+    return ok ? { mspId, certificate: pem } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether a verified requester's certificate was issued by its organisation's CA, and that organisation is in the channel. */
+export function requesterIsMember(requester: ExplorerRequester, members: ChannelMember[], now = Date.now()): boolean {
+  const member = members.find((m) => m.mspId === requester.mspId);
+  return !!member && chainsTo(requester.certificate, member, now);
 }
 
 export type PeerState =
@@ -157,10 +230,10 @@ export function comparePeer(
   return { ...signed, state: "agree", agreedUpTo: Math.max(checkpoint.number, previous?.agreedUpTo ?? -1), mismatchAt: null };
 }
 
-type FetchJson = (url: string) => Promise<unknown>;
+type FetchJson = (url: string, headers?: Record<string, string>) => Promise<unknown>;
 
-const defaultFetch: FetchJson = async (url) => {
-  const response = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { accept: "application/json" } });
+const defaultFetch: FetchJson = async (url, headers = {}) => {
+  const response = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { accept: "application/json", ...headers } });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 };
@@ -173,12 +246,19 @@ export class CrossCheck {
   private readonly channels: string[];
   private readonly peers: string[];
   private readonly fetchJson: FetchJson;
+  private readonly signer: CheckpointSigner | undefined;
 
-  constructor(db: ExplorerDb, channels: string[], peers: string[], fetchJson: FetchJson = defaultFetch) {
+  /**
+   * With a signer, requests carry this explorer's signature, so other
+   * explorers also share what they publish to members: that's how
+   * members-only channels are compared.
+   */
+  constructor(db: ExplorerDb, channels: string[], peers: string[], fetchJson: FetchJson = defaultFetch, signer?: CheckpointSigner) {
     this.db = db;
     this.channels = channels;
     this.peers = peers;
     this.fetchJson = fetchJson;
+    this.signer = signer;
     for (const channel of channels) {
       const saved = db.peerStatuses(channel);
       this.status.set(channel, new Map(saved.map((s) => [s.url, s])));
@@ -202,6 +282,11 @@ export class CrossCheck {
     );
   }
 
+  /** Fetches a path from another explorer, signed when this explorer can sign. */
+  private get(base: string, path: string): Promise<unknown> {
+    return this.fetchJson(`${base}${path}`, this.signer?.requestHeaders(path));
+  }
+
   async checkAll(): Promise<void> {
     for (const channel of this.channels) {
       for (const url of this.peers) await this.check(channel, url);
@@ -220,7 +305,7 @@ export class CrossCheck {
     try {
       while (lo < hi) {
         const mid = Math.floor((lo + hi) / 2);
-        const body = (await this.fetchJson(`${base}/api/v1/channels/${encodeURIComponent(channel)}/blocks/${mid}`)) as { block?: { hash?: string } };
+        const body = (await this.get(base, `/api/v1/channels/${encodeURIComponent(channel)}/blocks/${mid}`)) as { block?: { hash?: string } };
         if (body.block?.hash === this.db.blockHash(channel, mid)) lo = mid + 1;
         else hi = mid;
       }
@@ -237,7 +322,7 @@ export class CrossCheck {
     let next: PeerStatus;
     const base = url.replace(/\/+$/, "");
     try {
-      const body = await this.fetchJson(`${base}/api/v1/channels/${encodeURIComponent(channel)}/checkpoint`);
+      const body = await this.get(base, `/api/v1/channels/${encodeURIComponent(channel)}/checkpoint`);
       next = comparePeer(this.db, channel, url, body, previous);
       if (next.state === "mismatch" && next.mismatchAt !== null) {
         next = { ...next, mismatchAt: await this.firstDifference(channel, base, next.agreedUpTo ?? -1, next.mismatchAt) };

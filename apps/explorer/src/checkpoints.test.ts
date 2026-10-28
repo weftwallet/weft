@@ -26,17 +26,22 @@ async function network() {
     { txs: [{ txId: "bb2222", chaincode: "basic", args: ["Create", "a2"] }] },
   ];
   /** One organisation's explorer, with its own copy of the ledger. */
-  async function explorer(mspId: string, issuer: Awaited<ReturnType<typeof ca>>, options: { tamper?: boolean; upTo?: number } = {}) {
+  async function explorer(
+    mspId: string,
+    issuer: Awaited<ReturnType<typeof ca>>,
+    options: { tamper?: boolean; upTo?: number; policy?: ReturnType<typeof parsePolicy> } = {},
+  ) {
+    const p = options.policy ?? policy;
     const db = new ExplorerDb(":memory:");
     for (const b of chain("mychannel", specs(!!options.tamper)).slice(0, (options.upTo ?? 2) + 1)) {
       const decoded = decodeBlock(b);
       const config = decoded.transactions.find((t) => t.members);
       if (config?.members) db.setMembers("mychannel", config.members);
-      db.addBlock(publishBlock(policy, decoded));
+      db.addBlock(publishBlock(p, decoded));
     }
     const identity = await user(issuer, `explorer.${mspId}`);
     const signer = new CheckpointSigner({ mspId, certificate: identity.pem, privateKey: await exportPkcs8(identity.keys.privateKey) });
-    return { db, signer, app: buildServer({ name: mspId, channels: publishedChannels(policy), policy, db, status: () => [], signer }) };
+    return { db, signer, app: buildServer({ name: mspId, channels: publishedChannels(p), policy: p, db, status: () => [], signer }) };
   }
   return { org1, org2, org3, explorer };
 }
@@ -161,3 +166,42 @@ describe("checked without trusting the explorer", () => {
     expect(await verifyCheckpoint(cp, wrongCa)).toMatchObject({ ok: false, reason: /wasn't issued/ });
   });
 });
+
+describe("members-only channels", () => {
+  it("are compared between member organisations' explorers, which sign their requests", async () => {
+    const members = parsePolicy({ channels: { mychannel: { level: "members" } } });
+    const { explorer, org1, org2 } = await network();
+    const one = await explorer("Org1MSP", org1, { policy: members });
+    const two = await explorer("Org2MSP", org2, { policy: members });
+    const path = "/api/v1/channels/mychannel/checkpoint";
+
+    expect((await two.app.inject(path)).statusCode).toBe(404);
+    const signed = one.signer.requestHeaders(path);
+    expect((await two.app.inject({ url: path, headers: signed })).json()).toMatchObject({ mspId: "Org2MSP", number: 2 });
+
+    // Signed for one path, not another; recent; by a member's CA.
+    expect((await two.app.inject({ url: "/api/v1/channels/mychannel/blocks/1", headers: signed })).statusCode).toBe(404);
+    const old = one.signer.requestHeaders(path, new Date(Date.now() - 10 * 60_000));
+    expect((await two.app.inject({ url: path, headers: old })).statusCode).toBe(404);
+    const outsider = await explorer("Org2MSP", await ca("ca.elsewhere"), { policy: members });
+    expect((await two.app.inject({ url: path, headers: outsider.signer.requestHeaders(path) })).statusCode).toBe(404);
+    const forged = { ...signed, "x-weft-request": Buffer.from(Buffer.from(signed["x-weft-request"]!, "base64").toString().replace("Org1MSP", "Org2MSP")).toString("base64") };
+    expect((await two.app.inject({ url: path, headers: forged })).statusCode).toBe(404);
+
+    // End to end: Org1's explorer polls Org2's and they agree.
+    const cross = new CrossCheck(
+      one.db,
+      ["mychannel"],
+      ["https://org2.example"],
+      async (url, headers) => {
+        const response = await two.app.inject({ url: new URL(url).pathname, headers: headers ?? {} });
+        if (response.statusCode !== 200) throw new Error(`HTTP ${response.statusCode}`);
+        return response.json();
+      },
+      one.signer,
+    );
+    await cross.checkAll();
+    expect(cross.peersFor("mychannel")[0]).toMatchObject({ state: "agree", mspId: "Org2MSP", agreedUpTo: 2 });
+  });
+});
+

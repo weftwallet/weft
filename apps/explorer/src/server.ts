@@ -10,6 +10,7 @@ import type { ChannelStatus } from "./indexer.ts";
 import * as pages from "./pages.ts";
 import { channelLevel, contractLevel, viewTransaction, type Policy } from "./policy.ts";
 import type { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
+import { requesterIsMember, verifyExplorerRequest } from "./checkpoints.ts";
 import { checkReceipt, elections } from "./elections.ts";
 
 export interface ServerOptions {
@@ -81,7 +82,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   /** Everything that depends on who's asking. */
   function scope(request: FastifyRequest) {
     const viewer = auth.read(request.headers.cookie);
-    const memberOf = (channel: string) => !!viewer && db.members(channel).some((m) => m.mspId === viewer.mspId);
+    // Another organisation's explorer, comparing ledgers: it signs each request.
+    const requester = request.url.startsWith("/api/") ? verifyExplorerRequest(request.headers, request.url) : null;
+    const memberOf = (channel: string) =>
+      (!!viewer && db.members(channel).some((m) => m.mspId === viewer.mspId)) ||
+      (!!requester && requesterIsMember(requester, db.members(channel)));
     const visible = channels.filter((c) => channelLevel(policy, c) === "public" || memberOf(c));
     const canSee = (channel: string) => visible.includes(channel);
     const canSeeContract = (channel: string, name: string) => {
@@ -312,15 +317,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   /*
    * Cross-checking (phase 3). The checkpoint is signed by this explorer's
-   * identity and covers every block up to it, through the hash chain. Only
-   * public channels have one: a members-only channel's height and hashes are
-   * for its members.
+   * identity and covers every block up to it, through the hash chain. A
+   * members-only channel's checkpoint is for its members: signed-in people,
+   * or other member organisations' explorers, which sign their requests.
    */
   app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/checkpoint", async (request, reply) => {
     const { channel } = request.params;
-    if (!options.signer || !channels.includes(channel) || channelLevel(policy, channel) !== "public") {
-      return reply.code(404).send({ error: "not found" });
-    }
+    if (!options.signer || !scope(request).canSee(channel)) return reply.code(404).send({ error: "not found" });
     const top = db.nextBlock(channel) - 1;
     const hash = top >= 0 ? db.blockHash(channel, top) : null;
     if (hash === null) return reply.code(404).send({ error: "no blocks indexed yet" });

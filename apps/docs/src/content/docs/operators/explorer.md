@@ -122,7 +122,7 @@ List the other organisations' explorers in `WEFT_EXPLORER_PEERS`. Every 15 secon
 
 Pages then say how many organisations agree: each block shows "3 of 4 organisations report this block", and the channel card lists each organisation as agreeing, still catching up, unreachable, or disagreeing from a given block. When a checkpoint disagrees, the explorer searches the other explorer's public block hashes for the first block that differs.
 
-Only public channels have checkpoints. A members-only channel's height and hashes are for its members, so it isn't cross-checked yet.
+Members-only channels are cross-checked too. A members-only channel's checkpoint and blocks are for its members, so each explorer signs its requests to the others with its own identity: a statement of the path it asks for, when, and its MSP ID. The other explorer serves it only if the signature matches, the request is under five minutes old, and the certificate was issued by the CA of an organisation in that channel's configuration. Serve each explorer at the root of its address, since the signature covers the path.
 
 ## In the playground
 
@@ -150,7 +150,7 @@ Everything the pages show is also JSON, readable from any origin, since it's pub
 | `GET /api/v1/channels/:channel/transactions/:txId` | One transaction. |
 | `GET /api/v1/channels/:channel/headers?from=&to=` | Block headers (`number`, `previousHash`, `dataHash`, `hash`), oldest first, up to 1,000 at a time, for recomputing hashes elsewhere. |
 | `GET /api/v1/channels/:channel/members` | Each member organisation's root and intermediate CA certificates, from the channel configuration, for checking whose certificate signed a checkpoint. |
-| `GET /api/v1/channels/:channel/checkpoint` | This explorer's signed checkpoint: `{ channel, mspId, number, hash, signedAt, message, signature, certificate }`. Public channels only. |
+| `GET /api/v1/channels/:channel/checkpoint` | This explorer's signed checkpoint: `{ channel, mspId, number, hash, signedAt, message, signature, certificate }`. For a members-only channel, only to its members. |
 | `GET /api/v1/channels/:channel/organisations` | What each cross-checked organisation last reported, and how far it agrees. |
 
 Channels that aren't published answer 404, the same as channels that don't exist.
