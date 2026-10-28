@@ -104,11 +104,11 @@ When anything is published at `members`, the explorer shows **Sign in with Weft*
 
 - the message names this explorer's address and a nonce it issued in the last five minutes, used once;
 - the signature matches the certificate;
-- the certificate chains to the root certificates of the claimed MSP, read from the channel's configuration blocks, and is in date.
+- the certificate chains to the root certificates of the claimed MSP, read from the channel's configuration blocks, is in date, and isn't on a revocation list that MSP's CA signed.
 
 A signed-in person is a member of every published channel whose configuration lists their MSP. They see that channel's `members` level, and **Your transactions** lists the ones their identity submitted. Sessions last eight hours, in an HTTP-only cookie.
 
-Certificate revocation lists aren't checked yet, so a revoked certificate that is still in date can sign in until its session ends.
+Revocation lists come from the same place peers read them: each organisation's MSP in the channel configuration. The explorer applies them to sign-ins, to other explorers' signed checkpoints and requests, and publishes them at `/api/v1/channels/:channel/members`, so the network page and Weft can check too. A certificate revoked after someone signed in keeps their session until it ends, up to eight hours.
 
 ## Cross-checking
 
@@ -149,7 +149,7 @@ Everything the pages show is also JSON, readable from any origin, since it's pub
 | `GET /api/v1/channels/:channel/transactions?contract=&org=&before=&limit=` | Transactions, newest first, optionally for one contract or submitting MSP. |
 | `GET /api/v1/channels/:channel/transactions/:txId` | One transaction. |
 | `GET /api/v1/channels/:channel/headers?from=&to=` | Block headers (`number`, `previousHash`, `dataHash`, `hash`), oldest first, up to 1,000 at a time, for recomputing hashes elsewhere. |
-| `GET /api/v1/channels/:channel/members` | Each member organisation's root and intermediate CA certificates, from the channel configuration, for checking whose certificate signed a checkpoint. |
+| `GET /api/v1/channels/:channel/members` | Each member organisation's root and intermediate CA certificates and revocation lists (`crls`), from the channel configuration, for checking whose certificate signed a checkpoint. |
 | `GET /api/v1/channels/:channel/checkpoint` | This explorer's signed checkpoint: `{ channel, mspId, number, hash, signedAt, message, signature, certificate }`. For a members-only channel, only to its members. |
 | `GET /api/v1/channels/:channel/organisations` | What each cross-checked organisation last reported, and how far it agrees. |
 

@@ -18,6 +18,7 @@
 
 import { createHmac, randomBytes, timingSafeEqual, X509Certificate } from "node:crypto";
 import { SignInError, fromBase64, parseSignInMessage, verifySignIn } from "@weftwallet/core";
+import { revokedBy } from "./crl.ts";
 import type { ChannelMember } from "./decode.ts";
 
 export interface Viewer {
@@ -38,25 +39,45 @@ const CLOCK_SKEW_MS = 60_000;
 
 const b64url = (b: Buffer) => b.toString("base64url");
 
-/** Whether `certificatePem` chains to one of the member's root certificates, and every link is in date. */
-export function chainsTo(certificatePem: string, member: ChannelMember, now = Date.now()): boolean {
+export type CertificateProblem = "unreadable" | "expired" | "untrusted" | "revoked";
+
+/**
+ * What's wrong with `certificatePem` as an identity of `member`, or null:
+ * it must chain to one of the member's root certificates, every link in date,
+ * and none listed on a CRL its issuer signed.
+ */
+export function certificateProblem(certificatePem: string, member: ChannelMember, now = Date.now()): CertificateProblem | null {
   let current: X509Certificate;
   try {
     current = new X509Certificate(certificatePem);
   } catch {
-    return false;
+    return "unreadable";
   }
   const inDate = (c: X509Certificate) => Date.parse(c.validFrom) <= now && now <= Date.parse(c.validTo);
   const roots = member.rootCerts.map((p) => new X509Certificate(p));
   const pool = [...member.intermediateCerts.map((p) => new X509Certificate(p)), ...roots];
+  const crls = member.crls ?? [];
   for (let depth = 0; depth < 6; depth++) {
-    if (!inDate(current)) return false;
+    if (!inDate(current)) return "expired";
     const issuer = pool.find((c) => current.checkIssued(c) && current.verify(c.publicKey));
-    if (!issuer) return false;
-    if (roots.some((r) => r.raw.equals(issuer.raw))) return inDate(issuer);
+    if (!issuer) return "untrusted";
+    if (revokedBy(current, issuer, crls)) return "revoked";
+    if (roots.some((r) => r.raw.equals(issuer.raw))) return inDate(issuer) ? null : "expired";
     current = issuer;
   }
-  return false;
+  return "untrusted";
+}
+
+/** Whether `certificatePem` is a valid identity of `member`. See certificateProblem. */
+export function chainsTo(certificatePem: string, member: ChannelMember, now = Date.now()): boolean {
+  return certificateProblem(certificatePem, member, now) === null;
+}
+
+/** Why a certificate was refused, in words. */
+export function describeProblem(problem: CertificateProblem, mspId: string): string {
+  if (problem === "revoked") return `${mspId} has revoked this certificate.`;
+  if (problem === "expired") return "This certificate has expired.";
+  return `This certificate wasn't issued by ${mspId}'s CA.`;
 }
 
 export class Auth {
@@ -121,8 +142,11 @@ export class Auth {
     }
     const entries = membersOf(fields.mspId);
     if (entries.length === 0) throw new SignInError(`${fields.mspId} isn't a member of any channel published here.`);
-    if (!entries.some((m) => chainsTo(body.certificate as string, m, now))) {
-      throw new SignInError(`This certificate wasn't issued by ${fields.mspId}'s CA, or it has expired.`);
+    const problems = entries.map((m) => certificateProblem(body.certificate as string, m, now));
+    if (!problems.includes(null)) {
+      // The most telling reason: revoked, then expired, then not issued by the CA.
+      const worst = (["revoked", "expired"] as const).find((p) => problems.includes(p)) ?? "untrusted";
+      throw new SignInError(describeProblem(worst, fields.mspId));
     }
     const subject = new X509Certificate(body.certificate).subject;
     const name = /(?:^|\n)CN=([^\n]+)/.exec(subject)?.[1] ?? null;

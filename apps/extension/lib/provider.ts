@@ -30,6 +30,7 @@ import {
   type NetworkSummary,
   type WeftMethod,
 } from "@weftwallet/protocol";
+import { certificateProblem, type MemberCas } from "@weftwallet/core/chain";
 import { browser } from "wxt/browser";
 import { db, newId, type ActivityRecord, type NetworkRecord } from "./db";
 import type { ApprovalOutcome, ApprovalView } from "./messages";
@@ -243,11 +244,43 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
     finish(approval, { status: "approved", activityId: base.id });
     return result;
   } catch (error) {
-    const failure = describeFailure(error);
+    let failure = describeFailure(error);
+    // Peers say only "access denied" for a revoked certificate. The network's
+    // explorer has the channel's revocation lists, so Weft can tell.
+    if (failure.record.code === "ACCESS_DENIED") failure = (await revokedFailure(active, call.channel)) ?? failure;
     await db.put<ActivityRecord>("activity", { ...base, status: "failed", ...failure.record });
     finish(approval, { status: "failed", activityId: base.id, title: failure.record.title, detail: failure.record.detail });
     throw failure.error;
   }
+}
+
+/**
+ * When the identity's certificate is on one of the channel's CRLs, according
+ * to the explorer the network's invite names, the failure that explains it.
+ * Null when there's no explorer, it can't be read, or the certificate isn't
+ * listed. It only explains a failure the peers already reported.
+ */
+async function revokedFailure(
+  active: { record: { certificate: string; mspId: string }; network: NetworkRecord },
+  channel: string,
+): Promise<ReturnType<typeof describeFailure> | null> {
+  const explorer = active.network.explorerUrl;
+  if (!explorer) return null;
+  try {
+    const response = await fetch(`${explorer}/api/v1/channels/${encodeURIComponent(channel)}/members`, { signal: AbortSignal.timeout(4000) });
+    if (!response.ok) return null;
+    const members = (await response.json()) as MemberCas[];
+    const member = members.find((m) => m.mspId === active.record.mspId);
+    if (!member || (await certificateProblem(active.record.certificate, member)) !== "revoked") return null;
+  } catch {
+    return null;
+  }
+  const title = "Your certificate has been revoked";
+  const detail = `${active.record.mspId} has revoked this identity's certificate, so peers refuse it. Renewing it won't help; ask your organisation's administrator.`;
+  return {
+    error: new WeftError(ErrorCode.TransactionFailed, title, { code: "CERTIFICATE_REVOKED" }),
+    record: { code: "CERTIFICATE_REVOKED", title, detail },
+  };
 }
 
 function describeFailure(error: unknown): {

@@ -57,7 +57,7 @@ The extension's manifest asks for no host access up front. When you add a networ
 
 - While Weft is unlocked, anyone using your browser can approve requests. Auto-lock limits how long that lasts.
 - Identities saved before Weft encrypted keys have keys that aren't encrypted on disk. Weft marks them and offers to re-enrol, which replaces the key.
-- Weft doesn't check CRLs. The network rejects revoked certificates at endorsement.
+- Weft doesn't check revocation before signing: it can't read the channel's revocation lists without a member identity. Peers refuse revoked certificates, and when they do, Weft checks the lists the network's explorer publishes and says the certificate was revoked rather than that access was denied.
 - Relays don't authenticate wallets: any wallet can ask a relay to build proposals, and peers enforce which identities may transact. Restrict signers with `WEFT_ALLOWED_MSP_IDS`.
 
 ## Reporting a vulnerability

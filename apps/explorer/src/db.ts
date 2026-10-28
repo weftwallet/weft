@@ -11,7 +11,7 @@ import type { ConfigSummary } from "./channel-config.ts";
 import type { PublishedBlock, PublishedTransaction } from "./policy.ts";
 
 /** Bumped when the tables change; an older index is rebuilt from block 0. */
-const SCHEMA = "3";
+const SCHEMA = "4";
 
 export interface BlockRow {
   channel: string;

@@ -7,7 +7,7 @@ import { decodeBlock } from "./decode.ts";
 import { parsePolicy, publishBlock, publishedChannels } from "./policy.ts";
 import { buildServer } from "./server.ts";
 import { chain } from "./test/blocks.ts";
-import { ca, user } from "./test/certs.ts";
+import { ca, crl, user } from "./test/certs.ts";
 
 const policy = parsePolicy({ organisation: "Org", channels: { mychannel: { level: "public" }, quiet: { level: "members" } } });
 
@@ -41,7 +41,7 @@ async function network() {
     }
     const identity = await user(issuer, `explorer.${mspId}`);
     const signer = new CheckpointSigner({ mspId, certificate: identity.pem, privateKey: await exportPkcs8(identity.keys.privateKey) });
-    return { db, signer, app: buildServer({ name: mspId, channels: publishedChannels(p), policy: p, db, status: () => [], signer }) };
+    return { db, signer, identity, app: buildServer({ name: mspId, channels: publishedChannels(p), policy: p, db, status: () => [], signer }) };
   }
   return { org1, org2, org3, explorer };
 }
@@ -164,6 +164,10 @@ describe("checked without trusting the explorer", () => {
     // A CA that didn't issue the certificate.
     const wrongCa = members.map((m: { mspId: string; rootCerts: string[] }) => (m.mspId === "Org2MSP" ? { ...m, rootCerts: members[0].rootCerts } : m));
     expect(await verifyCheckpoint(cp, wrongCa)).toMatchObject({ ok: false, reason: /wasn't issued/ });
+    // Org2 revoked its explorer's certificate: the browser check refuses it too.
+    const list = await crl(org2, [two.identity.serial]);
+    const revoked = members.map((m: { mspId: string }) => (m.mspId === "Org2MSP" ? { ...m, crls: [list] } : m));
+    expect(await verifyCheckpoint(cp, revoked)).toMatchObject({ ok: false, reason: "Org2MSP has revoked its certificate." });
   });
 });
 

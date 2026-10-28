@@ -10,6 +10,7 @@
 
 import { createHash, X509Certificate } from "node:crypto";
 import { common, msp, orderer, peer } from "@hyperledger/fabric-protos";
+import { parseCrl } from "./crl.ts";
 
 export interface CaSummary {
   subject: string;
@@ -23,6 +24,8 @@ export interface OrgSummary {
   intermediateCas: CaSummary[];
   /** host:port, application organisations only. */
   anchorPeers: string[];
+  /** Serial numbers (hex) on the organisation's CRLs. */
+  revoked?: string[];
   /** host:port, orderer organisations only. */
   endpoints: string[];
 }
@@ -65,6 +68,18 @@ function orgSummary(group: common.ConfigGroup, key: string): OrgSummary {
       summary.mspId = fabric.getName() || key;
       summary.rootCas = fabric.getRootCertsList_asU8().map(ca);
       summary.intermediateCas = fabric.getIntermediateCertsList_asU8().map(ca);
+      summary.revoked = [
+        ...new Set(
+          fabric.getRevocationListList_asU8().flatMap((der) => {
+            try {
+              const text = Buffer.from(der).toString("utf8");
+              return [...parseCrl(/-----BEGIN/.test(text) ? text : `-----BEGIN X509 CRL-----\n${Buffer.from(der).toString("base64")}\n-----END X509 CRL-----`).serials];
+            } catch {
+              return [];
+            }
+          }),
+        ),
+      ].sort();
     }
   }
   const anchors = group.getValuesMap().get("AnchorPeers");
@@ -231,6 +246,10 @@ function orgChanges(kind: string, before: OrgSummary[], after: OrgSummary[], out
     setChange(`${org.mspId}'s intermediate CAs`, old.intermediateCas.map(caLabel), org.intermediateCas.map(caLabel), out);
     setChange(`${org.mspId}'s anchor peers`, old.anchorPeers, org.anchorPeers, out);
     setChange(`${org.mspId}'s orderer endpoints`, old.endpoints, org.endpoints, out);
+    const newlyRevoked = added(old.revoked ?? [], org.revoked ?? []);
+    const restored = removed(old.revoked ?? [], org.revoked ?? []);
+    if (newlyRevoked.length) out.push(`${org.mspId} revoked ${newlyRevoked.length === 1 ? "a certificate" : `${newlyRevoked.length} certificates`} (serial ${newlyRevoked.join(", ")}).`);
+    if (restored.length) out.push(`${org.mspId}'s revocation list no longer lists serial ${restored.join(", ")}.`);
   }
   for (const org of before) if (!after.some((o) => o.mspId === org.mspId)) out.push(`${org.mspId} left (was ${kind}).`);
 }

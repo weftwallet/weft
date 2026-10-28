@@ -13,7 +13,7 @@
 
 import { createPrivateKey, sign as signBytes, verify as verifyBytes, X509Certificate } from "node:crypto";
 import type { ChannelMember } from "./decode.ts";
-import { chainsTo } from "./auth.ts";
+import { certificateProblem, chainsTo, describeProblem } from "./auth.ts";
 import type { ExplorerDb } from "./db.ts";
 
 export const CHECKPOINT_PREFIX = "weft-checkpoint:v1";
@@ -214,9 +214,8 @@ export function comparePeer(
   if (!valid) return { ...base, mspId: checkpoint.mspId, detail: "The signature doesn't match the certificate." };
   const member = db.members(channel).find((m) => m.mspId === checkpoint.mspId);
   if (!member) return { ...base, mspId: checkpoint.mspId, detail: `${checkpoint.mspId} isn't a member of ${channel}.` };
-  if (!chainsTo(b.certificate, member, now)) {
-    return { ...base, mspId: checkpoint.mspId, detail: `The certificate wasn't issued by ${checkpoint.mspId}'s CA, or has expired.` };
-  }
+  const problem = certificateProblem(b.certificate, member, now);
+  if (problem) return { ...base, mspId: checkpoint.mspId, detail: describeProblem(problem, checkpoint.mspId) };
 
   const signed = { ...base, mspId: checkpoint.mspId, theirHeight: checkpoint.number, detail: null };
   const ours = db.blockHash(channel, checkpoint.number);

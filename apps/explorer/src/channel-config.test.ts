@@ -187,6 +187,13 @@ describe("channel configuration", async () => {
     expect(change).toMatch(/^Org1MSP's root CAs: added ca\.org3 \([0-9a-f]{16}\); removed ca\.org1 \([0-9a-f]{16}\)\.$/);
   });
 
+  it("says when an organisation revokes certificates", () => {
+    const before = summariseConfig(configEnvelope(base))!;
+    const after = { ...before, organisations: before.organisations.map((o) => (o.mspId === "Org1MSP" ? { ...o, revoked: ["7fab"] } : o)) };
+    expect(configChanges(before, after)).toEqual(["Org1MSP revoked a certificate (serial 7fab)."]);
+    expect(configChanges(after, before)).toEqual(["Org1MSP's revocation list no longer lists serial 7fab."]);
+  });
+
   it("still says something changed when it's a setting it doesn't summarise", () => {
     const before = summariseConfig(configEnvelope(base))!;
     expect(configChanges(before, { ...before, digest: "different" })).toEqual(["Settings this explorer doesn't summarise changed."]);

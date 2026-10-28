@@ -24,7 +24,7 @@ export interface TxSpec {
   event?: string;
   config?: boolean;
   /** Config transactions: member organisations and their root certificates (PEM). */
-  members?: { mspId: string; rootCerts: string[] }[];
+  members?: { mspId: string; rootCerts: string[]; crls?: string[] }[];
 }
 
 function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
@@ -50,6 +50,7 @@ function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
       const fabric = new msp.FabricMSPConfig();
       fabric.setName(m.mspId);
       fabric.setRootCertsList(m.rootCerts.map((c) => Buffer.from(c)));
+      fabric.setRevocationListList((m.crls ?? []).map((c) => Buffer.from(c)));
       const mspConfig = new msp.MSPConfig();
       mspConfig.setType(0);
       mspConfig.setConfig(fabric.serializeBinary());

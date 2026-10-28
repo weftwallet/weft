@@ -396,7 +396,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   // certificate signed a checkpoint.
   app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/members", async (request, reply) => {
     if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
-    return db.members(request.params.channel).map(({ mspId, rootCerts, intermediateCerts }) => ({ mspId, rootCerts, intermediateCerts }));
+    return db.members(request.params.channel).map(({ mspId, rootCerts, intermediateCerts, crls }) => ({ mspId, rootCerts, intermediateCerts, crls: crls ?? [] }));
   });
 
   app.get<{ Params: { channel: string }; Querystring: { before?: string; limit?: string } }>(

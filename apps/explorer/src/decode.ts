@@ -27,6 +27,8 @@ export interface ChannelMember {
   mspId: string;
   rootCerts: string[];
   intermediateCerts: string[];
+  /** CRLs the organisation's CAs issued, PEM. Peers refuse the certificates they list. */
+  crls: string[];
 }
 
 export interface DecodedTransaction {
@@ -226,6 +228,12 @@ function unreadable(index: number, validation: string): DecodedTransaction {
   };
 }
 
+const crlPem = (der: Uint8Array) => {
+  const text = Buffer.from(der).toString("utf8");
+  if (/-----BEGIN (X509 )?CRL-----/.test(text)) return text.trim();
+  return `-----BEGIN X509 CRL-----\n${Buffer.from(der).toString("base64").match(/.{1,64}/g)!.join("\n")}\n-----END X509 CRL-----`;
+};
+
 const pem = (der: Uint8Array) => {
   const text = Buffer.from(der).toString("utf8");
   // Fabric stores PEM text here; fall back to wrapping DER.
@@ -249,6 +257,7 @@ function decodeMembers(data: Uint8Array): ChannelMember[] {
       mspId: fabric.getName(),
       rootCerts: fabric.getRootCertsList_asU8().map(pem),
       intermediateCerts: fabric.getIntermediateCertsList_asU8().map(pem),
+      crls: fabric.getRevocationListList_asU8().map(crlPem),
     });
   });
   return members.sort((a, b) => a.mspId.localeCompare(b.mspId));

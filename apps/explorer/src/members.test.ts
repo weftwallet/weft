@@ -222,3 +222,22 @@ describe("the network page", () => {
   });
 });
 
+describe("revoked certificates", () => {
+  it("can't sign in", async () => {
+    const { crl, user: newUser, ca } = await import("./test/certs.ts");
+    const org1 = await ca("ca.org1");
+    const carol = await newUser(org1, "carol");
+    const alice = await newUser(org1, "alice");
+    const members = [{ mspId: "Org1MSP", rootCerts: [org1.pem], crls: [await crl(org1, [carol.serial])] }];
+    const db = new ExplorerDb(":memory:");
+    for (const b of chain("open", [{ txs: [{ txId: "cfg000", chaincode: "", args: [], config: true, members }] }])) {
+      const decoded = decodeBlock(b);
+      db.setMembers("open", decoded.transactions[0]!.members!);
+      db.addBlock(publishBlock(policy, decoded));
+    }
+    const app = buildServer({ name: "Org1", channels: ["open"], policy, db, status: () => [], auth: new Auth("s"), publicUrl: ORIGIN });
+    expect((await login(app, carol, "Org1MSP")).json().error).toBe("Org1MSP has revoked this certificate.");
+    expect((await login(app, alice, "Org1MSP")).statusCode).toBe(200);
+  });
+});
+
