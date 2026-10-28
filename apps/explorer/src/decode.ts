@@ -6,6 +6,7 @@
 
 import { createHash, X509Certificate } from "node:crypto";
 import { common, ledger, msp, peer } from "@hyperledger/fabric-protos";
+import { configUpdateSigners, summariseConfig, type ConfigSummary } from "./channel-config.ts";
 
 export interface Party {
   mspId: string;
@@ -55,6 +56,8 @@ export interface DecodedTransaction {
   event: { name: string; payload: Uint8Array } | null;
   /** Config transactions only: the channel's application organisations after this change. */
   members?: ChannelMember[];
+  /** Config transactions only: the configuration it leaves, who signed the update, and (set when indexed) what changed. */
+  config?: { summary: ConfigSummary; signers: Party[]; changes?: string[]; first?: boolean };
 }
 
 export interface PrivateDataSet {
@@ -291,6 +294,17 @@ function decodeEnvelope(raw: Uint8Array, index: number, validation: string): { t
       tx.members = decodeMembers(payload.getData_asU8());
     } catch {
       /* listed without its membership */
+    }
+    try {
+      const summary = summariseConfig(payload.getData_asU8());
+      if (summary) {
+        tx.config = {
+          summary,
+          signers: configUpdateSigners(payload.getData_asU8()).flatMap((creator) => party(creator) ?? []),
+        };
+      }
+    } catch {
+      /* listed without its summary */
     }
   }
   return { tx, channelId: channelHeader.getChannelId() };

@@ -55,6 +55,10 @@ Private data never reaches the shared ledger: the peers of the organisations in 
 A hash hides a value only when it's hard to guess. If a value has few possibilities, such as yes or no, or a price in a known range, anyone can hash each one and compare. Publish hashes only for collections whose values include something random. The ballot contract stores each ballot with the voter's random salt for this reason.
 :::
 
+## Channel configuration changes
+
+Config blocks hold the channel's whole configuration. The explorer compares each one with the one before and says what changed, in words: an organisation joined or left, a CA, anchor peer or orderer endpoint was added or removed, consenters changed, blocks are cut differently, capabilities or policies changed. It names who signed the update, and shows the members, ordering, capabilities and policies the change left. If something changed that it doesn't summarise, it says that too. Configuration updates often have no transaction ID, so their block page shows them.
+
 ## Configuration
 
 | Variable | Required | Description |

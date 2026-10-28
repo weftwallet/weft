@@ -87,7 +87,11 @@ function value(v: ShownValue | null): Html {
 function call(tx: TransactionRow): Html {
   if (tx.membersOnly) return html`<span class="subtle">members only</span>`;
   if (tx.redacted) return html`<span class="subtle">unpublished contract</span>`;
-  if (tx.type === "config") return html`<span>Channel configuration</span>`;
+  if (tx.type === "config") {
+    const first = tx.config?.changes[0];
+    const more = (tx.config?.changes.length ?? 0) - 1;
+    return html`<span>Channel configuration</span>${first ? html`<div class="small subtle">${first}${more > 0 ? ` And ${more} more.` : ""}</div>` : ""}`;
+  }
   if (!tx.chaincode) return html`<span class="subtle">${tx.typeName.toLowerCase()}</span>`;
   return html`<a class="mono" href="${contractUrl(tx.channel, tx.chaincode)}">${tx.chaincode}</a><span class="mono subtle">.</span><span class="mono">${tx.fn ?? ""}</span>`;
 }
@@ -317,7 +321,14 @@ function txRows(txs: TransactionRow[], options: { showBlock?: boolean } = {}): H
   <thead><tr><th>Transaction</th><th>Call</th><th>Submitted by</th>${options.showBlock !== false ? html`<th>Block</th>` : ""}<th>Status</th></tr></thead>
   <tbody>${txs.map(
     (t) => html`<tr>
-    <td>${t.txId ? html`<a class="mono" href="${txUrl(t.channel, t.txId)}">${short(t.txId, 8, 4)}</a>` : html`<span class="subtle">unreadable entry</span>`}<div class="subtle small">${time(t.timestamp)}</div></td>
+    <td>${
+      t.txId
+        ? html`<a class="mono" href="${txUrl(t.channel, t.txId)}">${short(t.txId, 8, 4)}</a>`
+        : t.type === "config"
+          ? // Configuration updates often have no transaction ID; their block shows them.
+            html`<a href="${blockUrl(t.channel, t.blockNumber)}">configuration</a>`
+          : html`<span class="subtle">unreadable entry</span>`
+    }<div class="subtle small">${time(t.timestamp)}</div></td>
     <td>${call(t)}</td>
     <td>${t.redacted ? html`<span class="subtle">not published</span>` : party(t.creator)}</td>
     ${options.showBlock !== false ? html`<td><a class="mono" href="${blockUrl(t.channel, t.blockNumber)}">#${t.blockNumber}</a></td>` : ""}
@@ -459,6 +470,7 @@ export function blockPage(site: Site, block: BlockRow, txs: TransactionRow[], ha
 })();
 </script>
 ${blockAgreement(site, block)}
+${txs.map((t) => (t.config ? configSection(t.config) : ""))}
 <section><h2>Transactions</h2>${txRows(txs, { showBlock: false })}</section>`,
   );
 }
@@ -492,6 +504,7 @@ ${tx.redacted
     ${tx.type === "endorser" ? html`<dt>Approved by</dt><dd>${tx.endorsers.length === 0 ? html`<span class="subtle">none</span>` : tx.endorsers.map((e) => html`<div>${party(e)}</div>`)}</dd>` : ""}
   </dl>
 </section>
+${tx.config ? configSection(tx.config) : ""}
 ${tx.type === "endorser"
   ? html`<section><h2>Arguments</h2>${tx.args.length === 0
       ? html`<p class="empty">None.</p>`
@@ -506,6 +519,37 @@ ${tx.response && tx.response.payload.text !== "" ? html`<section><h2>Returned</h
 ${tx.event ? html`<section><h2>Event</h2><div class="card"><div class="mono fn">${tx.event.name}</div>${value(tx.event.payload)}</div></section>` : ""}`
   : ""}`}`;
   return layout(site, `Transaction ${short(tx.txId, 8, 4)}`, body);
+}
+
+/** A config transaction: what changed, who signed the update, and the configuration it leaves. */
+function configSection(config: NonNullable<TransactionRow["config"]>): Html {
+  const s = config.summary;
+  const cas = (list: { subject: string; fingerprint: string }[]) =>
+    list.length ? list.map((c) => html`<div>${c.subject} <span class="mono subtle">${c.fingerprint}</span></div>`) : html`<span class="subtle">none</span>`;
+  const names = (list: string[]) => (list.length ? html`<span class="mono">${list.join(", ")}</span>` : html`<span class="subtle">none</span>`);
+  return html`<section><h2>${config.first ? "How the channel started" : "What changed"}</h2>${
+    config.changes.length
+      ? html`<ul class="changes">${config.changes.map((c) => html`<li>${c}</li>`)}</ul>`
+      : html`<p class="empty">Nothing this explorer can tell.</p>`
+  }${
+    config.signers.length
+      ? html`<p class="small subtle">The update was signed by ${config.signers.map((p, i) => html`${i ? ", " : ""}${p.name ? html`${p.name} <span class="mono">(${p.mspId})</span>` : html`<span class="mono">${p.mspId}</span>`}`)}.</p>`
+      : ""
+  }</section>
+<section><h2>Members after this change</h2>
+<table class="table"><thead><tr><th>Organisation</th><th>Root CAs</th><th>Anchor peers</th></tr></thead><tbody>${s.organisations.map(
+    (o) => html`<tr><td class="mono">${o.mspId}</td><td>${cas(o.rootCas)}</td><td>${names(o.anchorPeers)}</td></tr>`,
+  )}</tbody></table></section>
+<section><h2>Ordering</h2><div class="card"><dl class="details">
+  <dt>Consensus</dt><dd class="mono">${s.consensus ?? "not set"}</dd>
+  <dt>Consenters</dt><dd>${names(s.consenters)}</dd>
+  <dt>Organisations</dt><dd>${s.ordererOrganisations.length ? s.ordererOrganisations.map((o) => html`<div><span class="mono">${o.mspId}</span>${o.endpoints.length ? html` <span class="subtle mono">${o.endpoints.join(", ")}</span>` : ""}</div>`) : html`<span class="subtle">none</span>`}</dd>
+  ${s.batch ? html`<dt>Blocks</dt><dd>Cut every ${s.batch.timeout || "?"}, or at ${s.batch.maxMessages} transactions, whichever comes first</dd>` : ""}
+</dl></div></section>
+<details class="card config-more"><summary>Capabilities and policies</summary><dl class="details">
+  <dt>Capabilities</dt><dd>${names([...s.capabilities.channel.map((c) => `channel ${c}`), ...s.capabilities.application.map((c) => `application ${c}`), ...s.capabilities.orderer.map((c) => `orderer ${c}`)])}</dd>
+  ${Object.entries(s.policies).map(([name, rule]) => html`<dt class="mono">${name}</dt><dd class="mono">${rule}</dd>`)}
+</dl></details>`;
 }
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

@@ -49,6 +49,10 @@ test("the playground's two explorers agree on mychannel", { tag: "@fabric" }, as
   await expect
     .poll(async () => page.evaluate(async () => (await (await fetch("/api/v1/channels/mychannel/organisations")).json())), { timeout: 40_000 })
     .toEqual([expect.objectContaining({ mspId: "Org2MSP", state: "agree" })]);
+  // The first block is the channel's configuration, described in words.
+  await page.goto(`${s.explorerUrl}/channels/mychannel/blocks/0`);
+  await expect(page.getByRole("heading", { name: "How the channel started" })).toBeVisible();
+  await expect(page.locator(".changes li").first()).toHaveText(/The channel starts with .*Org1MSP.*Org2MSP.* as members\./);
   await page.goto(`${s.explorerUrl}/channels/mychannel/blocks/1`);
   await expect(page.getByText("2 of 2 organisations report this block")).toBeVisible();
 });

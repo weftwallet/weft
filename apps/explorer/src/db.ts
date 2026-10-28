@@ -7,10 +7,11 @@
 import { DatabaseSync } from "node:sqlite";
 import type { PeerStatus } from "./checkpoints.ts";
 import type { ChannelMember } from "./decode.ts";
+import type { ConfigSummary } from "./channel-config.ts";
 import type { PublishedBlock, PublishedTransaction } from "./policy.ts";
 
 /** Bumped when the tables change; an older index is rebuilt from block 0. */
-const SCHEMA = "2";
+const SCHEMA = "3";
 
 export interface BlockRow {
   channel: string;
@@ -115,7 +116,7 @@ export class ExplorerDb {
   usePolicy(fingerprint: string): boolean {
     const row = this.db.prepare("SELECT value FROM meta WHERE key = 'policy'").get() as Row | undefined;
     if (row?.value === fingerprint) return false;
-    this.db.exec("DELETE FROM blocks; DELETE FROM transactions; DELETE FROM meta WHERE key LIKE 'members:%' OR key LIKE 'peers:%';");
+    this.db.exec("DELETE FROM blocks; DELETE FROM transactions; DELETE FROM meta WHERE key LIKE 'members:%' OR key LIKE 'peers:%' OR key LIKE 'config:%';");
     this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('policy', ?)").run(fingerprint);
     return row !== undefined;
   }
@@ -139,6 +140,16 @@ export class ExplorerDb {
   /** The channel's application organisations, from its latest config block. */
   setMembers(channel: string, members: ChannelMember[]): void {
     this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(`members:${channel}`, JSON.stringify(members));
+  }
+
+  /** The latest channel configuration indexed, summarised. */
+  configSummary(channel: string): ConfigSummary | null {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = ?").get(`config:${channel}`) as Row | undefined;
+    return row ? (JSON.parse(row.value as string) as ConfigSummary) : null;
+  }
+
+  setConfigSummary(channel: string, summary: ConfigSummary): void {
+    this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(`config:${channel}`, JSON.stringify(summary));
   }
 
   members(channel: string): ChannelMember[] {

@@ -10,7 +10,8 @@ import { connect, signers, type Gateway } from "@hyperledger/fabric-gateway";
 import { common } from "@hyperledger/fabric-protos";
 import type { ExplorerConfig } from "./config.ts";
 import type { ExplorerDb } from "./db.ts";
-import { decodeBlock } from "./decode.ts";
+import { configChanges } from "./channel-config.ts";
+import { decodeBlock, type DecodedBlock } from "./decode.ts";
 import { publishBlock, publishedChannels, type Policy } from "./policy.ts";
 
 export interface ChannelStatus {
@@ -112,11 +113,7 @@ export class Indexer {
         this.update(channel, { state: "following", lastError: null });
         this.log.info(`Following ${channel} from block ${startBlock}`);
         for await (const block of blocks) {
-          const decoded = decodeBlock(block);
-          // Config blocks say which organisations are members: who may sign in.
-          const config = decoded.transactions.find((t) => t.members);
-          if (config?.members) this.db.setMembers(channel, config.members);
-          this.db.addBlock(publishBlock(this.policy, decoded));
+          indexBlock(this.db, this.policy, decodeBlock(block));
           this.update(channel, { lastBlockAt: Date.now() });
           delay = 1000;
         }
@@ -145,4 +142,22 @@ export class Indexer {
       await new Promise((r) => setTimeout(r, 10_000));
     }
   }
+}
+
+/**
+ * Stores one decoded block. Config blocks also update who the channel's
+ * members are (who may sign in) and the configuration each later config
+ * block is compared with.
+ */
+export function indexBlock(db: ExplorerDb, policy: Policy, decoded: DecodedBlock): void {
+  for (const tx of decoded.transactions) {
+    if (tx.members) db.setMembers(decoded.channel, tx.members);
+    if (tx.config) {
+      const before = db.configSummary(decoded.channel);
+      tx.config.changes = configChanges(before, tx.config.summary);
+      tx.config.first = before === null;
+      db.setConfigSummary(decoded.channel, tx.config.summary);
+    }
+  }
+  db.addBlock(publishBlock(policy, decoded));
 }

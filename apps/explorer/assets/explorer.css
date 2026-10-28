@@ -202,3 +202,9 @@ h1.mono { font-size: 24px; }
 .receipt--local p.bad { color: var(--signal); }
 .elections-link { margin: 20px 0 0; font-size: 15px; }
 @media (max-width: 640px) { .receipt, .receipt--local, .receipt--single { grid-template-columns: 1fr; } }
+.changes { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.config-more { margin-top: 20px; }
+.config-more summary { cursor: pointer; color: var(--thread); font-size: 14px; }
+.config-more[open] summary { margin-bottom: 14px; }
+@media (min-width: 641px) { .config-more .details { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); } }
+.config-more dt { overflow-wrap: anywhere; }

@@ -19,6 +19,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
+import type { ConfigSummary } from "./channel-config.ts";
 import type { DecodedBlock, DecodedTransaction, Party, PrivateDataSet } from "./decode.ts";
 
 export type Level = "public" | "members" | "hidden";
@@ -161,6 +162,8 @@ export interface PublishedTransaction {
   writes: { namespace: string; key: string; isDelete: boolean; value: ShownValue | null; level: "public" | "members" }[];
   /** Private data collections touched. `hashes` only when the policy publishes them. */
   privateData: PublishedPrivateData[];
+  /** Config transactions: the configuration, what changed, and who signed the update. */
+  config?: { summary: ConfigSummary; changes: string[]; signers: PublishedParty[]; first?: boolean };
   response: { status: number; message: string; payload: ShownValue } | null;
   event: { name: string; payload: ShownValue } | null;
 }
@@ -195,9 +198,19 @@ export function publishTransaction(policy: Policy, channel: string, tx: DecodedT
   const empty = { creator: null, chaincode: null, fn: null, args: [], endorsers: [], reads: 0, writes: [], privateData: [], response: null, event: null };
   const channelOpen = c.level === "public" ? "public" : "members";
 
-  // Channel configuration: who made the change matters; the config itself is a later feature.
+  // Channel configuration: who made the change, what it changed, and who signed it.
   if (tx.type !== "endorser") {
-    return { ...base, ...empty, level: channelOpen, redacted: false, creator: c.submitter === "show" && tx.creator ? partyView(tx.creator) : null };
+    const people = (p: Party): PublishedParty => (c.submitter === "show" ? partyView(p) : { mspId: p.mspId, name: null });
+    return {
+      ...base,
+      ...empty,
+      level: channelOpen,
+      redacted: false,
+      creator: c.submitter === "show" && tx.creator ? partyView(tx.creator) : null,
+      ...(tx.config
+        ? { config: { summary: tx.config.summary, changes: tx.config.changes ?? [], signers: tx.config.signers.map(people), first: tx.config.first ?? false } }
+        : {}),
+    };
   }
   const level = contractLevel(policy, channel, tx.chaincode);
   // A hidden contract's transaction is listed with its ID, time and status, so block counts stay true.
@@ -267,6 +280,7 @@ export function viewTransaction<T extends PublishedTransaction>(tx: T, member: b
       privateData: [],
       response: null,
       event: null,
+      config: undefined,
     };
   }
   // Rows stored before private data was published have none.
