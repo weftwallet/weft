@@ -5,9 +5,11 @@ WORKDIR /repo
 RUN corepack enable
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/protocol packages/protocol
+COPY packages/core packages/core
 COPY apps/relay apps/relay
 RUN pnpm install --frozen-lockfile --filter @weftwallet/relay... \
  && pnpm --filter @weftwallet/protocol build \
+ && pnpm --filter @weftwallet/core build \
  && pnpm --filter @weftwallet/relay build \
  && pnpm deploy --filter @weftwallet/relay --prod --legacy /out
 

@@ -1,0 +1,16 @@
+# Keep the build context small: dependencies are installed in the image, and
+# the playground's Fabric downloads are large.
+**/node_modules
+**/dist
+**/.output*
+**/.astro
+.git
+playground/.fabric
+playground/.state
+e2e/test-results
+e2e/playwright-report
+e2e/.bin
+**/*.db
+**/*.db-*
+.env
+**/.env

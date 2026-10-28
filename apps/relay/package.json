@@ -5,6 +5,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "description": "Stateless relay between the Weft wallet and a Fabric peer Gateway service",
+  "files": [
+    "dist"
+  ],
   "main": "./dist/server.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
