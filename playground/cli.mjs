@@ -388,6 +388,8 @@ async function startExplorer(stepNumber = 7) {
       WEFT_EXPLORER_POLICY: join(here, o.policy),
       WEFT_EXPLORER_DB: join(state, `${o.name}.db`),
       WEFT_EXPLORER_PEERS: `http://localhost:${o.other}`,
+      // Block pages link to the network page; the local docs can reach local explorers.
+      WEFT_EXPLORER_NETWORK_PAGE: `http://localhost:${PORTS.docs}/operators/network/`,
       NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
     });
   }

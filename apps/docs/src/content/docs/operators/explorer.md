@@ -65,6 +65,7 @@ Private data collections never reach the shared ledger, only their hashes, so th
 | `WEFT_EXPLORER_PUBLIC_URL` | Behind a proxy | The address people open, e.g. `https://explorer.org1.example`. Sign-ins must name it. Defaults to the address each request arrived at. |
 | `WEFT_EXPLORER_SESSION_SECRET` | No | Signs session cookies. Without it, a random secret is made at start, which signs everyone out when the explorer restarts. |
 | `WEFT_EXPLORER_PEERS` | No | Other organisations' explorers to cross-check with, comma-separated base URLs. HTTPS, except `localhost`. |
+| `WEFT_EXPLORER_NETWORK_PAGE` | No | The [network page](/operators/network/) that block pages link to, for checking a block without relying on this explorer. Defaults to the one on this site; set it to your own docs' page, or `off`. |
 | `PORT` | No | Default `8790`. |
 
 Register a client identity for the explorer with your CA rather than reusing a person's. It needs to satisfy the channel's `Readers` policy, which a client of a member organisation does.
@@ -137,6 +138,8 @@ Everything the pages show is also JSON, readable from any origin, since it's pub
 | `GET /api/v1/channels/:channel/blocks/:number` | One block and its transactions. |
 | `GET /api/v1/channels/:channel/transactions?contract=&org=&before=&limit=` | Transactions, newest first, optionally for one contract or submitting MSP. |
 | `GET /api/v1/channels/:channel/transactions/:txId` | One transaction. |
+| `GET /api/v1/channels/:channel/headers?from=&to=` | Block headers (`number`, `previousHash`, `dataHash`, `hash`), oldest first, up to 1,000 at a time, for recomputing hashes elsewhere. |
+| `GET /api/v1/channels/:channel/members` | Each member organisation's root and intermediate CA certificates, from the channel configuration, for checking whose certificate signed a checkpoint. |
 | `GET /api/v1/channels/:channel/checkpoint` | This explorer's signed checkpoint: `{ channel, mspId, number, hash, signedAt, message, signature, certificate }`. Public channels only. |
 | `GET /api/v1/channels/:channel/organisations` | What each cross-checked organisation last reported, and how far it agrees. |
 

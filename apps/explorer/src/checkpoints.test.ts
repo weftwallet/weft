@@ -131,3 +131,33 @@ describe("checkpoints", () => {
     expect(home.body).toContain("couldn&#39;t be reached");
   });
 });
+
+describe("checked without trusting the explorer", () => {
+  it("serves headers that link and a checkpoint its organisation's CA vouches for", async () => {
+    const { blockHeaderHash, checkHeaders, verifyCheckpoint } = await import("@weftwallet/core/chain");
+    const { explorer, org2 } = await network();
+    const two = await explorer("Org2MSP", org2);
+    const headers = (await two.app.inject("/api/v1/channels/mychannel/headers?from=0&to=2")).json();
+    expect(headers).toHaveLength(3);
+    expect(await checkHeaders(headers)).toEqual({ ok: true, from: 0, to: 2 });
+    // The same hash the server computed, recomputed with WebCrypto.
+    expect(await blockHeaderHash(2, headers[2].previousHash, headers[2].dataHash)).toBe(two.db.blockHash("mychannel", 2));
+
+    const forged = headers.map((h: { number: number }) => (h.number === 1 ? { ...h, dataHash: "00".repeat(32) } : h));
+    expect(await checkHeaders(forged)).toMatchObject({ ok: false, at: 1 });
+
+    const members = (await two.app.inject("/api/v1/channels/mychannel/members")).json();
+    expect(members.map((m: { mspId: string }) => m.mspId)).toEqual(["Org1MSP", "Org2MSP", "Org3MSP"]);
+    const cp = await checkpointOf(two);
+    expect(await verifyCheckpoint(cp, members)).toMatchObject({ ok: true, checkpoint: { mspId: "Org2MSP", number: 2, hash: headers[2].hash } });
+
+    // Signed by Org2's explorer, but claiming to be Org1's.
+    const claimed = { ...cp, message: cp.message.replace("Org2MSP", "Org1MSP") };
+    expect(await verifyCheckpoint(claimed, members)).toMatchObject({ ok: false, reason: /signature/ });
+    // A configuration without Org2.
+    expect(await verifyCheckpoint(cp, members.filter((m: { mspId: string }) => m.mspId !== "Org2MSP"))).toMatchObject({ ok: false, reason: /isn't a member/ });
+    // A CA that didn't issue the certificate.
+    const wrongCa = members.map((m: { mspId: string; rootCerts: string[] }) => (m.mspId === "Org2MSP" ? { ...m, rootCerts: members[0].rootCerts } : m));
+    expect(await verifyCheckpoint(cp, wrongCa)).toMatchObject({ ok: false, reason: /wasn't issued/ });
+  });
+});

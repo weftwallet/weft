@@ -23,7 +23,12 @@ export interface ExplorerConfig {
   sessionSecret: string | undefined;
   /** Other organisations' explorers to cross-check with, as base URLs. */
   peers: string[];
+  /** The network page block pages link to, or none when set to "off". */
+  networkPage: string | undefined;
 }
+
+/** The hosted docs' network page. Self-hosted docs can be named with WEFT_EXPLORER_NETWORK_PAGE. */
+const DEFAULT_NETWORK_PAGE = "https://weft.ifeanyiugwu.dev/operators/network/";
 
 function required(env: NodeJS.ProcessEnv, name: string, example: string): string {
   const value = env[name];
@@ -63,6 +68,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
     name: env.WEFT_EXPLORER_NAME || policy.organisation || mspId,
     publicUrl: env.WEFT_EXPLORER_PUBLIC_URL ? new URL(env.WEFT_EXPLORER_PUBLIC_URL).origin : undefined,
     sessionSecret: env.WEFT_EXPLORER_SESSION_SECRET || undefined,
+    networkPage:
+      env.WEFT_EXPLORER_NETWORK_PAGE === "off" ? undefined : new URL(env.WEFT_EXPLORER_NETWORK_PAGE || DEFAULT_NETWORK_PAGE).toString(),
     peers: (env.WEFT_EXPLORER_PEERS ?? "")
       .split(",")
       .map((u) => u.trim().replace(/\/+$/, ""))

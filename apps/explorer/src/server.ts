@@ -28,6 +28,8 @@ export interface ServerOptions {
   signer?: CheckpointSigner;
   /** The other organisations' explorers, polled for their checkpoints. */
   crossCheck?: CrossCheck;
+  /** The network page that block pages link to. */
+  networkPage?: string;
   logger?: boolean;
 }
 
@@ -52,6 +54,8 @@ const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
 };
 
 const PAGE = 20;
+/** Most headers one request returns. */
+const HEADERS = 1000;
 
 function int(value: unknown): number | undefined {
   if (typeof value !== "string" || !/^\d+$/.test(value)) return undefined;
@@ -91,6 +95,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       viewer,
       signIn: membersLevelExists,
       peers: (channel) => options.crossCheck?.peersFor(channel) ?? [],
+      ...(options.networkPage ? { networkPage: options.networkPage } : {}),
       elections: (channel) => {
         const contract = policy.channels[channel]?.elections;
         return !!contract && visible.includes(channel) && canSeeContract(channel, contract);
@@ -324,6 +329,25 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/organisations", async (request, reply) => {
     if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
     return options.crossCheck?.peersFor(request.params.channel) ?? [];
+  });
+
+  // For checking the chain elsewhere: headers alone, so anyone can recompute
+  // each block's hash and its link to the one before.
+  app.get<{ Params: { channel: string }; Querystring: { from?: string; to?: string } }>(
+    "/api/v1/channels/:channel/headers",
+    async (request, reply) => {
+      if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
+      const from = int(request.query.from) ?? 0;
+      const to = Math.min(int(request.query.to) ?? from + HEADERS - 1, from + HEADERS - 1);
+      return db.headers(request.params.channel, from, to);
+    },
+  );
+
+  // The members' CAs from the channel configuration, for checking whose
+  // certificate signed a checkpoint.
+  app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/members", async (request, reply) => {
+    if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
+    return db.members(request.params.channel).map(({ mspId, rootCerts, intermediateCerts }) => ({ mspId, rootCerts, intermediateCerts }));
   });
 
   app.get<{ Params: { channel: string }; Querystring: { before?: string; limit?: string } }>(

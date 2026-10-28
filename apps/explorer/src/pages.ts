@@ -23,6 +23,8 @@ export interface Site {
   peers: (channel: string) => PeerStatus[];
   /** Whether the channel has elections this viewer can see. */
   elections: (channel: string) => boolean;
+  /** The network page, which checks this explorer against the others from outside it. */
+  networkPage?: string;
 }
 
 const MARK = raw(`<svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
@@ -420,7 +422,7 @@ export function blockPage(site: Site, block: BlockRow, txs: TransactionRow[], ha
   <dl class="details">
     <dt>Time</dt><dd>${time(block.timestamp)}</dd>
     <dt>Transactions</dt><dd>${block.txCount} (${block.validCount} valid)</dd>
-    ${hashLine("Hash", block.hash, null, "", "")}
+    <dt>Hash</dt><dd><span class="mono hash" id="block-hash">${block.hash}</span><div class="small subtle" id="hash-check" aria-live="polite"></div></dd>
     ${hashLine(
       "Previous hash",
       block.previousHash,
@@ -430,8 +432,32 @@ export function blockPage(site: Site, block: BlockRow, txs: TransactionRow[], ha
     )}
     ${hashLine("Data hash", block.dataHash, block.dataHashValid, "Matches this block's transactions.", "Doesn't match this block's transactions.")}
   </dl>
-  <p class="subtle small">The hash is computed here from the block header. Every block stores the hash of the one before it, so changing an old block breaks every link after it.</p>
+  <p class="subtle small">The hash is computed from the block header. Every block stores the hash of the one before it, so changing an old block breaks every link after it.${
+    site.networkPage
+      ? html` To check this block against every organisation's ledger, without relying on this explorer, use the <a id="network-page" href="${site.networkPage}">network page</a>.`
+      : ""
+  }</p>
 </section>
+<script>
+(async function () {
+  // Recompute the hash in this browser from the header shown, as Fabric
+  // does: SHA-256 of DER(number, previous hash, data hash).
+  var out = document.getElementById("hash-check");
+  var link = document.getElementById("network-page");
+  if (link) link.href += (link.href.indexOf("?") < 0 ? "?" : "&") + "explorer=" + encodeURIComponent(location.origin);
+  if (!out || !window.crypto || !crypto.subtle) return;
+  function hex(h) { return (h.match(/../g) || []).map(function (b) { return parseInt(b, 16); }); }
+  function len(n) { if (n < 128) return [n]; var b = []; for (; n > 0; n = Math.floor(n / 256)) b.unshift(n & 255); return [128 | b.length].concat(b); }
+  function el(tag, c) { return [tag].concat(len(c.length), c); }
+  function int(v) { var b = []; var n = BigInt(v); do { b.unshift(Number(n & 255n)); n >>= 8n; } while (n > 0n); if (b[0] & 128) b.unshift(0); return el(2, b); }
+  var der = el(48, int(${raw(String(block.number))}).concat(el(4, hex(${raw(JSON.stringify(block.previousHash))})), el(4, hex(${raw(JSON.stringify(block.dataHash))}))));
+  var digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(der)));
+  var computed = Array.from(digest, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+  var ok = computed === document.getElementById("block-hash").textContent.trim();
+  out.textContent = ok ? "Your browser computed the same hash from this header." : "Your browser computed a different hash from this header: " + computed;
+  out.className = "small " + (ok ? "ok" : "bad");
+})();
+</script>
 ${blockAgreement(site, block)}
 <section><h2>Transactions</h2>${txRows(txs, { showBlock: false })}</section>`,
   );

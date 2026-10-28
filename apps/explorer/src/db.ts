@@ -150,6 +150,14 @@ export class ExplorerDb {
     this.db.close();
   }
 
+  /** Block headers from `from` to `to`, inclusive, oldest first. */
+  headers(channel: string, from: number, to: number): { number: number; previousHash: string; dataHash: string; hash: string }[] {
+    const rows = this.db
+      .prepare("SELECT number, previous_hash, data_hash, hash FROM blocks WHERE channel = ? AND number BETWEEN ? AND ? ORDER BY number")
+      .all(channel, from, to) as Row[];
+    return rows.map((r) => ({ number: Number(r.number), previousHash: r.previous_hash as string, dataHash: r.data_hash as string, hash: r.hash as string }));
+  }
+
   /** The next block number to fetch for a channel. */
   nextBlock(channel: string): number {
     const row = this.db.prepare("SELECT MAX(number) AS n FROM blocks WHERE channel = ?").get(channel) as Row | undefined;
