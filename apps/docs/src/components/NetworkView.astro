@@ -3,7 +3,9 @@
  * The network page: every organisation's explorer for one network, side by
  * side. It holds no data. It reads each explorer's public API from the
  * browser, finds the other organisations' explorers through the ones it
- * knows, and compares block hashes directly.
+ * knows, and compares block hashes directly. A member can sign in with Weft
+ * once; each explorer that names this page then gives it a token for what it
+ * publishes to members.
  */
 ---
 
@@ -17,6 +19,10 @@
     <p class="nw-hint" id="nw-status" aria-live="polite">
       Give one explorer: the page finds the others through it. Or open this page with <code>?explorer=&lt;url&gt;</code>.
     </p>
+    <div class="nw-signin" id="nw-signin" hidden>
+      <p class="nw-hint" id="nw-signin-text">Members of the network can sign in with Weft to include members-only channels.</p>
+      <button type="button" class="nw-secondary" id="nw-signin-button">Sign in with Weft</button>
+    </div>
   </form>
 
   <div id="nw-channels" class="nw-channels"></div>
@@ -51,8 +57,20 @@
   const compares = new Map<string, HTMLElement>();
   const membersOf = (channel: string) => explorers.filter((e) => e.status?.channels.some((c) => c.channel === channel));
 
+  /** Bearer tokens from explorers that accepted the sign-in, by base URL. */
+  const tokens = new Map<string, string>();
+  /** The signed sign-in, kept in memory to sign in to explorers found later. */
+  let signedIn: { message: string; signature: string; certificate: string; mspId: string; name: string | null } | null = null;
+  /** Explorers that refused the sign-in, and why. */
+  const refused = new Map<string, string>();
+
+  function authFor(url: string): Record<string, string> {
+    for (const [base, token] of tokens) if (url.startsWith(`${base}/`)) return { authorization: `Bearer ${token}` };
+    return {};
+  }
+
   async function getJson(url: string) {
-    const response = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { accept: "application/json" } });
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { accept: "application/json", ...authFor(url) } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }
@@ -141,6 +159,8 @@
   }
 
   function render() {
+    const ok = explorers.filter((e) => e.status).length;
+    setStatus(`${ok} ${ok === 1 ? "explorer" : "explorers"} found${explorers.length > ok ? `, ${explorers.length - ok} unreachable` : ""}. Updates every ${REFRESH_MS / 1000} seconds.`);
     const root = $("nw-channels");
     const reachable = explorers.filter((e) => e.status);
     const channels = [...new Set(reachable.flatMap((e) => e.status!.channels.map((c) => c.channel)))].sort();
@@ -180,7 +200,19 @@
       return el(
         "section",
         { className: "nw-card" },
-        el("div", { className: "nw-head" }, el("h2", { className: "mono", textContent: channel }), pill),
+        el(
+          "div",
+          { className: "nw-head" },
+          el(
+            "h2",
+            { className: "mono" },
+            channel,
+            ...(members.some((e) => e.status!.channels.find((x) => x.channel === channel)?.level === "members")
+              ? [el("span", { className: "nw-tag", textContent: "members only" })]
+              : []),
+          ),
+          pill,
+        ),
         el("p", { className: `nw-verdict nw-verdict--${v.tone}`, textContent: v.text }),
         table,
         compare,
@@ -196,7 +228,11 @@
           ),
         ]
       : [];
-    root.replaceChildren(...cards, ...missing);
+    const none =
+      cards.length === 0 && ok > 0
+        ? [el("p", { className: "nw-hint", textContent: signedIn ? "None of these explorers publishes a channel you can see." : "These explorers publish no public channels. Members can sign in to see the members-only ones." })]
+        : [];
+    root.replaceChildren(...cards, ...none, ...missing);
   }
 
   /** Most blocks the page walks back from a checkpoint before giving up. */
@@ -330,21 +366,115 @@
     return el("div", {}, details);
   }
 
+  /** Hands the sign-in to every explorer found that hasn't had it yet. Returns whether any new one accepted. */
+  async function signInEverywhere(): Promise<boolean> {
+    if (!signedIn) return false;
+    const fresh = explorers.filter((e) => !tokens.has(e.base) && !refused.has(e.base));
+    const results = await Promise.all(
+      fresh.map(async (e) => {
+        try {
+          const response = await fetch(`${e.base}/auth/network`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(signedIn),
+            signal: AbortSignal.timeout(8000),
+          });
+          const body = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+          tokens.set(e.base, body.token);
+          if (signedIn && !signedIn.name && body.name) signedIn.name = body.name;
+          return true;
+        } catch (error) {
+          refused.set(e.base, error instanceof Error ? error.message : String(error));
+          return false;
+        }
+      }),
+    );
+    showSignIn();
+    return results.some(Boolean);
+  }
+
+  async function refresh() {
+    explorers = await discover(starts);
+    // Members-only channels can name explorers the public view didn't.
+    if (await signInEverywhere()) explorers = await discover(starts);
+  }
+
+  function showSignIn() {
+    const box = $("nw-signin");
+    box.hidden = explorers.length === 0;
+    const button = $<HTMLButtonElement>("nw-signin-button");
+    const text = $("nw-signin-text");
+    if (!signedIn) {
+      text.textContent = (window as any).weft?.isWeft
+        ? "Members of the network can sign in with Weft to include members-only channels."
+        : "Members of the network can sign in with Weft to include members-only channels. Install Weft to sign in.";
+      button.textContent = "Sign in with Weft";
+      button.disabled = !(window as any).weft?.isWeft;
+      return;
+    }
+    const who = `${signedIn.name ?? "you"} (${signedIn.mspId})`;
+    const accepted = explorers.filter((e) => tokens.has(e.base)).map(nameOf);
+    const no = [...refused].map(([base, why]) => `${explorers.find((e) => e.base === base) ? nameOf(explorers.find((e) => e.base === base)!) : new URL(base).host}: ${why}`);
+    text.textContent = `Signed in as ${who}${accepted.length ? ` at ${accepted.join(", ")}` : ""}.${no.length ? ` Not accepted by ${no.join("; ")}` : ""}`;
+    button.textContent = "Sign out";
+    button.disabled = false;
+  }
+
+  function randomNonce() {
+    return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  $("nw-signin-button").addEventListener("click", async () => {
+    const button = $<HTMLButtonElement>("nw-signin-button");
+    if (signedIn) {
+      signedIn = null;
+      tokens.clear();
+      refused.clear();
+      compares.clear();
+      await refresh();
+      render();
+      showSignIn();
+      return;
+    }
+    const weft = (window as any).weft;
+    button.disabled = true;
+    button.textContent = "Waiting for Weft…";
+    try {
+      await weft.request({ method: "weft_connect" });
+      const signed = await weft.request({
+        method: "weft_signIn",
+        params: { nonce: randomNonce(), statement: "Sign in to this network's explorers, for the members-only channels." },
+      });
+      signedIn = { message: signed.message, signature: signed.signature, certificate: signed.certificate, mspId: signed.mspId, name: null };
+      await signInEverywhere();
+      compares.clear();
+      await refresh();
+      render();
+    } catch (error: any) {
+      setStatus(error?.message ? `Sign-in didn't complete: ${error.message}` : "Sign-in didn't complete.", "err");
+    } finally {
+      showSignIn();
+    }
+  });
+  window.addEventListener("weft#initialized", showSignIn, { once: true });
+
   async function load(from: string[], quiet = false) {
     starts = from;
     if (!quiet) setStatus("Looking for explorers…");
     explorers = await discover(from);
+    await signInEverywhere();
     const ok = explorers.filter((e) => e.status).length;
     if (!ok) {
       setStatus(`Couldn't read ${from.join(", ")}. Check the address, and that the explorer is running.`, "err");
       $("nw-channels").replaceChildren();
       return;
     }
-    setStatus(`${ok} ${ok === 1 ? "explorer" : "explorers"} found${explorers.length > ok ? `, ${explorers.length - ok} unreachable` : ""}. Updates every ${REFRESH_MS / 1000} seconds.`);
     render();
+    showSignIn();
     if (timer) clearInterval(timer);
     timer = setInterval(async () => {
-      explorers = await discover(starts);
+      await refresh();
       render();
     }, REFRESH_MS);
   }
@@ -496,6 +626,39 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+  }
+  .nw-signin {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--sl-color-gray-5);
+  }
+  .nw-signin .nw-hint {
+    flex: 1 1 16rem;
+  }
+  .nw button.nw-secondary {
+    background: transparent;
+    color: var(--sl-color-white);
+    border-color: var(--sl-color-gray-4);
+  }
+  .nw button:disabled {
+    opacity: 0.6;
+    cursor: default;
+    filter: none;
+  }
+  .nw-tag {
+    margin-left: 0.6rem;
+    font-family: var(--sl-font-sans);
+    font-size: var(--sl-text-xs);
+    font-weight: 500;
+    color: var(--sl-color-gray-3);
+    vertical-align: middle;
+  }
+  .nw [hidden] {
+    display: none !important;
   }
   .nw-pill {
     font-family: var(--sl-font-mono);

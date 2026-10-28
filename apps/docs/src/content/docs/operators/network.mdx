@@ -33,6 +33,13 @@ Each explorer's block pages also recompute the block's hash in your browser, and
 ## What it needs
 
 - Explorers that can reach each other: each lists the others in `WEFT_EXPLORER_PEERS`, which is how this page finds them.
-- Public channels. A members-only channel isn't in an explorer's public API, so it doesn't appear here.
+- For members-only channels, a sign-in. See below.
 
 With `pnpm playground:up` running, this page finds the playground's two explorers by itself.
+
+## Members-only channels
+
+A members-only channel appears once you sign in with Weft, with an identity from an organisation in it. You approve one sign-in, and the page hands it to every explorer it found. Each explorer checks it the way it checks its own sign-ins, and that it names this page, then gives the page a token for an hour. The token stays in the page's memory: closing or reloading the page signs you out.
+
+An explorer accepts sign-ins only from the network page it names in `WEFT_EXPLORER_NETWORK_PAGE`, so explorers that should work together name the same page.
+

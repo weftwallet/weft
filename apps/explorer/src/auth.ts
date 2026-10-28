@@ -9,6 +9,11 @@
  *
  * A signed-in viewer is a member of every indexed channel whose configuration
  * lists their MSP, and sees that channel's `members` level.
+ *
+ * The network page signs in once for every organisation's explorer. Its
+ * sign-in names the network page's origin and a nonce the page chose, so each
+ * explorer accepts a nonce once, and only for a short-lived message. It gets
+ * a bearer token back, not a cookie, since it calls from another origin.
  */
 
 import { createHmac, randomBytes, timingSafeEqual, X509Certificate } from "node:crypto";
@@ -24,6 +29,10 @@ export interface Viewer {
 
 export const SESSION_COOKIE = "weft_session";
 const SESSION_MS = 8 * 60 * 60_000;
+/** The network page's session at each explorer. */
+const NETWORK_SESSION_MS = 60 * 60_000;
+/** Longest a page-chosen nonce's message may be valid for. */
+const CHOSEN_NONCE_MS = 15 * 60_000;
 const NONCE_MS = 5 * 60_000;
 const CLOCK_SKEW_MS = 60_000;
 
@@ -53,6 +62,8 @@ export function chainsTo(certificatePem: string, member: ChannelMember, now = Da
 export class Auth {
   private readonly secret: Buffer;
   private readonly nonces = new Map<string, number>();
+  /** Page-chosen nonces already used, until their message expires. */
+  private readonly used = new Map<string, number>();
 
   constructor(secret?: string) {
     this.secret = secret ? Buffer.from(secret, "utf8") : randomBytes(32);
@@ -77,15 +88,25 @@ export class Auth {
     expectedOrigin: string,
     membersOf: (mspId: string) => ChannelMember[],
     now = Date.now(),
+    nonces: "issued" | "chosen" = "issued",
   ): Promise<Viewer> {
     if (typeof body.message !== "string" || typeof body.signature !== "string" || typeof body.certificate !== "string") {
       throw new SignInError("Send message, signature and certificate.");
     }
     const fields = parseSignInMessage(body.message);
     if (fields.origin !== expectedOrigin) throw new SignInError("This sign-in was made for another site.");
-    const issued = this.nonces.get(fields.nonce);
-    if (issued === undefined || issued < now) throw new SignInError("This sign-in has expired or was already used. Try again.");
-    this.nonces.delete(fields.nonce); // one use, whatever happens next
+    if (nonces === "issued") {
+      const issued = this.nonces.get(fields.nonce);
+      if (issued === undefined || issued < now) throw new SignInError("This sign-in has expired or was already used. Try again.");
+      this.nonces.delete(fields.nonce); // one use, whatever happens next
+    } else {
+      if (fields.expiresAt.getTime() - fields.issuedAt.getTime() > CHOSEN_NONCE_MS) {
+        throw new SignInError("This sign-in is valid for too long. Try again.");
+      }
+      for (const [n, until] of this.used) if (until < now) this.used.delete(n);
+      if (this.used.has(fields.nonce)) throw new SignInError("This sign-in was already used. Try again.");
+      this.used.set(fields.nonce, fields.expiresAt.getTime() + CLOCK_SKEW_MS);
+    }
     if (fields.issuedAt.getTime() > now + CLOCK_SKEW_MS || fields.expiresAt.getTime() < now - CLOCK_SKEW_MS) {
       throw new SignInError("This sign-in has expired. Try again.");
     }
@@ -105,7 +126,18 @@ export class Auth {
     }
     const subject = new X509Certificate(body.certificate).subject;
     const name = /(?:^|\n)CN=([^\n]+)/.exec(subject)?.[1] ?? null;
-    return { mspId: fields.mspId, name, expires: now + SESSION_MS };
+    return { mspId: fields.mspId, name, expires: now + (nonces === "chosen" ? NETWORK_SESSION_MS : SESSION_MS) };
+  }
+
+  /** A bearer token, for the network page. The same signed form as the cookie. */
+  token(viewer: Viewer): string {
+    return this.cookie(viewer);
+  }
+
+  /** The viewer from an "Authorization: Bearer" header, if it's valid. */
+  readBearer(authorization: string | undefined, now = Date.now()): Viewer | null {
+    const token = /^Bearer ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.exec(authorization ?? "")?.[1];
+    return token ? this.read(`${SESSION_COOKIE}=${token}`, now) : null;
   }
 
   cookie(viewer: Viewer): string {

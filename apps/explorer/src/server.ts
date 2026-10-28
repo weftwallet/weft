@@ -81,7 +81,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   /** Everything that depends on who's asking. */
   function scope(request: FastifyRequest) {
-    const viewer = auth.read(request.headers.cookie);
+    const viewer = auth.read(request.headers.cookie) ?? auth.readBearer(request.headers.authorization);
     // Another organisation's explorer, comparing ledgers: it signs each request.
     const requester = request.url.startsWith("/api/") ? verifyExplorerRequest(request.headers, request.url) : null;
     const memberOf = (channel: string) =>
@@ -116,7 +116,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.addHook("onSend", async (request, reply) => {
     // Public data can be read by anyone, including other organisations'
     // explorers. Cookies aren't sent cross-origin, so members-level data isn't.
-    if (request.url.startsWith("/api/")) reply.header("access-control-allow-origin", "*");
+    if (request.url.startsWith("/api/")) {
+      reply.header("access-control-allow-origin", "*");
+      // What a signed-in reader gets differs from what anyone else gets.
+      if (request.headers.authorization || request.headers["x-weft-signature"]) reply.header("cache-control", "no-store").header("vary", "authorization");
+    }
     reply.header("x-content-type-options", "nosniff");
     reply.header("referrer-policy", "no-referrer");
     if (!request.url.startsWith("/api/") && !request.url.startsWith("/assets/")) {
@@ -151,6 +155,47 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       return reply.code(401).send({ error: message });
     }
   });
+
+  /*
+   * The network page signs in to every organisation's explorer at once, from
+   * its own origin. Only the network page this explorer names is accepted.
+   */
+  const networkOrigin = options.networkPage ? new URL(options.networkPage).origin : null;
+
+  app.options("/auth/network", async (request, reply) => {
+    if (!networkOrigin) return reply.code(404).send();
+    return reply
+      .header("access-control-allow-origin", networkOrigin)
+      .header("access-control-allow-methods", "POST")
+      .header("access-control-allow-headers", "content-type")
+      .header("access-control-max-age", "600")
+      .code(204)
+      .send();
+  });
+
+  app.post<{ Body: { message?: unknown; signature?: unknown; certificate?: unknown } }>("/auth/network", async (request, reply) => {
+    if (!networkOrigin) return reply.code(404).send({ error: "This explorer doesn't accept network page sign-ins." });
+    reply.header("access-control-allow-origin", networkOrigin).header("cache-control", "no-store");
+    try {
+      const membersOf = (mspId: string) => channels.flatMap((c) => db.members(c).filter((m) => m.mspId === mspId));
+      const viewer = await auth.verify(request.body ?? {}, networkOrigin, membersOf, Date.now(), "chosen");
+      return { token: auth.token(viewer), expires: viewer.expires, mspId: viewer.mspId, name: viewer.name };
+    } catch (error) {
+      const message = error instanceof SignInError ? error.message : "That sign-in couldn't be checked.";
+      return reply.code(401).send({ error: message });
+    }
+  });
+
+  // The public API can be read with a bearer token from the network page.
+  app.options("/api/*", async (_request, reply) =>
+    reply
+      .header("access-control-allow-origin", "*")
+      .header("access-control-allow-methods", "GET")
+      .header("access-control-allow-headers", "authorization")
+      .header("access-control-max-age", "600")
+      .code(204)
+      .send(),
+  );
 
   // The sign-out button is a plain form post; it has no fields worth reading.
   app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, _body, done) => done(null, {}));

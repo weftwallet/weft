@@ -10,6 +10,7 @@ import { buildServer } from "./server.ts";
 import { chain } from "./test/blocks.ts";
 
 const ORIGIN = "http://explorer.test";
+const NETWORK = "https://docs.test";
 
 async function signIn(who: { keys: CryptoKeyPair; pem: string }, mspId: string, nonce: string, origin = ORIGIN) {
   const issuedAt = new Date();
@@ -57,7 +58,16 @@ async function setup() {
     { txs: [{ txId: "ccc333", chaincode: "basic", args: ["Secret", "s"], writes: [{ key: "s", value: "s" }] }] },
   ]);
   const auth = new Auth("test secret");
-  const app = buildServer({ name: "Org1", channels: publishedChannels(policy), policy, db, status: () => [], auth, publicUrl: ORIGIN });
+  const app = buildServer({
+    name: "Org1",
+    channels: publishedChannels(policy),
+    policy,
+    db,
+    status: () => [],
+    auth,
+    publicUrl: ORIGIN,
+    networkPage: `${NETWORK}/operators/network/`,
+  });
   return { db, app, auth, org1, org2, outsider };
 }
 
@@ -165,3 +175,50 @@ describe("signing out", () => {
     expect(String(res.headers["set-cookie"])).toMatch(/Max-Age=0/);
   });
 });
+
+describe("the network page", () => {
+  const network = (who: { keys: CryptoKeyPair; pem: string }, mspId: string, nonce = "networkpage-nonce-0001", origin = NETWORK) =>
+    signIn(who, mspId, nonce, origin);
+
+  it("signs in once with its own nonce, and reads members-only channels with a bearer token", async () => {
+    const { app, org1 } = await setup();
+    const alice = await user(org1, "alice");
+    const preflight = await app.inject({ method: "OPTIONS", url: "/auth/network" });
+    expect(preflight.headers["access-control-allow-origin"]).toBe(NETWORK);
+
+    const res = await app.inject({ method: "POST", url: "/auth/network", payload: await network(alice, "Org1MSP") });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["access-control-allow-origin"]).toBe(NETWORK);
+    const { token, mspId, name } = res.json();
+    expect({ mspId, name }).toEqual({ mspId: "Org1MSP", name: "alice" });
+
+    expect((await app.inject("/api/v1/channels/private/transactions/ccc333")).statusCode).toBe(404);
+    const withToken = await app.inject({ url: "/api/v1/channels/private/transactions/ccc333", headers: { authorization: `Bearer ${token}` } });
+    expect(withToken.statusCode).toBe(200);
+    expect(withToken.headers["cache-control"]).toBe("no-store");
+    const api = await app.inject({ method: "OPTIONS", url: "/api/v1/status" });
+    expect(api.headers["access-control-allow-headers"]).toBe("authorization");
+  });
+
+  it("refuses a reused nonce, another origin, a long-lived message and a forged token", async () => {
+    const { app, org1 } = await setup();
+    const alice = await user(org1, "alice");
+    const post = async (payload: object) => (await app.inject({ method: "POST", url: "/auth/network", payload })).statusCode;
+    const once = await network(alice, "Org1MSP", "networkpage-nonce-0002");
+    expect(await post(once)).toBe(200);
+    expect(await post(once)).toBe(401);
+    expect(await post(await network(alice, "Org1MSP", "networkpage-nonce-0003", "https://evil.test"))).toBe(401);
+    const issuedAt = new Date();
+    const long = buildSignInMessage({ origin: NETWORK, mspId: "Org1MSP", nonce: "networkpage-nonce-0004", issuedAt, expiresAt: new Date(issuedAt.getTime() + 3600_000) });
+    expect(await post({ message: long, signature: toBase64(await signForFabric(alice.keys.privateKey, utf8(long))), certificate: alice.pem })).toBe(401);
+    const forged = await app.inject({ url: "/api/v1/channels/private/transactions/ccc333", headers: { authorization: "Bearer abc.def" } });
+    expect(forged.statusCode).toBe(404);
+  });
+
+  it("isn't offered by an explorer without a network page", async () => {
+    const db = new ExplorerDb(":memory:");
+    const app = buildServer({ name: "Org1", channels: [], policy, db, status: () => [] });
+    expect((await app.inject({ method: "POST", url: "/auth/network", payload: {} })).statusCode).toBe(404);
+  });
+});
+
