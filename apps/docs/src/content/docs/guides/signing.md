@@ -22,7 +22,7 @@ The coloured banner at the top shows whether the request reads or writes.
 | Contract | The chaincode, and the contract inside it when the chaincode has several. |
 | Function | What the contract will do, e.g. `TransferAsset`. |
 | Arguments | The inputs, in order, decoded into text. |
-| Private | Private (transient) inputs. They go only to the peers that run the contract and never reach the ledger. Their values start hidden from anyone glancing at your screen; **Show** reveals them, since you're signing them too. |
+| Private | Private (transient) inputs. They pass through your organisation's relay to the peers that run the contract, and never reach the ledger. Their values start hidden from anyone glancing at your screen; **Show** reveals them, since you're signing them too. |
 
 **View raw request** shows the same information as JSON, for attaching to a problem report. It includes private values only while they're shown.
 
