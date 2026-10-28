@@ -89,3 +89,18 @@ jobs:
             e2e/playwright-report
             e2e/test-results
           retention-days: 7
+
+  images:
+    name: Container images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Relay
+        run: docker build -f apps/relay/Dockerfile -t weft-relay .
+      - name: Explorer
+        run: docker build -f apps/explorer/Dockerfile -t weft-explorer .
+      - name: The explorer starts and explains what it needs
+        run: |
+          out=$(docker run --rm weft-explorer 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "WEFT_PEER_ENDPOINT is required"
