@@ -27,6 +27,7 @@ export interface CreateOptions {
   mspId?: string;
   caUrl?: string;
   caName?: string;
+  explorerUrl?: string;
 }
 
 /** Builds an invite from a connection profile, or from explicit fields. */
@@ -39,6 +40,7 @@ export async function createInvite(options: CreateOptions): Promise<OrgInvite> {
       ...(options.channels.length ? { channels: options.channels } : {}),
       ...(options.network ? { network: options.network } : {}),
       ...(options.enrollmentId ? { enrollmentId: options.enrollmentId } : {}),
+      ...(options.explorerUrl ? { explorerUrl: options.explorerUrl } : {}),
     });
   }
   if (!options.mspId || !options.caUrl) {
@@ -54,6 +56,7 @@ export async function createInvite(options: CreateOptions): Promise<OrgInvite> {
     relayUrl: options.relay,
     channels: options.channels,
     ...(options.enrollmentId ? { enrollmentId: options.enrollmentId } : {}),
+    ...(options.explorerUrl ? { explorerUrl: options.explorerUrl } : {}),
   });
 }
 
@@ -139,5 +142,6 @@ export async function checkInvite(input: string, fetchImpl: typeof fetch = fetch
   };
   await probe("Relay", `${invite.relayUrl}/v1/health`);
   await probe("CA", `${invite.caUrl}/cainfo${invite.caName ? `?ca=${encodeURIComponent(invite.caName)}` : ""}`);
+  if (invite.explorerUrl) await probe("Explorer", `${invite.explorerUrl}/api/v1/status`);
   return lines;
 }

@@ -41,6 +41,12 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
 
   const identity = state.identities.find((i) => i.id === item.identityId);
   const head = HEADLINE[item.status];
+  // Only transactions that reached a block are in the explorer.
+  const explorer = state.networks.find((n) => n.id === identity?.networkId)?.explorerUrl;
+  const explorerLink =
+    explorer && item.transactionId && item.blockNumber
+      ? `${explorer}/channels/${encodeURIComponent(item.call.channel)}/transactions/${encodeURIComponent(item.transactionId)}`
+      : null;
 
   return (
     <>
@@ -117,14 +123,19 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
         </dl>
       </main>
       {item.transactionId && (
-        <footer className="footer footer--single">
+        <footer className={explorerLink ? "footer" : "footer footer--single"}>
           <button
             type="button"
             className="btn"
             onClick={() => void navigator.clipboard.writeText(item.transactionId!).then(() => toast("Transaction ID copied"))}
           >
-            <Icon name="copy" size={18} /> Copy transaction ID
+            <Icon name="copy" size={18} /> {explorerLink ? "Copy ID" : "Copy transaction ID"}
           </button>
+          {explorerLink && (
+            <a className="btn btn--primary" href={explorerLink} target="_blank" rel="noreferrer">
+              <Icon name="external" size={18} /> Explorer
+            </a>
+          )}
         </footer>
       )}
     </>

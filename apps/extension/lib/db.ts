@@ -18,6 +18,8 @@ export interface NetworkRecord {
   caName?: string;
   relayUrl: string;
   channels: string[];
+  /** The organisation's explorer, from the invite. Activity links to it. */
+  explorerUrl?: string;
   /** Where the invite came from, for "Refresh from invite". */
   inviteUrl?: string;
 }

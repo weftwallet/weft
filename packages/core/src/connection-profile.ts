@@ -42,6 +42,8 @@ export interface InviteFromProfileOptions {
   /** CA key in the profile, when the organisation lists several. Defaults to the first. */
   certificateAuthority?: string;
   enrollmentId?: string;
+  /** The organisation's explorer, if it runs one. */
+  explorerUrl?: string;
 }
 
 /** Strips the "test-network-" style prefixes fabric-samples puts on profile names. */
@@ -84,6 +86,7 @@ export function inviteFromConnectionProfile(profile: ConnectionProfile, options:
     relayUrl: options.relayUrl,
     channels,
     ...(options.enrollmentId ? { enrollmentId: options.enrollmentId } : {}),
+    ...(options.explorerUrl ? { explorerUrl: options.explorerUrl } : {}),
   });
 }
 

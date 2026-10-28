@@ -72,6 +72,7 @@ export function parseInvite(json: unknown): OrgInvite {
   if (o.enrollmentId !== undefined && typeof o.enrollmentId !== "string") {
     problems.push('"enrollmentId" must be a string');
   }
+  if (o.explorerUrl !== undefined && !isUrl(o.explorerUrl)) problems.push('"explorerUrl" must be a URL');
   if (problems.length) throw new InviteError(`This invite is not valid: ${problems.join(", ")}.`);
   return {
     weft: 1,
@@ -83,6 +84,7 @@ export function parseInvite(json: unknown): OrgInvite {
     relayUrl: (o.relayUrl as string).replace(/\/+$/, ""),
     channels: o.channels as string[],
     ...(o.enrollmentId ? { enrollmentId: o.enrollmentId as string } : {}),
+    ...(o.explorerUrl ? { explorerUrl: (o.explorerUrl as string).replace(/\/+$/, "") } : {}),
   };
 }
 

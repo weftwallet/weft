@@ -227,6 +227,7 @@ textarea {
   font-weight: 500;
   cursor: pointer;
   padding: 0 16px;
+  text-decoration: none;
 }
 
 .btn {

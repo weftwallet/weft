@@ -18,6 +18,7 @@ invite create   Build an invite from your Fabric connection profile (JSON or YAM
   --org <name>           Organisation in the profile, if it lists several
   --network <name>       Display name for the network
   --enrollment-id <id>   Pre-fill the enrollment ID (per-person invites)
+  --explorer <url>       Your organisation's explorer, which Weft links transactions to
   --msp, --ca, --ca-name Describe the organisation without a profile
   -o, --out <file>       Write the invite here instead of printing it
 
@@ -26,7 +27,7 @@ invite share    Print share links for a hosted invite, and make a QR code
   --terminal             Print the QR code in the terminal
   --join-page <url>      Use your own join page instead of the hosted one
 
-invite check    Validate an invite and check its relay and CA answer
+invite check    Validate an invite and check its relay, CA and explorer answer
 
 The relay can also serve the invite for you at /.well-known/weft-invite.json;
 see https://weft.ifeanyiugwu.dev/operators/invites/`;
@@ -58,6 +59,7 @@ async function main(argv: string[]) {
           msp: { type: "string" },
           ca: { type: "string" },
           "ca-name": { type: "string" },
+          explorer: { type: "string" },
           out: { type: "string", short: "o" },
         },
       });
@@ -71,6 +73,7 @@ async function main(argv: string[]) {
         ...(values.msp ? { mspId: values.msp } : {}),
         ...(values.ca ? { caUrl: values.ca } : {}),
         ...(values["ca-name"] ? { caName: values["ca-name"] } : {}),
+        ...(values.explorer ? { explorerUrl: values.explorer } : {}),
       });
       const json = `${JSON.stringify(invite, null, 2)}\n`;
       if (values.out) {

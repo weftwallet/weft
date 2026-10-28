@@ -333,6 +333,8 @@ export interface OrgInvite {
   channels: string[];
   /** Optional enrollment ID pre-filled for the user. */
   enrollmentId?: string;
+  /** Base URL of the organisation's explorer, if it runs one. Weft links transactions to it. */
+  explorerUrl?: string;
 }
 
 /* ------------------------------------------------------------------ */

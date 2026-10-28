@@ -77,7 +77,7 @@ export interface UiApi {
   approvalDecide: [{ id: string; approved: boolean }, ApprovalOutcome];
   /** Changes where Weft reaches a network, or its channels. */
   updateNetwork: [
-    { networkId: string; patch: Partial<Pick<NetworkRecord, "name" | "organization" | "relayUrl" | "caUrl" | "caName" | "channels">> },
+    { networkId: string; patch: Partial<Pick<NetworkRecord, "name" | "organization" | "relayUrl" | "caUrl" | "caName" | "explorerUrl" | "channels">> },
     WalletState,
   ];
   /** Tries a relay and CA before saving them. Each is null when it answered, or the problem. */

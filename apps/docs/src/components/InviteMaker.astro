@@ -25,6 +25,7 @@
       <label>CA name <span>optional</span><input name="caName" placeholder="ca-org1" class="mono" /></label>
       <label>Relay URL<input name="relayUrl" type="url" required placeholder="https://relay.org1.example.com" /></label>
       <label>Enrollment ID <span>optional, per-person invites</span><input name="enrollmentId" class="mono" /></label>
+      <label>Explorer URL <span>optional</span><input name="explorerUrl" type="url" placeholder="https://explorer.org1.example.com" /></label>
     </div>
   </form>
 
@@ -85,6 +86,7 @@
       relayUrl: v("relayUrl").replace(/\/+$/, ""),
       channels,
       ...(v("enrollmentId") ? { enrollmentId: v("enrollmentId") } : {}),
+      ...(v("explorerUrl") ? { explorerUrl: v("explorerUrl").replace(/\/+$/, "") } : {}),
     };
   }
 

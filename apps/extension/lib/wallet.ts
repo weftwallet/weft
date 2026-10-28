@@ -115,6 +115,7 @@ export function inviteToNetwork(invite: OrgInvite, inviteUrl?: string): NetworkI
     ...(invite.caName ? { caName: invite.caName } : {}),
     relayUrl: invite.relayUrl,
     channels: invite.channels,
+    ...(invite.explorerUrl ? { explorerUrl: invite.explorerUrl } : {}),
   };
 }
 
@@ -243,7 +244,7 @@ function checkUrl(label: string, value: string): string {
 
 export async function updateNetwork(
   networkId: string,
-  patch: Partial<Pick<NetworkRecord, "name" | "organization" | "relayUrl" | "caUrl" | "caName" | "channels">>,
+  patch: Partial<Pick<NetworkRecord, "name" | "organization" | "relayUrl" | "caUrl" | "caName" | "explorerUrl" | "channels">>,
 ): Promise<NetworkRecord> {
   const network = await db.get<NetworkRecord>("networks", networkId);
   if (!network) throw new Error("That network no longer exists.");
@@ -255,6 +256,10 @@ export async function updateNetwork(
   if (patch.caName !== undefined) {
     if (patch.caName.trim()) next.caName = patch.caName.trim();
     else delete next.caName;
+  }
+  if (patch.explorerUrl !== undefined) {
+    if (patch.explorerUrl.trim()) next.explorerUrl = checkUrl("Explorer URL", patch.explorerUrl);
+    else delete next.explorerUrl;
   }
   if (patch.channels !== undefined) {
     const channels = Array.from(new Set(patch.channels.map((c) => c.trim()).filter(Boolean)));

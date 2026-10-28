@@ -52,6 +52,7 @@ function Settings({
   const [relayUrl, setRelayUrl] = useState(network.relayUrl);
   const [caUrl, setCaUrl] = useState(network.caUrl);
   const [caName, setCaName] = useState(network.caName ?? "");
+  const [explorerUrl, setExplorerUrl] = useState(network.explorerUrl ?? "");
   // Channels are editable only for networks added without an invite; invite
   // networks take their channels from the invite.
   const editableChannels = !network.inviteUrl;
@@ -66,16 +67,23 @@ function Settings({
 
   const channelsChanged = editableChannels && channelList.join(",") !== network.channels.join(",");
   const endpointsChanged = relayUrl !== network.relayUrl || caUrl !== network.caUrl || caName !== (network.caName ?? "");
-  const dirty = endpointsChanged || channelsChanged;
+  const explorerChanged = explorerUrl.trim() !== (network.explorerUrl ?? "");
+  const dirty = endpointsChanged || channelsChanged || explorerChanged;
   const leave = useLeaveGuard(dirty, onBack);
 
   const save = useAction(async (force: boolean) => {
     setProblems(null);
     if (editableChannels && channelList.length === 0) throw new Error("Enter at least one channel.");
-    // Only channels changed: no endpoints to test or confirm.
+    // Only channels or the explorer changed: no endpoints to test or confirm.
+    // Weft only opens the explorer as a link; it never sends anything to it.
     if (!endpointsChanged) {
-      onState(await ui("updateNetwork", { networkId: network.id, patch: { channels: channelList } }));
-      toast("Channels saved");
+      onState(
+        await ui("updateNetwork", {
+          networkId: network.id,
+          patch: { ...(channelsChanged ? { channels: channelList } : {}), ...(explorerChanged ? { explorerUrl: explorerUrl.trim() } : {}) },
+        }),
+      );
+      toast(explorerChanged && !channelsChanged ? "Explorer saved" : "Network saved");
       return;
     }
     await requestHostAccess([relayUrl.trim(), caUrl.trim()]);
@@ -111,6 +119,7 @@ function Settings({
           relayUrl: relayUrl.trim(),
           caUrl: caUrl.trim(),
           caName: caName.trim(),
+          explorerUrl: explorerUrl.trim(),
           ...(editableChannels ? { channels: channelList } : {}),
         },
       }),
@@ -141,6 +150,7 @@ function Settings({
           relayUrl: inv.relayUrl,
           caUrl: inv.caUrl,
           caName: inv.caName ?? "",
+          explorerUrl: inv.explorerUrl ?? "",
           channels: inv.channels,
         },
       }),
@@ -148,6 +158,7 @@ function Settings({
     setRelayUrl(inv.relayUrl);
     setCaUrl(inv.caUrl);
     setCaName(inv.caName ?? "");
+    setExplorerUrl(inv.explorerUrl ?? "");
     setInvite(null);
     toast("Updated from invite");
   });
@@ -212,7 +223,7 @@ function Settings({
         >
           <span>Advanced</span>
           <span className="subtle" style={{ fontSize: 12, marginLeft: "auto" }}>
-            {editableChannels ? "Channels, relay and CA" : "Relay and CA addresses"}
+            {editableChannels ? "Channels and addresses" : "Addresses"}
           </span>
           <Icon name="chevron" size={16} />
         </button>
@@ -235,6 +246,9 @@ function Settings({
             </Field>
             <Field label="CA name" hint="Only if your CA server hosts more than one CA">
               <input className="mono" value={caName} onChange={(e) => setCaName(e.target.value)} />
+            </Field>
+            <Field label="Explorer URL" hint="Optional. Your organisation's explorer, linked from each transaction.">
+              <input type="url" value={explorerUrl} onChange={(e) => setExplorerUrl(e.target.value)} />
             </Field>
             {dirty && (
               <div className="page__actions">
@@ -287,6 +301,9 @@ function InviteChanges({
   if (invite.relayUrl.replace(/\/+$/, "") !== network.relayUrl) changes.push({ label: "Relay", from: network.relayUrl, to: invite.relayUrl });
   if (invite.caUrl.replace(/\/+$/, "") !== network.caUrl) changes.push({ label: "CA", from: network.caUrl, to: invite.caUrl });
   if ((invite.caName ?? "") !== (network.caName ?? "")) changes.push({ label: "CA name", from: network.caName ?? "none", to: invite.caName ?? "none" });
+  if ((invite.explorerUrl ?? "") !== (network.explorerUrl ?? "")) {
+    changes.push({ label: "Explorer", from: network.explorerUrl ?? "none", to: invite.explorerUrl ?? "none" });
+  }
   if (invite.network !== network.name) changes.push({ label: "Name", from: network.name, to: invite.network });
   const nothing = added.length === 0 && removed.length === 0 && changes.length === 0;
 

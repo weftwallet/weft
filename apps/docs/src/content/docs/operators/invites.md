@@ -80,7 +80,8 @@ Every invite has three equivalent links:
   "caName": "ca-org1",
   "relayUrl": "https://relay.org1.example.com",
   "channels": ["mychannel"],
-  "enrollmentId": "jdoe"
+  "enrollmentId": "jdoe",
+  "explorerUrl": "https://explorer.org1.example.com"
 }
 ```
 
@@ -95,6 +96,7 @@ Every invite has three equivalent links:
 | `relayUrl` | Yes | Base URL of your [relay](/operators/relay/). |
 | `channels` | Yes | Channels members of this org use. |
 | `enrollmentId` | No | Pre-fills the enrollment ID, for per-person invites. |
+| `explorerUrl` | No | Base URL of your [explorer](/operators/explorer/). Weft links each transaction in its activity list to it. |
 
 Serve it with `content-type: application/json` over HTTPS, and allow cross-origin `GET` so the join page can preview it (the relay does both). Plain HTTP is accepted only on `localhost`.
 
@@ -104,7 +106,7 @@ Serve it with `content-type: application/json` over HTTPS, and allow cross-origi
 npx @weftwallet/cli invite check https://relay.org1.example.com/.well-known/weft-invite.json
 ```
 
-It validates the invite and confirms the relay and CA answer, exiting non-zero on failure, so it also works as a deployment check in CI.
+It validates the invite and confirms the relay, CA and explorer (if the invite names one) answer, exiting non-zero on failure, so it also works as a deployment check in CI.
 
 ## Good practice
 

@@ -80,6 +80,12 @@ describe("invites", () => {
     expect(parseInvite(valid).caUrl).toBe("https://ca.org1.example.com:7054");
   });
 
+  it("keeps an optional explorer URL, without a trailing slash", () => {
+    expect(parseInvite({ ...valid, explorerUrl: "https://explorer.org1.example.com/" }).explorerUrl).toBe("https://explorer.org1.example.com");
+    expect(parseInvite(valid).explorerUrl).toBeUndefined();
+    expect(() => parseInvite({ ...valid, explorerUrl: "not a url" })).toThrow(/explorerUrl/);
+  });
+
   it("lists every problem at once", () => {
     expect(() => parseInvite({ ...valid, mspId: "", channels: [] })).toThrow(/mspId.*channels/);
   });
