@@ -292,7 +292,11 @@ function SignRequest({
   const [showRaw, setShowRaw] = useState(false);
   const health = view.identity ? healthView(view.identity) : null;
   const args = call.args ?? [];
-  const transientKeys = Object.keys(call.transient ?? {});
+  const transient = Object.entries(call.transient ?? {});
+  const transientKeys = transient.map(([key]) => key);
+  // Private inputs are part of what the user signs, so they can always see
+  // them, but they start hidden from anyone glancing at the screen.
+  const [showPrivate, setShowPrivate] = useState(false);
 
   return (
     <>
@@ -358,11 +362,33 @@ function SignRequest({
               <span>{arg}</span>
             </div>
           ))}
-          {transientKeys.length > 0 && (
-            <div className="args__row">
-              <span className="subtle">private</span>
-              <span>{transientKeys.join(", ")}</span>
-            </div>
+          {transient.length > 0 && (
+            <>
+              <div className="args__row args__private">
+                <span className="subtle">Private, never on the ledger</span>
+                <button
+                  type="button"
+                  className="args__reveal"
+                  aria-pressed={showPrivate}
+                  onClick={() => setShowPrivate(!showPrivate)}
+                >
+                  <Icon name={showPrivate ? "eyeOff" : "eye"} size={16} />
+                  {showPrivate ? "Hide" : "Show"}
+                </button>
+              </div>
+              {transient.map(([key, value]) => (
+                <div key={key} className="args__row">
+                  <span className="subtle args__key">{key}</span>
+                  {showPrivate ? (
+                    <span className="args__value">{value}</span>
+                  ) : (
+                    <span className="subtle" aria-label="hidden">
+                      ••••••
+                    </span>
+                  )}
+                </div>
+              ))}
+            </>
           )}
           <button type="button" className="link-btn" onClick={() => setShowRaw(!showRaw)}>
             {showRaw ? "Hide raw request" : "View raw request"}
@@ -370,7 +396,11 @@ function SignRequest({
           {showRaw && (
             <pre className="raw">
               {JSON.stringify(
-                { ...call, fn: qualifiedFunctionName(call), transient: transientKeys.length ? transientKeys : undefined },
+                {
+                  ...call,
+                  fn: qualifiedFunctionName(call),
+                  transient: transient.length ? (showPrivate ? call.transient : transientKeys) : undefined,
+                },
                 null,
                 2,
               )}

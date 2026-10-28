@@ -39,7 +39,7 @@ const result = await weft.submit({
 const receipt = { ...JSON.parse(result.text!), option: "Ada", salt };
 ```
 
-Weft's approval window lists `ballot` as a private input and doesn't show its value, so show the voter their choice in your app before they sign.
+Weft's approval window lists `ballot` as a private input with its value hidden until the voter chooses **Show**, so also show the voter their choice in your app before they sign. Weft checks the value it signs is the one your app sent, and doesn't keep it in its activity list.
 
 ## Showing it in the explorer
 

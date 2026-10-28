@@ -66,7 +66,10 @@ export interface ActivityRecord {
   origin: string;
   identityId: string;
   kind: "evaluate" | "submit";
+  /** The call as approved, without private input values. */
   call: ContractCall;
+  /** Names of the call's private (transient) inputs. Their values aren't kept. */
+  privateInputs?: string[];
   status: ActivityStatus;
   transactionId?: string;
   blockNumber?: string;

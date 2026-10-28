@@ -54,7 +54,7 @@ When a chaincode exposes several contracts, name the one you want: `weft.contrac
 
 ```ts
 await assets.submitWith("CreatePrivateAsset", ["asset9"], {
-  transient: { price: "1200" },            // never written to the ledger; the user sees the key, not the value
+  transient: { price: "1200" },            // never written to the ledger; hidden in the approval window until the user chooses Show
   endorsingOrganizations: ["Org1MSP", "Org2MSP"],
 });
 ```

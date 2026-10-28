@@ -204,7 +204,18 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
   };
   const approval = await openApproval(view);
   const kind = method === "weft_submit" ? "submit" : "evaluate";
-  const base = { id: newId(), at: Date.now(), origin, identityId: active.record.id, kind, call } as const;
+  // Activity keeps the names of private inputs, never their values: they're
+  // private, and activity is stored on disk without encryption.
+  const { transient, ...kept } = call;
+  const base = {
+    id: newId(),
+    at: Date.now(),
+    origin,
+    identityId: active.record.id,
+    kind,
+    call: kept,
+    ...(transient ? { privateInputs: Object.keys(transient) } : {}),
+  } as const;
 
   if (!(await approval.decision.promise)) {
     finish(approval, { status: "rejected" });

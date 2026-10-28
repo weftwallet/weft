@@ -737,6 +737,48 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+/* Private inputs: a label row with the reveal control, then one row per input. */
+.args__private {
+  align-items: center;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-family: var(--weft-font-sans);
+  font-size: 12px;
+}
+
+.args__reveal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  margin-right: -6px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--weft-thread);
+  font-size: 13px;
+  cursor: pointer;
+  flex: none;
+}
+
+.args__reveal:hover {
+  background: color-mix(in srgb, var(--weft-thread) 12%, transparent);
+}
+
+.args__key {
+  flex: none;
+  max-width: 40%;
+}
+
+.args__value {
+  min-width: 0;
+  text-align: right;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: auto;
+}
+
 .raw {
   margin: 0;
   padding: 12px;

@@ -85,9 +85,21 @@ describe("proposal round trip", () => {
     expect(decodeProposedTransaction(proposal.getBytes()).fn).toBe("assets:TransferAsset");
   });
 
-  it("lists transient keys without exposing values", () => {
+  it("decodes private inputs, names and values", () => {
     const { proposal } = newProposal({ ...call, transient: { price: "100" } });
-    expect(decodeProposedTransaction(proposal.getBytes()).transientKeys).toEqual(["price"]);
+    const decoded = decodeProposedTransaction(proposal.getBytes());
+    expect(decoded.transientKeys).toEqual(["price"]);
+    expect(new TextDecoder().decode(decoded.transient[0]!.value)).toBe("100");
+  });
+
+  it("verifyProposal refuses a private input whose value was swapped", () => {
+    const approved = { ...call, transient: { price: "100" } };
+    const { proposal } = newProposal({ ...call, transient: { price: "1" } });
+    expect(() => verifyProposal(approved, { mspId, certificate }, decodeProposedTransaction(proposal.getBytes()))).toThrow(
+      /private input "price"/,
+    );
+    const same = newProposal(approved).proposal;
+    expect(() => verifyProposal(approved, { mspId, certificate }, decodeProposedTransaction(same.getBytes()))).not.toThrow();
   });
 
   it("signs exactly what fabric-gateway would sign", async () => {

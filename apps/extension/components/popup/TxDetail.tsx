@@ -110,6 +110,15 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
               <dd className="mono">{(item.call.args ?? []).join(", ")}</dd>
             </>
           )}
+          {item.privateInputs && item.privateInputs.length > 0 && (
+            <>
+              <dt>Private</dt>
+              <dd>
+                <span className="mono">{item.privateInputs.join(", ")}</span>{" "}
+                <span className="subtle">· values not kept</span>
+              </dd>
+            </>
+          )}
           <dt>Signed by</dt>
           <dd>
             {identity?.name ?? "Removed identity"} <span className="mono muted">· {identity?.mspId}</span>

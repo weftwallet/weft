@@ -22,16 +22,18 @@ The coloured banner at the top shows whether the request reads or writes.
 | Contract | The chaincode, and the contract inside it when the chaincode has several. |
 | Function | What the contract will do, e.g. `TransferAsset`. |
 | Arguments | The inputs, in order, decoded into text. |
-| Private | Names of private (transient) inputs. Their values are not shown and never reach the ledger. |
+| Private | Private (transient) inputs. They go only to the peers that run the contract and never reach the ledger. Their values start hidden from anyone glancing at your screen; **Show** reveals them, since you're signing them too. |
 
-**View raw request** shows the same information as JSON, for attaching to a problem report.
+**View raw request** shows the same information as JSON, for attaching to a problem report. It includes private values only while they're shown.
 
 ## What Weft checks for you
 
-The relay builds the actual Fabric messages. Before signing each one, Weft decodes it and confirms the channel, contract, function, every argument, the private input names and your certificate match what you approved. If anything differs, Weft refuses to sign and records why. See the [security model](/reference/security/).
+The relay builds the actual Fabric messages. Before signing each one, Weft decodes it and confirms the channel, contract, function, every argument, every private input and your certificate match what you approved. If anything differs, Weft refuses to sign and records why. See the [security model](/reference/security/).
 
 ## After you approve
 
 For a submit, Weft signs three times in a row: the proposal, the endorsed transaction, and the request for its commit status. You only approve once. The window shows **Committed** when the block is written, or an explanation if it fails: see [When a transaction fails](/guides/failures/).
+
+Weft's activity list keeps the names of private inputs but not their values.
 
 Closing the window counts as **Reject**.

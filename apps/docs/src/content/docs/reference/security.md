@@ -35,7 +35,7 @@ The provider in the page (`window.weft`) only posts messages. A separate content
 
 The relay builds the Fabric messages; Weft doesn't trust it to build the right ones. Before each signature, Weft decodes the protobuf bytes and checks:
 
-- **Proposal:** channel, chaincode, function (with contract prefix), every argument, private-input names, endorsing organisations if requested, signer MSP ID and certificate, and that the transaction ID in the header matches.
+- **Proposal:** channel, chaincode, function (with contract prefix), every argument, every private input (names and values), endorsing organisations if requested, signer MSP ID and certificate, and that the transaction ID in the header matches.
 - **Transaction:** same transaction ID and channel, and your certificate as creator.
 - **Commit status request:** same transaction ID and channel.
 

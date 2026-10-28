@@ -624,7 +624,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     // the commitment is for.
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
     try {
-      electionMessage(`Weft lists your choice as private data called "ballot" and doesn't show its value: you're voting for ${option}.`);
+      electionMessage(`You're voting for ${option}. Weft lists it as a private input called "ballot", hidden until you choose Show.`);
       const result = await call("weft_submit", ballot("CastVote", [election.id], { ballot: JSON.stringify({ option, salt }) }));
       const receipt = { ...JSON.parse(result.text), option, salt, blockNumber: result.blockNumber };
       votedIn.add(election.id);

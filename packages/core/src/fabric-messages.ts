@@ -18,8 +18,10 @@ export interface DecodedProposal {
   /** args[0] is the function name, as Fabric encodes it. */
   fn: string;
   args: string[];
-  /** Keys of the transient map. Values are private and not shown. */
+  /** Keys of the transient map, in the order they were encoded. */
   transientKeys: string[];
+  /** The transient map: private inputs the contract reads but the ledger never records. */
+  transient: { key: string; value: Uint8Array }[];
   creatorMspId: string;
   /** PEM certificate of the creator, exactly as embedded. */
   creatorCertificate: string;
@@ -72,7 +74,10 @@ export function decodeProposedTransaction(bytes: Uint8Array): DecodedProposal {
   // ChaincodeInput: args = 1 (repeated bytes)
   const rawArgs = spec.message(3).repeatedBytes(1).map((b) => decoder.decode(b));
   // map<string, bytes> entries: key = 1, value = 2
-  const transientKeys = payload.repeatedBytes(2).map((entry) => new Message(entry).string(1));
+  const transient = payload.repeatedBytes(2).map((entry) => {
+    const e = new Message(entry);
+    return { key: e.string(1), value: e.bytes(2) };
+  });
 
   return {
     transactionId: proposed.string(1),
@@ -81,7 +86,8 @@ export function decodeProposedTransaction(bytes: Uint8Array): DecodedProposal {
     chaincode,
     fn: rawArgs[0] ?? "",
     args: rawArgs.slice(1),
-    transientKeys,
+    transientKeys: transient.map((t) => t.key),
+    transient,
     creatorMspId: header.creatorMspId,
     creatorCertificate: header.creatorCertificate,
     endorsingOrganizations: proposed.repeatedString(3),

@@ -18,6 +18,10 @@ export class VerificationError extends Error {
   }
 }
 
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
 function normalizePem(pem: string): string {
   return pem.replace(/\r/g, "").trim();
 }
@@ -35,7 +39,14 @@ export function verifyProposal(call: ContractCall, signer: RelaySigner, decoded:
   check("contract", call.chaincode, decoded.chaincode);
   check("function", qualifiedFunctionName(call), decoded.fn);
   check("arguments", call.args ?? [], decoded.args);
-  check("transient data keys", Object.keys(call.transient ?? {}).sort(), [...decoded.transientKeys].sort());
+  check("private input names", Object.keys(call.transient ?? {}).sort(), [...decoded.transientKeys].sort());
+  // The values too: the user signs them, and a relay could otherwise swap them.
+  for (const { key, value } of decoded.transient) {
+    const approved = call.transient?.[key];
+    if (approved === undefined || !sameBytes(new TextEncoder().encode(approved), value)) {
+      throw new VerificationError(`private input "${key}"`, "the value you approved", "a different value");
+    }
+  }
   check("signing organisation", signer.mspId, decoded.creatorMspId);
   check("signing certificate", normalizePem(signer.certificate), normalizePem(decoded.creatorCertificate));
   check("transaction ID", decoded.transactionId, decoded.headerTransactionId);

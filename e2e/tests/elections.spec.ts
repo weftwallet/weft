@@ -44,15 +44,22 @@ test("vote from the docs playground and check the receipt in the explorer", { ta
   await wallet.approve(
     () => page.locator("#pg-el-vote").click(),
     async (win) => {
-      // The choice is private data: listed, but its value isn't shown.
-      await expect(win.getByText("private", { exact: true })).toBeVisible();
+      // The choice is a private input: hidden until the voter asks to see it.
+      await expect(win.getByText("Private, never on the ledger")).toBeVisible();
       await expect(win.getByText("Amber")).toHaveCount(0);
+      await win.getByRole("button", { name: "Show" }).click();
+      await expect(win.getByText(/"option":"Amber"/)).toBeVisible();
       await win.getByRole("button", { name: "Sign & submit" }).click();
     },
   );
   await expect(page.locator("#pg-receipt")).toBeVisible({ timeout: 30_000 });
   const receipt = JSON.parse((await page.locator("#pg-receipt-json").textContent())!);
   expect(receipt).toMatchObject({ electionId: id, option: "Amber" });
+
+  // Weft's activity keeps the input's name, not the vote.
+  const vote = (await wallet.ui("activity")).find((a: any) => a.call.fn === "CastVote");
+  expect(vote.privateInputs).toEqual(["ballot"]);
+  expect(JSON.stringify(vote)).not.toContain("Amber");
 
   // The link carries the choice and salt in the fragment, and the explorer's
   // page checks them in the browser.
