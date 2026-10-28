@@ -115,7 +115,16 @@ Only public channels have checkpoints. A members-only channel's height and hashe
 
 ## In the playground
 
-`pnpm playground:up` starts an explorer for Org1 on [localhost:8790](http://localhost:8790), reading as Org1's `User1` and publishing `mychannel` with the policy in `playground/explorer.yaml`. The contract approvals (`_lifecycle`) are members-only there, so sign in with a demo user to see them. A second explorer for Org2 runs on [localhost:8791](http://localhost:8791), reading from Org2's own peer; the two cross-check each other. If your playground was already running, start just the explorer with `pnpm playground:explorer`.
+`pnpm playground:up` starts an explorer for each organisation, each reading `mychannel` from its own organisation's peer:
+
+| Explorer | Policy | Publishes |
+|---|---|---|
+| Org1, [localhost:8790](http://localhost:8790) | `playground/explorer.yaml` | Everything, with submitters. Contract approvals (`_lifecycle`) are for signed-in members only. |
+| Org2, [localhost:8791](http://localhost:8791) | `playground/explorer-org2.yaml` | No submitters. The `basic` contract's transactions are for signed-in members only. |
+
+Both show the elections the playground seeds, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground page](/playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
+
+To link Weft to your own explorer, add `explorerUrl` to your organisation's [invite](/operators/invites/).
 
 ## API
 
@@ -123,7 +132,7 @@ Everything the pages show is also JSON, readable from any origin, since it's pub
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/v1/status` | Each published channel's height, transaction count, link check results and the peer's own height. |
+| `GET /api/v1/status` | Each published channel's height, transaction count, link check results, the peer's own height, and what the explorer publishes for it (`publishes`: values, submitters, members-only contracts and whether it has election pages). |
 | `GET /api/v1/channels/:channel/blocks?before=&limit=` | Blocks, newest first. |
 | `GET /api/v1/channels/:channel/blocks/:number` | One block and its transactions. |
 | `GET /api/v1/channels/:channel/transactions?contract=&org=&before=&limit=` | Transactions, newest first, optionally for one contract or submitting MSP. |

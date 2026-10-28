@@ -10,6 +10,10 @@ The [ballot contract](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/ba
 - each voter can check that their ballot is in a valid block, and that it's a vote for what they chose;
 - the organisations' explorers compare their copies of the ledger, so no one can quietly change the count.
 
+## Try it
+
+`pnpm playground:up` deploys the ballot contract with two elections: `team-lunch`, already counted, and `board-2026`, open. On the [playground page](/playground/), vote in `board-2026` as a demo user, or start an election of your own, then follow the link on your receipt to check it in the explorer. See [Local test network](/dapps/test-network/).
+
 ## How a ballot stays private
 
 A ballot is sent as transient data, which never reaches the shared ledger. The contract writes it to a private data collection and puts a commitment on the ledger: SHA-256 of the election ID, the choice and a random salt the voter's app picks. Only someone who knows the choice and the salt can tell which choice a commitment is for.

@@ -1,4 +1,4 @@
-# What the playground's explorer publishes. Real deployments start with
+# What Org1's playground explorer publishes. Real deployments start with
 # everything hidden and turn on only what the organisation means to share.
 # The options are described in docs: Run a network > Run an explorer.
 organisation: Org1
@@ -11,3 +11,5 @@ channels:
       # Contract approvals and commits are shown to signed-in members only,
       # so the playground has something to sign in for.
       _lifecycle: members
+    # Election pages for the ballot contract the playground deploys.
+    elections: ballot

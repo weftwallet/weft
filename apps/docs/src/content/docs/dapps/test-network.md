@@ -3,7 +3,7 @@ title: Local test network
 description: Run Weft end to end against Fabric's sample test network on your machine.
 ---
 
-Run Weft against Fabric's [`test-network`](https://github.com/hyperledger/fabric-samples) and the `basic` asset-transfer contract. You need Docker running (Docker Desktop or OrbStack).
+Run Weft against Fabric's [`test-network`](https://github.com/hyperledger/fabric-samples), with the `basic` asset-transfer contract and Weft's ballot contract. You need Docker running (Docker Desktop or OrbStack).
 
 ## The quick way
 
@@ -15,7 +15,22 @@ pnpm playground:up      # first run downloads Fabric, 5 to 10 minutes
 pnpm dev:docs           # in another terminal
 ```
 
-Then open [the playground](http://localhost:4321/playground/). It finds the local network, lets you join as a demo user (`alice` / `alicepw` or `bob` / `bobpw`) and call the contract. `pnpm playground:down` removes everything.
+Then open [the playground](http://localhost:4321/playground/). It finds the local network, and lets you:
+
+- join as a demo user (`alice` / `alicepw` or `bob` / `bobpw`) and call the `basic` contract;
+- vote in an election with the [ballot contract](/guides/elections/), then check your receipt in the explorer;
+- compare the two organisations' [explorers](/operators/explorer/#in-the-playground), which publish different amounts of the same ledger and agree on every block.
+
+`pnpm playground:down` removes everything.
+
+| What | Where |
+|---|---|
+| Invite | `http://localhost:8787/.well-known/weft-invite.json` |
+| Relay | `http://localhost:8787` |
+| Org1's CA, through the proxy | `http://localhost:7080` |
+| Explorers | [localhost:8790](http://localhost:8790) (Org1), [localhost:8791](http://localhost:8791) (Org2) |
+| Contracts on `mychannel` | `basic`, and `ballot` with its private collection |
+| Elections | `team-lunch` (counted), `board-2026` (open) |
 
 `playground:up` does the steps below for you, plus one more: it puts a small proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Add `--https` to serve it on `https://localhost:7443` with a [mkcert](https://github.com/FiloSottile/mkcert) certificate instead, to test an HTTPS CA URL like a real organisation's. Details: [`playground/README.md`](https://github.com/ifeanyi-ugwu/weft/tree/main/playground).
 

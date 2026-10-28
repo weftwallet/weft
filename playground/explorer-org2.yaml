@@ -1,6 +1,12 @@
-# Org2's explorer in the playground. It publishes mychannel too, so the two
-# explorers can compare signed checkpoints and show that they agree.
+# Org2's playground explorer. It reads the same channel from Org2's own peer,
+# but publishes less than Org1's: no submitters, and asset values only to
+# signed-in members. The two compare signed checkpoints and agree all the same.
 organisation: Org2
 channels:
   mychannel:
     level: public
+    values: show
+    submitter: hide
+    contracts:
+      basic: members
+    elections: ballot

@@ -77,9 +77,72 @@
     <div id="pg-result-wrap" hidden>
       <h3>Result</h3>
       <pre id="pg-result" class="pg-out"></pre>
+      <a id="pg-result-explorer" class="pg-out-link" target="_blank" rel="noreferrer" hidden>See it in the explorer</a>
       <h3>The same call in code</h3>
       <pre id="pg-code" class="pg-out"></pre>
     </div>
+  </section>
+
+  <section class="pg-card" aria-labelledby="pg-el-heading">
+    <div class="pg-head">
+      <h2 id="pg-el-heading">4. Vote in an election</h2>
+      <span class="pg-pill" id="pg-el-state" data-state="pending">Connect first</span>
+    </div>
+    <p class="pg-hint">
+      Uses the <a href="/guides/elections/">ballot contract</a>, which the local playground deploys with an open election, <code>board-2026</code>.
+      Your choice is sent as private data. The ledger gets only a commitment, which your receipt lets you check.
+    </p>
+    <div class="pg-row">
+      <input id="pg-el-id" class="mono" value="board-2026" aria-label="Election ID" spellcheck="false" />
+      <button type="button" id="pg-el-load" class="pg-secondary" disabled>Load</button>
+    </div>
+    <div id="pg-el" class="pg-stack" hidden>
+      <dl class="pg-details">
+        <dt>Election</dt><dd id="pg-el-title"></dd>
+        <dt>Voting</dt><dd id="pg-el-closes"></dd>
+        <dt>Result</dt><dd id="pg-el-result"></dd>
+      </dl>
+      <fieldset class="pg-options" id="pg-el-options"><legend class="pg-hint">Your choice</legend></fieldset>
+      <div class="pg-row pg-wrap">
+        <button type="button" id="pg-el-vote" class="pg-amber" disabled>Cast vote</button>
+        <button type="button" id="pg-el-close" class="pg-secondary" hidden>Close and count</button>
+      </div>
+    </div>
+    <p class="pg-hint" id="pg-el-message" aria-live="polite"></p>
+    <div id="pg-receipt" class="pg-stack" hidden>
+      <h3>Your receipt</h3>
+      <p class="pg-hint">Keep it. With the choice and the salt, anyone can check this commitment is your vote; without them, no one can tell.</p>
+      <pre id="pg-receipt-json" class="pg-out" data-tone="ok"></pre>
+      <div class="pg-row pg-wrap">
+        <a id="pg-receipt-check" class="pg-button" target="_blank" rel="noreferrer" hidden>Check it in the explorer</a>
+        <button type="button" id="pg-receipt-copy" class="pg-secondary">Copy receipt</button>
+      </div>
+    </div>
+    <details class="pg-new">
+      <summary>Start your own election</summary>
+      <div class="pg-grid">
+        <label class="pg-label">ID<input id="pg-new-id" class="mono" placeholder="lunch-friday" spellcheck="false" /></label>
+        <label class="pg-label">Question<input id="pg-new-title" placeholder="Where should we eat?" /></label>
+        <label class="pg-label">Choices <span class="pg-hint">comma-separated</span><input id="pg-new-options" placeholder="Noodles, Tacos" /></label>
+        <label class="pg-label">Voting closes in<select id="pg-new-minutes"><option value="2">2 minutes</option><option value="10">10 minutes</option><option value="60">1 hour</option><option value="1440">1 day</option></select></label>
+      </div>
+      <button type="button" id="pg-new-create" class="pg-amber" disabled>Create election</button>
+      <p class="pg-hint">Only your organisation can close it, once voting has closed. Closing counts the private ballots and publishes the result.</p>
+    </details>
+  </section>
+
+  <section class="pg-card" id="pg-explorers" aria-labelledby="pg-ex-heading" hidden>
+    <div class="pg-head">
+      <h2 id="pg-ex-heading">5. Compare the explorers</h2>
+      <button type="button" id="pg-ex-refresh" class="pg-link">Refresh</button>
+    </div>
+    <p class="pg-hint">
+      Each organisation runs its own <a href="/operators/explorer/">explorer</a>, reads the ledger from its own peer, and publishes only what its
+      policy allows. They compare signed checkpoints, so every block page says how many organisations report the same block.
+    </p>
+    <ul class="pg-explorers" id="pg-ex-list"></ul>
+    <h3>Things to try</h3>
+    <ul class="pg-try" id="pg-ex-try"></ul>
   </section>
 
   <section class="pg-card">
@@ -109,6 +172,13 @@
   const w = window as any;
   let weft: any = null;
   let connected = false;
+  /** The organisation's explorer, when the invite names one. */
+  let explorerBase: string | null = null;
+  // Declared here because updateButtons, which runs as the page loads, reads them.
+  let election: Election | null = null;
+  let myMsp: string | null = null;
+  /** Elections this page has voted in, so it doesn't offer a second ballot. */
+  const votedIn = new Set<string>();
 
   /* ---------------- log ---------------- */
 
@@ -254,6 +324,11 @@
     $("pg-disconnect").hidden = !connected;
     $<HTMLButtonElement>("pg-evaluate").disabled = !weft || !connected;
     $<HTMLButtonElement>("pg-submit").disabled = !weft || !connected;
+    $<HTMLButtonElement>("pg-el-load").disabled = !weft || !connected;
+    $<HTMLButtonElement>("pg-new-create").disabled = !weft || !connected;
+    updateElectionButtons();
+    if (!connected) setElectionState("pending", weft ? "Connect first" : "Install Weft");
+    else if ($("pg-el-state").textContent === "Connect first") setElectionState("pending", "Not loaded");
   }
 
   /* ---------------- invite ---------------- */
@@ -282,6 +357,8 @@
       $("pg-invite-status").textContent = `Loaded from ${new URL(url).host}.`;
       const select = $<HTMLSelectElement>("pg-channel");
       select.replaceChildren(...invite.channels.map((c: string) => Object.assign(document.createElement("option"), { value: c, textContent: c })));
+      explorerBase = typeof invite.explorerUrl === "string" ? invite.explorerUrl.replace(/\/+$/, "") : null;
+      void loadExplorers();
     } catch (error) {
       $("pg-invite-details").hidden = true;
       if (!quiet) $("pg-invite-status").textContent = `Couldn't load the invite: ${error instanceof Error ? error.message : error}.`;
@@ -386,6 +463,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   async function run(kind: "evaluate" | "submit") {
     const c = currentCall();
     $("pg-result-wrap").hidden = false;
+    $("pg-result-explorer").hidden = true;
     $("pg-code").textContent = codeFor(kind, c);
     $("pg-result").textContent = kind === "submit" ? "Waiting for approval, endorsement and commit…" : "Waiting for approval…";
     $("pg-result").dataset.tone = "pending";
@@ -402,6 +480,8 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       const meta = kind === "submit" ? `Committed in block ${result.blockNumber} · tx ${result.transactionId}\n\n` : "";
       $("pg-result").textContent = `${meta}${pretty ?? `(binary result, base64) ${result.base64}`}` || "(empty result)";
       $("pg-result").dataset.tone = "ok";
+      showTxLink($<HTMLAnchorElement>("pg-result-explorer"), kind === "submit" ? c.channel : null, result.transactionId);
+      if (kind === "submit") void loadExplorers();
     } catch (error: any) {
       const detail = error?.data?.status ? ` (${error.data.status})` : "";
       $("pg-result").textContent = `Error ${error?.code ?? ""}: ${error?.message ?? error}${detail}`;
@@ -414,6 +494,331 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   $("pg-evaluate").addEventListener("click", () => void run("evaluate"));
   $("pg-submit").addEventListener("click", () => void run("submit"));
   $("pg-clear").addEventListener("click", () => $("pg-log").replaceChildren());
+
+  /** Links a committed transaction to the organisation's explorer, if there is one. */
+  function showTxLink(link: HTMLAnchorElement, channel: string | null, txId: string | undefined) {
+    if (!explorerBase || !channel || !txId) {
+      link.hidden = true;
+      return;
+    }
+    link.href = `${explorerBase}/channels/${encodeURIComponent(channel)}/transactions/${encodeURIComponent(txId)}`;
+    link.hidden = false;
+  }
+
+  /* ---------------- elections ---------------- */
+
+  type Election = {
+    id: string;
+    title: string;
+    options: string[];
+    closesAt: string;
+    creatorMsp: string;
+    state: "open" | "closed";
+    tally?: { counts: Record<string, number>; total: number };
+  };
+
+  const electionChannel = () => $<HTMLSelectElement>("pg-channel").value;
+  const ballot = (fn: string, args: string[], transient?: Record<string, string>) => ({
+    channel: electionChannel(),
+    chaincode: "ballot",
+    fn,
+    args,
+    ...(transient ? { transient } : {}),
+  });
+
+  function setElectionState(state: "ok" | "pending" | "missing", text: string) {
+    const pill = $("pg-el-state");
+    pill.dataset.state = state;
+    pill.textContent = text;
+  }
+
+  function electionMessage(text: string, tone: "info" | "err" = "info") {
+    const p = $("pg-el-message");
+    p.textContent = text;
+    p.dataset.tone = tone;
+  }
+
+  /** What went wrong, in the contract's words where it gave some. */
+  function reason(error: any): string {
+    const detail = error?.data?.details?.map((d: any) => d.message).find(Boolean) ?? error?.message ?? String(error);
+    if (/chaincode ballot not found|could not find chaincode with name 'ballot'|ballot.*not.*(found|installed|defined)/i.test(detail)) {
+      return "This network has no ballot contract. The local playground deploys one; for your own network, see Run an election.";
+    }
+    return detail.replace(/^.*?(There's no election|Voting has closed|This identity has already voted|Only \S+ can close|Voting is open until)/, "$1");
+  }
+
+  const isOpen = (e: Election) => e.state === "open" && Date.now() < Date.parse(e.closesAt);
+
+  function chosen(): string | null {
+    return $("pg-el-options").querySelector<HTMLInputElement>("input:checked")?.value ?? null;
+  }
+
+  function updateElectionButtons() {
+    const vote = $<HTMLButtonElement>("pg-el-vote");
+    const voted = !!election && votedIn.has(election.id);
+    vote.disabled = !connected || !election || !isOpen(election) || !chosen() || voted;
+    vote.textContent = voted ? "Voted" : "Cast vote";
+    $("pg-el-options").querySelectorAll<HTMLInputElement>("input").forEach((i) => (i.disabled = !election || !isOpen(election) || voted));
+    const close = $<HTMLButtonElement>("pg-el-close");
+    close.hidden = !election || election.state !== "open" || isOpen(election) || election.creatorMsp !== myMsp;
+    close.disabled = !connected;
+  }
+
+  function showElection(e: Election) {
+    election = e;
+    $("pg-el").hidden = false;
+    $("pg-el-title").textContent = e.title;
+    const closes = new Date(e.closesAt);
+    $("pg-el-closes").textContent =
+      e.state === "closed" ? "Closed and counted" : isOpen(e) ? `Open until ${closes.toLocaleString()}` : `Closed at ${closes.toLocaleString()}, not counted yet`;
+    $("pg-el-result").textContent = e.tally
+      ? Object.entries(e.tally.counts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([o, n]) => `${o} ${n}`)
+          .join(" · ") + ` (${e.tally.total} ballots)`
+      : "Published when the election is closed";
+    const options = $("pg-el-options");
+    const previous = chosen();
+    options.querySelectorAll("label").forEach((l) => l.remove());
+    for (const option of e.options) {
+      const label = document.createElement("label");
+      label.className = "pg-option";
+      const input = Object.assign(document.createElement("input"), { type: "radio", name: "pg-el-option", value: option, checked: option === previous });
+      input.disabled = !isOpen(e);
+      input.addEventListener("change", updateElectionButtons);
+      label.append(input, document.createTextNode(option));
+      options.append(label);
+    }
+    options.hidden = e.state === "closed";
+    setElectionState("ok", e.state === "closed" ? "Counted" : isOpen(e) ? "Open" : "Voting closed");
+    updateElectionButtons();
+  }
+
+  async function loadElection(id = $<HTMLInputElement>("pg-el-id").value.trim()) {
+    if (!id) return;
+    electionMessage("");
+    try {
+      myMsp = (await weft.request({ method: "weft_identity" }))?.mspId ?? null;
+      const result = await call("weft_evaluate", ballot("GetElection", [id]));
+      showElection(JSON.parse(result.text));
+    } catch (error) {
+      election = null;
+      $("pg-el").hidden = true;
+      setElectionState("missing", "Not found");
+      electionMessage(reason(error), "err");
+      updateElectionButtons();
+    }
+  }
+
+  function hex(bytes: Uint8Array) {
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function castVote() {
+    const option = chosen();
+    if (!election || !option) return;
+    const button = $<HTMLButtonElement>("pg-el-vote");
+    button.disabled = true;
+    button.textContent = "Waiting for Weft…";
+    // The salt is the voter's secret: without it, no one can tell which choice
+    // the commitment is for.
+    const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+    try {
+      electionMessage(`Weft lists your choice as private data called "ballot" and doesn't show its value: you're voting for ${option}.`);
+      const result = await call("weft_submit", ballot("CastVote", [election.id], { ballot: JSON.stringify({ option, salt }) }));
+      const receipt = { ...JSON.parse(result.text), option, salt, blockNumber: result.blockNumber };
+      votedIn.add(election.id);
+      showReceipt(receipt);
+      electionMessage(`Your ballot is in block ${result.blockNumber}.`);
+      void loadExplorers();
+    } catch (error) {
+      const message = reason(error);
+      if (/already voted/.test(message)) votedIn.add(election.id);
+      electionMessage(message, "err");
+    } finally {
+      updateElectionButtons();
+    }
+  }
+
+  function showReceipt(r: { electionId: string; txId: string; commitment: string; option: string; salt: string }) {
+    $("pg-receipt").hidden = false;
+    $("pg-receipt-json").textContent = JSON.stringify(r, null, 2);
+    const link = $<HTMLAnchorElement>("pg-receipt-check");
+    if (explorerBase) {
+      // The choice and salt go in the fragment, which the browser never sends
+      // to the explorer's server; the explorer's page checks them locally.
+      const query = new URLSearchParams({ tx: r.txId, commitment: r.commitment });
+      const local = new URLSearchParams({ option: r.option, salt: r.salt });
+      link.href = `${explorerBase}/channels/${encodeURIComponent(electionChannel())}/elections/${encodeURIComponent(r.electionId)}?${query}#${local}`;
+      link.hidden = false;
+    } else {
+      link.hidden = true;
+    }
+  }
+
+  async function closeElection() {
+    if (!election) return;
+    const button = $<HTMLButtonElement>("pg-el-close");
+    button.disabled = true;
+    try {
+      const result = await call("weft_submit", ballot("CloseElection", [election.id]));
+      showElection(JSON.parse(result.text));
+      electionMessage(`Counted in block ${result.blockNumber}. Each explorer now compares this result with the commitments it has.`);
+      void loadExplorers();
+    } catch (error) {
+      electionMessage(reason(error), "err");
+    } finally {
+      updateElectionButtons();
+    }
+  }
+
+  async function createElection() {
+    const id = $<HTMLInputElement>("pg-new-id").value.trim();
+    const title = $<HTMLInputElement>("pg-new-title").value.trim();
+    const options = $<HTMLInputElement>("pg-new-options").value.split(",").map((o) => o.trim()).filter(Boolean);
+    const minutes = Number($<HTMLSelectElement>("pg-new-minutes").value);
+    if (!id || !title || options.length < 2) {
+      electionMessage("Give the election an ID, a question and at least two choices.", "err");
+      return;
+    }
+    const closesAt = new Date(Date.now() + minutes * 60_000).toISOString();
+    try {
+      await call("weft_submit", ballot("CreateElection", [id, title, JSON.stringify(options), closesAt]));
+      $<HTMLInputElement>("pg-el-id").value = id;
+      ($("pg-new-create").closest("details") as HTMLDetailsElement).open = false;
+      $("pg-receipt").hidden = true;
+      await loadElection(id);
+      electionMessage(`Created ${id}. Vote now; once voting closes, come back and close it to count.`);
+    } catch (error) {
+      electionMessage(reason(error), "err");
+    }
+  }
+
+  $("pg-el-load").addEventListener("click", () => void loadElection());
+  $("pg-el-id").addEventListener("keydown", (e) => e.key === "Enter" && void loadElection());
+  $("pg-el-vote").addEventListener("click", () => void castVote());
+  $("pg-el-close").addEventListener("click", () => void closeElection());
+  $("pg-new-create").addEventListener("click", () => void createElection());
+  $("pg-receipt-copy").addEventListener("click", () => void navigator.clipboard.writeText($("pg-receipt-json").textContent ?? ""));
+  // An open election closes while the page is open; keep the buttons honest.
+  setInterval(() => election && election.state === "open" && showElection(election), 15_000);
+
+  /* ---------------- explorers ---------------- */
+
+  type ChannelStatus = {
+    channel: string;
+    height: number;
+    level: string;
+    publishes?: { values: "show" | "hash"; submitter: "show" | "hide"; membersOnly: string[]; elections: boolean };
+  };
+  type Peer = { url: string; mspId: string | null; state: string; agreedUpTo: number | null; mismatchAt: number | null };
+
+  async function getJson(url: string) {
+    const response = await fetch(url, { signal: AbortSignal.timeout(4000), headers: { accept: "application/json" } });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
+  function describe(c: ChannelStatus | undefined): string {
+    if (!c) return "Doesn't publish this channel.";
+    if (!c.publishes) return `Publishes ${c.channel} (${c.level}).`;
+    const p = c.publishes;
+    const parts = [
+      p.values === "show" ? "values shown" : "values as hashes",
+      p.submitter === "show" ? "submitters shown" : "submitters hidden",
+    ];
+    if (p.membersOnly.length) parts.push(`members only: ${p.membersOnly.join(", ")}`);
+    if (p.elections) parts.push("election pages");
+    return `${c.level === "members" ? "Members only" : "Public"}: ${parts.join(", ")}.`;
+  }
+
+  function agreement(peers: Peer[]): string {
+    if (peers.length === 0) return "Not comparing with other organisations.";
+    return peers
+      .map((p) => {
+        const who = p.mspId ?? new URL(p.url).host;
+        if (p.state === "agree") return `Agrees with ${who} up to block ${p.agreedUpTo}.`;
+        if (p.state === "mismatch") return `Disagrees with ${who} from block ${p.mismatchAt}.`;
+        if (p.state === "unreachable") return `Can't reach ${who}.`;
+        return `Checking with ${who}…`;
+      })
+      .join(" ");
+  }
+
+  async function loadExplorers() {
+    const card = $("pg-explorers");
+    if (!explorerBase) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    const channel = electionChannel();
+    // The invite names this organisation's explorer; it knows the others.
+    let peers: Peer[] = [];
+    try {
+      peers = await getJson(`${explorerBase}/api/v1/channels/${encodeURIComponent(channel)}/organisations`);
+    } catch {
+      /* listed as unreachable below */
+    }
+    const bases = [explorerBase, ...peers.map((p) => p.url.replace(/\/+$/, ""))];
+    const rows = await Promise.all(
+      bases.map(async (base) => {
+        try {
+          const [status, theirPeers] = await Promise.all([
+            getJson(`${base}/api/v1/status`),
+            getJson(`${base}/api/v1/channels/${encodeURIComponent(channel)}/organisations`).catch(() => []),
+          ]);
+          const c = (status.channels as ChannelStatus[]).find((x) => x.channel === channel);
+          return { base, name: status.name as string, c, peers: theirPeers as Peer[], ok: true };
+        } catch {
+          return { base, name: new URL(base).host, c: undefined, peers: [], ok: false };
+        }
+      }),
+    );
+    const list = $("pg-ex-list");
+    list.replaceChildren(
+      ...rows.map((r) => {
+        const li = document.createElement("li");
+        li.className = "pg-explorer";
+        const head = document.createElement("div");
+        head.className = "pg-head";
+        const link = Object.assign(document.createElement("a"), { href: `${r.base}/channels/${encodeURIComponent(channel)}`, target: "_blank", rel: "noreferrer", textContent: `${r.name}'s explorer` });
+        const pill = Object.assign(document.createElement("span"), { className: "pg-pill", textContent: r.ok ? (r.c ? `${r.c.height} blocks` : "No channel") : "Unreachable" });
+        pill.dataset.state = r.ok && r.c ? "ok" : "missing";
+        head.append(link, pill);
+        const what = Object.assign(document.createElement("p"), { className: "pg-hint", textContent: r.ok ? describe(r.c) : `Couldn't reach ${r.base}.` });
+        li.append(head, what);
+        if (r.ok && r.c) li.append(Object.assign(document.createElement("p"), { className: "pg-hint", textContent: agreement(r.peers) }));
+        return li;
+      }),
+    );
+    const block = Math.max(1, (rows[0]?.c?.height ?? 2) - 1);
+    const tries: [string, string | null][] = [
+      [`Open block ${block} on each explorer: the same block, and each says how many organisations report it.`, null],
+    ];
+    const members = rows.find((r) => r.c?.publishes?.membersOnly.length);
+    if (members) {
+      tries.push([
+        `Sign in to ${members.name}'s explorer with Weft to see what it publishes to members only (${members.c!.publishes!.membersOnly.join(", ")}).`,
+        `${members.base}/channels/${encodeURIComponent(channel)}`,
+      ]);
+    }
+    const hiding = rows.find((r) => r.c?.publishes?.submitter === "hide");
+    if (hiding) tries.push([`Compare a transaction on ${hiding.name}'s explorer: it doesn't say who submitted it.`, null]);
+    const ballots = rows.find((r) => r.c?.publishes?.elections);
+    if (ballots) {
+      tries.push([`See the elections, their ballots and results, and check a receipt.`, `${ballots.base}/channels/${encodeURIComponent(channel)}/elections`]);
+    }
+    $("pg-ex-try").replaceChildren(
+      ...tries.map(([text, href]) => {
+        const li = document.createElement("li");
+        if (href) li.append(Object.assign(document.createElement("a"), { href, target: "_blank", rel: "noreferrer", textContent: text }));
+        else li.textContent = text;
+        return li;
+      }),
+    );
+  }
+  $("pg-ex-refresh").addEventListener("click", () => void loadExplorers());
 </script>
 
 <style is:global>
@@ -710,6 +1115,113 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
   .pg-log li[data-tone="err"] {
     border-color: #e5675b;
+  }
+  .pg a.pg-button {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border-radius: 0.6rem;
+    background: #3fc1b0;
+    color: #0b1218;
+    text-decoration: none;
+  }
+  .pg a.pg-button:hover {
+    filter: brightness(1.08);
+  }
+  .pg-out-link {
+    font-size: var(--sl-text-sm);
+    align-self: flex-start;
+  }
+  .pg-hint[data-tone="err"] {
+    color: #e5675b;
+  }
+  .pg-options {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .pg-options legend {
+    width: 100%;
+    padding: 0;
+    margin-bottom: 0.4rem;
+  }
+  .pg-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .pg-stack > h3 {
+    margin: 0;
+  }
+  .pg-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 0.9rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.6rem;
+    font-size: var(--sl-text-sm);
+    cursor: pointer;
+    transition: border-color 140ms;
+  }
+  .pg-option:has(input:checked) {
+    border-color: #e8a33d;
+  }
+  .pg-option:has(input:disabled) {
+    cursor: default;
+    color: var(--sl-color-gray-3);
+  }
+  .pg .pg-option input {
+    width: auto;
+    min-height: 0;
+    accent-color: #e8a33d;
+  }
+  .pg-new summary {
+    cursor: pointer;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-accent-high);
+  }
+  .pg-new[open] {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .pg-new button {
+    align-self: flex-start;
+  }
+  .pg-explorers,
+  .pg-try {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .pg-explorers {
+    list-style: none;
+  }
+  .pg-explorer {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.75rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .pg-explorer a {
+    font-weight: 600;
+  }
+  .pg-try {
+    padding-left: 1.2rem;
+    gap: 0.4rem;
+    font-size: var(--sl-text-sm);
   }
   .pg-log-head {
     font-family: var(--sl-font-mono);

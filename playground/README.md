@@ -9,7 +9,7 @@ pnpm dev:docs            # in another terminal
 # open http://localhost:4321/playground/
 pnpm playground:down     # stop everything and remove the network
 pnpm playground:status   # what's running
-pnpm playground:explorer # start or restart only the explorer, on a running stack
+pnpm playground:explorer # start or restart only the explorers, on a running stack
 ```
 
 ## Requirements
@@ -24,9 +24,10 @@ pnpm playground:explorer # start or restart only the explorer, on a running stac
 |---|---|---|
 | Fabric `test-network` | Docker | Two orgs, Raft orderer, a CA per org, channel `mychannel` |
 | `basic` contract | `mychannel` | fabric-samples' asset-transfer (TypeScript) |
+| `ballot` contract | `mychannel` | `examples/ballot-contract`, with its private collection. `seed-elections.mjs` adds `team-lunch` (counted) and `board-2026` (open); receipts for the seeded ballots are in `.state/receipts.json` |
 | Org1 CA proxy | `http://localhost:7080`, or `https://localhost:7443` with `--https` | Forwards to the CA's HTTPS on 7054, so the browser can enrol (see below) |
 | Weft relay | `http://localhost:8787` | Talks to `peer0.org1`; serves the invite at `/.well-known/weft-invite.json` |
-| Explorers | `http://localhost:8790` (Org1), `http://localhost:8791` (Org2) | Each reads `mychannel` from its own organisation's peer, publishes what `explorer.yaml` or `explorer-org2.yaml` allows, and cross-checks with the other |
+| Explorers | `http://localhost:8790` (Org1), `http://localhost:8791` (Org2) | Each reads `mychannel` from its own organisation's peer, publishes what `explorer.yaml` or `explorer-org2.yaml` allows, and cross-checks with the other. Org2's publishes less: no submitters, and `basic` for members only. The invite names Org1's, so Weft links activity to it |
 
 ## Demo users (Org1)
 

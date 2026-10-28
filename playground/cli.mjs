@@ -15,7 +15,8 @@
  *   1. Gets Fabric's samples, binaries and images (pinned versions below), or
  *      uses an existing fabric-samples checkout from WEFT_FABRIC_SAMPLES.
  *   2. Starts test-network with CAs, creates `mychannel`, deploys the
- *      asset-transfer `basic` contract.
+ *      asset-transfer `basic` contract and Weft's ballot contract
+ *      (examples/ballot-contract) with its private collection.
  *   3. Registers demo users in Org1 with known secrets.
  *   4. Starts a proxy in front of Org1's CA on http://localhost, so the
  *      browser can enrol without trusting the CA's self-signed certificate.
@@ -25,6 +26,7 @@
  *   6. Starts an explorer for each organisation, reading as its User1,
  *      publishing what explorer.yaml / explorer-org2.yaml allow, and
  *      cross-checking with the other.
+ *   7. Seeds two elections (seed-elections.mjs): one counted, one open.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -218,12 +220,14 @@ function ensureFabric() {
 }
 
 function startNetwork() {
-  step(2, "Test network, channel and contract");
+  step(2, "Test network, channel and the basic contract");
   if (containerRunning("peer0.org1.example.com")) {
     note("test-network is already running; keeping it (run playground:down to reset)");
     return;
   }
   const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
+  // A new network has none of the old one's contracts.
+  rmSync(join(state, "ballot-deployed"), { force: true });
   run("./network.sh", ["down"], { cwd: testNetwork, env });
   run("./network.sh", ["up", "createChannel", "-c", CHANNEL, "-ca"], { cwd: testNetwork, env });
   run(
@@ -233,8 +237,42 @@ function startNetwork() {
   );
 }
 
+/** The ballot contract, deployed once per network. A marker in .state records it. */
+function deployBallot() {
+  step(3, "Ballot contract");
+  const marker = join(state, "ballot-deployed");
+  if (existsSync(marker)) {
+    note("already deployed on this network");
+    return;
+  }
+  const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
+  const source = join(repo, "examples", "ballot-contract");
+  run(
+    "./network.sh",
+    [
+      "deployCC", "-c", CHANNEL, "-ccn", "ballot", "-ccp", source, "-ccl", "typescript",
+      // Either organisation's peer can endorse a ballot; the private collection
+      // is shared by both, so either can count.
+      "-ccep", "OR('Org1MSP.peer','Org2MSP.peer')",
+      "-cccg", join(source, "collections_config.json"),
+    ],
+    { cwd: testNetwork, env },
+  );
+  writeFileSync(marker, new Date().toISOString());
+}
+
+function seedElections() {
+  step(8, "Elections");
+  const organizations = join(testNetwork, "organizations", "peerOrganizations");
+  const result = spawnSync(process.execPath, [join(here, "seed-elections.mjs"), organizations, join(state, "receipts.json")], {
+    stdio: "inherit",
+  });
+  // The playground works without them, so a failure here isn't fatal.
+  if (result.status !== 0) note("couldn't seed the elections; see the output above. Everything else is running.");
+}
+
 function registerUsers() {
-  step(3, "Demo users");
+  step(4, "Demo users");
   const caClient = join(samples, "bin", "fabric-ca-client");
   const tlsRoot = join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem");
   for (const user of DEMO_USERS) {
@@ -271,7 +309,7 @@ function mkcertCertificate() {
 }
 
 function startCaProxy({ https }) {
-  step(4, "Proxy for Org1's CA");
+  step(5, "Proxy for Org1's CA");
   const upstream = [
     "--target", "https://localhost:7054",
     "--upstream-ca", join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem"),
@@ -292,7 +330,7 @@ function startCaProxy({ https }) {
 }
 
 async function startRelay(caUrl) {
-  step(5, "Weft relay for Org1");
+  step(6, "Weft relay for Org1");
   if (!existsSync(join(repo, "apps", "relay", "dist", "main.js"))) {
     note("building the relay");
     run("pnpm", ["--filter", "@weftwallet/relay...", "build"], { cwd: repo });
@@ -305,6 +343,7 @@ async function startRelay(caUrl) {
     caUrl,
     caName: "ca-org1",
     relayUrl: `http://localhost:${PORTS.relay}`,
+    explorerUrl: `http://localhost:${PORTS.explorer}`,
     channels: [CHANNEL],
   };
   writeFileSync(join(state, "invite.json"), `${JSON.stringify(invite, null, 2)}\n`);
@@ -325,7 +364,7 @@ async function startRelay(caUrl) {
  * Two explorers, one per organisation, each reading from its own peer and
  * comparing signed checkpoints with the other (docs/adr/0004, phase 3).
  */
-async function startExplorer(stepNumber = 6) {
+async function startExplorer(stepNumber = 7) {
   step(stepNumber, "Explorers for Org1 and Org2");
   if (!existsSync(join(repo, "apps", "explorer", "dist", "main.js"))) {
     note("building the explorer");
@@ -368,7 +407,8 @@ ${bold("Weft playground is running.")}
   Relay       http://localhost:${PORTS.relay}
   Explorers   http://localhost:${PORTS.explorer} (Org1), http://localhost:${PORTS.explorerOrg2} (Org2)
   Org1 CA     ${caUrl}
-  Channel     ${CHANNEL}, contract ${bold("basic")}
+  Channel     ${CHANNEL}, contracts ${bold("basic")} and ${bold("ballot")}
+  Elections   team-lunch (counted), board-2026 (open)
 
   Demo users (Org1):
 ${DEMO_USERS.map((u) => `    ${u.id.padEnd(8)} secret ${u.secret.padEnd(10)} ${dim(u.attrs.replace(":ecert", ""))}`).join("\n")}
@@ -377,6 +417,8 @@ Next:
   1. ${bold("pnpm dev:docs")} in another terminal
   2. Open ${teal(playground)}
   3. Join with Weft as one of the demo users, then run InitLedger
+  4. Vote in board-2026 from the same page, and check your receipt in the explorer
+  5. Compare the two explorers: Org2 publishes less, and both agree on every block
 
 Stop with ${bold("pnpm playground:down")}.
 `);
@@ -392,12 +434,14 @@ async function up(flags) {
   checkPrerequisites({ https });
   ensureFabric();
   startNetwork();
+  deployBallot();
   registerUsers();
   const proxy = startCaProxy({ https });
   await waitForPort(proxy.port, "The CA proxy");
   ensureStillRunning("ca-proxy");
   await startRelay(proxy.url);
   await startExplorer();
+  seedElections();
   summary(proxy.url);
 }
 
@@ -423,6 +467,8 @@ function down() {
     run("./network.sh", ["down"], { cwd: testNetwork, env });
   }
   rmSync(join(state, "invite.json"), { force: true });
+  rmSync(join(state, "ballot-deployed"), { force: true });
+  rmSync(join(state, "receipts.json"), { force: true });
   // The next network starts from block 0, so the old index would be wrong.
   for (const name of ["explorer", "explorer-org2"]) {
     for (const suffix of ["", "-wal", "-shm"]) rmSync(join(state, `${name}.db${suffix}`), { force: true });
