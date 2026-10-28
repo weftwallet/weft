@@ -23,6 +23,9 @@
 </div>
 
 <script>
+  import type { BlockHeader, MemberCas, SignedCheckpoint } from "@weftwallet/core/chain";
+
+
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
   const MAX_EXPLORERS = 24;
   const REFRESH_MS = 15_000;
@@ -195,58 +198,130 @@
     root.replaceChildren(...cards, ...missing);
   }
 
-  /** Fetches one block from every explorer and shows whether the hashes match. */
+  /** Most blocks the page walks back from a checkpoint before giving up. */
+  const MAX_WALK = 20_000;
+
+  type Check = {
+    e: Explorer;
+    hash?: string;
+    ok: boolean;
+    pending?: boolean;
+    text: string;
+  };
+
+  /** The channel configuration most explorers report, and who reports a different one. */
+  async function channelMembers(channel: string, members: Explorer[]) {
+    const read = await Promise.all(
+      members.map(async (e) => ({ e, list: (await getJson(`${e.base}/api/v1/channels/${encodeURIComponent(channel)}/members`).catch(() => null)) as MemberCas[] | null })),
+    );
+    const key = (list: MemberCas[]) => JSON.stringify([...list].sort((a, b) => a.mspId.localeCompare(b.mspId)));
+    const counts = new Map<string, number>();
+    read.forEach((r) => r.list && counts.set(key(r.list), (counts.get(key(r.list)) ?? 0) + 1));
+    const best = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    return {
+      members: best ? (JSON.parse(best) as MemberCas[]) : [],
+      differing: read.filter((r) => !r.list || key(r.list) !== best).map((r) => nameOf(r.e)),
+    };
+  }
+
+  /**
+   * One explorer's evidence for block n: its signed checkpoint, checked
+   * against the channel's CAs, and the headers from n up to that checkpoint,
+   * each hash recomputed here.
+   */
+  async function checkExplorer(e: Explorer, channel: string, n: number, members: MemberCas[]): Promise<Check> {
+    const api = `${e.base}/api/v1/channels/${encodeURIComponent(channel)}`;
+    let signed: SignedCheckpoint;
+    try {
+      signed = await getJson(`${api}/checkpoint`);
+    } catch {
+      return { e, ok: false, text: "Doesn't publish a signed checkpoint for this channel." };
+    }
+    // The checking code, certificate parsing included, loads only when a check runs.
+    const { checkHeaders, verifyCheckpoint } = await import("@weftwallet/core/chain");
+    const verified = await verifyCheckpoint(signed, members);
+    if (!verified.ok) return { e, ok: false, text: `Its checkpoint doesn't check out: ${verified.reason}` };
+    const cp = verified.checkpoint;
+    if (n > cp.number) return { e, ok: false, pending: true, text: `Hasn't signed up to block ${n} yet; its checkpoint is at block ${cp.number}.` };
+    if (cp.number - n > MAX_WALK) return { e, ok: false, pending: true, text: `Block ${n} is more than ${MAX_WALK.toLocaleString()} blocks before its checkpoint, too far to walk here.` };
+    const headers: BlockHeader[] = [];
+    for (let from = n; from <= cp.number; from += 1000) {
+      const page: BlockHeader[] = await getJson(`${api}/headers?from=${from}&to=${Math.min(from + 999, cp.number)}`).catch(() => []);
+      if (!page.length) break;
+      headers.push(...page);
+    }
+    const chain = await checkHeaders(headers);
+    if (!chain.ok) return { e, ok: false, text: chain.reason };
+    if (chain.from !== n || chain.to !== cp.number) return { e, ok: false, text: `Didn't serve every header from ${n} to ${cp.number}.` };
+    if (headers[headers.length - 1]!.hash !== cp.hash) return { e, ok: false, text: `Its headers don't end at the hash its checkpoint signs.` };
+    const hash = headers[0]!.hash;
+    const steps = cp.number - n;
+    return {
+      e,
+      hash,
+      ok: true,
+      text: `${cp.mspId} signed block ${cp.number}${steps ? `, and ${steps} ${steps === 1 ? "link leads" : "links lead"} back to this block` : ""}. Signature and certificate check out.`,
+    };
+  }
+
+  /** Checks one block in every explorer, in this browser. */
   function compareBlock(channel: string, latest: number) {
     const input = el("input", { type: "number", min: "0", value: String(latest), className: "mono" });
     input.setAttribute("aria-label", "Block number");
     const out = el("ul", { className: "nw-hashes" });
-    const button = el("button", { type: "button", textContent: "Compare" });
+    const button = el("button", { type: "button", textContent: "Check" });
     const run = async () => {
       const n = Math.max(0, Math.floor(Number(input.value)));
-      const members = membersOf(channel);
-      out.replaceChildren(el("li", { className: "nw-hint", textContent: `Fetching block ${n} from ${members.length} explorers…` }));
-      const hashes = await Promise.all(
-        members.map(async (e) => {
-          try {
-            const body = await getJson(`${e.base}/api/v1/channels/${encodeURIComponent(channel)}/blocks/${n}`);
-            return { e, hash: body.block?.hash as string | undefined };
-          } catch (error) {
-            return { e, hash: undefined, error: error instanceof Error ? error.message : String(error) };
-          }
-        }),
-      );
-      const counts = new Map<string, number>();
-      hashes.forEach((h) => h.hash && counts.set(h.hash, (counts.get(h.hash) ?? 0) + 1));
-      const majority = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-      out.replaceChildren(
-        ...hashes.map((h) => {
-          const same = h.hash && h.hash === majority;
-          const tone = !h.hash ? "quiet" : same ? "ok" : "bad";
-          return el(
-            "li",
-            { className: `nw-hash nw-hash--${tone}` },
-            el("span", { className: "nw-hash-who", textContent: nameOf(h.e) }),
-            el("span", { className: "mono", textContent: h.hash ?? ("error" in h ? `not available (${h.error})` : "not available") }),
-          );
-        }),
-        el(
-          "li",
-          { className: "nw-hint" },
-          counts.size === 1 && hashes.every((h) => h.hash)
-            ? `Every explorer has the same block ${n}.`
-            : counts.size > 1
-              ? `The explorers have different blocks at ${n}.`
-              : `Not every explorer has block ${n} yet.`,
-        ),
-      );
+      const explorersHere = membersOf(channel);
+      button.disabled = true;
+      out.replaceChildren(el("li", { className: "nw-hint", textContent: `Checking block ${n} in ${explorersHere.length} explorers…` }));
+      try {
+        const { members, differing } = await channelMembers(channel, explorersHere);
+        const checks = await Promise.all(explorersHere.map((e) => checkExplorer(e, channel, n, members)));
+        const hashes = new Set(checks.filter((c) => c.ok).map((c) => c.hash));
+        const agreed = checks.filter((c) => c.ok);
+        const summary =
+          agreed.length === checks.length && hashes.size === 1
+            ? `All ${checks.length} organisations signed a ledger with the same block ${n}. Checked in this browser.`
+            : hashes.size > 1
+              ? `The organisations' signed ledgers have different blocks at ${n}.`
+              : `${agreed.length} of ${checks.length} organisations' ledgers could be checked for block ${n}.`;
+        const majority = [...hashes][0];
+        out.replaceChildren(
+          ...checks.map((c) => {
+            const tone = c.pending ? "quiet" : !c.ok ? "bad" : hashes.size > 1 && c.hash !== majority ? "bad" : "ok";
+            return el(
+              "li",
+              { className: `nw-hash nw-hash--${tone}` },
+              el("span", { className: "nw-hash-who", textContent: nameOf(c.e) }),
+              el(
+                "span",
+                {},
+                ...(c.hash ? [el("span", { className: "mono", textContent: c.hash })] : []),
+                el("span", { className: "nw-sub nw-hash-why", textContent: c.text }),
+              ),
+            );
+          }),
+          el("li", { className: `nw-hint nw-summary`, textContent: summary }),
+          ...(differing.length
+            ? [el("li", { className: "nw-hint", textContent: `${differing.join(", ")} reported a different channel configuration; the page used the one most explorers report.` })]
+            : []),
+        );
+      } finally {
+        button.disabled = false;
+      }
     };
     button.addEventListener("click", () => void run());
     input.addEventListener("keydown", (e) => e.key === "Enter" && (e.preventDefault(), void run()));
     const details = el(
       "details",
       {},
-      el("summary", { textContent: "Compare a block's hash across explorers" }),
-      el("p", { className: "nw-hint", textContent: "Read straight from each explorer, without relying on what they report about each other." }),
+      el("summary", { textContent: "Check a block in your browser" }),
+      el(
+        "p",
+        { className: "nw-hint" },
+        "For each organisation, the page checks its signed checkpoint against the CAs in the channel configuration, then recomputes every block hash from there back to this block. It doesn't rely on what the explorers say about each other. It can't check a block's transactions, which need the block's raw data; that rests on each explorer's own data hash check.",
+      ),
       el("div", { className: "nw-row" }, input, button),
       out,
     );
@@ -526,6 +601,18 @@
   }
   .nw-hash-who {
     font-weight: 600;
+  }
+  .nw-hash > span:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .nw-summary {
+    color: var(--sl-color-white);
+  }
+  .nw button:disabled {
+    opacity: 0.6;
+    cursor: default;
   }
   @media (max-width: 40rem) {
     .nw thead {

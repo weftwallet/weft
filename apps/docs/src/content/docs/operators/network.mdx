@@ -10,11 +10,25 @@ Each organisation runs its own [explorer](/operators/explorer/), so there's no s
 
 - each organisation's explorer, how many blocks it has, and what it publishes;
 - what each one reports about the others: up to which block their ledgers match, or where they differ;
-- a block's hash read from every explorer, so you can compare them yourself without relying on what they report.
+- a check you run in your browser, described below.
 
 The page holds no data. It reads each explorer's public API from your browser, and updates every 15 seconds. To link someone to your network, use `?explorer=<your explorer's URL>`, or `?invite=<your invite's URL>` if the invite names your explorer.
 
 <NetworkView />
+
+## Checking a block in your browser
+
+**Check a block in your browser** doesn't rely on what the explorers say about each other. For each organisation's explorer, it:
+
+1. fetches the explorer's signed checkpoint, and checks the signature, and that the signing certificate was issued by that organisation's CA, as named in the channel configuration;
+2. fetches the block headers from your block up to the checkpoint, and recomputes each hash and each link to the block before;
+3. compares the hash of your block across every organisation.
+
+If every organisation passes and the hashes match, each organisation has signed a ledger that contains that block. The channel configuration comes from the explorers themselves, so the page uses the one most of them report, and says if any report a different one.
+
+What it can't check is a block's transactions: that they're the ones its data hash covers needs the block's raw data, which explorers don't publish. That part rests on each explorer's own check, shown on its block pages.
+
+Each explorer's block pages also recompute the block's hash in your browser, and link here to check it against everyone else.
 
 ## What it needs
 

@@ -23,6 +23,9 @@ importers:
       '@fontsource/ibm-plex-sans':
         specifier: ^5.3.0
         version: 5.3.0
+      '@weftwallet/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       astro:
         specifier: ^7.4.1
         version: 7.4.1(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1)
