@@ -13,3 +13,5 @@ channels:
       _lifecycle: members
     # Election pages for the ballot contract the playground deploys.
     elections: ballot
+    # Each ballot's hash; safe because the contract stores it with the voter's salt.
+    privateData: hashes

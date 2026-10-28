@@ -709,7 +709,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     channel: string;
     height: number;
     level: string;
-    publishes?: { values: "show" | "hash"; submitter: "show" | "hide"; membersOnly: string[]; elections: boolean };
+    publishes?: { values: "show" | "hash"; submitter: "show" | "hide"; privateData?: "names" | "hashes"; membersOnly: string[]; elections: boolean };
   };
   type Peer = { url: string; mspId: string | null; state: string; agreedUpTo: number | null; mismatchAt: number | null };
 
@@ -728,6 +728,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       p.submitter === "show" ? "submitters shown" : "submitters hidden",
     ];
     if (p.membersOnly.length) parts.push(`members only: ${p.membersOnly.join(", ")}`);
+    if (p.privateData === "hashes") parts.push("private data hashes");
     if (p.elections) parts.push("election pages");
     return `${c.level === "members" ? "Members only" : "Public"}: ${parts.join(", ")}.`;
   }

@@ -195,8 +195,10 @@ h1.mono { font-size: 24px; }
 .receipt input, .receipt select { height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font: 14px var(--mono); min-width: 0; }
 .receipt--local { grid-template-columns: 180px 1fr auto; }
 .receipt--local p { grid-column: 1 / -1; margin: 0; color: var(--muted); }
-.receipt--local #local-result { min-height: 1.4em; }
+.receipt--local #local-result, .receipt--local #pd-result { min-height: 1.4em; }
+.receipt--single { grid-template-columns: 1fr auto; }
+#private .table, #private .receipt { margin-top: 14px; }
 .receipt--local p.ok { color: var(--thread); }
 .receipt--local p.bad { color: var(--signal); }
 .elections-link { margin: 20px 0 0; font-size: 15px; }
-@media (max-width: 640px) { .receipt, .receipt--local { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .receipt, .receipt--local, .receipt--single { grid-template-columns: 1fr; } }

@@ -501,10 +501,60 @@ ${tx.type === "endorser"
       : html`<table class="table"><thead><tr><th>Key</th><th>New value</th></tr></thead><tbody>${tx.writes.map(
           (w) => html`<tr><td class="mono">${w.namespace !== tx.chaincode ? html`<span class="subtle">${w.namespace}/</span>` : ""}${readableKey(w.key)}</td><td>${value(w.value)}</td></tr>`,
         )}</tbody></table>${!ok ? html`<p class="subtle small">Shown as proposed. The transaction was invalid, so none of these were applied.</p>` : ""}`}</section>
+${privateDataSection(tx)}
 ${tx.response && tx.response.payload.text !== "" ? html`<section><h2>Returned</h2><div class="card">${value(tx.response.payload)}</div></section>` : ""}
 ${tx.event ? html`<section><h2>Event</h2><div class="card"><div class="mono fn">${tx.event.name}</div>${value(tx.event.payload)}</div></section>` : ""}`
   : ""}`}`;
   return layout(site, `Transaction ${short(tx.txId, 8, 4)}`, body);
+}
+
+const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * Private data: the collection's members' peers keep the values; the ledger
+ * has only their hashes. Shown by name and count, and with the hashes when
+ * the policy publishes them, plus a check for anyone holding a value.
+ */
+function privateDataSection(tx: TransactionRow): Html {
+  const sets = tx.privateData ?? [];
+  if (sets.length === 0) return html``;
+  const hashes = sets.flatMap((p) => p.hashes ?? []);
+  return html`<section id="private"><h2>Private data</h2>
+<div class="card">
+  <p class="small">The values are kept by the peers of the organisations in each collection. The ledger has only their hashes${hashes.length ? "" : ", which this explorer doesn't publish"}.</p>
+  <dl class="details">${sets.map(
+    (p) => html`<dt class="mono">${p.namespace !== tx.chaincode ? html`<span class="subtle">${p.namespace}/</span>` : ""}${p.collection}</dt><dd>${
+      [p.writes ? `wrote ${count(p.writes, "key")}` : "", p.deletes ? `deleted ${count(p.deletes, "key")}` : "", p.reads ? `read ${count(p.reads, "key")}` : ""]
+        .filter(Boolean)
+        .join(", ") || "touched, without reads or writes"
+    }</dd>`,
+  )}</dl>
+</div>
+${hashes.length
+  ? html`<table class="table"><thead><tr><th>Key hash</th><th>Value hash</th></tr></thead><tbody>${hashes.map(
+      (w) => html`<tr><td class="mono hash">${w.keyHash}</td><td class="mono hash">${w.valueHash ?? html`<span class="subtle">deleted</span>`}</td></tr>`,
+    )}</tbody></table>
+<div class="card receipt receipt--local receipt--single">
+  <p class="small">If you hold one of these values, check it's the one recorded. It stays in this browser.</p>
+  <label><span>Value, exactly as stored</span><input id="pd-value" class="mono" spellcheck="false" autocomplete="off"></label>
+  <button type="button" class="signin" id="pd-check">Check</button>
+  <p id="pd-result" class="small" aria-live="polite"></p>
+</div>
+<script>
+(function () {
+  var hashes = ${raw(JSON.stringify(hashes.map((w) => w.valueHash).filter(Boolean)))};
+  document.getElementById("pd-check").addEventListener("click", async function () {
+    var bytes = new TextEncoder().encode(document.getElementById("pd-value").value);
+    var hash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+    var out = document.getElementById("pd-result");
+    var found = hashes.indexOf(hash) >= 0;
+    out.textContent = found ? "It matches a value this transaction wrote." : "It doesn't match any value this transaction wrote.";
+    out.className = "small " + (found ? "ok" : "bad");
+  });
+})();
+</script>`
+  : ""}
+</section>`;
 }
 
 export function contractPage(site: Site, channel: string, chaincode: string, txs: TransactionRow[], before: number | undefined): string {

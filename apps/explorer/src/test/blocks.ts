@@ -17,6 +17,8 @@ export interface TxSpec {
   chaincode: string;
   args: string[];
   writes?: { key: string; value?: string; ns?: string }[];
+  /** Private data writes: only their hashes go in the block, as peers record them. */
+  privateWrites?: { collection: string; key: string; value?: string }[];
   creator?: string;
   endorsers?: string[];
   event?: string;
@@ -80,6 +82,7 @@ function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
     proposalPayload.setInput(invocation.serializeBinary());
 
     const byNs = new Map<string, ledger.rwset.kvrwset.KVWrite[]>();
+    if (spec.privateWrites?.length && !byNs.has(spec.chaincode)) byNs.set(spec.chaincode, []);
     for (const w of spec.writes ?? []) {
       const write = new ledger.rwset.kvrwset.KVWrite();
       write.setKey(w.key);
@@ -97,6 +100,24 @@ function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
         const nsr = new ledger.rwset.NsReadWriteSet();
         nsr.setNamespace(ns);
         nsr.setRwset(kv.serializeBinary());
+        const collections = new Map<string, ledger.rwset.kvrwset.KVWriteHash[]>();
+        for (const w of ns === spec.chaincode ? (spec.privateWrites ?? []) : []) {
+          const hashed = new ledger.rwset.kvrwset.KVWriteHash();
+          hashed.setKeyHash(createHash("sha256").update(w.key).digest());
+          if (w.value === undefined) hashed.setIsDelete(true);
+          else hashed.setValueHash(createHash("sha256").update(w.value).digest());
+          collections.set(w.collection, [...(collections.get(w.collection) ?? []), hashed]);
+        }
+        nsr.setCollectionHashedRwsetList(
+          [...collections].map(([name, writes]) => {
+            const set = new ledger.rwset.kvrwset.HashedRWSet();
+            set.setHashedWritesList(writes);
+            const c = new ledger.rwset.CollectionHashedReadWriteSet();
+            c.setCollectionName(name);
+            c.setHashedRwset(set.serializeBinary());
+            return c;
+          }),
+        );
         return nsr;
       }),
     );

@@ -30,7 +30,7 @@
   const MAX_EXPLORERS = 24;
   const REFRESH_MS = 15_000;
 
-  type Publishes = { values: "show" | "hash"; submitter: "show" | "hide"; membersOnly: string[]; elections: boolean };
+  type Publishes = { values: "show" | "hash"; submitter: "show" | "hide"; privateData?: "names" | "hashes"; membersOnly: string[]; elections: boolean };
   type ChannelStatus = { channel: string; height: number; level: string; publishes?: Publishes; state?: string };
   type Status = { name: string; mspId?: string | null; channels: ChannelStatus[] };
   type Peer = { url: string; mspId: string | null; state: string; agreedUpTo: number | null; mismatchAt: number | null };
@@ -103,6 +103,7 @@
     const p = c.publishes;
     const parts = [p.values === "show" ? "values" : "values as hashes", p.submitter === "show" ? "submitters" : "no submitters"];
     if (p.membersOnly.length) parts.push(`members only: ${p.membersOnly.join(", ")}`);
+    if (p.privateData === "hashes") parts.push("private data hashes");
     if (p.elections) parts.push("elections");
     return `${level}: ${parts.join(", ")}`;
   }

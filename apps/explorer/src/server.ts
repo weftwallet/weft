@@ -301,6 +301,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const publishes = {
           values: cp.values,
           submitter: cp.submitter,
+          privateData: cp.privateData,
           membersOnly: Object.entries(cp.contracts).filter(([, l]) => l === "members").map(([name]) => name),
           elections: s.site.elections(c.channel),
         };

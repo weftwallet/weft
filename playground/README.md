@@ -27,7 +27,7 @@ pnpm playground:explorer # start or restart only the explorers, on a running sta
 | `ballot` contract | `mychannel` | `examples/ballot-contract`, with its private collection. `seed-elections.mjs` adds `team-lunch` (counted) and `board-2026` (open); receipts for the seeded ballots are in `.state/receipts.json` |
 | Org1 CA proxy | `http://localhost:7080`, or `https://localhost:7443` with `--https` | Forwards to the CA's HTTPS on 7054, so the browser can enrol (see below) |
 | Weft relay | `http://localhost:8787` | Talks to `peer0.org1`; serves the invite at `/.well-known/weft-invite.json` |
-| Explorers | `http://localhost:8790` (Org1), `http://localhost:8791` (Org2) | Each reads `mychannel` from its own organisation's peer, publishes what `explorer.yaml` or `explorer-org2.yaml` allows, and cross-checks with the other. Org2's publishes less: no submitters, and `basic` for members only. The invite names Org1's, so Weft links activity to it |
+| Explorers | `http://localhost:8790` (Org1), `http://localhost:8791` (Org2) | Each reads `mychannel` from its own organisation's peer, publishes what `explorer.yaml` or `explorer-org2.yaml` allows, and cross-checks with the other. Org1's also publishes the ballots' private data hashes. Org2's publishes less: no submitters, private data by name only, and `basic` for members only. The invite names Org1's, so Weft links activity to it |
 
 ## Demo users (Org1)
 

@@ -45,11 +45,23 @@ export interface DecodedTransaction {
   endorsers: Party[];
   reads: number;
   writes: Write[];
+  /**
+   * Private data collections the transaction touched. The ledger has only
+   * hashes: SHA-256 of each key and value, never the values themselves.
+   */
+  privateData: PrivateDataSet[];
   /** The contract's response, as returned to the submitter. */
   response: { status: number; message: string; payload: Uint8Array } | null;
   event: { name: string; payload: Uint8Array } | null;
   /** Config transactions only: the channel's application organisations after this change. */
   members?: ChannelMember[];
+}
+
+export interface PrivateDataSet {
+  namespace: string;
+  collection: string;
+  reads: number;
+  writes: { keyHash: string; valueHash: string | null; isDelete: boolean }[];
 }
 
 export interface DecodedBlock {
@@ -173,6 +185,19 @@ function decodeEndorserTransaction(tx: DecodedTransaction, data: Uint8Array) {
     for (const w of kv.getWritesList()) {
       tx.writes.push({ namespace: ns.getNamespace(), key: w.getKey(), isDelete: w.getIsDelete(), value: w.getValue_asU8() });
     }
+    for (const c of ns.getCollectionHashedRwsetList()) {
+      const hashed = ledger.rwset.kvrwset.HashedRWSet.deserializeBinary(c.getHashedRwset_asU8());
+      tx.privateData.push({
+        namespace: ns.getNamespace(),
+        collection: c.getCollectionName(),
+        reads: hashed.getHashedReadsList().length,
+        writes: hashed.getHashedWritesList().map((w) => ({
+          keyHash: hex(w.getKeyHash_asU8()),
+          valueHash: w.getIsDelete() ? null : hex(w.getValueHash_asU8()),
+          isDelete: w.getIsDelete(),
+        })),
+      });
+    }
   }
 }
 
@@ -192,6 +217,7 @@ function unreadable(index: number, validation: string): DecodedTransaction {
     endorsers: [],
     reads: 0,
     writes: [],
+    privateData: [],
     response: null,
     event: null,
   };
@@ -249,6 +275,7 @@ function decodeEnvelope(raw: Uint8Array, index: number, validation: string): { t
     endorsers: [],
     reads: 0,
     writes: [],
+    privateData: [],
     response: null,
     event: null,
   };

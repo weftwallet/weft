@@ -29,6 +29,7 @@ channels:
     level: public       # public, members or hidden (the default)
     values: show        # show, or hash: arguments and written values appear as SHA-256 only
     submitter: show     # show, or hide: who submitted each transaction
+    privateData: names  # names, or hashes: private data with each key's and value's SHA-256
     contracts:          # contracts not listed take the channel's level
       shipments: public
       pricing: hidden
@@ -42,12 +43,17 @@ channels:
 | `elections: ballot` | The channel's [ballot contract](/guides/elections/). The explorer adds election pages with results and receipt checks. |
 | `values: hash` | Arguments, written values, return values and event payloads are shown as SHA-256 hashes. Keys are still shown. |
 | `submitter: hide` | Transactions show no submitter. Endorsing organisations are still shown, since they're peers, not people. |
+| `privateData: hashes` | Transactions list the SHA-256 of each private data key and value, with a check for anyone holding a value to confirm it's the one recorded. Without it, private data is shown by collection and count only. |
 
 A contract can be more private than its channel, never less: `members` contracts on a `public` channel show their transactions to everyone as "members only", with the ID, time and status, and the details to signed-in members.
 
 A transaction that calls a hidden contract still appears in its block, with its ID, time and status only, so the block's transaction count stays true. Writes a public contract makes to a hidden one are left out.
 
-Private data collections never reach the shared ledger, only their hashes, so the explorer can't show them whatever the policy says.
+Private data never reaches the shared ledger: the peers of the organisations in a collection keep the values, and every peer keeps only their hashes. So the explorer never shows private values, whatever the policy says. It shows which collections a transaction used and how many keys it read and wrote, and with `privateData: hashes`, the hashes themselves.
+
+:::caution[Hashes of guessable values]
+A hash hides a value only when it's hard to guess. If a value has few possibilities, such as yes or no, or a price in a known range, anyone can hash each one and compare. Publish hashes only for collections whose values include something random. The ballot contract stores each ballot with the voter's random salt for this reason.
+:::
 
 ## Configuration
 
@@ -120,7 +126,7 @@ Only public channels have checkpoints. A members-only channel's height and hashe
 
 | Explorer | Policy | Publishes |
 |---|---|---|
-| Org1, [localhost:8790](http://localhost:8790) | `playground/explorer.yaml` | Everything, with submitters. Contract approvals (`_lifecycle`) are for signed-in members only. |
+| Org1, [localhost:8790](http://localhost:8790) | `playground/explorer.yaml` | Everything, with submitters and the ballots' private data hashes. Contract approvals (`_lifecycle`) are for signed-in members only. |
 | Org2, [localhost:8791](http://localhost:8791) | `playground/explorer-org2.yaml` | No submitters. The `basic` contract's transactions are for signed-in members only. |
 
 Both show the elections the playground seeds, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground page](/playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
