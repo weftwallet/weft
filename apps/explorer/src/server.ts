@@ -14,6 +14,8 @@ import { checkReceipt, elections } from "./elections.ts";
 
 export interface ServerOptions {
   name: string;
+  /** The organisation running this explorer, e.g. Org1MSP. */
+  mspId?: string;
   /** Indexed channels (public and members). */
   channels: string[];
   policy: Policy;
@@ -285,6 +287,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const s = scope(request);
     return {
       name: options.name,
+      mspId: options.mspId ?? null,
       viewer: s.viewer ? { mspId: s.viewer.mspId, name: s.viewer.name } : null,
       channels: db.channels(s.visible).map((c) => {
         const st = statusOf(c.channel);

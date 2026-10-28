@@ -136,7 +136,9 @@ describe("server", () => {
 
   it("says what it publishes, without naming hidden contracts", async () => {
     const { app } = setup();
-    const [channel] = (await app.inject("/api/v1/status")).json().channels;
+    const status = (await app.inject("/api/v1/status")).json();
+    expect(status).toMatchObject({ name: "Org1", mspId: null });
+    const [channel] = status.channels;
     expect(channel).toMatchObject({ channel: "mychannel", level: "public", publishes: { values: "show", submitter: "show", membersOnly: [], elections: false } });
     expect(JSON.stringify(channel)).not.toContain("ballot");
   });

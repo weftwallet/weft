@@ -809,6 +809,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     if (ballots) {
       tries.push([`See the elections, their ballots and results, and check a receipt.`, `${ballots.base}/channels/${encodeURIComponent(channel)}/elections`]);
     }
+    tries.push([`See every organisation's explorer on one page, and compare a block's hash across them.`, `/operators/network/?explorer=${encodeURIComponent(explorerBase)}`]);
     $("pg-ex-try").replaceChildren(
       ...tries.map(([text, href]) => {
         const li = document.createElement("li");
@@ -1054,6 +1055,11 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     display: flex;
     gap: 0.5rem;
     align-items: center;
+  }
+  /* Inside .not-content, so links need the theme's colour back. */
+  .pg a:not(.pg-button, .pg-pill) {
+    color: var(--sl-color-text-accent);
+    text-underline-offset: 0.2em;
   }
   .pg-hint {
     margin: 0;

@@ -1,0 +1,24 @@
+---
+title: Network page
+description: Every organisation's explorer for one network on one page, with whether their ledgers agree.
+tableOfContents: false
+---
+
+import NetworkView from "../../../components/NetworkView.astro";
+
+Each organisation runs its own [explorer](/operators/explorer/), so there's no single place that shows a whole network. This page is that place. Give it one explorer and it finds the others through it, then shows, per channel:
+
+- each organisation's explorer, how many blocks it has, and what it publishes;
+- what each one reports about the others: up to which block their ledgers match, or where they differ;
+- a block's hash read from every explorer, so you can compare them yourself without relying on what they report.
+
+The page holds no data. It reads each explorer's public API from your browser, and updates every 15 seconds. To link someone to your network, use `?explorer=<your explorer's URL>`, or `?invite=<your invite's URL>` if the invite names your explorer.
+
+<NetworkView />
+
+## What it needs
+
+- Explorers that can reach each other: each lists the others in `WEFT_EXPLORER_PEERS`, which is how this page finds them.
+- Public channels. A members-only channel isn't in an explorer's public API, so it doesn't appear here.
+
+With `pnpm playground:up` running, this page finds the playground's two explorers by itself.

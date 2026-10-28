@@ -61,6 +61,7 @@ export default defineConfig({
             { label: "Publish an org invite", slug: "operators/invites" },
             { label: "Invite maker", slug: "operators/invite-maker" },
             { label: "Run an explorer", slug: "operators/explorer" },
+            { label: "Network page", slug: "operators/network" },
           ],
         },
         {

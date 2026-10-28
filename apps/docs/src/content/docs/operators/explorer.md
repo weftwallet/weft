@@ -124,7 +124,7 @@ Only public channels have checkpoints. A members-only channel's height and hashe
 
 Both show the elections the playground seeds, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground page](/playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
 
-To link Weft to your own explorer, add `explorerUrl` to your organisation's [invite](/operators/invites/).
+To link Weft to your own explorer, add `explorerUrl` to your organisation's [invite](/operators/invites/). To show every organisation's explorer on one page, link to the [network page](/operators/network/) with `?explorer=<your explorer>`.
 
 ## API
 
@@ -132,7 +132,7 @@ Everything the pages show is also JSON, readable from any origin, since it's pub
 
 | Endpoint | Returns |
 |---|---|
-| `GET /api/v1/status` | Each published channel's height, transaction count, link check results, the peer's own height, and what the explorer publishes for it (`publishes`: values, submitters, members-only contracts and whether it has election pages). |
+| `GET /api/v1/status` | The explorer's name and MSP ID, then each published channel's height, transaction count, link check results, the peer's own height, and what the explorer publishes for it (`publishes`: values, submitters, members-only contracts and whether it has election pages). |
 | `GET /api/v1/channels/:channel/blocks?before=&limit=` | Blocks, newest first. |
 | `GET /api/v1/channels/:channel/blocks/:number` | One block and its transactions. |
 | `GET /api/v1/channels/:channel/transactions?contract=&org=&before=&limit=` | Transactions, newest first, optionally for one contract or submitting MSP. |

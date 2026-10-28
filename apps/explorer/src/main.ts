@@ -19,6 +19,7 @@ const crossCheck = new CrossCheck(
 );
 const app = buildServer({
   name: config.name,
+  mspId: config.mspId,
   channels,
   policy: config.policy,
   db,
