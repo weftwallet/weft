@@ -76,6 +76,14 @@ test("vote from the docs playground and check the receipt in the explorer", { ta
   await expect(explorer.locator("#local-result")).toHaveText("It matches: this commitment is a vote for Amber.");
   expect(explorer.url()).not.toContain(receipt.salt);
 
+  // Org1's explorer publishes the ballot's private data hash, and the voter,
+  // holding the value, can check it's the one recorded.
+  await explorer.goto(`${s.explorerUrl}/channels/mychannel/transactions/${receipt.txId}`);
+  await expect(explorer.getByRole("heading", { name: "Private data" })).toBeVisible();
+  await explorer.locator("#pd-value").fill(JSON.stringify({ option: "Amber", salt: receipt.salt }));
+  await explorer.locator("#pd-check").click();
+  await expect(explorer.locator("#pd-result")).toHaveText("It matches a value this transaction wrote.");
+
   // The seeded election is counted, and the count matches its ballots.
   await explorer.goto(`${s.explorerUrl}/channels/mychannel/elections/team-lunch`);
   await expect(explorer.getByText("The published total, 4, matches the 4 commitments on the ledger.")).toBeVisible();

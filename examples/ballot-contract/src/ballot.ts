@@ -113,7 +113,13 @@ export class BallotContract extends Contract {
     const commitment = commitmentFor(electionId, ballot.option, ballot.salt);
     await ctx.stub.putState(voterKey, put({ voted: true }));
     await ctx.stub.putState(ctx.stub.createCompositeKey("commitment", [electionId, txId]), put({ commitment }));
-    await ctx.stub.putPrivateData(COLLECTION, ctx.stub.createCompositeKey("ballot", [electionId, txId]), put({ option: ballot.option }));
+    // The salt is stored with the choice so the value's hash, which every
+    // member's ledger keeps, can't be matched by trying each option.
+    await ctx.stub.putPrivateData(
+      COLLECTION,
+      ctx.stub.createCompositeKey("ballot", [electionId, txId]),
+      put({ option: ballot.option, salt: ballot.salt }),
+    );
     ctx.stub.setEvent("BallotCast", put({ electionId, commitment }));
     return JSON.stringify({ electionId, txId, commitment });
   }

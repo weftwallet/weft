@@ -20,6 +20,8 @@ A ballot is sent as transient data, which never reaches the shared ledger. The c
 
 The voter keeps a receipt: the transaction ID, the commitment, their choice and the salt.
 
+Every member's ledger also keeps a hash of each private ballot. The contract stores the salt with the choice, so that hash can't be matched by hashing each option in turn either.
+
 ## Voting from a web app
 
 ```ts
