@@ -31,6 +31,8 @@ const me = products[product];
 const word = product === "site" ? "" : me.name.replace(/^Weft /, "").toLowerCase();
 const pageTitle = title ? `${title} | ${me.name}` : me.name;
 const icon = `data:image/svg+xml;base64,${Buffer.from(svg(me.markSmall)).toString("base64")}`;
+// The product's loader, for anything marked .is-working (base.css).
+const loader = `--weft-loader: url("data:image/svg+xml;base64,${Buffer.from(svg(me.loader)).toString("base64")}")`;
 const github = "https://github.com/ifeanyi-ugwu/weft";
 ---
 
@@ -50,7 +52,7 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
       } catch {}
     </script>
   </head>
-  <body>
+  <body style={loader}>
     <a class="shell-skip" href="#main">Skip to the content</a>
     <header class="shell-head">
       <div class="shell-bar">

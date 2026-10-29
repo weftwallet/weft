@@ -229,9 +229,37 @@ main.wrap { padding-bottom: var(--weft-space-16); }
 .table tbody tr { transition: background-color var(--weft-duration-fast) var(--weft-ease-out); }
 .table tbody tr:hover { background: var(--weft-bg-surface); }
 .table td a.mono, .table time, .table .pill { white-space: nowrap; }
-/* Rows that arrived since the page loaded, marked for a few seconds. */
-@keyframes row-arrive { from { background: var(--weft-accent-soft); } to { background: transparent; } }
-.table tr.is-new td { animation: row-arrive 4s var(--weft-ease-out); }
+/* A row that arrived while you were looking comes in as a pick (SYSTEM.md,
+   "Arriving"): a thread runs across its place and is gone before its words
+   follow it in, then a rule seats on its left, stays a few seconds and fades. */
+.table tr.is-new td:first-child { position: relative; }
+.table tr.is-new td:first-child::after {
+  content: ""; position: absolute; left: 0; top: calc(50% - 1px); height: 2px; width: var(--row-w, 100%);
+  border-radius: 1px; background: var(--weft-accent); transform-origin: left; pointer-events: none;
+  animation: pick-through var(--weft-duration-deliberate) var(--weft-ease-tension) both;
+}
+.table tr.is-new td:first-child::before {
+  content: ""; position: absolute; left: 0; top: var(--weft-space-2); bottom: var(--weft-space-2); width: 3px;
+  border-radius: 2px; background: var(--weft-accent); transform-origin: top;
+  animation: rule-life 4s var(--weft-ease-out) 360ms both;
+}
+.table tr.is-new td:not(:first-child), .table tr.is-new td:first-child > * {
+  animation: row-in var(--weft-duration-base) var(--weft-ease-out) 380ms both;
+}
+@keyframes pick-through { 0% { transform: scaleX(0); opacity: 1; } 50% { transform: scaleX(1); opacity: 1; } 62%, 100% { transform: scaleX(1); opacity: 0; } }
+@keyframes rule-life { 0% { transform: scaleY(0); } 6% { transform: scaleY(1); opacity: 1; } 88% { opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+@keyframes row-in { from { opacity: 0; transform: translateX(calc(var(--weft-shift-md) * -1)); } }
+
+/* Working: the explorer's loader before the words; signing in shows Weft's,
+   in place of the wallet's mark, since it's Weft that signs. */
+.is-working::before {
+  content: ""; display: inline-block; flex: none; width: 1.25em; height: 1.25em; margin-inline-end: 0.5em; vertical-align: -0.3em;
+  background: url("/assets/loader.svg") center / contain no-repeat;
+}
+.signin.is-working svg { display: none; }
+/* Loading isn't disabled-looking: it just can't be pressed twice. */
+.signin.is-working:disabled { opacity: 1; }
+.signin.is-working::before { margin-inline-end: 0; width: 16px; height: 16px; background-image: url("/assets/loader-weft.svg"); }
 
 .details { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--weft-space-3) var(--weft-space-4); margin: 0; }
 .details dt { color: var(--weft-text-subtle); font-size: var(--weft-type-md); line-height: var(--weft-leading-base); }
@@ -356,7 +384,11 @@ pre.value {
   .receipt, .receipt--local, .receipt--single { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .table tr.is-new td, .switcher__menu, .signin-note { animation: none; }
+  .switcher__menu, .signin-note { animation: none; }
+  /* Nothing travels: the row fades in and its rule is simply there. */
+  .table tr.is-new td:first-child::after { animation: none; opacity: 0; }
+  .table tr.is-new td:not(:first-child), .table tr.is-new td:first-child > * { animation-delay: 0ms; }
+  .table tr.is-new td:first-child::before { animation-delay: 0ms; }
 }
 .orgs__head > :last-child { white-space: nowrap; }
 /* A value that is a card's only content takes the card as its frame. */

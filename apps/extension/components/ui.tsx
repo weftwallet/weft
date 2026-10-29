@@ -1,6 +1,7 @@
 import { certificateHealth } from "@weftwallet/core";
 import type { IdentitySummary } from "@weftwallet/protocol";
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import LOADER from "@weftwallet/brand/logo/loaders/weft.svg?raw";
 
 /* Icons: 24px stroke icons, decorative unless labelled. ------------- */
 
@@ -279,14 +280,13 @@ export function SecretInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, "
   );
 }
 
-export function Spinner({ tone = "thread", small = false }: { tone?: "thread" | "amber"; small?: boolean }) {
-  return (
-    <span
-      className={`spinner ${tone === "amber" ? "spinner--amber" : ""} ${small ? "spinner--sm" : ""}`}
-      role="status"
-      aria-label="Working"
-    />
-  );
+/**
+ * Working: Weft's loader, the mark with its middle pick pulled through,
+ * seated and drawn out (packages/brand/logo/loaders). It keeps turning with
+ * reduced motion, as a spinner would.
+ */
+export function Spinner({ small = false }: { small?: boolean }) {
+  return <span className={`loader ${small ? "loader--sm" : ""}`} role="status" aria-label="Working" dangerouslySetInnerHTML={{ __html: LOADER }} />;
 }
 
 export function SuccessMark() {

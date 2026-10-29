@@ -252,6 +252,7 @@ function signInScript(name: string): string {
     var weft = window.weft;
     if (!weft) { say("Install Weft to sign in. This explorer checks your organisation's identity, which Weft holds."); return; }
     button.disabled = true;
+    button.classList.add("is-working");
     label.textContent = "Waiting for Weft…";
     try {
       await weft.request({ method: "weft_connect" });
@@ -263,6 +264,7 @@ function signInScript(name: string): string {
     } catch (error) {
       say(error && error.code === 4001 ? "Sign-in cancelled." : (error && error.message) || "Sign-in didn't work. Try again.");
       button.disabled = false;
+      button.classList.remove("is-working");
       label.innerHTML = idle;
     }
   });
@@ -301,7 +303,11 @@ const LIVE = `
       main.innerHTML = next.innerHTML;
       main.querySelectorAll("tbody tr").forEach(function (row) {
         var a = row.querySelector("a[href]");
-        if (a && !before[a.getAttribute("href")]) row.classList.add("is-new");
+        if (a && !before[a.getAttribute("href")]) {
+          // It comes in as a pick, which runs the row's full width.
+          row.style.setProperty("--row-w", row.offsetWidth + "px");
+          row.classList.add("is-new");
+        }
       });
       relative();
     }).catch(function () {});

@@ -101,8 +101,8 @@ body.window {
 
 /* With reduced motion the shift tokens are 0 and the press scale 1, so
    arrivals are short fades and nothing travels. What can't become a fade is
-   set here: things that grow, pop or draw appear finished. Spinners still
-   turn, since they say something is happening. */
+   set here: things that grow, pop or draw appear finished. The loader still
+   turns, since it says something is happening. */
 @media (prefers-reduced-motion: reduce) {
   .bar > div,
   .success-mark,
@@ -268,6 +268,13 @@ textarea {
 .btn:disabled {
   opacity: var(--weft-disabled-opacity);
   cursor: default;
+}
+
+/* Loading isn't disabled-looking: the label stays, the loader turns, and it
+   just can't be pressed twice (SYSTEM.md, States). */
+.btn:disabled:has(.loader) {
+  opacity: 1;
+  cursor: progress;
 }
 
 .btn--danger {
@@ -932,31 +939,25 @@ textarea {
   height: 36px;
 }
 
-/* Spinner and success ----------------------------------------------- */
+/* Loader and success ------------------------------------------------ */
 
-.spinner {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 3px solid var(--weft-line);
-  border-top-color: var(--weft-accent);
-  animation: spin 800ms linear infinite;
+/* Weft's loader (components/ui.tsx Spinner). */
+.loader {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: none;
 }
 
-.spinner--amber {
-  border-top-color: var(--weft-warn);
+.loader svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.spinner--sm {
+.loader--sm {
   width: 16px;
   height: 16px;
-  border-width: 2px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .success-mark {

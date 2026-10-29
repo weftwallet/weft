@@ -75,10 +75,12 @@
     return response.json();
   }
 
-  function setStatus(text: string, tone: "info" | "err" = "info") {
+  /** "working" shows the network's loader before the words. */
+  function setStatus(text: string, tone: "info" | "err" | "working" = "info") {
     const p = $("nw-status");
     p.textContent = text;
-    p.dataset.tone = tone;
+    p.dataset.tone = tone === "working" ? "info" : tone;
+    p.classList.toggle("is-working", tone === "working");
   }
 
   /** Reads one explorer: its status, and for each channel who it compares with. */
@@ -312,7 +314,7 @@
       const n = Math.max(0, Math.floor(Number(input.value)));
       const explorersHere = membersOf(channel);
       button.disabled = true;
-      out.replaceChildren(el("li", { className: "nw-hint", textContent: `Checking block ${n} in ${explorersHere.length} explorers…` }));
+      out.replaceChildren(el("li", { className: "nw-hint is-working", textContent: `Checking block ${n} in ${explorersHere.length} explorers…` }));
       try {
         const { members, differing } = await channelMembers(channel, explorersHere);
         const checks = await Promise.all(explorersHere.map((e) => checkExplorer(e, channel, n, members)));
@@ -405,6 +407,7 @@
     const box = $("nw-signin");
     box.hidden = explorers.length === 0;
     const button = $<HTMLButtonElement>("nw-signin-button");
+    button.classList.remove("is-working");
     const text = $("nw-signin-text");
     if (!signedIn) {
       text.textContent = (window as any).weft?.isWeft
@@ -441,6 +444,7 @@
     const weft = (window as any).weft;
     button.disabled = true;
     button.textContent = "Waiting for Weft…";
+    button.classList.add("is-working");
     try {
       await weft.request({ method: "weft_connect" });
       const signed = await weft.request({
@@ -462,7 +466,7 @@
 
   async function load(from: string[], quiet = false) {
     starts = from;
-    if (!quiet) setStatus("Looking for explorers…");
+    if (!quiet) setStatus("Looking for explorers…", "working");
     explorers = await discover(from);
     await signInEverywhere();
     const ok = explorers.filter((e) => e.status).length;

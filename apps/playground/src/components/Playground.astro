@@ -9,7 +9,7 @@ const docs = (path: string) => productHref("docs", path);
   <section class="pg-card">
     <div class="pg-head">
       <h2>1. Network</h2>
-      <span class="pg-pill" id="pg-weft" data-state="pending">Looking for Weft…</span>
+      <span class="pg-pill is-working" id="pg-weft" data-state="pending">Looking for Weft…</span>
     </div>
     <label class="pg-label"
       >Invite URL
@@ -223,6 +223,7 @@ const docs = (path: string) => productHref("docs", path);
 
   function setWeftPill(state: "ok" | "missing") {
     const pill = $("pg-weft");
+    pill.classList.remove("is-working");
     pill.dataset.state = state;
     pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Install Weft";
     if (state === "missing") {
@@ -405,12 +406,14 @@ const docs = (path: string) => productHref("docs", path);
     const button = $<HTMLButtonElement>("pg-connect");
     button.disabled = true;
     button.textContent = "Waiting for Weft…";
+    button.classList.add("is-working");
     try {
       showIdentity(await call("weft_connect"));
       setConnected(true);
     } catch {
       /* logged */
     } finally {
+      button.classList.remove("is-working");
       button.textContent = "Connect";
       updateButtons();
     }
@@ -473,6 +476,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     $("pg-code").textContent = codeFor(kind, c);
     $("pg-result").textContent = kind === "submit" ? "Waiting for approval, endorsement and commit…" : "Waiting for approval…";
     $("pg-result").dataset.tone = "pending";
+    $("pg-result").classList.add("is-working");
     const buttons = [$<HTMLButtonElement>("pg-evaluate"), $<HTMLButtonElement>("pg-submit")];
     buttons.forEach((b) => (b.disabled = true));
     try {
@@ -493,6 +497,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       $("pg-result").textContent = `Error ${error?.code ?? ""}: ${error?.message ?? error}${detail}`;
       $("pg-result").dataset.tone = "err";
     } finally {
+      $("pg-result").classList.remove("is-working");
       updateButtons();
     }
   }
@@ -626,6 +631,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     const button = $<HTMLButtonElement>("pg-el-vote");
     button.disabled = true;
     button.textContent = "Waiting for Weft…";
+    button.classList.add("is-working");
     // The salt is the voter's secret: without it, no one can tell which choice
     // the commitment is for.
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
@@ -642,6 +648,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       if (/already voted/.test(message)) votedIn.add(election.id);
       electionMessage(message, "err");
     } finally {
+      button.classList.remove("is-working");
       updateElectionButtons();
     }
   }

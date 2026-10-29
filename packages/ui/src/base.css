@@ -104,3 +104,17 @@ code {
   text-transform: uppercase;
   color: var(--weft-text-subtle);
 }
+
+/* Working: the product's own loader before the words that say what's
+   happening (packages/brand/logo/loaders). The shell sets --weft-loader to
+   the product's. It keeps turning with reduced motion, as a spinner would. */
+.is-working::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  margin-inline-end: 0.5em;
+  vertical-align: -0.3em;
+  background: var(--weft-loader) center / contain no-repeat;
+}

@@ -191,7 +191,7 @@ function IdentityCard({
           >
             {renew.busy ? (
               <>
-                <Spinner small tone={health.state === "expired" ? "thread" : "amber"} /> Renewing…
+                <Spinner small /> Renewing…
               </>
             ) : (
               `Re-enrol as ${identity.enrollmentId}`

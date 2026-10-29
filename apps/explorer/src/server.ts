@@ -49,6 +49,9 @@ const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
   "tokens.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/brand/tokens.css")) },
   "explorer.css": { type: "text/css; charset=utf-8", body: () => asset("explorer.css") },
   "mark.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/products/explorer-small.svg")) },
+  // The explorer's loader, and Weft's, for signing in: it's Weft that signs.
+  "loader.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/loaders/explorer.svg")) },
+  "loader-weft.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/loaders/weft.svg")) },
   "fonts/sans-400.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-400-normal.woff2") },
   "fonts/sans-500.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-500-normal.woff2") },
   "fonts/sans-600.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-600-normal.woff2") },
