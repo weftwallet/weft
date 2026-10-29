@@ -8,6 +8,7 @@
       "mark": "logo/mark.svg",
       "markSmall": "logo/mark-small.svg",
       "loader": "logo/loaders/weft.svg",
+      "loaderSmall": "logo/loaders/weft-small.svg",
       "subdomain": "",
       "dev": "http://localhost:4321"
     },
@@ -17,6 +18,7 @@
       "mark": "logo/mark.svg",
       "markSmall": "logo/mark-small.svg",
       "loader": "logo/loaders/weft.svg",
+      "loaderSmall": "logo/loaders/weft-small.svg",
       "subdomain": "docs",
       "dev": "http://localhost:4322"
     },
@@ -26,6 +28,7 @@
       "mark": "logo/products/playground.svg",
       "markSmall": "logo/products/playground-small.svg",
       "loader": "logo/loaders/playground.svg",
+      "loaderSmall": "logo/loaders/playground-small.svg",
       "subdomain": "play",
       "dev": "http://localhost:4323"
     },
@@ -35,6 +38,7 @@
       "mark": "logo/products/network.svg",
       "markSmall": "logo/products/network-small.svg",
       "loader": "logo/loaders/network.svg",
+      "loaderSmall": "logo/loaders/network-small.svg",
       "subdomain": "network",
       "dev": "http://localhost:4324"
     },
@@ -44,6 +48,7 @@
       "mark": "logo/products/explorer.svg",
       "markSmall": "logo/products/explorer-small.svg",
       "loader": "logo/loaders/explorer.svg",
+      "loaderSmall": "logo/loaders/explorer-small.svg",
       "subdomain": null,
       "dev": "http://localhost:8790"
     },
@@ -53,6 +58,7 @@
       "mark": "logo/mark.svg",
       "markSmall": "logo/mark-small.svg",
       "loader": "logo/loaders/weft.svg",
+      "loaderSmall": "logo/loaders/weft-small.svg",
       "subdomain": null,
       "dev": null
     }
