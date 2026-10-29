@@ -2,7 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

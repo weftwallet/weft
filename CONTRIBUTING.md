@@ -4,9 +4,17 @@
 
 ```sh
 pnpm install
-pnpm build
 pnpm test
 ```
+
+## How the packages resolve
+
+The apps use `packages/protocol`, `packages/core` and `packages/sdk` in two ways:
+
+- In development, from source. Each package's `exports` has a `weft-source` entry pointing at `src/`, and every development tool asks for it: Vite (`vite.source.ts`, used by the docs, the extension and the tests), TypeScript (`customConditions`), and Node in the relay's and explorer's `dev` scripts (`--conditions=weft-source`). Nothing needs building, and a change in a package shows up on the next reload.
+- Built, from `dist/`. Production, the Docker images, the playground and the published packages use this. `pnpm playground:up` and `pnpm test:e2e` build what they run every time.
+
+Inside a package, import with the `.ts` extension (`./bytes.ts`). Node runs the source as it is and doesn't map `.js` to `.ts`; `tsc` rewrites the extension in `dist/`. Publishing removes the `weft-source` entry (`publishConfig.exports`).
 
 ## Browser tests
 
@@ -14,8 +22,7 @@ pnpm test
 
 ```sh
 e2e/scripts/fabric-ca.sh   # once: downloads the Fabric CA server and client into e2e/.bin
-pnpm build
-pnpm test:e2e              # builds the test extension, then runs the suite
+pnpm test:e2e              # builds the relay, the docs and the test extension, then runs the suite
 ```
 
 `pnpm --filter @weftwallet/e2e test:headed` runs the tests that need a windowed browser (they reload the extension), under `xvfb-run` on Linux.

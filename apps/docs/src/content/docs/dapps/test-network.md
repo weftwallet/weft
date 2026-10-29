@@ -54,7 +54,6 @@ From the Weft repository:
 
 ```sh
 cp apps/relay/.env.example apps/relay/.env   # edit the TLS path to point at your fabric-samples
-pnpm build
 pnpm dev:relay
 ```
 

@@ -1,11 +1,14 @@
 // @ts-check
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
+import { source } from "../../vite.source.ts";
 
 // Hosted as a subdomain of the main site for now; change `site` when Weft
 // moves to its own domain. Nothing else depends on it.
 export default defineConfig({
   site: "https://weft.ifeanyiugwu.dev",
+  // Reads @weftwallet/core from its source, so a stale build is never used.
+  vite: source,
   integrations: [
     starlight({
       title: "weft",

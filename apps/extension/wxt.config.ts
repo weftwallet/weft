@@ -1,4 +1,5 @@
 import { defineConfig } from "wxt";
+import { source } from "../../vite.source.ts";
 
 // The end-to-end tests (e2e/) build a variant with WEFT_E2E=1: it may reach
 // localhost from install, so enrolling there doesn't stop at the browser's
@@ -9,6 +10,8 @@ const e2e = process.env.WEFT_E2E === "1";
 // https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
+  // Reads the workspace packages from their source, so a stale build is never used.
+  vite: () => source,
   outDir: e2e ? ".output-e2e" : ".output",
   manifest: {
     name: "Weft",

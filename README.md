@@ -57,7 +57,6 @@ Requires Node 22 and pnpm 10.
 
 ```sh
 pnpm install
-pnpm build          # packages first, then apps
 pnpm test           # core unit tests + relay/core offline-signing integration tests
 pnpm typecheck
 ```
@@ -67,8 +66,11 @@ Then, in separate terminals:
 ```sh
 pnpm dev:extension  # Chrome with the extension loaded, hot reload
 pnpm dev:relay      # needs apps/relay/.env, see .env.example
+pnpm dev:explorer   # set its variables in apps/explorer/.env, see the explorer docs
 pnpm dev:docs       # http://localhost:4321
 ```
+
+None of these need a build: they read `packages/` from source, so a change there shows up straight away. `pnpm build` (packages first, then apps) is for running the built apps, as production and the playground do. See [CONTRIBUTING.md](CONTRIBUTING.md#how-the-packages-resolve).
 
 To try everything against a real network on your machine:
 

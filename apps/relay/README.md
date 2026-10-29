@@ -4,7 +4,7 @@ A stateless HTTP relay between the Weft wallet and a Fabric peer's Gateway servi
 
 ```sh
 cp .env.example .env     # point it at your peer
-pnpm dev                 # from this folder, after `pnpm build` at the root
+pnpm dev                 # from this folder
 ```
 
 Configuration, Docker and the API are documented in [Deploy the relay](../docs/src/content/docs/operators/relay.md).

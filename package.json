@@ -14,11 +14,12 @@
     "dev:extension": "pnpm --filter @weftwallet/extension dev",
     "dev:docs": "pnpm --filter @weftwallet/docs dev",
     "dev:relay": "pnpm --filter @weftwallet/relay dev",
+    "dev:explorer": "pnpm --filter @weftwallet/explorer dev",
     "playground:up": "node playground/cli.mjs up",
     "playground:down": "node playground/cli.mjs down",
     "playground:status": "node playground/cli.mjs status",
     "playground:explorer": "node playground/cli.mjs explorer",
-    "test:e2e": "pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/e2e test"
+    "test:e2e": "pnpm --filter @weftwallet/relay... --filter @weftwallet/docs build && pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/e2e test"
   },
   "devDependencies": {
     "typescript": "~5.9.3"
