@@ -9,8 +9,8 @@ When an app asks Weft to sign, a window opens with everything you need to decide
 
 The coloured banner at the top shows whether the request reads or writes.
 
-- **EVALUATE** (teal): a read-only query. It asks one peer to run the function and return the result. Nothing is written to the ledger and nothing is shared with other organisations' ledgers. The button says **Sign & query**.
-- **SUBMIT** (amber): a write. The request goes to the organisations the contract's endorsement policy requires; if they agree, it is ordered into a block and committed. Once committed it cannot be undone. The button says **Sign & submit**.
+- A teal `EVALUATE` banner is a read-only query. It asks one peer to run the function and return the result. Nothing is written to the ledger and nothing is shared with other organisations' ledgers. The button says **Sign & query**.
+- An amber `SUBMIT` banner is a write. The request goes to the organisations the contract's endorsement policy requires; if they agree, it is ordered into a block and committed. Once committed it cannot be undone. The button says **Sign & submit**.
 
 ## The details
 
@@ -24,7 +24,7 @@ The coloured banner at the top shows whether the request reads or writes.
 | Arguments | The inputs, in order, decoded into text. |
 | Private | Private (transient) inputs. They pass through your organisation's relay to the peers that run the contract, and never reach the ledger. Their values start hidden from anyone glancing at your screen; **Show** reveals them, since you're signing them too. |
 
-**View raw request** shows the same information as JSON, for attaching to a problem report. It includes private values only while they're shown.
+Choose **View raw request** to see the same information as JSON, for attaching to a problem report. It includes private values only while they're shown.
 
 ## What Weft checks for you
 

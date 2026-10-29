@@ -50,10 +50,26 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         const t = localStorage.getItem("weft-theme");
         if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
       } catch {}
+      // The page transition's direction (base.css): back when going back
+      // through history, forward otherwise.
+      const isBack = (type, from, to) => type === "traverse" && !(from != null && to != null && to > from);
+      const goBack = (t) => {
+        t.types.delete("forward");
+        t.types.add("back");
+      };
+      addEventListener("pagereveal", (e) => {
+        const a = window.navigation?.activation;
+        if (e.viewTransition && a && isBack(a.navigationType, a.from?.index, a.entry?.index)) goBack(e.viewTransition);
+      });
+      addEventListener("pageswap", (e) => {
+        const a = e.activation;
+        if (e.viewTransition && a && isBack(a.navigationType, window.navigation?.currentEntry?.index, a.entry?.index)) goBack(e.viewTransition);
+      });
     </script>
   </head>
   <body style={loader}>
     <a class="shell-skip" href="#main">Skip to the content</a>
+    <p id="weft-status" class="visually-hidden" role="status"></p>
     <header class="shell-head">
       <div class="shell-bar">
         <a class="shell-lockup" href={productHref(product)}>
@@ -68,7 +84,7 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
       </div>
     </header>
 
-    <main id="main" class:list={["shell-main", { "shell-main--wide": wide }]}>
+    <main id="main" tabindex="-1" class:list={["shell-main", { "shell-main--wide": wide }]}>
       <slot />
     </main>
 
@@ -107,13 +123,8 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
       .shell-skip:focus-visible {
         transform: none;
       }
-      .shell-sr {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
+      #main:focus {
+        outline: none;
       }
       .shell-head {
         position: sticky;
@@ -130,7 +141,7 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         padding-inline: max(var(--weft-space-4), env(safe-area-inset-left, 0px)) max(var(--weft-space-4), env(safe-area-inset-right, 0px));
       }
       .shell-bar {
-        height: 60px;
+        min-height: 60px;
         display: flex;
         align-items: center;
         gap: var(--weft-space-6);
@@ -139,6 +150,10 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         display: flex;
         align-items: center;
         gap: var(--weft-space-2);
+        min-width: 0;
+        padding: var(--weft-space-1);
+        margin: calc(var(--weft-space-1) * -1);
+        border-radius: var(--weft-radius-sm);
         color: var(--weft-text-strong);
         text-decoration: none;
         flex: none;
@@ -147,10 +162,12 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         width: 28px;
         height: 28px;
         display: block;
+        flex: none;
       }
       .shell-word {
         font: 500 var(--weft-type-lg) / 1 var(--weft-font-mono);
         letter-spacing: -0.03em;
+        white-space: nowrap;
       }
       .shell-word__product {
         color: var(--weft-text-subtle);
@@ -160,7 +177,6 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         align-items: center;
         gap: var(--weft-space-1);
         min-width: 0;
-        overflow-x: auto;
       }
       .shell-nav :global(a) {
         padding: var(--weft-space-2) var(--weft-space-3);
@@ -170,10 +186,17 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         line-height: var(--weft-leading-md);
         text-decoration: none;
         white-space: nowrap;
-        transition: color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out);
+        transition:
+          color var(--weft-duration-fast) var(--weft-ease-out),
+          background-color var(--weft-duration-fast) var(--weft-ease-out);
       }
-      .shell-nav :global(a:hover) {
-        color: var(--weft-text);
+      @media (hover: hover) {
+        .shell-nav :global(a:hover) {
+          color: var(--weft-text);
+        }
+        .shell-foot__products a:hover {
+          color: var(--weft-text);
+        }
       }
       .shell-nav :global(a[aria-current="page"]) {
         color: var(--weft-text-strong);
@@ -184,6 +207,7 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         display: flex;
         align-items: center;
         gap: var(--weft-space-3);
+        flex: none;
       }
       .shell-main {
         max-width: 1200px;
@@ -224,18 +248,46 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         gap: var(--weft-space-2);
         color: var(--weft-text-muted);
         text-decoration: none;
-      }
-      .shell-foot__products a:hover {
-        color: var(--weft-text);
+        transition: color var(--weft-duration-fast) var(--weft-ease-out);
       }
       .shell-foot__products :global(svg) {
         width: 16px;
         height: 16px;
         display: block;
       }
-      @media (max-width: 720px) {
+      /* Narrower than the bar needs: the nav moves to a row of its own under
+         the mark and the tools, and scrolls sideways if it must. Its padding
+         keeps focus rings inside the scrolling box, so none is cut off. */
+      @media (max-width: 900px) {
         .shell-bar {
-          gap: var(--weft-space-3);
+          flex-wrap: wrap;
+          gap: 0 var(--weft-space-3);
+          padding-top: var(--weft-space-3);
+        }
+        .shell-tools {
+          gap: var(--weft-space-2);
+        }
+        .shell-nav {
+          order: 3;
+          flex: 1 0 100%;
+          overflow-x: auto;
+          scrollbar-width: none;
+          padding: var(--weft-space-1);
+          margin: var(--weft-space-1) calc(var(--weft-space-1) * -1) 0;
+        }
+        .shell-nav:empty {
+          display: none;
+        }
+        .shell-bar:has(.shell-nav:empty) {
+          padding-bottom: var(--weft-space-3);
+        }
+        .shell-nav :global(a) {
+          padding: var(--weft-space-1) var(--weft-space-3);
+        }
+      }
+      @media (max-width: 420px) {
+        .shell-word {
+          font-size: var(--weft-type-base);
         }
       }
     </style>

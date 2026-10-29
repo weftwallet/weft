@@ -21,13 +21,13 @@ The provider may be injected after your script runs. Wait for the `weft#initiali
 
 | Method | Params | Result | Asks the user |
 |---|---|---|---|
-| `weft_connect` | – | `IdentitySummary` | Yes, once per site and identity |
-| `weft_identity` | – | `IdentitySummary \| null` | No |
-| `weft_networks` | – | `NetworkSummary[]` | No |
+| `weft_connect` | None | `IdentitySummary` | Yes, once per site and identity |
+| `weft_identity` | None | `IdentitySummary \| null` | No |
+| `weft_networks` | None | `NetworkSummary[]` | No |
 | `weft_evaluate` | `ContractCall` | `EvaluateResult` | Every time |
 | `weft_submit` | `ContractCall` | `SubmitResult` | Every time |
 | `weft_addNetwork` | `{ url }` | `{ added: true }` | Every time |
-| `weft_disconnect` | – | `null` | No |
+| `weft_disconnect` | None | `null` | No |
 | `weft_signIn` | `{ nonce, statement? }` | `SignInResult` | Every time |
 
 `weft_addNetwork` asks the user to join a network from an [org invite](/operators/invites/). `url` is the invite's HTTPS URL, a `weft://` link or a join link. Weft fetches the invite itself from that address, shows it, and the user enrols. It doesn't need the site to be connected, which suits an admin portal's "Set up Weft" button.

@@ -1,6 +1,7 @@
 /* Base styles for Weft's sites: the fonts, the tokens, and the few rules
-   every page shares. Everything else belongs to the page or the component.
-   See packages/brand/SYSTEM.md. */
+   every page shares: controls, field errors, error details, arriving and
+   leaving, and the page transition. Everything else belongs to the page or
+   the component. See packages/brand/SYSTEM.md. */
 @import "@fontsource/atkinson-hyperlegible-next/latin-400.css";
 @import "@fontsource/atkinson-hyperlegible-next/latin-500.css";
 @import "@fontsource/atkinson-hyperlegible-next/latin-600.css";
@@ -31,6 +32,47 @@ body {
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: var(--weft-duration-base);
+}
+
+/* Between pages, the new page fades in from the right, or from the left when
+   going back through history. The shell's early script picks the direction;
+   forward is the default. With reduced motion pages change at once. */
+@view-transition {
+  navigation: auto;
+  types: forward;
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+html:active-view-transition-type(forward)::view-transition-old(root) {
+  animation: weft-page-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
+  --weft-page-to: calc(var(--weft-shift-md) * -1);
+}
+html:active-view-transition-type(forward)::view-transition-new(root) {
+  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
+  --weft-page-from: var(--weft-shift-md);
+}
+html:active-view-transition-type(back)::view-transition-old(root) {
+  animation: weft-page-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
+  --weft-page-to: var(--weft-shift-md);
+}
+html:active-view-transition-type(back)::view-transition-new(root) {
+  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
+  --weft-page-from: calc(var(--weft-shift-md) * -1);
+}
+@keyframes weft-page-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--weft-page-from, 0));
+  }
+}
+@keyframes weft-page-out {
+  to {
+    opacity: 0;
+    transform: translateX(var(--weft-page-to, 0));
+  }
 }
 
 h1,
@@ -71,6 +113,10 @@ code {
   color: var(--weft-text-strong);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 /* A page's introduction: the heading and a few sentences before the tool. */
 .page-intro {
   display: flex;
@@ -105,6 +151,15 @@ code {
   color: var(--weft-text-subtle);
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Working: the product's own loader before the words that say what's
    happening (packages/brand/logo/loaders). The shell sets --weft-loader to
    the product's. It keeps turning with reduced motion, as a spinner would. */
@@ -117,4 +172,273 @@ code {
   margin-inline-end: 0.5em;
   vertical-align: -0.3em;
   background: var(--weft-loader) center / contain no-repeat;
+}
+
+/* Controls ------------------------------------------------------------ */
+
+/* Buttons. One shape everywhere: radius-lg, 44px tall (36px small), a
+   line-strong border. Primary is thread; a write to the ledger is amber. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--weft-space-2);
+  min-height: 44px;
+  padding: 0 var(--weft-space-4);
+  border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-lg);
+  background: transparent;
+  color: var(--weft-text-strong);
+  font: 600 var(--weft-type-md) / var(--weft-leading-md) var(--weft-font-sans);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-instant) var(--weft-ease-out);
+}
+.btn.is-working::before {
+  margin-inline-end: 0;
+}
+.btn--small {
+  min-height: 36px;
+  padding: 0 var(--weft-space-3);
+}
+.btn--primary {
+  background: var(--weft-accent);
+  border-color: var(--weft-accent);
+  color: var(--weft-on-accent);
+}
+.btn--write {
+  background: var(--weft-warn);
+  border-color: var(--weft-warn);
+  color: var(--weft-on-status);
+}
+/* A text button: Add, Remove, Clear, Refresh. */
+.btn--text {
+  min-height: 32px;
+  padding: 0 var(--weft-space-1);
+  margin-inline: calc(var(--weft-space-1) * -1);
+  border-color: transparent;
+  color: var(--weft-accent-text);
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .btn:hover:not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--weft-text-subtle);
+  }
+  .btn--primary:hover:not(:disabled, [aria-disabled="true"]) {
+    background: var(--weft-accent-hover);
+    border-color: var(--weft-accent-hover);
+  }
+  /* There's no amber hover token: amber steps towards the strongest text, as
+     the thread does towards accent-hover. */
+  .btn--write:hover:not(:disabled, [aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--weft-warn) 88%, var(--weft-text-strong));
+    border-color: color-mix(in srgb, var(--weft-warn) 88%, var(--weft-text-strong));
+  }
+  .btn--text:hover:not(:disabled, [aria-disabled="true"]) {
+    border-color: transparent;
+    text-decoration: underline;
+  }
+}
+.btn:active:not(:disabled, [aria-disabled="true"]) {
+  transform: scale(var(--weft-press-scale));
+}
+.btn:disabled {
+  opacity: var(--weft-disabled-opacity);
+  cursor: not-allowed;
+}
+/* Busy: full strength, can't be pressed twice, keeps keyboard focus. */
+.btn[aria-disabled="true"] {
+  cursor: progress;
+}
+
+/* Inputs, selects and text areas. */
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--weft-space-2) var(--weft-space-3);
+  border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-lg);
+  background: var(--weft-bg);
+  color: var(--weft-text-strong);
+  font: var(--weft-type-md) / var(--weft-leading-md) var(--weft-font-sans);
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.input.mono,
+textarea.input {
+  font-family: var(--weft-font-mono);
+}
+textarea.input {
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+  resize: vertical;
+}
+.input::placeholder {
+  color: var(--weft-text-subtle);
+}
+@media (hover: hover) {
+  .input:hover:not(:disabled) {
+    border-color: var(--weft-text-subtle);
+  }
+}
+.input[aria-invalid="true"],
+.input[aria-invalid="true"]:hover {
+  border-color: var(--weft-danger);
+}
+
+/* A labelled field: the label, an optional hint beside it, the control, and
+   its error below. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--weft-space-1);
+  min-width: 0;
+}
+.field > label,
+.field__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--weft-space-2);
+  color: var(--weft-text-muted);
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+}
+.field__hint {
+  color: var(--weft-text-subtle);
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+}
+
+/* Errors -------------------------------------------------------------- */
+
+/* Below the field: an alert icon, then the sentence. */
+.field-error {
+  display: flex;
+  gap: var(--weft-space-1);
+  align-items: flex-start;
+  margin-top: var(--weft-space-1);
+  color: var(--weft-danger-text);
+  font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-sans);
+}
+.field-error::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  background: currentColor;
+  -webkit-mask: var(--weft-alert-icon) center / contain no-repeat;
+  mask: var(--weft-alert-icon) center / contain no-repeat;
+}
+:root {
+  --weft-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.01'/%3E%3C/svg%3E");
+}
+
+/* A failed action: a sentence where the action was, then anything technical
+   behind Details. */
+.action-error {
+  display: flex;
+  flex-direction: column;
+  gap: var(--weft-space-1);
+}
+.action-error > p {
+  display: flex;
+  gap: var(--weft-space-2);
+  align-items: flex-start;
+  color: var(--weft-danger-text);
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+}
+.action-error > p::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  background: currentColor;
+  -webkit-mask: var(--weft-alert-icon) center / contain no-repeat;
+  mask: var(--weft-alert-icon) center / contain no-repeat;
+}
+.error-details {
+  color: var(--weft-text-muted);
+  font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+}
+.error-details summary {
+  width: fit-content;
+  color: var(--weft-text-subtle);
+  font-family: var(--weft-font-sans);
+  cursor: pointer;
+}
+.error-details[open] > :not(summary) {
+  margin-top: var(--weft-space-1);
+}
+.error-details pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+
+/* Arriving and leaving ------------------------------------------------- */
+
+/* Something shown while the person is looking fades in from shift-md below
+   its place; leaving is the reverse, in 70% of the time. ui.ts adds these. */
+.arrive {
+  animation: weft-enter var(--weft-duration-base) var(--weft-ease-out) both;
+}
+.is-leaving {
+  animation: weft-exit calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
+  pointer-events: none;
+}
+@keyframes weft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--weft-shift-md));
+  }
+}
+@keyframes weft-exit {
+  to {
+    opacity: 0;
+    transform: translateY(var(--weft-shift-md));
+  }
+}
+
+/* A disclosure's content comes down from its summary, and goes back up the
+   same way when it closes (ui.ts holds it open for the closing). */
+details.disclosure[open] > :not(summary) {
+  animation: weft-drop-in var(--weft-duration-base) var(--weft-ease-out) both;
+}
+details.disclosure.is-closing > :not(summary) {
+  animation: weft-drop-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
+}
+@keyframes weft-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--weft-shift-sm) * -1));
+  }
+}
+@keyframes weft-drop-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--weft-shift-sm) * -1));
+  }
+}
+details.disclosure > summary {
+  width: fit-content;
+  color: var(--weft-accent-text);
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+  cursor: pointer;
+  border-radius: var(--weft-radius-sm);
+}
+@media (hover: hover) {
+  details.disclosure > summary:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
 }

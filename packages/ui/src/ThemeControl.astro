@@ -103,10 +103,16 @@ const { storageKey = "weft-theme", alwaysSet = false } = Astro.props;
     cursor: pointer;
     transition:
       color var(--weft-duration-fast) var(--weft-ease-out),
-      background-color var(--weft-duration-fast) var(--weft-ease-out);
+      background-color var(--weft-duration-fast) var(--weft-ease-out),
+      transform var(--weft-duration-instant) var(--weft-ease-out);
   }
-  .weft-theme button:hover {
-    color: var(--weft-text);
+  @media (hover: hover) {
+    .weft-theme button:hover {
+      color: var(--weft-text);
+    }
+  }
+  .weft-theme button:active {
+    transform: scale(var(--weft-press-scale));
   }
   .weft-theme button[aria-pressed="true"] {
     background: var(--weft-bg-raised);

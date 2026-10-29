@@ -192,7 +192,9 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
   /** Chooses a row of the finished cloth, or none with -1. */
   api.select = (r) => {
     const n = c ? c.rows.length : 0;
-    dimTo = Array.from({ length: n }, (_, i) => (r >= 0 && i !== r ? 0.5 : 0));
+    // Dimmed, the other rows' calls step back but stay readable (about 3:1).
+    const dimmed = P.shadow > 0.3 ? 0.4 : 0.3;
+    dimTo = Array.from({ length: n }, (_, i) => (r >= 0 && i !== r ? dimmed : 0));
     emphTo = Array.from({ length: n }, (_, i) => (i === r ? 1 : 0));
     let last = performance.now();
     const step = (now) => {

@@ -47,14 +47,20 @@
     transform-box: fill-box;
     transform-origin: left center;
   }
-  /* One weave per hover or focus: the two weft threads pass through again. */
-  .weft-title:hover .weft-title__reveal--1,
-  .weft-title:focus-visible .weft-title__reveal--1 {
-    animation: weft-title-weave 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* One weave per hover or focus. */
+  @media (hover: hover) {
+    .weft-title:hover .weft-title__reveal--1 {
+      animation: weft-title-weave var(--weft-duration-base) var(--weft-ease-out) both;
+    }
+    .weft-title:hover .weft-title__reveal--2 {
+      animation: weft-title-weave var(--weft-duration-base) calc(var(--weft-duration-base) * 0.3) var(--weft-ease-out) both;
+    }
   }
-  .weft-title:hover .weft-title__reveal--2,
+  .weft-title:focus-visible .weft-title__reveal--1 {
+    animation: weft-title-weave var(--weft-duration-base) var(--weft-ease-out) both;
+  }
   .weft-title:focus-visible .weft-title__reveal--2 {
-    animation: weft-title-weave 220ms 70ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: weft-title-weave var(--weft-duration-base) calc(var(--weft-duration-base) * 0.3) var(--weft-ease-out) both;
   }
   @keyframes weft-title-weave {
     from {

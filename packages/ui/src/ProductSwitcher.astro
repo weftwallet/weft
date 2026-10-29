@@ -49,14 +49,18 @@ const markOf = (id: ProductId) =>
 </details>
 
 <script>
-  // The menu closes on Escape and on a click outside it.
+  import { closesInReverse } from "./ui";
+
+  // The menu closes the way it opened, on its button, on Escape and on a
+  // click outside it.
   document.querySelectorAll<HTMLDetailsElement>("[data-weft-switcher]").forEach((switcher) => {
+    const close = closesInReverse(switcher);
     document.addEventListener("click", (e) => {
-      if (switcher.open && !switcher.contains(e.target as Node)) switcher.open = false;
+      if (switcher.open && !switcher.contains(e.target as Node)) close();
     });
     switcher.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && switcher.open) {
-        switcher.open = false;
+        close();
         switcher.querySelector("summary")?.focus();
       }
     });
@@ -81,12 +85,24 @@ const markOf = (id: ProductId) =>
     cursor: pointer;
     transition:
       border-color var(--weft-duration-fast) var(--weft-ease-out),
-      color var(--weft-duration-fast) var(--weft-ease-out);
+      color var(--weft-duration-fast) var(--weft-ease-out),
+      transform var(--weft-duration-instant) var(--weft-ease-out);
+  }
+  .weft-switcher summary:active {
+    transform: scale(var(--weft-press-scale));
   }
   .weft-switcher summary::-webkit-details-marker {
     display: none;
   }
-  .weft-switcher summary:hover,
+  @media (hover: hover) {
+    .weft-switcher summary:hover {
+      border-color: var(--weft-line-strong);
+      color: var(--weft-text);
+    }
+    .weft-switcher__menu a:hover {
+      background: var(--weft-bg-raised);
+    }
+  }
   .weft-switcher[open] summary {
     border-color: var(--weft-line-strong);
     color: var(--weft-text);
@@ -94,7 +110,7 @@ const markOf = (id: ProductId) =>
   .weft-switcher__chevron {
     transition: transform var(--weft-duration-base) var(--weft-ease-out);
   }
-  .weft-switcher[open] .weft-switcher__chevron {
+  .weft-switcher[open]:not(.is-closing) .weft-switcher__chevron {
     transform: rotate(180deg);
   }
   .weft-switcher__grid {
@@ -115,10 +131,20 @@ const markOf = (id: ProductId) =>
     box-shadow: var(--weft-shadow-3);
     animation: weft-switcher-arrive var(--weft-duration-base) var(--weft-ease-out) both;
   }
+  /* Closing is the reverse, in 70% of the time (ui.ts holds it open). */
+  .weft-switcher.is-closing .weft-switcher__menu {
+    animation: weft-switcher-leave calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
+  }
   @keyframes weft-switcher-arrive {
     from {
       opacity: 0;
-      transform: translateY(calc(var(--weft-shift-md) * -1));
+      transform: translateY(var(--weft-switcher-from, calc(var(--weft-shift-md) * -1)));
+    }
+  }
+  @keyframes weft-switcher-leave {
+    to {
+      opacity: 0;
+      transform: translateY(var(--weft-switcher-from, calc(var(--weft-shift-md) * -1)));
     }
   }
   .weft-switcher__menu li {
@@ -133,9 +159,6 @@ const markOf = (id: ProductId) =>
     color: var(--weft-text);
     text-decoration: none;
     transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
-  }
-  .weft-switcher__menu a:hover {
-    background: var(--weft-bg-raised);
   }
   .weft-switcher__menu a[aria-current="page"] {
     background: var(--weft-accent-soft);

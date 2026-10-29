@@ -3,7 +3,7 @@ title: Publish an org invite
 description: Give users one link that tells Weft where your CA and relay are, built from the connection profile you already have.
 ---
 
-An invite is a small JSON file served over HTTPS. Users open a link to it, Weft shows them what they're joining, and they enrol with the enrollment ID and secret your registrar gave them. Nobody types a URL.
+An invite is a small JSON file served over HTTPS. Users open a link to it, Weft shows them what they're joining, and they enrol with the enrolment ID and secret your registrar gave them. Nobody types a URL.
 
 ## Three ways to publish
 
@@ -62,11 +62,11 @@ Every invite has three equivalent links:
 
 | Link | Use it for |
 |---|---|
-| **Join link**: `https://weft.ifeanyiugwu.dev/join/?weft-invite=…` | Email, chat, your intranet. Opens a page that previews the invite and hands it to Weft in one click. |
-| **Weft link**: `weft://invite?u=…` | Pasting straight into Weft's *Join from an org invite*. |
-| **Invite URL**: `https://…/weft-invite.json` | Admin portals that call `weft.addNetwork(url)` from [the SDK](/dapps/quickstart/#onboard-users-from-your-portal). |
+| Join link: `https://weft.ifeanyiugwu.dev/join/?weft-invite=…` | Email, chat, your intranet. Opens a page that previews the invite and hands it to Weft in one click. |
+| Weft link: `weft://invite?u=…` | Pasting straight into Weft's *Join from an org invite*. |
+| Invite URL: `https://…/weft-invite.json` | Admin portals that call `weft.addNetwork(url)` from [the SDK](/dapps/quickstart/#onboard-users-from-your-portal). |
 
-**QR codes** encode the join link. On a desktop, users don't need a camera: in Weft's *Join from an org invite*, **Scan QR code on this tab** reads a code shown on screen (a slide, a PDF, a portal page), and pasting a screenshot of a code into the link field works too.
+QR codes encode the join link. On a desktop, users don't need a camera: in Weft's *Join from an org invite*, **Scan QR code on this tab** reads a code shown on screen (a slide, a PDF, a portal page), and pasting a screenshot of a code into the link field works too.
 
 ## The file
 
@@ -95,7 +95,7 @@ Every invite has three equivalent links:
 | `caName` | No | Needed when the CA server hosts several CAs. |
 | `relayUrl` | Yes | Base URL of your [relay](/operators/relay/). |
 | `channels` | Yes | Channels members of this org use. |
-| `enrollmentId` | No | Pre-fills the enrollment ID, for per-person invites. |
+| `enrollmentId` | No | Pre-fills the enrolment ID, for an invite to one person. |
 | `explorerUrl` | No | Base URL of your [explorer](/operators/explorer/). Weft links each transaction in its activity list to it. |
 
 Serve it with `content-type: application/json` over HTTPS, and allow cross-origin `GET` so the join page can preview it (the relay does both). Plain HTTP is accepted only on `localhost`.
@@ -110,6 +110,6 @@ It validates the invite and confirms the relay, CA and explorer (if the invite n
 
 ## Good practice
 
-- Never put secrets in an invite. Send enrollment secrets through a separate channel.
+- Never put secrets in an invite. Send enrolment secrets through a separate channel.
 - One invite per organisation, or per person when you pre-fill `enrollmentId`.
 - Keep the URLs stable. Moving the CA or relay means re-sharing links; the relay-served invite moves with the relay.

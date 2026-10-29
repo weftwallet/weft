@@ -52,12 +52,22 @@ const audiences = [
       <button type="button" class="hero__replay" id="hero-replay" aria-label="Weave the mark again"></button>
     </div>
     <div class="hero__text" data-arrive>
+      <script is:inline>
+        // Hidden before the first paint, so the words never show and then
+        // vanish: they arrive with the word (below). If the loom never
+        // starts, they come in anyway.
+        if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          const words = document.currentScript.parentElement;
+          words.dataset.arrive = "waiting";
+          setTimeout(() => words.dataset.arrive === "waiting" && (words.dataset.arrive = "here"), 8000);
+        }
+      </script>
       <p class="hero__tagline">An identity wallet for Hyperledger Fabric.</p>
       <p class="hero__sub">Weft holds the certificate your organisation's CA issued you, and signs only what you approve, after showing you exactly what it does.</p>
       <div class="actions">
-        <a class="action action--primary" href={docs("/start/install/")}>Install Weft</a>
-        <a class="action" href={productHref("playground")}>Try the playground</a>
-        <a class="action" href={docs("/start/what-is-weft/")}>How it works</a>
+        <a class="btn btn--primary" href={docs("/start/install/")}>Install Weft</a>
+        <a class="btn" href={productHref("playground")}>Try the playground</a>
+        <a class="btn" href={docs("/start/what-is-weft/")}>How it works</a>
       </div>
     </div>
   </section>
@@ -141,10 +151,8 @@ const audiences = [
     if (!still) busy();
 
     // The hero's words arrive as the word sets itself again beside the mark.
-    if (!still) {
-      text.dataset.arrive = "waiting";
-      setTimeout(() => (text.dataset.arrive = "here"), hero.T.wordAgain + 200);
-    }
+    // The early script in the markup has already hidden them.
+    if (!still) setTimeout(() => (text.dataset.arrive = "here"), hero.T.wordAgain + 200);
 
     // The mark is a button, the mark's own size, laid over it: click, tap
     // or Enter weaves it again from the word, which stays faintly in place.
@@ -199,24 +207,47 @@ const audiences = [
     ledger.addEventListener("pointerleave", () => b.select(pinned));
     new ResizeObserver(() => done && requestAnimationFrame(build)).observe(clothCanvas);
 
-    // Woven once, when the whole loom is on screen with room beneath it: its
-    // bottom rows are woven first, so they must be in view.
+    // Woven once, when the bottom of the loom is in view: its bottom rows
+    // are woven first. On a screen too short for the whole loom, the bottom
+    // coming into view is enough. If it's on screen for a while without
+    // that, or scrolled past, it's shown finished, so it's never blank.
     if (still) build();
     else {
-      const seen = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((e) => e.isIntersecting && e.intersectionRatio > 0.98)) {
-            seen.disconnect();
-            b.play();
-            setTimeout(() => {
-              done = true;
-              build();
-            }, cloth.T.total);
-          }
-        },
-        { rootMargin: "0px 0px -120px 0px", threshold: [0.98, 1] },
-      );
+      let started = false;
+      let lingering = 0;
+      const header = () => document.querySelector(".shell-head")?.getBoundingClientRect().bottom ?? 0;
+      const begin = (finished: boolean) => {
+        if (started) return;
+        started = true;
+        seen.disconnect();
+        removeEventListener("scroll", look);
+        clearTimeout(lingering);
+        if (finished) {
+          b.show(cloth.T.total);
+          done = true;
+          build();
+          return;
+        }
+        b.play();
+        setTimeout(() => {
+          done = true;
+          build();
+        }, cloth.T.total);
+      };
+      function look() {
+        const r = clothCanvas.getBoundingClientRect();
+        const visible = r.top < innerHeight && r.bottom > header();
+        if (visible && r.bottom <= innerHeight + 24) begin(false);
+        else if (r.bottom <= header()) begin(true);
+        else if (visible && !lingering) lingering = window.setTimeout(() => begin(true), 2500);
+        else if (!visible) {
+          clearTimeout(lingering);
+          lingering = 0;
+        }
+      }
+      const seen = new IntersectionObserver(look, { threshold: [0, 0.25, 0.5, 0.75, 1] });
       seen.observe(clothCanvas);
+      addEventListener("scroll", look, { passive: true });
     }
     return b;
   }
@@ -235,15 +266,6 @@ const audiences = [
 </script>
 
 <style>
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
   /* Hero: the loom, then the words beneath it. */
   .hero {
     display: flex;
@@ -337,10 +359,11 @@ const audiences = [
       opacity var(--weft-duration-slow) var(--weft-ease-out),
       transform var(--weft-duration-slow) var(--weft-ease-out);
   }
-  .hero__text[data-arrive="here"] > :nth-child(2) {
+  /* The first child is the early script; the words follow it. */
+  .hero__text[data-arrive="here"] > :nth-child(3) {
     transition-delay: var(--weft-stagger);
   }
-  .hero__text[data-arrive="here"] > :nth-child(3) {
+  .hero__text[data-arrive="here"] > :nth-child(4) {
     transition-delay: calc(var(--weft-stagger) * 2);
   }
   .hero__tagline {
@@ -363,38 +386,6 @@ const audiences = [
     justify-content: center;
     gap: var(--weft-space-3);
     padding-top: var(--weft-space-2);
-  }
-  .action {
-    display: inline-flex;
-    align-items: center;
-    height: 44px;
-    padding: 0 var(--weft-space-5);
-    border-radius: var(--weft-radius-lg);
-    border: 1px solid var(--weft-line-strong);
-    color: var(--weft-text);
-    font-size: var(--weft-type-md);
-    font-weight: 500;
-    text-decoration: none;
-    transition:
-      border-color var(--weft-duration-fast) var(--weft-ease-out),
-      background-color var(--weft-duration-fast) var(--weft-ease-out),
-      transform var(--weft-duration-instant) var(--weft-ease-out);
-  }
-  .action:hover {
-    border-color: var(--weft-text-subtle);
-  }
-  .action:active {
-    transform: scale(var(--weft-press-scale));
-  }
-  .action--primary {
-    background: var(--weft-accent);
-    border-color: transparent;
-    color: var(--weft-on-accent);
-    font-weight: 600;
-  }
-  .action--primary:hover {
-    background: var(--weft-accent-hover);
-    border-color: transparent;
   }
 
   /* Sections after the hero */

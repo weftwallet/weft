@@ -32,13 +32,13 @@ Weft's home screen shows your identity on the network and its certificate health
  └──────────────────────┘         └───────────────────────────┘
 ```
 
-1. **The extension** holds your identities and signs. It shows every request before signing.
-2. **The relay** runs inside your organisation, next to its peers. Browsers can't speak Fabric's gRPC protocol, so the relay builds the unsigned messages, the extension signs them, and the relay forwards the signed bytes. The relay never sees your private key. The reasoning is in [Architecture decisions](/reference/decisions/).
-3. **The org invite** is a link your network administrator shares. It tells Weft where your CA and relay are, so you never type a URL.
+1. The extension holds your identities and signs. It shows every request before signing.
+2. The relay runs inside your organisation, next to its peers. Browsers can't speak Fabric's gRPC protocol, so the relay builds the unsigned messages, the extension signs them, and the relay forwards the signed bytes. The relay never sees your private key. The reasoning is in [Architecture decisions](/reference/decisions/).
+3. The org invite is a link your network administrator shares. It tells Weft where your CA and relay are, so you never type a URL.
 
 ## What you'll need
 
 - Chrome, Edge, Brave or another Chromium browser.
-- From your network administrator: an **invite link**, plus an **enrollment ID and secret**. If they don't use invites yet, the CA URL, relay URL, MSP ID and channel names do the same job.
+- From your network administrator: an **invite link**, plus an **enrolment ID and secret**. If they don't use invites yet, the CA URL, relay URL, MSP ID and channel names do the same job.
 
 Next: [install Weft and add your first identity](/start/install/).

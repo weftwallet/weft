@@ -10,27 +10,32 @@
 ---
 
 <div class="nw">
-  <form class="nw-card nw-source" id="nw-form">
-    <label class="nw-label" for="nw-input">An explorer, or your organisation's invite</label>
-    <div class="nw-row">
-      <input id="nw-input" type="url" placeholder="https://explorer.org1.example.com" spellcheck="false" />
-      <button type="submit">Load</button>
-    </div>
-    <p class="nw-hint" id="nw-status" aria-live="polite">
+  <div class="nw-card nw-source">
+    <form class="field" id="nw-form" novalidate>
+      <label for="nw-input">An explorer, or your organisation's invite</label>
+      <div class="nw-row" id="nw-row">
+        <input id="nw-input" class="input" type="url" placeholder="https://explorer.org1.example.com" spellcheck="false" aria-describedby="nw-status" />
+        <button type="submit" class="btn btn--primary" id="nw-load">Load</button>
+      </div>
+    </form>
+    <p class="nw-hint" id="nw-status">
       Give one explorer: the page finds the others through it. Or open this page with <code>?explorer=&lt;url&gt;</code>.
     </p>
+    <div class="action-error" id="nw-error" role="alert" hidden></div>
     <div class="nw-signin" id="nw-signin" hidden>
       <p class="nw-hint" id="nw-signin-text">Members of the network can sign in with Weft to include members-only channels.</p>
-      <button type="button" class="nw-secondary" id="nw-signin-button">Sign in with Weft</button>
+      <button type="button" class="btn" id="nw-signin-button">Sign in with Weft</button>
+      <div class="action-error" id="nw-signin-error" role="alert" hidden></div>
     </div>
-  </form>
+  </div>
 
   <div id="nw-channels" class="nw-channels"></div>
+  <div id="nw-notes" class="nw-notes"></div>
 </div>
 
 <script>
   import type { BlockHeader, MemberCas, SignedCheckpoint } from "@weftwallet/core/chain";
-
+  import { announce, clearError, closesInReverse, conceal, fetchProblem, grouped, isBusy, isWebUrl, reveal, setBusy, setFieldError, showError, technical, watchFields } from "@weftwallet/ui/ui";
 
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
   const MAX_EXPLORERS = 24;
@@ -48,13 +53,22 @@
     node.append(...children);
     return node;
   };
+  /** Sets an element's text only when it changed, so nothing is disturbed for nothing. */
+  const text = (node: Element, value: string) => {
+    if (node.textContent !== value) node.textContent = value;
+  };
   const trim = (url: string) => url.replace(/\/+$/, "");
+  const count = (n: number) => (n === 2 ? "Both" : `All ${n}`);
 
   let starts: string[] = [];
   let explorers: Explorer[] = [];
-  let timer: ReturnType<typeof setInterval> | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  /** Which load is current: an older one that finishes late is dropped. */
+  let generation = 0;
   /** One "compare a block" panel per channel, kept across refreshes so its results stay. */
   const compares = new Map<string, HTMLElement>();
+  /** What the page last said about each channel, to announce only changes. */
+  const said = new Map<string, string>();
   const membersOf = (channel: string) => explorers.filter((e) => e.status?.channels.some((c) => c.channel === channel));
 
   /** Bearer tokens from explorers that accepted the sign-in, by base URL. */
@@ -75,12 +89,11 @@
     return response.json();
   }
 
-  /** "working" shows the network's loader before the words. */
-  function setStatus(text: string, tone: "info" | "err" | "working" = "info") {
+  /** The hint under the address: what the page found. Not a live region; announce() says what changed. */
+  function setStatus(value: string, working = false) {
     const p = $("nw-status");
-    p.textContent = text;
-    p.dataset.tone = tone === "working" ? "info" : tone;
-    p.classList.toggle("is-working", tone === "working");
+    p.textContent = value;
+    p.classList.toggle("is-working", working);
   }
 
   /** Reads one explorer: its status, and for each channel who it compares with. */
@@ -95,7 +108,7 @@
       );
       return { base, status, peers };
     } catch (error) {
-      return { base, status: null, peers: {}, error: error instanceof Error ? error.message : String(error) };
+      return { base, status: null, peers: {}, error: error instanceof Error ? `${error.name === "TimeoutError" ? "Timed out" : error.message}` : String(error) };
     }
   }
 
@@ -130,7 +143,7 @@
   }
 
   /** One line for the whole channel, from what every explorer reports about the others. */
-  function verdict(channel: string, members: Explorer[]): { tone: "ok" | "bad" | "quiet"; text: string } {
+  function verdict(channel: string, members: Explorer[]): { tone: "ok" | "bad" | "quiet" | "one"; text: string } {
     const reports = members.flatMap((e) => (e.peers[channel] ?? []).map((p) => ({ from: e, peer: p })));
     const bad = reports.filter((r) => r.peer.state === "mismatch");
     if (bad.length) {
@@ -138,12 +151,12 @@
       const who = [...new Set(bad.map((r) => `${nameOf(r.from)} and ${r.peer.mspId ?? new URL(r.peer.url).host}`))].join("; ");
       return { tone: "bad", text: `Ledgers differ from block ${first}: ${who}.` };
     }
-    if (members.length < 2) return { tone: "quiet", text: "Only one organisation publishes this channel, so there's nothing to compare yet." };
+    if (members.length < 2) return { tone: "one", text: "Only one organisation publishes this channel, so there's nothing to compare yet." };
     const agreed = reports.map((r) => (r.peer.state === "agree" ? r.peer.agreedUpTo : null));
     if (!agreed.length || agreed.some((a) => a === null)) {
       return { tone: "quiet", text: `${members.length} organisations publish this channel. They're still comparing.` };
     }
-    return { tone: "ok", text: `All ${members.length} organisations agree on every block up to ${Math.min(...(agreed as number[]))}.` };
+    return { tone: "ok", text: `${count(members.length)} organisations agree on every block up to ${Math.min(...(agreed as number[]))}.` };
   }
 
   function agreementText(e: Explorer, channel: string): string {
@@ -161,81 +174,148 @@
       .join(" · ");
   }
 
-  function render() {
-    const ok = explorers.filter((e) => e.status).length;
-    setStatus(`${ok} ${ok === 1 ? "explorer" : "explorers"} found${explorers.length > ok ? `, ${explorers.length - ok} unreachable` : ""}. Updates every ${REFRESH_MS / 1000} seconds.`);
-    const root = $("nw-channels");
-    const reachable = explorers.filter((e) => e.status);
-    const channels = [...new Set(reachable.flatMap((e) => e.status!.channels.map((c) => c.channel)))].sort();
-    const unreachable = explorers.filter((e) => !e.status);
+  const PILL = { ok: "Agree", bad: "Differ", quiet: "Comparing", one: "One organisation" } as const;
 
-    const cards = channels.map((channel) => {
+  /** A channel's card, made once; render() updates it in place. */
+  function channelCard(channel: string): HTMLElement {
+    const root = $("nw-channels");
+    let card = root.querySelector<HTMLElement>(`:scope > section[data-channel="${CSS.escape(channel)}"]`);
+    if (card) return card;
+    const h2 = el("h2", { className: "mono" }, channel);
+    const table = el(
+      "div",
+      { className: "nw-table" },
+      el(
+        "table",
+        {},
+        el(
+          "thead",
+          {},
+          el(
+            "tr",
+            {},
+            el("th", { scope: "col", textContent: "Organisation" }),
+            el("th", { scope: "col", className: "nw-num", textContent: "Blocks" }),
+            el("th", { scope: "col", textContent: "Publishes" }),
+            el("th", { scope: "col", textContent: "Compares with" }),
+          ),
+        ),
+        el("tbody"),
+      ),
+    );
+    card = el("section", { className: "nw-card arrive" }, el("div", { className: "nw-head" }, h2, el("span", { className: "nw-pill" })), el("p", { className: "nw-verdict" }), table);
+    card.dataset.channel = channel;
+    card.setAttribute("aria-label", `Channel ${channel}`);
+    if (!compares.has(channel)) compares.set(channel, compareBlock(channel));
+    card.append(compares.get(channel)!);
+    // In order, without moving the cards already there (moving one would take focus off it).
+    const after = [...root.querySelectorAll<HTMLElement>(":scope > section[data-channel]")].find((c) => c.dataset.channel!.localeCompare(channel) > 0);
+    root.insertBefore(card, after ?? null);
+    return card;
+  }
+
+  /** An organisation's row in a channel's table, made once and updated in place. */
+  function orgRow(tbody: HTMLElement, base: string): HTMLTableRowElement {
+    let tr = tbody.querySelector<HTMLTableRowElement>(`:scope > tr[data-base="${CSS.escape(base)}"]`);
+    if (tr) return tr;
+    tr = el(
+      "tr",
+      { className: "arrive" },
+      el("td", {}, el("a", { target: "_blank", rel: "noreferrer" }), el("div", { className: "nw-sub mono" })),
+      el("td", { className: "mono nw-num" }),
+      el("td"),
+      el("td", { className: "nw-sub" }),
+    );
+    tr.dataset.base = base;
+    tbody.append(tr);
+    return tr;
+  }
+
+  /** Brings the page up to date in place, so focus, an open check and its results survive. */
+  function render() {
+    const reachable = explorers.filter((e) => e.status);
+    const unreachable = explorers.filter((e) => !e.status);
+    const updated = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setStatus(
+      `${reachable.length} ${reachable.length === 1 ? "explorer" : "explorers"} found${unreachable.length ? `, ${unreachable.length} unreachable` : ""}. Updated at ${updated}, and every ${REFRESH_MS / 1000} seconds.`,
+    );
+    const channels = [...new Set(reachable.flatMap((e) => e.status!.channels.map((c) => c.channel)))].sort();
+    const changes: string[] = [];
+
+    // Channels no longer published (after signing out, say) leave the way they came.
+    $("nw-channels")
+      .querySelectorAll<HTMLElement>(":scope > section[data-channel]")
+      .forEach((card) => {
+        if (channels.includes(card.dataset.channel!)) return;
+        said.delete(card.dataset.channel!);
+        conceal(card);
+        setTimeout(() => card.hidden && card.remove(), 500);
+      });
+
+    for (const channel of channels) {
       const members = reachable.filter((e) => e.status!.channels.some((c) => c.channel === channel));
       const v = verdict(channel, members);
-      const rows = members.map((e) => {
+      const card = channelCard(channel);
+      if (card.hidden || card.classList.contains("is-leaving")) reveal(card);
+      const h2 = card.querySelector("h2")!;
+      const membersOnly = members.some((e) => e.status!.channels.find((x) => x.channel === channel)?.level === "members");
+      const tag = h2.querySelector(".nw-tag");
+      if (membersOnly && !tag) h2.append(el("span", { className: "nw-tag", textContent: "members only" }));
+      if (!membersOnly && tag) tag.remove();
+      const pill = card.querySelector<HTMLElement>(".nw-pill")!;
+      pill.className = `nw-pill nw-pill--${v.tone}`;
+      text(pill, PILL[v.tone]);
+      const verdictP = card.querySelector<HTMLElement>(".nw-verdict")!;
+      verdictP.className = `nw-verdict nw-verdict--${v.tone}`;
+      text(verdictP, v.text);
+      // Heard only when the verdict itself changes, not when a block number inside it moves on.
+      const gist = `${v.tone}:${v.text.replace(/\d+/g, "#")}`;
+      if (said.has(channel) && said.get(channel) !== gist) changes.push(`${channel}: ${v.text}`);
+      said.set(channel, gist);
+
+      const tbody = card.querySelector("tbody")!;
+      const bases = members.map((e) => e.base);
+      tbody.querySelectorAll<HTMLElement>(":scope > tr[data-base]").forEach((tr) => !bases.includes(tr.dataset.base!) && tr.remove());
+      for (const e of members) {
         const c = e.status!.channels.find((x) => x.channel === channel)!;
-        const link = el("a", { href: `${e.base}/channels/${encodeURIComponent(channel)}`, target: "_blank", rel: "noreferrer", textContent: nameOf(e) });
-        return el(
-          "tr",
-          {},
-          el("td", {}, link, el("div", { className: "nw-sub mono", textContent: mspOf(e) ?? "" })),
-          el("td", { className: "mono nw-num", textContent: String(c.height) }),
-          el("td", { textContent: describe(c) }),
-          el("td", { className: "nw-sub", textContent: agreementText(e, channel) }),
-        );
-      });
-      const table = el(
-        "div",
-        { className: "nw-table" },
-        el(
-          "table",
-          {},
-          el("thead", {}, el("tr", {}, ...["Organisation", "Blocks", "Publishes", "Compares with"].map((h) => el("th", { textContent: h })))),
-          el("tbody", {}, ...rows),
-        ),
+        const tr = orgRow(tbody, e.base);
+        const [who, blocks, publishes, compares] = tr.querySelectorAll("td");
+        const link = who!.querySelector("a")!;
+        const href = `${e.base}/channels/${encodeURIComponent(channel)}`;
+        if (link.getAttribute("href") !== href) link.href = href;
+        text(link, nameOf(e));
+        text(who!.querySelector("div")!, mspOf(e) ?? "");
+        // A new block since you looked: the row gets the accent rule for four seconds.
+        const before = Number(blocks!.dataset.height ?? c.height);
+        blocks!.dataset.height = String(c.height);
+        text(blocks!, String(c.height));
+        if (c.height > before) {
+          tr.classList.remove("is-new");
+          void tr.offsetWidth;
+          tr.classList.add("is-new");
+        }
+        text(publishes!, describe(c));
+        text(compares!, agreementText(e, channel));
+      }
+    }
+
+    // Notes under the channels: what couldn't be reached, or why there's nothing.
+    const notes: string[] = [];
+    if (unreachable.length) {
+      notes.push(
+        `Couldn't reach ${unreachable.map((e) => `${new URL(e.base).host} (${e.error})`).join(", ")}. ${unreachable.length === 1 ? "It may be down, or not allow" : "They may be down, or not allow"} other sites to read the API.`,
       );
-
-      const latest = Math.max(0, Math.min(...members.map((e) => e.status!.channels.find((x) => x.channel === channel)!.height)) - 1);
-      if (!compares.has(channel)) compares.set(channel, compareBlock(channel, latest));
-      const compare = compares.get(channel)!;
-
-      const pill = el("span", { className: `nw-pill nw-pill--${v.tone}`, textContent: v.tone === "ok" ? "Agree" : v.tone === "bad" ? "Differ" : "Comparing" });
-      return el(
-        "section",
-        { className: "nw-card" },
-        el(
-          "div",
-          { className: "nw-head" },
-          el(
-            "h2",
-            { className: "mono" },
-            channel,
-            ...(members.some((e) => e.status!.channels.find((x) => x.channel === channel)?.level === "members")
-              ? [el("span", { className: "nw-tag", textContent: "members only" })]
-              : []),
-          ),
-          pill,
-        ),
-        el("p", { className: `nw-verdict nw-verdict--${v.tone}`, textContent: v.text }),
-        table,
-        compare,
-      );
-    });
-
-    const missing = unreachable.length
-      ? [
-          el(
-            "p",
-            { className: "nw-hint" },
-            `Couldn't reach ${unreachable.map((e) => `${new URL(e.base).host} (${e.error})`).join(", ")}. It may be down, or not allow other sites to read its API.`,
-          ),
-        ]
-      : [];
-    const none =
-      cards.length === 0 && ok > 0
-        ? [el("p", { className: "nw-hint", textContent: signedIn ? "None of these explorers publishes a channel you can see." : "These explorers publish no public channels. Members can sign in to see the members-only ones." })]
-        : [];
-    root.replaceChildren(...cards, ...none, ...missing);
+    }
+    if (channels.length === 0 && reachable.length > 0) {
+      notes.push(signedIn ? "None of these explorers publishes a channel you can see." : "These explorers publish no public channels. Members can sign in to see the members-only ones.");
+    }
+    const box = $("nw-notes");
+    const key = notes.join("\n");
+    if (box.dataset.key !== key) {
+      box.dataset.key = key;
+      box.replaceChildren(...notes.map((n) => el("p", { className: "nw-hint", textContent: n })));
+    }
+    if (changes.length) announce(changes.join(" "));
   }
 
   /** Most blocks the page walks back from a checkpoint before giving up. */
@@ -277,43 +357,65 @@
     } catch {
       return { e, ok: false, text: "Doesn't publish a signed checkpoint for this channel." };
     }
-    // The checking code, certificate parsing included, loads only when a check runs.
-    const { checkHeaders, verifyCheckpoint } = await import("@weftwallet/core/chain");
-    const verified = await verifyCheckpoint(signed, members);
-    if (!verified.ok) return { e, ok: false, text: `Its checkpoint doesn't check out: ${verified.reason}` };
-    const cp = verified.checkpoint;
-    if (n > cp.number) return { e, ok: false, pending: true, text: `Hasn't signed up to block ${n} yet; its checkpoint is at block ${cp.number}.` };
-    if (cp.number - n > MAX_WALK) return { e, ok: false, pending: true, text: `Block ${n} is more than ${MAX_WALK.toLocaleString()} blocks before its checkpoint, too far to walk here.` };
-    const headers: BlockHeader[] = [];
-    for (let from = n; from <= cp.number; from += 1000) {
-      const page: BlockHeader[] = await getJson(`${api}/headers?from=${from}&to=${Math.min(from + 999, cp.number)}`).catch(() => []);
-      if (!page.length) break;
-      headers.push(...page);
+    try {
+      // The checking code, certificate parsing included, loads only when a check runs.
+      const { checkHeaders, verifyCheckpoint } = await import("@weftwallet/core/chain");
+      const verified = await verifyCheckpoint(signed, members);
+      if (!verified.ok) return { e, ok: false, text: `Its checkpoint doesn't check out: ${verified.reason}` };
+      const cp = verified.checkpoint;
+      if (n > cp.number) return { e, ok: false, pending: true, text: `Hasn't signed up to block ${n} yet; its checkpoint is at block ${cp.number}.` };
+      if (cp.number - n > MAX_WALK) return { e, ok: false, pending: true, text: `Block ${n} is more than ${MAX_WALK.toLocaleString("en-GB")} blocks before its checkpoint, too far to walk here.` };
+      const headers: BlockHeader[] = [];
+      for (let from = n; from <= cp.number; from += 1000) {
+        const page: BlockHeader[] = await getJson(`${api}/headers?from=${from}&to=${Math.min(from + 999, cp.number)}`).catch(() => []);
+        if (!page.length) break;
+        headers.push(...page);
+      }
+      const chain = await checkHeaders(headers);
+      if (!chain.ok) return { e, ok: false, text: chain.reason };
+      if (chain.from !== n || chain.to !== cp.number) return { e, ok: false, text: `Didn't serve every header from ${n} to ${cp.number}.` };
+      if (headers[headers.length - 1]!.hash !== cp.hash) return { e, ok: false, text: `Its headers don't end at the hash its checkpoint signs.` };
+      const hash = headers[0]!.hash;
+      const steps = cp.number - n;
+      return {
+        e,
+        hash,
+        ok: true,
+        text: `${cp.mspId} signed block ${cp.number}${steps ? `, and ${steps} ${steps === 1 ? "link leads" : "links lead"} back to this block` : ""}. Signature and certificate check out.`,
+      };
+    } catch (error) {
+      return { e, ok: false, text: `The check stopped with an error: ${error instanceof Error ? error.message : String(error)}` };
     }
-    const chain = await checkHeaders(headers);
-    if (!chain.ok) return { e, ok: false, text: chain.reason };
-    if (chain.from !== n || chain.to !== cp.number) return { e, ok: false, text: `Didn't serve every header from ${n} to ${cp.number}.` };
-    if (headers[headers.length - 1]!.hash !== cp.hash) return { e, ok: false, text: `Its headers don't end at the hash its checkpoint signs.` };
-    const hash = headers[0]!.hash;
-    const steps = cp.number - n;
-    return {
-      e,
-      hash,
-      ok: true,
-      text: `${cp.mspId} signed block ${cp.number}${steps ? `, and ${steps} ${steps === 1 ? "link leads" : "links lead"} back to this block` : ""}. Signature and certificate check out.`,
-    };
   }
 
+  let compareCount = 0;
+
   /** Checks one block in every explorer, in this browser. */
-  function compareBlock(channel: string, latest: number) {
-    const input = el("input", { type: "number", min: "0", value: String(latest), className: "mono" });
-    input.setAttribute("aria-label", "Block number");
+  function compareBlock(channel: string) {
+    const id = `nw-block-${++compareCount}`;
+    const latest = () => Math.max(0, Math.min(...membersOf(channel).map((e) => e.status!.channels.find((x) => x.channel === channel)!.height)) - 1);
+    const input = el("input", { type: "number", min: "0", value: String(latest()), className: "input mono", id });
+    const label = el("label", { htmlFor: id, textContent: "Block number" });
     const out = el("ul", { className: "nw-hashes" });
-    const button = el("button", { type: "button", textContent: "Check" });
+    const failed = el("div", { className: "action-error", hidden: true });
+    failed.setAttribute("role", "alert");
+    const button = el("button", { type: "submit", className: "btn btn--primary", textContent: "Check" });
+    const row = el("div", { className: "nw-row" }, input, button);
+    const form = el("form", { className: "field nw-check" }, label, row);
+    form.noValidate = true;
+    const blockError = () => {
+      const value = input.value.trim();
+      const top = latest();
+      if (!/^\d+$/.test(value)) return "Enter a block number: a whole number, 0 or more.";
+      return Number(value) > top ? `The newest block every organisation has is ${top}. Enter ${top} or less.` : null;
+    };
+    const check = watchFields([{ field: input, after: row, check: blockError }]);
     const run = async () => {
-      const n = Math.max(0, Math.floor(Number(input.value)));
+      if (isBusy(button) || !check.checkAll()) return;
+      const n = Number(input.value);
       const explorersHere = membersOf(channel);
-      button.disabled = true;
+      setBusy(button, true);
+      clearError(failed);
       out.replaceChildren(el("li", { className: "nw-hint is-working", textContent: `Checking block ${n} in ${explorersHere.length} explorers…` }));
       try {
         const { members, differing } = await channelMembers(channel, explorersHere);
@@ -322,7 +424,7 @@
         const agreed = checks.filter((c) => c.ok);
         const summary =
           agreed.length === checks.length && hashes.size === 1
-            ? `All ${checks.length} organisations signed a ledger with the same block ${n}. Checked in this browser.`
+            ? `${count(checks.length)} organisations signed a ledger with the same block ${n}. Checked in this browser.`
             : hashes.size > 1
               ? `The organisations' signed ledgers have different blocks at ${n}.`
               : `${agreed.length} of ${checks.length} organisations' ledgers could be checked for block ${n}.`;
@@ -332,12 +434,13 @@
             const tone = c.pending ? "quiet" : !c.ok ? "bad" : hashes.size > 1 && c.hash !== majority ? "bad" : "ok";
             return el(
               "li",
-              { className: `nw-hash nw-hash--${tone}` },
+              { className: `nw-hash nw-hash--${tone} arrive` },
               el("span", { className: "nw-hash-who", textContent: nameOf(c.e) }),
               el(
                 "span",
                 {},
-                ...(c.hash ? [el("span", { className: "mono", textContent: c.hash })] : []),
+                // In full, grouped in fours, so the hashes can be compared block by block.
+                ...(c.hash ? [el("span", { className: "mono nw-hash-value", textContent: grouped(c.hash) })] : []),
                 el("span", { className: "nw-sub nw-hash-why", textContent: c.text }),
               ),
             );
@@ -347,26 +450,43 @@
             ? [el("li", { className: "nw-hint", textContent: `${differing.join(", ")} reported a different channel configuration; the page used the one most explorers report.` })]
             : []),
         );
+        announce(summary);
+      } catch (error) {
+        out.replaceChildren();
+        showError(failed, `The check didn't finish. Check again, or try another block.`, technical(error));
       } finally {
-        button.disabled = false;
+        setBusy(button, false);
       }
     };
-    button.addEventListener("click", () => void run());
-    input.addEventListener("keydown", (e) => e.key === "Enter" && (e.preventDefault(), void run()));
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      void run();
+    });
     const details = el(
       "details",
-      {},
+      { className: "disclosure nw-compare" },
       el("summary", { textContent: "Check a block in your browser" }),
       el(
-        "p",
-        { className: "nw-hint" },
-        "For each organisation, the page checks its signed checkpoint against the CAs in the channel configuration, then recomputes every block hash from there back to this block. It doesn't rely on what the explorers say about each other. It can't check a block's transactions, which need the block's raw data; that rests on each explorer's own data hash check.",
+        "div",
+        { className: "nw-compare__body" },
+        el(
+          "p",
+          { className: "nw-hint" },
+          "For each organisation, the page checks its signed checkpoint against the CAs in the channel configuration, then recomputes every block hash from there back to this block. It doesn't rely on what the explorers say about each other. It can't check a block's transactions, which need the block's raw data; that rests on each explorer's own data hash check.",
+        ),
+        form,
+        failed,
+        out,
       ),
-      el("div", { className: "nw-row" }, input, button),
-      out,
     );
-    details.addEventListener("toggle", () => details.open && !out.childElementCount && void run());
-    return el("div", {}, details);
+    closesInReverse(details);
+    details.addEventListener("toggle", () => {
+      if (!details.open || out.childElementCount) return;
+      input.value = String(latest());
+      setFieldError(input, null);
+      void run();
+    });
+    return details;
   }
 
   /** Hands the sign-in to every explorer found that hasn't had it yet. Returns whether any new one accepted. */
@@ -388,7 +508,7 @@
           if (signedIn && !signedIn.name && body.name) signedIn.name = body.name;
           return true;
         } catch (error) {
-          refused.set(e.base, error instanceof Error ? error.message : String(error));
+          refused.set(e.base, error instanceof Error ? (error.name === "TimeoutError" ? "didn't answer in time" : error.message) : String(error));
           return false;
         }
       }),
@@ -403,25 +523,40 @@
     if (await signInEverywhere()) explorers = await discover(starts);
   }
 
+  /** Refreshes on a timer, one refresh at a time. */
+  function schedule() {
+    if (timer) clearTimeout(timer);
+    const mine = generation;
+    timer = setTimeout(async () => {
+      await refresh();
+      if (mine !== generation) return;
+      render();
+      schedule();
+    }, REFRESH_MS);
+  }
+
   function showSignIn() {
     const box = $("nw-signin");
     box.hidden = explorers.length === 0;
     const button = $<HTMLButtonElement>("nw-signin-button");
-    button.classList.remove("is-working");
-    const text = $("nw-signin-text");
+    if (isBusy(button)) return;
+    const textP = $("nw-signin-text");
     if (!signedIn) {
-      text.textContent = (window as any).weft?.isWeft
-        ? "Members of the network can sign in with Weft to include members-only channels."
-        : "Members of the network can sign in with Weft to include members-only channels. Install Weft to sign in.";
-      button.textContent = "Sign in with Weft";
+      text(
+        textP,
+        (window as any).weft?.isWeft
+          ? "Members of the network can sign in with Weft to include members-only channels."
+          : "Members of the network can sign in with Weft to include members-only channels. Install Weft in this browser to sign in.",
+      );
+      text(button, "Sign in with Weft");
       button.disabled = !(window as any).weft?.isWeft;
       return;
     }
     const who = `${signedIn.name ?? "you"} (${signedIn.mspId})`;
     const accepted = explorers.filter((e) => tokens.has(e.base)).map(nameOf);
-    const no = [...refused].map(([base, why]) => `${explorers.find((e) => e.base === base) ? nameOf(explorers.find((e) => e.base === base)!) : new URL(base).host}: ${why}`);
-    text.textContent = `Signed in as ${who}${accepted.length ? ` at ${accepted.join(", ")}` : ""}.${no.length ? ` Not accepted by ${no.join("; ")}` : ""}`;
-    button.textContent = "Sign out";
+    const no = [...refused].map(([base, why]) => `${explorers.find((e) => e.base === base) ? nameOf(explorers.find((e) => e.base === base)!) : new URL(base).host} (${why})`);
+    text(textP, `Signed in as ${who}${accepted.length ? ` at ${accepted.join(", ")}` : ""}.${no.length ? ` Not accepted by ${no.join("; ")}.` : ""}`);
+    text(button, "Sign out");
     button.disabled = false;
   }
 
@@ -429,22 +564,37 @@
     return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
 
+  /** What a wallet error means, for the sign-in. */
+  function signInProblem(error: any): string {
+    if (error?.code === 4001) return "You declined in Weft, so you're not signed in. Sign in again when you're ready.";
+    if (error?.code === 4300) return "Weft has no identity yet. Join your organisation's network in Weft first.";
+    if (error?.code === 4301) return "Your certificate has expired. Renew it in Weft, then sign in again.";
+    if (error?.code === -32002) return "Weft already has a request from this page waiting. Finish it in the Weft window first.";
+    return "Sign-in didn't complete. Try again.";
+  }
+
   $("nw-signin-button").addEventListener("click", async () => {
     const button = $<HTMLButtonElement>("nw-signin-button");
+    if (isBusy(button)) return;
+    clearError($("nw-signin-error"));
+    setBusy(button, true);
     if (signedIn) {
       signedIn = null;
       tokens.clear();
       refused.clear();
-      compares.clear();
-      await refresh();
-      render();
-      showSignIn();
+      generation++;
+      try {
+        await refresh();
+        render();
+        announce("Signed out. Members-only channels are no longer shown.");
+      } finally {
+        setBusy(button, false);
+        showSignIn();
+        schedule();
+      }
       return;
     }
     const weft = (window as any).weft;
-    button.disabled = true;
-    button.textContent = "Waiting for Weft…";
-    button.classList.add("is-working");
     try {
       await weft.request({ method: "weft_connect" });
       const signed = await weft.request({
@@ -452,59 +602,93 @@
         params: { nonce: randomNonce(), statement: "Sign in to this network's explorers, for the members-only channels." },
       });
       signedIn = { message: signed.message, signature: signed.signature, certificate: signed.certificate, mspId: signed.mspId, name: null };
+      generation++;
       await signInEverywhere();
-      compares.clear();
       await refresh();
       render();
+      announce(`Signed in as ${signedIn.name ?? signedIn.mspId}.`);
+      schedule();
     } catch (error: any) {
-      setStatus(error?.message ? `Sign-in didn't complete: ${error.message}` : "Sign-in didn't complete.", "err");
+      showError($("nw-signin-error"), signInProblem(error), technical(error));
     } finally {
+      setBusy(button, false);
       showSignIn();
     }
   });
   window.addEventListener("weft#initialized", showSignIn, { once: true });
 
   async function load(from: string[], quiet = false) {
+    const mine = ++generation;
     starts = from;
-    if (!quiet) setStatus("Looking for explorers…", "working");
-    explorers = await discover(from);
-    await signInEverywhere();
-    const ok = explorers.filter((e) => e.status).length;
-    if (!ok) {
-      setStatus(`Couldn't read ${from.join(", ")}. Check the address, and that the explorer is running.`, "err");
-      $("nw-channels").replaceChildren();
-      return;
-    }
-    render();
-    showSignIn();
-    if (timer) clearInterval(timer);
-    timer = setInterval(async () => {
-      await refresh();
+    const button = $("nw-load");
+    setBusy(button, true);
+    clearError($("nw-error"));
+    if (!quiet) setStatus("Looking for explorers…", true);
+    try {
+      const found = await discover(from);
+      if (mine !== generation) return;
+      explorers = found;
+      await signInEverywhere();
+      const ok = explorers.filter((e) => e.status).length;
+      if (!ok) {
+        setStatus("");
+        const failures = explorers.map((e) => `${e.base}: ${e.error}`).join("\n");
+        showError($("nw-error"), `Couldn't read ${from.map((u) => new URL(u).host).join(", ")}. Check the address, that the explorer is running, and that it allows other sites to read its API.`, failures);
+        return;
+      }
+      // A different network: start from nothing.
+      if (!quiet) {
+        $("nw-channels").replaceChildren();
+        compares.clear();
+        said.clear();
+      }
       render();
-    }, REFRESH_MS);
+      showSignIn();
+      announce(`${ok} ${ok === 1 ? "explorer" : "explorers"} found.`);
+      schedule();
+    } finally {
+      if (mine === generation) setBusy(button, false);
+    }
   }
 
   /** An invite names its organisation's explorer; anything else is taken as an explorer. */
   async function resolve(input: string): Promise<string[]> {
     const url = trim(input.trim());
     if (/\.json$|weft-invite/.test(url)) {
-      const invite = await getJson(url);
-      if (typeof invite.explorerUrl !== "string") throw new Error("That invite doesn't name an explorer.");
+      let invite: any;
+      try {
+        invite = await getJson(url);
+      } catch (error) {
+        throw Object.assign(new Error(fetchProblem(error, "The invite's address")), { details: `${url}\n${(error as Error)?.message ?? error}` });
+      }
+      if (typeof invite.explorerUrl !== "string") throw Object.assign(new Error("That invite doesn't name an explorer. Ask its organisation for their explorer's address, and enter that instead."), { details: url });
       return [invite.explorerUrl];
     }
     return [url];
   }
 
+  const addressField = watchFields([
+    {
+      field: $<HTMLInputElement>("nw-input"),
+      after: $("nw-row"),
+      check: () => {
+        const value = $<HTMLInputElement>("nw-input").value.trim();
+        if (!value) return "Enter an explorer's address, or your organisation's invite URL.";
+        return isWebUrl(value) ? null : "Enter a full address starting with http:// or https://.";
+      },
+    },
+  ]);
+
   $("nw-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const value = $<HTMLInputElement>("nw-input").value;
-    if (!value.trim()) return;
+    if (isBusy($("nw-load")) || !addressField.checkAll()) return;
+    clearError($("nw-error"));
     try {
-      const from = await resolve(value);
+      const from = await resolve($<HTMLInputElement>("nw-input").value);
       history.replaceState(null, "", `?explorer=${encodeURIComponent(from[0]!)}`);
       await load(from);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error), "err");
+    } catch (error: any) {
+      showError($("nw-error"), error?.message ?? String(error), error?.details);
     }
   });
 
@@ -514,7 +698,7 @@
     $<HTMLInputElement>("nw-input").value = given[0]!;
     Promise.all(given.map(resolve))
       .then((lists) => load(lists.flat()))
-      .catch((error) => setStatus(error instanceof Error ? error.message : String(error), "err"));
+      .catch((error) => showError($("nw-error"), error?.message ?? String(error), error?.details));
   } else {
     // Quietly look for the local playground, as the playground page does.
     getJson(LOCAL_INVITE)
@@ -528,153 +712,108 @@
 </script>
 
 <style is:global>
-  /* Global because the rows are built by the script. Every selector is under .nw. */
+  /* Global because the rows are built by the script. Every selector is under .nw.
+     Buttons, inputs, fields and errors are base.css's. */
   .nw {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    margin-top: 1.5rem;
+    gap: var(--weft-space-5);
+    margin-top: var(--weft-space-6);
   }
   .nw-card {
     border: 1px solid var(--weft-line-strong);
     background: var(--weft-bg-raised);
-    border-radius: 1rem;
-    padding: 1.25rem;
+    border-radius: var(--weft-radius-xl);
+    padding: var(--weft-space-5);
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: var(--weft-space-3);
   }
   .nw h2 {
     font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
     margin: 0;
   }
   .nw-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-  }
-  .nw-label {
-    font-size: var(--weft-type-md);
-    color: var(--weft-text-muted);
+    gap: var(--weft-space-4);
   }
   .nw-row {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--weft-space-2);
   }
-  .nw-row > input {
+  .nw-row > .input {
     flex: 1;
     min-width: 0;
   }
-  .nw input {
-    font: inherit;
-    font-size: var(--weft-type-md);
-    color: var(--weft-text-strong);
-    background: var(--weft-bg);
-    border: 1px solid var(--weft-line-strong);
-    border-radius: 0.5rem;
-    padding: 0.55rem 0.7rem;
-    min-height: 2.75rem;
-    transition: border-color 140ms;
-  }
-  .nw input:hover {
-    border-color: var(--weft-text-subtle);
-  }
-  .nw input.mono,
-  .nw .mono {
-    font-family: var(--weft-font-mono);
-  }
-  .nw input[type="number"] {
+  .nw-check .nw-row > .input {
     flex: 0 0 8rem;
-  }
-  .nw button {
-    font: inherit;
-    font-size: var(--weft-type-md);
-    font-weight: 600;
-    min-height: 2.75rem;
-    padding: 0 1rem;
-    border-radius: 0.6rem;
-    border: 1px solid var(--weft-accent);
-    background: var(--weft-accent);
-    color: var(--weft-bg);
-    cursor: pointer;
-    transition:
-      filter 140ms,
-      transform 140ms;
-  }
-  .nw button:hover {
-    filter: brightness(1.08);
-  }
-  .nw button:active {
-    transform: scale(0.98);
-  }
-  .nw button:focus-visible,
-  .nw input:focus-visible,
-  .nw summary:focus-visible {
-    outline: 2px solid var(--weft-accent);
-    outline-offset: 2px;
-  }
-  .nw a {
-    color: var(--weft-accent-text);
-    text-underline-offset: 0.2em;
   }
   .nw-hint {
     margin: 0;
     font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
     color: var(--weft-text-subtle);
   }
-  .nw-hint[data-tone="err"] {
-    color: var(--weft-danger-text);
+  .nw-hint:empty {
+    display: none;
   }
-  .nw-channels {
+  .nw-channels,
+  .nw-notes {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--weft-space-5);
+  }
+  .nw-notes:empty {
+    display: none;
   }
   .nw-signin {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--weft-space-3) var(--weft-space-4);
     flex-wrap: wrap;
-    padding-top: 0.85rem;
+    padding-top: var(--weft-space-3);
     border-top: 1px solid var(--weft-line-strong);
   }
   .nw-signin .nw-hint {
     flex: 1 1 16rem;
   }
-  .nw button.nw-secondary {
-    background: transparent;
-    color: var(--weft-text-strong);
-    border-color: var(--weft-text-subtle);
-  }
-  .nw button:disabled {
-    opacity: 0.6;
-    cursor: default;
-    filter: none;
+  .nw-signin .action-error {
+    flex: 1 0 100%;
   }
   .nw-tag {
-    margin-left: 0.6rem;
-    font-family: var(--weft-font-sans);
-    font-size: var(--weft-type-xs);
-    font-weight: 500;
+    margin-left: 10px;
+    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-sans);
     color: var(--weft-text-subtle);
     vertical-align: middle;
   }
-  .nw [hidden] {
-    display: none !important;
-  }
   .nw-pill {
-    font-family: var(--weft-font-mono);
-    font-size: var(--weft-type-xs);
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
+    flex: none;
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    padding: var(--weft-space-1) 10px;
+    border-radius: var(--weft-radius-pill);
     border: 1px solid var(--weft-line-strong);
     color: var(--weft-text-muted);
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      color var(--weft-duration-fast) var(--weft-ease-out);
   }
   .nw-pill--ok {
     border-color: var(--weft-accent);
     color: var(--weft-accent-text);
+  }
+  .nw-pill--ok::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: 0.05em;
   }
   .nw-pill--bad {
     border-color: var(--weft-danger);
@@ -682,11 +821,13 @@
   }
   .nw-verdict {
     margin: 0;
-    padding: 0.7rem 0.9rem;
-    border-radius: 0.6rem;
+    padding: var(--weft-space-3) 14px;
+    border-radius: var(--weft-radius-lg);
     font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
     border-left: 3px solid var(--weft-line-strong);
     background: var(--weft-bg);
+    transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
   }
   .nw-verdict--ok {
     border-left-color: var(--weft-accent);
@@ -701,20 +842,24 @@
     width: 100%;
     border-collapse: collapse;
     font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
     margin: 0;
   }
+  /* Table headings as SYSTEM.md has them: Mono, type-xs, uppercase, 0.08em. */
   .nw th {
     text-align: left;
-    font-weight: 500;
+    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
     color: var(--weft-text-subtle);
-    font-size: var(--weft-type-xs);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    padding: 0 0.75rem 0.5rem 0;
+    letter-spacing: 0.08em;
+    padding: 0 var(--weft-space-3) var(--weft-space-2) 0;
     border-bottom: 1px solid var(--weft-line-strong);
   }
+  .nw th.nw-num {
+    text-align: right;
+  }
   .nw td {
-    padding: 0.7rem 0.75rem 0.7rem 0;
+    padding: var(--weft-space-3) var(--weft-space-3) var(--weft-space-3) 0;
     vertical-align: top;
     border-bottom: 1px solid var(--weft-line-strong);
   }
@@ -728,19 +873,41 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
+  /* A new block since you looked: a 3px accent rule on the row's left, in the
+     card's padding, for four seconds (SYSTEM.md, Arriving). */
+  .nw tr > td:first-child {
+    position: relative;
+  }
+  .nw tr.is-new > td:first-child::before {
+    content: "";
+    position: absolute;
+    left: calc(var(--weft-space-3) * -1);
+    top: var(--weft-space-2);
+    bottom: var(--weft-space-2);
+    width: 3px;
+    border-radius: 2px;
+    background: var(--weft-accent);
+    animation: nw-new-rule var(--weft-duration-deliberate) var(--weft-ease-out) 4s both;
+  }
+  @keyframes nw-new-rule {
+    to {
+      opacity: 0;
+    }
+  }
   .nw-sub {
     font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
     color: var(--weft-text-subtle);
   }
-  .nw summary {
-    cursor: pointer;
-    font-size: var(--weft-type-md);
-    color: var(--weft-accent-text);
-  }
-  .nw details[open] {
+  .nw-compare[open] {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--weft-space-3);
+  }
+  .nw-compare__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
   }
   .nw-hashes {
     list-style: none;
@@ -748,17 +915,21 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 6px;
+  }
+  .nw-hashes:empty {
+    display: none;
   }
   .nw-hash {
     display: grid;
     grid-template-columns: minmax(4rem, max-content) minmax(0, 1fr);
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
+    gap: var(--weft-space-3);
+    padding: var(--weft-space-2) var(--weft-space-3);
+    border-radius: var(--weft-radius-sm);
     background: var(--weft-bg);
     border-left: 3px solid var(--weft-line-strong);
     font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
     overflow-wrap: anywhere;
   }
   .nw-hash--ok {
@@ -773,14 +944,10 @@
   .nw-hash > span:last-child {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: var(--weft-space-1);
   }
   .nw-summary {
     color: var(--weft-text-strong);
-  }
-  .nw button:disabled {
-    opacity: 0.6;
-    cursor: default;
   }
   @media (max-width: 40rem) {
     .nw thead {
@@ -789,8 +956,8 @@
     .nw tr {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 0.25rem 0.75rem;
-      padding: 0.7rem 0;
+      gap: var(--weft-space-1) var(--weft-space-3);
+      padding: var(--weft-space-3) 0;
       border-bottom: 1px solid var(--weft-line-strong);
     }
     .nw tr:last-child {
@@ -810,7 +977,7 @@
     }
     .nw-hash {
       grid-template-columns: 1fr;
-      gap: 0.2rem;
+      gap: var(--weft-space-1);
     }
   }
 </style>

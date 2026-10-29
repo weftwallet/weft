@@ -6,21 +6,22 @@ const docs = (path: string) => productHref("docs", path);
 ---
 
 <div class="pg" data-docs={productHref("docs")} data-network={productHref("network")}>
-  <section class="pg-card">
+  <section class="pg-card" aria-labelledby="pg-net-heading">
     <div class="pg-head">
-      <h2>1. Network</h2>
+      <h2 id="pg-net-heading">1. Network</h2>
       <span class="pg-pill is-working" id="pg-weft" data-state="pending">Looking for Weft…</span>
     </div>
-    <label class="pg-label"
-      >Invite URL
-      <div class="pg-row">
-        <input id="pg-invite" type="url" placeholder="http://localhost:8787/.well-known/weft-invite.json" />
-        <button type="button" id="pg-load" class="pg-secondary">Load</button>
+    <form class="field" id="pg-invite-form" novalidate>
+      <label for="pg-invite">Invite URL</label>
+      <div class="pg-row" id="pg-invite-row">
+        <input id="pg-invite" class="input" type="url" placeholder="http://localhost:8787/.well-known/weft-invite.json" spellcheck="false" aria-describedby="pg-invite-status" />
+        <button type="submit" id="pg-load" class="btn">Load</button>
       </div>
-    </label>
+    </form>
     <p class="pg-hint" id="pg-invite-status">
       Run <code>pnpm playground:up</code> for a local network, or paste any organisation's invite URL.
     </p>
+    <div class="action-error" id="pg-invite-failed" role="alert" hidden></div>
     <dl class="pg-details" id="pg-invite-details" hidden>
       <dt>Network</dt><dd id="pg-net"></dd>
       <dt>Organisation</dt><dd id="pg-org"></dd>
@@ -28,16 +29,18 @@ const docs = (path: string) => productHref("docs", path);
     </dl>
   </section>
 
-  <section class="pg-card">
+  <section class="pg-card" aria-labelledby="pg-id-heading">
     <div class="pg-head">
-      <h2>2. Identity</h2>
+      <h2 id="pg-id-heading">2. Identity</h2>
       <span class="pg-pill" id="pg-conn" data-state="pending">Not connected</span>
     </div>
     <div class="pg-row pg-wrap">
-      <button type="button" id="pg-join" class="pg-secondary" disabled>Join with Weft</button>
-      <button type="button" id="pg-connect" disabled>Connect</button>
-      <button type="button" id="pg-disconnect" class="pg-secondary" hidden>Disconnect</button>
+      <button type="button" id="pg-join" class="btn" disabled>Join with Weft</button>
+      <button type="button" id="pg-connect" class="btn btn--primary" disabled>Connect</button>
+      <button type="button" id="pg-disconnect" class="btn" hidden>Disconnect</button>
     </div>
+    <p class="pg-hint pg-why" id="pg-id-why" hidden></p>
+    <div class="action-error" id="pg-id-error" role="alert" hidden></div>
     <p class="pg-hint">
       Join once to enrol (local demo users: <code>alice</code>/<code>alicepw</code>, <code>bob</code>/<code>bobpw</code>),
       then connect this page.
@@ -51,33 +54,46 @@ const docs = (path: string) => productHref("docs", path);
     </dl>
   </section>
 
-  <section class="pg-card">
-    <h2>3. Call the contract</h2>
-    <div class="pg-presets" aria-label="Examples for the basic contract">
-      <span class="pg-hint">Try:</span>
-      <button type="button" data-preset="InitLedger">InitLedger</button>
-      <button type="button" data-preset="GetAllAssets">GetAllAssets</button>
-      <button type="button" data-preset="ReadAsset">ReadAsset</button>
-      <button type="button" data-preset="CreateAsset">CreateAsset</button>
-      <button type="button" data-preset="TransferAsset">TransferAsset</button>
-      <button type="button" data-preset="DeleteAsset">DeleteAsset</button>
+  <section class="pg-card" aria-labelledby="pg-call-heading">
+    <h2 id="pg-call-heading">3. Call the contract</h2>
+    <div class="pg-presets" role="group" aria-labelledby="pg-presets-label">
+      <span class="pg-hint" id="pg-presets-label">Examples for the basic contract:</span>
+      <button type="button" class="btn btn--small" data-preset="InitLedger" aria-pressed="false">InitLedger</button>
+      <button type="button" class="btn btn--small" data-preset="GetAllAssets" aria-pressed="true">GetAllAssets</button>
+      <button type="button" class="btn btn--small" data-preset="ReadAsset" aria-pressed="false">ReadAsset</button>
+      <button type="button" class="btn btn--small" data-preset="CreateAsset" aria-pressed="false">CreateAsset</button>
+      <button type="button" class="btn btn--small" data-preset="TransferAsset" aria-pressed="false">TransferAsset</button>
+      <button type="button" class="btn btn--small" data-preset="DeleteAsset" aria-pressed="false">DeleteAsset</button>
     </div>
     <div class="pg-grid">
-      <label class="pg-label">Channel<select id="pg-channel"><option value="mychannel">mychannel</option></select></label>
-      <label class="pg-label">Contract (chaincode)<input id="pg-chaincode" value="basic" class="mono" /></label>
-      <label class="pg-label">Function<input id="pg-fn" value="GetAllAssets" class="mono" /></label>
+      <div class="field">
+        <label for="pg-channel">Channel</label>
+        <select id="pg-channel" class="input"><option value="mychannel">mychannel</option></select>
+      </div>
+      <div class="field">
+        <label for="pg-chaincode">Contract <span class="field__hint">chaincode name</span></label>
+        <input id="pg-chaincode" class="input mono" value="basic" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label for="pg-fn">Function</label>
+        <input id="pg-fn" class="input mono" value="GetAllAssets" spellcheck="false" />
+      </div>
     </div>
-    <div class="pg-label">
-      Arguments
-      <div id="pg-args" class="pg-args"></div>
-      <button type="button" id="pg-add-arg" class="pg-link">+ Add argument</button>
+    <div class="field">
+      <span class="field__label" id="pg-args-label">Arguments</span>
+      <div id="pg-args" class="pg-args" role="group" aria-labelledby="pg-args-label"></div>
+      <p class="pg-hint" id="pg-args-empty">No arguments. Add one if the function takes any.</p>
+      <button type="button" id="pg-add-arg" class="btn btn--text">Add argument</button>
     </div>
     <div class="pg-row pg-wrap">
-      <button type="button" id="pg-evaluate" class="pg-teal" disabled>Evaluate (read)</button>
-      <button type="button" id="pg-submit" class="pg-amber" disabled>Submit (write)</button>
+      <button type="button" id="pg-evaluate" class="btn btn--primary" disabled>Evaluate (read)</button>
+      <button type="button" id="pg-submit" class="btn btn--write" disabled>Submit (write)</button>
     </div>
-    <div id="pg-result-wrap" hidden>
+    <p class="pg-hint pg-why" id="pg-call-why" hidden></p>
+    <p class="pg-hint" id="pg-suggest" hidden></p>
+    <div id="pg-result-wrap" class="pg-stack" hidden>
       <h3>Result</h3>
+      <div class="action-error" id="pg-result-error" role="alert" hidden></div>
       <pre id="pg-result" class="pg-out"></pre>
       <a id="pg-result-explorer" class="pg-out-link" target="_blank" rel="noreferrer" hidden>See it in the explorer</a>
       <h3>The same call in code</h3>
@@ -94,10 +110,15 @@ const docs = (path: string) => productHref("docs", path);
       Uses the <a href={docs("/guides/elections/")}>ballot contract</a>, which the local playground deploys with an open election, <code>board-2026</code>.
       Your choice is sent as private data. The ledger gets only a commitment, which your receipt lets you check.
     </p>
-    <div class="pg-row">
-      <input id="pg-el-id" class="mono" value="board-2026" aria-label="Election ID" spellcheck="false" />
-      <button type="button" id="pg-el-load" class="pg-secondary" disabled>Load</button>
-    </div>
+    <form class="field" id="pg-el-form" novalidate>
+      <label for="pg-el-id">Election ID</label>
+      <div class="pg-row" id="pg-el-row">
+        <input id="pg-el-id" class="input mono" value="board-2026" spellcheck="false" />
+        <button type="submit" id="pg-el-load" class="btn" disabled>Load</button>
+      </div>
+    </form>
+    <p class="pg-hint pg-why" id="pg-el-why" hidden></p>
+    <div class="action-error" id="pg-el-error" role="alert" hidden></div>
     <div id="pg-el" class="pg-stack" hidden>
       <dl class="pg-details">
         <dt>Election</dt><dd id="pg-el-title"></dd>
@@ -106,58 +127,81 @@ const docs = (path: string) => productHref("docs", path);
       </dl>
       <fieldset class="pg-options" id="pg-el-options"><legend class="pg-hint">Your choice</legend></fieldset>
       <div class="pg-row pg-wrap">
-        <button type="button" id="pg-el-vote" class="pg-amber" disabled>Cast vote</button>
-        <button type="button" id="pg-el-close" class="pg-secondary" hidden>Close and count</button>
+        <button type="button" id="pg-el-vote" class="btn btn--write" disabled>Cast vote</button>
+        <button type="button" id="pg-el-close" class="btn" hidden>Close and count</button>
       </div>
+      <div class="action-error" id="pg-vote-error" role="alert" hidden></div>
     </div>
-    <p class="pg-hint" id="pg-el-message" aria-live="polite"></p>
+    <p class="pg-hint" id="pg-el-message" tabindex="-1"></p>
     <div id="pg-receipt" class="pg-stack" hidden>
       <h3>Your receipt</h3>
       <p class="pg-hint">Keep it. With the choice and the salt, anyone can check this commitment is your vote; without them, no one can tell.</p>
       <pre id="pg-receipt-json" class="pg-out" data-tone="ok"></pre>
       <div class="pg-row pg-wrap">
-        <a id="pg-receipt-check" class="pg-button" target="_blank" rel="noreferrer" hidden>Check it in the explorer</a>
-        <button type="button" id="pg-receipt-copy" class="pg-secondary">Copy receipt</button>
+        <a id="pg-receipt-check" class="btn btn--primary" target="_blank" rel="noreferrer" hidden>Check it in the explorer</a>
+        <button type="button" id="pg-receipt-copy" class="btn">Copy receipt</button>
       </div>
+      <div class="action-error" id="pg-receipt-error" role="alert" hidden></div>
     </div>
-    <details class="pg-new">
+    <details class="disclosure pg-new" id="pg-new">
       <summary>Start your own election</summary>
-      <div class="pg-grid">
-        <label class="pg-label">ID<input id="pg-new-id" class="mono" placeholder="lunch-friday" spellcheck="false" /></label>
-        <label class="pg-label">Question<input id="pg-new-title" placeholder="Where should we eat?" /></label>
-        <label class="pg-label">Choices <span class="pg-hint">comma-separated</span><input id="pg-new-options" placeholder="Noodles, Tacos" /></label>
-        <label class="pg-label">Voting closes in<select id="pg-new-minutes"><option value="2">2 minutes</option><option value="10">10 minutes</option><option value="60">1 hour</option><option value="1440">1 day</option></select></label>
-      </div>
-      <button type="button" id="pg-new-create" class="pg-amber" disabled>Create election</button>
-      <p class="pg-hint">Only your organisation can close it, once voting has closed. Closing counts the private ballots and publishes the result.</p>
+      <form class="pg-stack" id="pg-new-form" novalidate>
+        <div class="pg-grid">
+          <div class="field">
+            <label for="pg-new-id">ID</label>
+            <input id="pg-new-id" class="input mono" placeholder="lunch-friday" spellcheck="false" />
+          </div>
+          <div class="field">
+            <label for="pg-new-title">Question</label>
+            <input id="pg-new-title" class="input" placeholder="Where should we eat?" />
+          </div>
+          <div class="field">
+            <label for="pg-new-options">Choices <span class="field__hint">separated by commas</span></label>
+            <input id="pg-new-options" class="input" placeholder="Noodles, Tacos" />
+          </div>
+          <div class="field">
+            <label for="pg-new-minutes">Voting closes in</label>
+            <select id="pg-new-minutes" class="input"><option value="2">2 minutes</option><option value="10">10 minutes</option><option value="60">1 hour</option><option value="1440">1 day</option></select>
+          </div>
+        </div>
+        <div>
+          <button type="submit" id="pg-new-create" class="btn btn--write" disabled>Create election</button>
+        </div>
+        <div class="action-error" id="pg-new-error" role="alert" hidden></div>
+        <p class="pg-hint">Only your organisation can close it, once voting has closed. Closing counts the private ballots and publishes the result.</p>
+      </form>
     </details>
   </section>
 
   <section class="pg-card" id="pg-explorers" aria-labelledby="pg-ex-heading" hidden>
     <div class="pg-head">
       <h2 id="pg-ex-heading">5. Compare the explorers</h2>
-      <button type="button" id="pg-ex-refresh" class="pg-link">Refresh</button>
+      <button type="button" id="pg-ex-refresh" class="btn btn--text">Refresh</button>
     </div>
     <p class="pg-hint">
       Each organisation runs its own <a href={docs("/operators/explorer/")}>explorer</a>, reads the ledger from its own peer, and publishes only what its
       policy allows. They compare signed checkpoints, so every block page says how many organisations report the same block.
     </p>
+    <div class="action-error" id="pg-ex-error" role="alert" hidden></div>
     <ul class="pg-explorers" id="pg-ex-list"></ul>
     <h3>Things to try</h3>
     <ul class="pg-try" id="pg-ex-try"></ul>
   </section>
 
-  <section class="pg-card">
+  <section class="pg-card" aria-labelledby="pg-log-heading">
     <div class="pg-head">
-      <h2>Provider log</h2>
-      <button type="button" id="pg-clear" class="pg-link">Clear</button>
+      <h2 id="pg-log-heading">Provider log</h2>
+      <button type="button" id="pg-clear" class="btn btn--text">Clear</button>
     </div>
     <p class="pg-hint">Every <code>window.weft</code> request and response, with timings.</p>
+    <p class="pg-hint" id="pg-log-empty">No requests yet. Connect or call a function to see them here.</p>
     <ol id="pg-log" class="pg-log"></ol>
   </section>
 </div>
 
 <script>
+  import { announce, clearError, closesInReverse, conceal, fetchProblem, isBusy, isWebUrl, reveal, setBusy, shortened, showError, technical, watchFields } from "@weftwallet/ui/ui";
+
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
 
   type Preset = { fn: string; args: string[]; kind: "evaluate" | "submit" };
@@ -176,6 +220,8 @@ const docs = (path: string) => productHref("docs", path);
   const root = document.querySelector<HTMLElement>(".pg")!;
   const docsAt = (path: string) => new URL(path, root.dataset.docs).toString();
   const networkPage = (explorer: string) => `${new URL("/", root.dataset.network)}?explorer=${encodeURIComponent(explorer)}`;
+  const dateOf = (d: string | number) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const timeOf = (d: string | number) => new Date(d).toLocaleString("en-GB", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
   let weft: any = null;
   let connected = false;
   /** The organisation's explorer, when the invite names one. */
@@ -186,25 +232,53 @@ const docs = (path: string) => productHref("docs", path);
   /** Elections this page has voted in, so it doesn't offer a second ballot. */
   const votedIn = new Set<string>();
 
+  /** What a wallet error means for the person, in words. */
+  function walletProblem(error: any, fallback = "Weft couldn't complete the request.", declined = "You declined in Weft, so nothing was sent. Try again when you're ready."): string {
+    switch (error?.code) {
+      case 4001:
+        return declined;
+      case 4100:
+        return "This page isn't connected to Weft. Connect in step 2, then try again.";
+      case 4300:
+        return "Weft has no identity yet. Use Join with Weft in step 2 first.";
+      case 4301:
+        return "Your certificate has expired. Renew it in Weft, then try again.";
+      case -32002:
+        return "Weft already has a request from this page waiting. Finish it in the Weft window first.";
+      case 5001:
+        return "The network rejected the call. Details has its reason.";
+      case 5002:
+        return "Weft couldn't reach the network's relay. Check that the network is running, then try again.";
+      default:
+        return fallback;
+    }
+  }
+
   /* ---------------- log ---------------- */
 
   function log(direction: "→" | "←" | "•", title: string, body?: unknown, tone: "ok" | "err" | "info" = "info") {
     const li = document.createElement("li");
     li.dataset.tone = tone;
+    li.className = "arrive";
     const head = document.createElement("div");
     head.className = "pg-log-head";
-    head.textContent = `${new Date().toLocaleTimeString()}  ${direction} ${title}`;
+    head.textContent = `${new Date().toLocaleTimeString("en-GB")}  ${direction} ${title}`;
     li.append(head);
     if (body !== undefined) {
       const pre = document.createElement("pre");
       pre.textContent = typeof body === "string" ? body : JSON.stringify(body, null, 2);
       li.append(pre);
     }
-    $("pg-log").prepend(li);
+    // Newest first; if someone has scrolled the log, keep what they're reading in place.
+    const list = $("pg-log");
+    const before = list.scrollHeight;
+    list.prepend(li);
+    if (list.scrollTop > 0) list.scrollTop += list.scrollHeight - before;
+    $("pg-log-empty").hidden = true;
   }
 
   async function call(method: string, params?: unknown) {
-    if (!weft) throw new Error("Weft is not installed in this browser.");
+    if (!weft) throw Object.assign(new Error("Weft isn't installed in this browser."), { code: "missing" });
     log("→", method, params);
     const started = performance.now();
     try {
@@ -225,28 +299,18 @@ const docs = (path: string) => productHref("docs", path);
     const pill = $("pg-weft");
     pill.classList.remove("is-working");
     pill.dataset.state = state;
-    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Install Weft";
-    if (state === "missing") {
-      // Turn the pill into a link to the install guide.
-      const link = Object.assign(document.createElement("a"), {
-        id: "pg-weft",
-        className: "pg-pill",
-        href: docsAt("/start/install/"),
-        textContent: pill.textContent,
-        title: "Install Weft, then reload this page.",
-      });
-      link.dataset.state = "missing";
-      pill.replaceWith(link);
-    }
+    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Weft not found";
   }
 
   function detect() {
     if (w.weft?.isWeft) {
+      if (weft) return;
       weft = w.weft;
       setWeftPill("ok");
       weft.on("identityChanged", (identity: any) => {
         log("•", "event identityChanged", identity);
         showIdentity(identity);
+        announce(`Identity in Weft is now ${identity?.name ?? "none"}.`);
       });
       weft.on("networkChanged", (payload: any) => {
         log("•", "event networkChanged", payload);
@@ -254,8 +318,7 @@ const docs = (path: string) => productHref("docs", path);
       });
       weft.on("certificateStatus", (payload: any) => {
         log("•", "event certificateStatus", payload);
-        $("pg-id-exp").textContent =
-          payload.state === "expired" ? "Expired, renew it in Weft" : `${new Date(payload.notAfter).toLocaleDateString()} (${payload.daysLeft} days left)`;
+        $("pg-id-exp").textContent = payload.state === "expired" ? "Expired, renew it in Weft" : `${dateOf(payload.notAfter)} (${payload.daysLeft} days left)`;
       });
       weft.on("disconnect", (payload: any) => {
         log("•", "event disconnect", payload);
@@ -266,8 +329,10 @@ const docs = (path: string) => productHref("docs", path);
       return;
     }
     setWeftPill("missing");
+    updateButtons();
   }
-  window.addEventListener("weft#initialized", detect, { once: true });
+  // Weft may announce itself after the page gives up looking; detect() then runs again.
+  window.addEventListener("weft#initialized", detect);
   setTimeout(() => !weft && detect(), 1200);
 
   const DISCONNECT_REASONS: Record<string, string> = {
@@ -279,12 +344,18 @@ const docs = (path: string) => productHref("docs", path);
   };
 
   function setConnected(value: boolean, label?: string) {
+    const changed = value !== connected;
     connected = value;
     const pill = $("pg-conn");
     pill.dataset.state = value ? "ok" : "pending";
     pill.textContent = label ?? (value ? "Connected" : "Not connected");
     if (!value) showIdentity(null);
+    // The button that had focus may be hidden now: focus what took its place.
+    const had = document.activeElement;
     updateButtons();
+    if (had === $("pg-connect") && value) $("pg-disconnect").focus();
+    if (had === $("pg-disconnect") && !value) $("pg-connect").focus();
+    if (changed || label) announce(value ? "Connected to Weft." : `${pill.textContent}.`.replace(/\.\.$/, "."));
   }
 
   function selectChannel(channel: string) {
@@ -311,7 +382,7 @@ const docs = (path: string) => productHref("docs", path);
 
   function showIdentity(identity: any) {
     if (!identity) {
-      $("pg-identity").hidden = true;
+      conceal($("pg-identity"));
       return;
     }
     $("pg-id-name").textContent = identity.name;
@@ -319,20 +390,42 @@ const docs = (path: string) => productHref("docs", path);
     $("pg-id-role").textContent = identity.role ?? "none";
     const attrs = Object.entries(identity.attributes ?? {}).filter(([k]) => !k.startsWith("hf."));
     $("pg-id-attrs").textContent = attrs.length ? attrs.map(([k, v]) => `${k}=${v}`).join(", ") : "none";
-    $("pg-id-exp").textContent = new Date(identity.notAfter).toLocaleDateString();
-    $("pg-identity").hidden = false;
+    $("pg-id-exp").textContent = dateOf(identity.notAfter);
+    reveal($("pg-identity"));
   }
+
+  /** Says why a control is unavailable, next to it (SYSTEM.md, Disabled). */
+  function why(id: string, text: string | Node[] | null) {
+    const p = $(id);
+    if (!text) {
+      p.hidden = true;
+      return;
+    }
+    if (typeof text === "string") p.textContent = text;
+    else p.replaceChildren(...text);
+    p.hidden = false;
+  }
+
+  const installLink = () => Object.assign(document.createElement("a"), { href: docsAt("/start/install/"), textContent: "Install Weft" });
 
   function updateButtons() {
     const haveInvite = Boolean(inviteUrl());
+    const looking = !weft && $("pg-weft").dataset.state === "pending";
     $<HTMLButtonElement>("pg-join").disabled = !weft || !haveInvite;
     $<HTMLButtonElement>("pg-connect").disabled = !weft;
     $("pg-connect").hidden = connected;
     $("pg-disconnect").hidden = !connected;
-    $<HTMLButtonElement>("pg-evaluate").disabled = !weft || !connected;
-    $<HTMLButtonElement>("pg-submit").disabled = !weft || !connected;
-    $<HTMLButtonElement>("pg-el-load").disabled = !weft || !connected;
-    $<HTMLButtonElement>("pg-new-create").disabled = !weft || !connected;
+    for (const id of ["pg-evaluate", "pg-submit", "pg-el-load", "pg-new-create"]) {
+      const b = $<HTMLButtonElement>(id);
+      if (!isBusy(b)) b.disabled = !weft || !connected;
+    }
+    if (looking) why("pg-id-why", null);
+    else if (!weft) why("pg-id-why", [installLink(), document.createTextNode(" in this browser, then reload this page to join and connect.")]);
+    else if (!haveInvite && !connected) why("pg-id-why", "To join, load an invite in step 1 first. Connect works once you've joined.");
+    else why("pg-id-why", null);
+    const callWhy = looking ? null : !weft ? "Calls go through Weft, which isn't installed in this browser." : !connected ? "Connect in step 2 to call the contract." : null;
+    why("pg-call-why", callWhy);
+    why("pg-el-why", callWhy && callWhy.replace("call the contract", "load an election"));
     updateElectionButtons();
     if (!connected) setElectionState("pending", weft ? "Connect first" : "Install Weft");
     else if ($("pg-el-state").textContent === "Connect first") setElectionState("pending", "Not loaded");
@@ -342,33 +435,53 @@ const docs = (path: string) => productHref("docs", path);
 
   function inviteUrl(): string | null {
     const value = $<HTMLInputElement>("pg-invite").value.trim();
-    try {
-      return /^https?:/.test(value) ? new URL(value).toString() : null;
-    } catch {
-      return null;
-    }
+    return isWebUrl(value) ? new URL(value).toString() : null;
   }
+
+  const inviteField = watchFields([
+    {
+      field: $<HTMLInputElement>("pg-invite"),
+      after: $("pg-invite-row"),
+      check: () => {
+        const value = $<HTMLInputElement>("pg-invite").value.trim();
+        if (!value) return "Enter your organisation's invite URL.";
+        return isWebUrl(value) ? null : "Enter a full address starting with http:// or https://.";
+      },
+    },
+  ]);
 
   async function loadInvite(quiet = false) {
     const url = inviteUrl();
     updateButtons();
     if (!url) return;
+    const button = $("pg-load");
+    setBusy(button, true);
+    clearError($("pg-invite-failed"));
     try {
-      const response = await fetch(url, { headers: { accept: "application/json" } });
+      const response = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const invite = await response.json();
+      if (!invite?.network || !Array.isArray(invite.channels)) throw new Error("Not a Weft invite: it has no network or channels.");
       $("pg-net").textContent = invite.network;
       $("pg-org").textContent = `${invite.organization} (${invite.mspId})`;
       $("pg-channels").textContent = invite.channels.join(", ");
-      $("pg-invite-details").hidden = false;
+      reveal($("pg-invite-details"));
       $("pg-invite-status").textContent = `Loaded from ${new URL(url).host}.`;
       const select = $<HTMLSelectElement>("pg-channel");
       select.replaceChildren(...invite.channels.map((c: string) => Object.assign(document.createElement("option"), { value: c, textContent: c })));
       explorerBase = typeof invite.explorerUrl === "string" ? invite.explorerUrl.replace(/\/+$/, "") : null;
+      if (!quiet) announce(`Invite loaded: ${invite.network}.`);
       void loadExplorers();
-    } catch (error) {
-      $("pg-invite-details").hidden = true;
-      if (!quiet) $("pg-invite-status").textContent = `Couldn't load the invite: ${error instanceof Error ? error.message : error}.`;
+    } catch (error: any) {
+      conceal($("pg-invite-details"));
+      $("pg-invite-status").textContent = "No invite loaded.";
+      if (!quiet) {
+        const sentence = /^Not a Weft invite/.test(error?.message) ? "That address answered, but not with a Weft invite. Check you have the invite's URL." : fetchProblem(error, "The invite's address");
+        showError($("pg-invite-failed"), sentence, `${url}\n${error?.message ?? error}`);
+      }
+    } finally {
+      setBusy(button, false);
+      updateButtons();
     }
   }
 
@@ -387,40 +500,54 @@ const docs = (path: string) => productHref("docs", path);
       })
       .catch(() => {});
   }
-  $("pg-load").addEventListener("click", () => void loadInvite());
+  $("pg-invite-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (isBusy($("pg-load")) || !inviteField.checkAll()) return;
+    void loadInvite();
+  });
   $("pg-invite").addEventListener("input", updateButtons);
 
   /* ---------------- identity actions ---------------- */
 
   $("pg-join").addEventListener("click", async () => {
+    const button = $("pg-join");
     const url = inviteUrl();
-    if (!url) return;
+    if (!url || isBusy(button)) return;
+    setBusy(button, true);
+    clearError($("pg-id-error"));
     try {
-      await call("weft_addNetwork", { url });
-    } catch {
-      /* logged */
+      const result = await call("weft_addNetwork", { url });
+      const text = result?.added === false ? "Weft already has this network. Connect this page to use it." : "Weft added the network. Now connect this page.";
+      why("pg-id-why", text);
+      announce(text);
+    } catch (error) {
+      showError($("pg-id-error"), walletProblem(error, "Weft couldn't add the network.", "You cancelled in Weft, so the network wasn't added. Join again when you're ready."), technical(error));
+    } finally {
+      setBusy(button, false);
     }
   });
 
   $("pg-connect").addEventListener("click", async () => {
     const button = $<HTMLButtonElement>("pg-connect");
-    button.disabled = true;
-    button.textContent = "Waiting for Weft…";
-    button.classList.add("is-working");
+    if (isBusy(button)) return;
+    setBusy(button, true);
+    clearError($("pg-id-error"));
     try {
       showIdentity(await call("weft_connect"));
+      setBusy(button, false);
       setConnected(true);
-    } catch {
-      /* logged */
+    } catch (error) {
+      showError($("pg-id-error"), walletProblem(error, "Weft couldn't connect this page.", "You declined in Weft, so this page isn't connected. Connect again when you're ready."), technical(error));
     } finally {
-      button.classList.remove("is-working");
-      button.textContent = "Connect";
+      setBusy(button, false);
       updateButtons();
     }
   });
 
   // The wallet answers with a disconnect event, which updates the page.
-  $("pg-disconnect").addEventListener("click", () => void call("weft_disconnect").catch(() => {}));
+  $("pg-disconnect").addEventListener("click", () =>
+    void call("weft_disconnect").catch((error) => showError($("pg-id-error"), walletProblem(error, "Weft couldn't disconnect this page."), technical(error))),
+  );
 
   /* ---------------- contract calls ---------------- */
 
@@ -428,17 +555,35 @@ const docs = (path: string) => productHref("docs", path);
     return Array.from($("pg-args").querySelectorAll<HTMLInputElement>("input"));
   }
 
+  /** Numbers the arguments from 1, after one is added or removed. */
+  function renumber() {
+    argInputs().forEach((input, i) => {
+      input.setAttribute("aria-label", `Argument ${i + 1}`);
+      input.placeholder = `Argument ${i + 1}`;
+      input.nextElementSibling?.setAttribute("aria-label", `Remove argument ${i + 1}`);
+    });
+    $("pg-args-empty").hidden = argInputs().length > 0;
+  }
+
   function addArg(value = "") {
     const row = document.createElement("div");
     row.className = "pg-arg";
-    const input = Object.assign(document.createElement("input"), { value, className: "mono", placeholder: `argument ${argInputs().length}` });
-    input.setAttribute("aria-label", `Argument ${argInputs().length}`);
-    const remove = Object.assign(document.createElement("button"), { type: "button", textContent: "Remove", className: "pg-link" });
-    remove.addEventListener("click", () => row.remove());
+    const input = Object.assign(document.createElement("input"), { value, className: "input mono", spellcheck: false });
+    const remove = Object.assign(document.createElement("button"), { type: "button", textContent: "Remove", className: "btn btn--text" });
+    remove.addEventListener("click", () => {
+      // Focus goes to the next argument, or the previous, or Add argument.
+      const rows = [...$("pg-args").children];
+      const next = (rows[rows.indexOf(row) + 1] ?? rows[rows.indexOf(row) - 1])?.querySelector("input");
+      row.remove();
+      renumber();
+      (next ?? $("pg-add-arg")).focus();
+    });
     row.append(input, remove);
     $("pg-args").append(row);
+    renumber();
+    return input;
   }
-  $("pg-add-arg").addEventListener("click", () => addArg());
+  $("pg-add-arg").addEventListener("click", () => addArg().focus());
 
   function applyPreset(name: string) {
     const preset = PRESETS[name];
@@ -446,10 +591,25 @@ const docs = (path: string) => productHref("docs", path);
     $<HTMLInputElement>("pg-fn").value = preset.fn;
     $("pg-args").replaceChildren();
     preset.args.forEach((a) => addArg(a));
-    $("pg-evaluate").classList.toggle("pg-suggested", preset.kind === "evaluate");
-    $("pg-submit").classList.toggle("pg-suggested", preset.kind === "submit");
+    renumber();
+    document.querySelectorAll<HTMLButtonElement>("[data-preset]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.preset === name)));
+    callFields.clear();
+    const suggest = $("pg-suggest");
+    suggest.textContent = preset.kind === "evaluate" ? `${preset.fn} only reads the ledger: use Evaluate.` : `${preset.fn} changes the ledger: use Submit.`;
+    suggest.hidden = false;
   }
   document.querySelectorAll<HTMLButtonElement>("[data-preset]").forEach((b) => b.addEventListener("click", () => applyPreset(b.dataset.preset!)));
+  // Typing a function of your own means no example is chosen.
+  $("pg-fn").addEventListener("input", () => {
+    document.querySelectorAll<HTMLButtonElement>("[data-preset]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.preset === $<HTMLInputElement>("pg-fn").value.trim())));
+    $("pg-suggest").hidden = true;
+  });
+  renumber();
+
+  const callFields = watchFields([
+    { field: $<HTMLInputElement>("pg-chaincode"), check: () => ($<HTMLInputElement>("pg-chaincode").value.trim() ? null : "Enter the contract's chaincode name, for example basic.") },
+    { field: $<HTMLInputElement>("pg-fn"), check: () => ($<HTMLInputElement>("pg-fn").value.trim() ? null : "Enter the function to call, for example GetAllAssets.") },
+  ]);
 
   function currentCall() {
     return {
@@ -470,15 +630,21 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
 
   async function run(kind: "evaluate" | "submit") {
+    const pressed = $<HTMLButtonElement>(kind === "submit" ? "pg-submit" : "pg-evaluate");
+    const other = $<HTMLButtonElement>(kind === "submit" ? "pg-evaluate" : "pg-submit");
+    if (isBusy(pressed) || isBusy(other) || !callFields.checkAll()) return;
     const c = currentCall();
-    $("pg-result-wrap").hidden = false;
+    reveal($("pg-result-wrap"));
     $("pg-result-explorer").hidden = true;
+    clearError($("pg-result-error"));
     $("pg-code").textContent = codeFor(kind, c);
-    $("pg-result").textContent = kind === "submit" ? "Waiting for approval, endorsement and commit…" : "Waiting for approval…";
-    $("pg-result").dataset.tone = "pending";
-    $("pg-result").classList.add("is-working");
-    const buttons = [$<HTMLButtonElement>("pg-evaluate"), $<HTMLButtonElement>("pg-submit")];
-    buttons.forEach((b) => (b.disabled = true));
+    const result$ = $("pg-result");
+    result$.hidden = false;
+    result$.textContent = kind === "submit" ? "Waiting for approval, endorsement and commit…" : "Waiting for approval…";
+    result$.dataset.tone = "pending";
+    result$.classList.add("is-working");
+    setBusy(pressed, true);
+    other.disabled = true;
     try {
       const result = await call(kind === "submit" ? "weft_submit" : "weft_evaluate", c);
       let pretty = result.text;
@@ -487,24 +653,28 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       } catch {
         /* not JSON */
       }
-      const meta = kind === "submit" ? `Committed in block ${result.blockNumber} · tx ${result.transactionId}\n\n` : "";
-      $("pg-result").textContent = `${meta}${pretty ?? `(binary result, base64) ${result.base64}`}` || "(empty result)";
-      $("pg-result").dataset.tone = "ok";
+      const meta = kind === "submit" ? `Committed in block ${result.blockNumber}, transaction ${shortened(String(result.transactionId))}\n\n` : "";
+      result$.textContent = `${meta}${pretty ?? `(binary result, base64) ${result.base64}`}` || "(empty result)";
+      result$.dataset.tone = "ok";
       showTxLink($<HTMLAnchorElement>("pg-result-explorer"), kind === "submit" ? c.channel : null, result.transactionId);
+      announce(kind === "submit" ? `Committed in block ${result.blockNumber}. The result is below.` : "The result is below.");
       if (kind === "submit") void loadExplorers();
-    } catch (error: any) {
-      const detail = error?.data?.status ? ` (${error.data.status})` : "";
-      $("pg-result").textContent = `Error ${error?.code ?? ""}: ${error?.message ?? error}${detail}`;
-      $("pg-result").dataset.tone = "err";
+    } catch (error) {
+      result$.hidden = true;
+      showError($("pg-result-error"), walletProblem(error, kind === "submit" ? "The transaction didn't go through." : "The call didn't return a result."), technical(error));
     } finally {
-      $("pg-result").classList.remove("is-working");
+      result$.classList.remove("is-working");
+      setBusy(pressed, false);
       updateButtons();
     }
   }
 
   $("pg-evaluate").addEventListener("click", () => void run("evaluate"));
   $("pg-submit").addEventListener("click", () => void run("submit"));
-  $("pg-clear").addEventListener("click", () => $("pg-log").replaceChildren());
+  $("pg-clear").addEventListener("click", () => {
+    $("pg-log").replaceChildren();
+    $("pg-log-empty").hidden = false;
+  });
 
   /** Links a committed transaction to the organisation's explorer, if there is one. */
   function showTxLink(link: HTMLAnchorElement, channel: string | null, txId: string | undefined) {
@@ -543,19 +713,24 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     pill.textContent = text;
   }
 
-  function electionMessage(text: string, tone: "info" | "err" = "info") {
-    const p = $("pg-el-message");
-    p.textContent = text;
-    p.dataset.tone = tone;
+  function electionMessage(text: string) {
+    $("pg-el-message").textContent = text;
+    if (text) announce(text);
   }
 
-  /** What went wrong, in the contract's words where it gave some. */
-  function reason(error: any): string {
+  const RUN_AN_ELECTION = "This network has no ballot contract. The local playground deploys one; for your own network, see Run an election in the docs.";
+
+  /** The contract's own sentence, when it gave one; null otherwise. */
+  function contractSays(error: any): string | null {
     const detail = error?.data?.details?.map((d: any) => d.message).find(Boolean) ?? error?.message ?? String(error);
-    if (/chaincode ballot not found|could not find chaincode with name 'ballot'|ballot.*not.*(found|installed|defined)/i.test(detail)) {
-      return "This network has no ballot contract. The local playground deploys one; for your own network, see Run an election.";
-    }
-    return detail.replace(/^.*?(There's no election|Voting has closed|This identity has already voted|Only \S+ can close|Voting is open until)/, "$1");
+    if (/chaincode ballot not found|could not find chaincode with name 'ballot'|ballot.*not.*(found|installed|defined)/i.test(detail)) return RUN_AN_ELECTION;
+    const m = detail.match(/(There's no election.*|Voting has closed.*|This identity has already voted.*|Only \S+ can close.*|Voting is open until.*)/);
+    return m ? m[1] : null;
+  }
+
+  /** Shows an election error: the contract's sentence or a plain one, with the rest behind Details. */
+  function electionError(box: string, error: any, fallback: string) {
+    showError($(box), contractSays(error) ?? walletProblem(error, fallback), technical(error));
   }
 
   const isOpen = (e: Election) => e.state === "open" && Date.now() < Date.parse(e.closesAt);
@@ -567,21 +742,23 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   function updateElectionButtons() {
     const vote = $<HTMLButtonElement>("pg-el-vote");
     const voted = !!election && votedIn.has(election.id);
-    vote.disabled = !connected || !election || !isOpen(election) || !chosen() || voted;
-    vote.textContent = voted ? "Voted" : "Cast vote";
+    if (!isBusy(vote)) {
+      vote.disabled = !connected || !election || !isOpen(election) || !chosen() || voted;
+      vote.textContent = voted ? "Voted" : "Cast vote";
+    }
     $("pg-el-options").querySelectorAll<HTMLInputElement>("input").forEach((i) => (i.disabled = !election || !isOpen(election) || voted));
     const close = $<HTMLButtonElement>("pg-el-close");
     close.hidden = !election || election.state !== "open" || isOpen(election) || election.creatorMsp !== myMsp;
-    close.disabled = !connected;
+    if (!isBusy(close)) close.disabled = !connected;
   }
 
+  /** Updates the election in place, so a chosen or focused option survives. */
   function showElection(e: Election) {
     election = e;
-    $("pg-el").hidden = false;
+    reveal($("pg-el"));
     $("pg-el-title").textContent = e.title;
-    const closes = new Date(e.closesAt);
-    $("pg-el-closes").textContent =
-      e.state === "closed" ? "Closed and counted" : isOpen(e) ? `Open until ${closes.toLocaleString()}` : `Closed at ${closes.toLocaleString()}, not counted yet`;
+    const closes = timeOf(e.closesAt);
+    $("pg-el-closes").textContent = e.state === "closed" ? "Closed and counted" : isOpen(e) ? `Open until ${closes}` : `Closed at ${closes}, not counted yet`;
     $("pg-el-result").textContent = e.tally
       ? Object.entries(e.tally.counts)
           .sort((a, b) => b[1] - a[1])
@@ -589,35 +766,54 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
           .join(" · ") + ` (${e.tally.total} ballots)`
       : "Published when the election is closed";
     const options = $("pg-el-options");
-    const previous = chosen();
-    options.querySelectorAll("label").forEach((l) => l.remove());
-    for (const option of e.options) {
-      const label = document.createElement("label");
-      label.className = "pg-option";
-      const input = Object.assign(document.createElement("input"), { type: "radio", name: "pg-el-option", value: option, checked: option === previous });
-      input.disabled = !isOpen(e);
-      input.addEventListener("change", updateElectionButtons);
-      label.append(input, document.createTextNode(option));
-      options.append(label);
+    const have = [...options.querySelectorAll<HTMLInputElement>("input")].map((i) => i.value);
+    if (have.join("\n") !== e.options.join("\n")) {
+      const previous = chosen();
+      options.querySelectorAll("label").forEach((l) => l.remove());
+      for (const option of e.options) {
+        const label = document.createElement("label");
+        label.className = "pg-option";
+        const input = Object.assign(document.createElement("input"), { type: "radio", name: "pg-el-option", value: option, checked: option === previous });
+        input.addEventListener("change", updateElectionButtons);
+        label.append(input, document.createTextNode(option));
+        options.append(label);
+      }
     }
     options.hidden = e.state === "closed";
     setElectionState("ok", e.state === "closed" ? "Counted" : isOpen(e) ? "Open" : "Voting closed");
     updateElectionButtons();
   }
 
+  const electionField = watchFields([
+    { field: $<HTMLInputElement>("pg-el-id"), after: $("pg-el-row"), check: () => ($<HTMLInputElement>("pg-el-id").value.trim() ? null : "Enter the election's ID, for example board-2026.") },
+  ]);
+
   async function loadElection(id = $<HTMLInputElement>("pg-el-id").value.trim()) {
     if (!id) return;
-    electionMessage("");
+    const button = $("pg-el-load");
+    setBusy(button, true);
+    clearError($("pg-el-error"));
+    $("pg-el-message").textContent = "";
     try {
       myMsp = (await weft.request({ method: "weft_identity" }))?.mspId ?? null;
       const result = await call("weft_evaluate", ballot("GetElection", [id]));
-      showElection(JSON.parse(result.text));
+      const e = JSON.parse(result.text) as Election;
+      if (election?.id !== e.id) {
+        $("pg-el-options").querySelectorAll("label").forEach((l) => l.remove());
+        clearError($("pg-vote-error"));
+      }
+      showElection(e);
+      announce(`Loaded ${e.title}. ${$("pg-el-closes").textContent}.`);
     } catch (error) {
       election = null;
-      $("pg-el").hidden = true;
-      setElectionState("missing", "Not found");
-      electionMessage(reason(error), "err");
+      conceal($("pg-el"));
+      const said = contractSays(error);
+      setElectionState("missing", said && /There's no election/.test(said) ? "Not found" : "Not loaded");
+      electionError("pg-el-error", error, "The election couldn't be loaded.");
       updateElectionButtons();
+    } finally {
+      setBusy(button, false);
+      updateButtons();
     }
   }
 
@@ -627,11 +823,10 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
 
   async function castVote() {
     const option = chosen();
-    if (!election || !option) return;
     const button = $<HTMLButtonElement>("pg-el-vote");
-    button.disabled = true;
-    button.textContent = "Waiting for Weft…";
-    button.classList.add("is-working");
+    if (!election || !option || isBusy(button)) return;
+    setBusy(button, true);
+    clearError($("pg-vote-error"));
     // The salt is the voter's secret: without it, no one can tell which choice
     // the commitment is for.
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
@@ -641,20 +836,20 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       const receipt = { ...JSON.parse(result.text), option, salt, blockNumber: result.blockNumber };
       votedIn.add(election.id);
       showReceipt(receipt);
-      electionMessage(`Your ballot is in block ${result.blockNumber}.`);
+      electionMessage(`Your ballot is in block ${result.blockNumber}. Your receipt is below.`);
       void loadExplorers();
     } catch (error) {
-      const message = reason(error);
-      if (/already voted/.test(message)) votedIn.add(election.id);
-      electionMessage(message, "err");
+      if (/already voted/.test(contractSays(error) ?? "")) votedIn.add(election.id);
+      $("pg-el-message").textContent = "";
+      electionError("pg-vote-error", error, "Your vote didn't go through.");
     } finally {
-      button.classList.remove("is-working");
+      setBusy(button, false);
       updateElectionButtons();
     }
   }
 
   function showReceipt(r: { electionId: string; txId: string; commitment: string; option: string; salt: string }) {
-    $("pg-receipt").hidden = false;
+    reveal($("pg-receipt"));
     $("pg-receipt-json").textContent = JSON.stringify(r, null, 2);
     const link = $<HTMLAnchorElement>("pg-receipt-check");
     if (explorerBase) {
@@ -670,50 +865,100 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
 
   async function closeElection() {
-    if (!election) return;
     const button = $<HTMLButtonElement>("pg-el-close");
-    button.disabled = true;
+    if (!election || isBusy(button)) return;
+    setBusy(button, true);
+    clearError($("pg-vote-error"));
     try {
       const result = await call("weft_submit", ballot("CloseElection", [election.id]));
+      setBusy(button, false);
       showElection(JSON.parse(result.text));
+      // The close button is gone now: focus the result it produced.
+      if (document.activeElement === button || !document.activeElement || document.activeElement === document.body) $("pg-el-message").focus();
       electionMessage(`Counted in block ${result.blockNumber}. Each explorer now compares this result with the commitments it has.`);
       void loadExplorers();
     } catch (error) {
-      electionMessage(reason(error), "err");
+      electionError("pg-vote-error", error, "The election couldn't be closed.");
     } finally {
+      setBusy(button, false);
       updateElectionButtons();
     }
   }
 
+  const newFields = watchFields([
+    {
+      field: $<HTMLInputElement>("pg-new-id"),
+      check: () => {
+        const v = $<HTMLInputElement>("pg-new-id").value.trim();
+        if (!v) return "Give the election an ID, for example lunch-friday.";
+        return /\s/.test(v) ? "Use an ID without spaces, for example lunch-friday." : null;
+      },
+    },
+    { field: $<HTMLInputElement>("pg-new-title"), check: () => ($<HTMLInputElement>("pg-new-title").value.trim() ? null : "Write the question people will vote on.") },
+    {
+      field: $<HTMLInputElement>("pg-new-options"),
+      check: () => {
+        const options = $<HTMLInputElement>("pg-new-options").value.split(",").map((o) => o.trim()).filter(Boolean);
+        if (options.length < 2) return "Give at least two choices, separated by commas.";
+        return new Set(options).size < options.length ? "Each choice can appear only once." : null;
+      },
+    },
+  ]);
+
   async function createElection() {
+    const button = $<HTMLButtonElement>("pg-new-create");
+    if (isBusy(button) || !newFields.checkAll()) return;
     const id = $<HTMLInputElement>("pg-new-id").value.trim();
     const title = $<HTMLInputElement>("pg-new-title").value.trim();
     const options = $<HTMLInputElement>("pg-new-options").value.split(",").map((o) => o.trim()).filter(Boolean);
     const minutes = Number($<HTMLSelectElement>("pg-new-minutes").value);
-    if (!id || !title || options.length < 2) {
-      electionMessage("Give the election an ID, a question and at least two choices.", "err");
-      return;
-    }
     const closesAt = new Date(Date.now() + minutes * 60_000).toISOString();
+    setBusy(button, true);
+    clearError($("pg-new-error"));
     try {
       await call("weft_submit", ballot("CreateElection", [id, title, JSON.stringify(options), closesAt]));
       $<HTMLInputElement>("pg-el-id").value = id;
-      ($("pg-new-create").closest("details") as HTMLDetailsElement).open = false;
-      $("pg-receipt").hidden = true;
+      setBusy(button, false);
+      closeNew();
+      conceal($("pg-receipt"));
       await loadElection(id);
+      $("pg-el-id").focus();
       electionMessage(`Created ${id}. Vote now; once voting closes, come back and close it to count.`);
     } catch (error) {
-      electionMessage(reason(error), "err");
+      electionError("pg-new-error", error, "The election wasn't created.");
+    } finally {
+      setBusy(button, false);
+      updateButtons();
     }
   }
+  const closeNew = closesInReverse($<HTMLDetailsElement>("pg-new"));
 
-  $("pg-el-load").addEventListener("click", () => void loadElection());
-  $("pg-el-id").addEventListener("keydown", (e) => e.key === "Enter" && void loadElection());
+  $("pg-el-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (isBusy($("pg-el-load")) || $<HTMLButtonElement>("pg-el-load").disabled || !electionField.checkAll()) return;
+    void loadElection();
+  });
   $("pg-el-vote").addEventListener("click", () => void castVote());
   $("pg-el-close").addEventListener("click", () => void closeElection());
-  $("pg-new-create").addEventListener("click", () => void createElection());
-  $("pg-receipt-copy").addEventListener("click", () => void navigator.clipboard.writeText($("pg-receipt-json").textContent ?? ""));
+  $("pg-new-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!$<HTMLButtonElement>("pg-new-create").disabled) void createElection();
+  });
+  $("pg-receipt-copy").addEventListener("click", async () => {
+    const button = $("pg-receipt-copy");
+    clearError($("pg-receipt-error"));
+    try {
+      await navigator.clipboard.writeText($("pg-receipt-json").textContent ?? "");
+      button.textContent = "Copied";
+      announce("Receipt copied.");
+      setTimeout(() => (button.textContent = "Copy receipt"), 2000);
+    } catch {
+      getSelection()?.selectAllChildren($("pg-receipt-json"));
+      showError($("pg-receipt-error"), "This browser didn't allow copying. The receipt is selected: press Ctrl+C, or Cmd+C on a Mac.");
+    }
+  });
   // An open election closes while the page is open; keep the buttons honest.
+  // Updated in place, so nothing the person is doing is disturbed.
   setInterval(() => election && election.state === "open" && showElection(election), 15_000);
 
   /* ---------------- explorers ---------------- */
@@ -759,20 +1004,38 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       .join(" ");
   }
 
+  /** One explorer's row, made once and updated in place on every refresh. */
+  function explorerRow(base: string) {
+    const list = $("pg-ex-list");
+    let li = list.querySelector<HTMLElement>(`li[data-base="${CSS.escape(base)}"]`);
+    if (!li) {
+      li = Object.assign(document.createElement("li"), { className: "pg-explorer arrive" });
+      li.dataset.base = base;
+      const head = Object.assign(document.createElement("div"), { className: "pg-head" });
+      head.append(Object.assign(document.createElement("a"), { target: "_blank", rel: "noreferrer" }), Object.assign(document.createElement("span"), { className: "pg-pill" }));
+      li.append(head, Object.assign(document.createElement("p"), { className: "pg-hint" }), Object.assign(document.createElement("p"), { className: "pg-hint" }));
+      list.append(li);
+    }
+    return li;
+  }
+
   async function loadExplorers() {
     const card = $("pg-explorers");
     if (!explorerBase) {
-      card.hidden = true;
+      conceal(card);
       return;
     }
-    card.hidden = false;
+    reveal(card);
+    const button = $("pg-ex-refresh");
+    setBusy(button, true);
+    clearError($("pg-ex-error"));
     const channel = electionChannel();
     // The invite names this organisation's explorer; it knows the others.
     let peers: Peer[] = [];
     try {
       peers = await getJson(`${explorerBase}/api/v1/channels/${encodeURIComponent(channel)}/organisations`);
-    } catch {
-      /* listed as unreachable below */
+    } catch (error: any) {
+      showError($("pg-ex-error"), `Couldn't ask ${new URL(explorerBase).host} for the other organisations' explorers. Refresh to try again.`, `${explorerBase}\n${error?.message ?? error}`);
     }
     const bases = [explorerBase, ...peers.map((p) => p.url.replace(/\/+$/, ""))];
     const rows = await Promise.all(
@@ -790,22 +1053,21 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       }),
     );
     const list = $("pg-ex-list");
-    list.replaceChildren(
-      ...rows.map((r) => {
-        const li = document.createElement("li");
-        li.className = "pg-explorer";
-        const head = document.createElement("div");
-        head.className = "pg-head";
-        const link = Object.assign(document.createElement("a"), { href: `${r.base}/channels/${encodeURIComponent(channel)}`, target: "_blank", rel: "noreferrer", textContent: `${r.name}'s explorer` });
-        const pill = Object.assign(document.createElement("span"), { className: "pg-pill", textContent: r.ok ? (r.c ? `${r.c.height} blocks` : "Not public") : "Unreachable" });
-        pill.dataset.state = r.ok && r.c ? "ok" : "missing";
-        head.append(link, pill);
-        const what = Object.assign(document.createElement("p"), { className: "pg-hint", textContent: r.ok ? describe(r.c) : `Couldn't reach ${r.base}.` });
-        li.append(head, what);
-        if (r.ok && r.c) li.append(Object.assign(document.createElement("p"), { className: "pg-hint", textContent: agreement(r.peers) }));
-        return li;
-      }),
-    );
+    list.querySelectorAll<HTMLElement>("li[data-base]").forEach((li) => !bases.includes(li.dataset.base!) && li.remove());
+    for (const r of rows) {
+      const li = explorerRow(r.base);
+      const link = li.querySelector("a")!;
+      link.href = `${r.base}/channels/${encodeURIComponent(channel)}`;
+      link.textContent = `${r.name}'s explorer`;
+      const pill = li.querySelector<HTMLElement>(".pg-pill")!;
+      pill.textContent = r.ok ? (r.c ? `${r.c.height} blocks` : "Not public") : "Unreachable";
+      pill.dataset.state = r.ok ? (r.c ? "ok" : "pending") : "missing";
+      const [what, agree] = li.querySelectorAll("p");
+      what!.textContent = r.ok ? describe(r.c) : `Couldn't reach ${r.base}. Check that it's running, then refresh.`;
+      agree!.textContent = r.ok && r.c ? agreement(r.peers) : "";
+      agree!.hidden = !(r.ok && r.c);
+      list.append(li);
+    }
     const block = Math.max(1, (rows[0]?.c?.height ?? 2) - 1);
     const tries: [string, string | null][] = rows.some((r) => r.c)
       ? [[`Open block ${block} on each explorer: the same block, and each says how many organisations report it.`, null]]
@@ -827,62 +1089,71 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       tries.push([`Sign in on the network page with Weft to see ${channel}, if your organisation is a member.`, networkPage(explorerBase)]);
     }
     tries.push([`See every organisation's explorer on one page, and compare a block's hash across them.`, networkPage(explorerBase)]);
-    $("pg-ex-try").replaceChildren(
-      ...tries.map(([text, href]) => {
-        const li = document.createElement("li");
-        if (href) li.append(Object.assign(document.createElement("a"), { href, target: "_blank", rel: "noreferrer", textContent: text }));
-        else li.textContent = text;
-        return li;
-      }),
-    );
+    // The suggestions change rarely; only rebuilt when they do, so focus on a link survives.
+    const key = JSON.stringify(tries);
+    const tryList = $("pg-ex-try");
+    if (tryList.dataset.key !== key) {
+      tryList.dataset.key = key;
+      tryList.replaceChildren(
+        ...tries.map(([text, href]) => {
+          const li = document.createElement("li");
+          if (href) li.append(Object.assign(document.createElement("a"), { href, target: "_blank", rel: "noreferrer", textContent: text }));
+          else li.textContent = text;
+          return li;
+        }),
+      );
+    }
+    setBusy(button, false);
   }
-  $("pg-ex-refresh").addEventListener("click", () => void loadExplorers());
+  $("pg-ex-refresh").addEventListener("click", () => !isBusy($("pg-ex-refresh")) && void loadExplorers());
 </script>
 
 <style is:global>
   /* Global because the arguments and log rows are created by the script, which
-     Astro's scoped styles would not reach. Every selector is under .pg. */
+     Astro's scoped styles would not reach. Every selector is under .pg.
+     Buttons, inputs, fields and errors are base.css's. */
   .pg {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    margin-top: 1.5rem;
-  }
-  .pg [hidden] {
-    display: none !important;
+    gap: var(--weft-space-5);
+    margin-top: var(--weft-space-6);
   }
   .pg-card {
     border: 1px solid var(--weft-line-strong);
     background: var(--weft-bg-raised);
-    border-radius: 1rem;
-    padding: 1.25rem;
+    border-radius: var(--weft-radius-xl);
+    padding: var(--weft-space-5);
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: var(--weft-space-3);
   }
   .pg h2 {
     font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
     margin: 0;
   }
   .pg h3 {
     font-size: var(--weft-type-md);
-    margin: 0.5rem 0 0;
+    line-height: var(--weft-leading-md);
+    margin: var(--weft-space-2) 0 0;
     color: var(--weft-text-muted);
   }
   .pg-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
+    gap: var(--weft-space-2) var(--weft-space-4);
     flex-wrap: wrap;
   }
   .pg-pill {
-    font-family: var(--weft-font-mono);
-    font-size: var(--weft-type-xs);
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    padding: var(--weft-space-1) 10px;
+    border-radius: var(--weft-radius-pill);
     border: 1px solid var(--weft-line-strong);
     color: var(--weft-text-muted);
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      color var(--weft-duration-fast) var(--weft-ease-out);
   }
   .pg-pill[data-state="ok"] {
     border-color: var(--weft-accent);
@@ -891,39 +1162,22 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-pill[data-state="missing"] {
     border-color: var(--weft-warn);
     color: var(--weft-warn-text);
-    text-decoration: none;
-  }
-  a.pg-pill[data-state="missing"]:hover {
-    background: color-mix(in srgb, var(--weft-warn) 12%, transparent);
-  }
-  .pg-pill {
-    transition:
-      border-color 200ms,
-      color 200ms,
-      background-color 200ms;
   }
   .pg-pill[data-state="ok"]::before {
     content: "";
     display: inline-block;
-    width: 0.45rem;
-    height: 0.45rem;
-    margin-right: 0.4rem;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
     border-radius: 50%;
     background: currentColor;
     vertical-align: 0.05em;
   }
-  .pg-label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-size: var(--weft-type-md);
-    color: var(--weft-text-muted);
-  }
   .pg-row {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--weft-space-2);
   }
-  .pg-row > input {
+  .pg-row > .input {
     flex: 1;
     min-width: 0;
   }
@@ -933,161 +1187,55 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
-    gap: 0.75rem;
+    gap: var(--weft-space-3);
+    align-items: start;
   }
-  .pg input,
-  .pg select {
-    font: inherit;
-    font-size: var(--weft-type-md);
-    color: var(--weft-text-strong);
-    background: var(--weft-bg);
-    border: 1px solid var(--weft-line-strong);
-    border-radius: 0.5rem;
-    padding: 0.55rem 0.7rem;
-    min-height: 2.75rem;
-    width: 100%;
-  }
-  .pg .mono,
-  .pg input.mono {
-    font-family: var(--weft-font-mono);
-  }
-  .pg button {
-    font: inherit;
-    font-size: var(--weft-type-md);
-    font-weight: 600;
-    min-height: 2.75rem;
-    padding: 0 1rem;
-    border-radius: 0.6rem;
-    border: 1px solid var(--weft-line-strong);
-    background: var(--weft-accent);
-    color: var(--weft-bg);
-    cursor: pointer;
-  }
-  .pg button {
-    transition:
-      filter 140ms,
-      background-color 140ms,
-      border-color 140ms,
-      color 140ms,
-      transform 140ms;
-  }
-  .pg button:hover:not(:disabled) {
-    filter: brightness(1.08);
-  }
-  .pg button:active:not(:disabled) {
-    transform: scale(0.98);
-  }
-  .pg button:focus-visible,
-  .pg input:focus-visible,
-  .pg select:focus-visible {
-    outline: 2px solid var(--weft-accent);
-    outline-offset: 2px;
-  }
-  /* Disabled reads as unavailable, not as a dimmer version of the colour. */
-  .pg button:disabled,
-  .pg button.pg-teal:disabled,
-  .pg button.pg-amber:disabled {
-    background: transparent;
-    border-color: var(--weft-line-strong);
-    border-style: dashed;
-    color: var(--weft-text-subtle);
-    cursor: not-allowed;
-    filter: none;
-  }
-  .pg button.pg-secondary:hover:not(:disabled),
-  .pg-presets button:hover {
-    border-color: var(--weft-accent);
-    filter: none;
-  }
-  .pg input,
-  .pg select {
-    transition: border-color 140ms;
-  }
-  .pg input:hover,
-  .pg select:hover {
-    border-color: var(--weft-text-subtle);
-  }
-  .pg-log li {
-    animation: pg-in 220ms ease-out;
-  }
-  @keyframes pg-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .pg-log li {
-      animation: none;
-    }
-  }
-  .pg button.pg-secondary {
-    background: transparent;
-    color: var(--weft-text-strong);
-  }
-  .pg button.pg-teal {
-    background: var(--weft-accent);
-    border-color: var(--weft-accent);
-    color: var(--weft-on-accent);
-  }
-  .pg button.pg-amber {
-    background: var(--weft-warn);
-    border-color: var(--weft-warn);
-    color: var(--weft-on-accent);
-  }
-  .pg button.pg-suggested {
-    outline: 2px solid var(--weft-text-strong);
-    outline-offset: 2px;
-  }
-  .pg button.pg-link {
-    background: transparent;
-    border: 0;
-    color: var(--weft-accent-text);
-    padding: 0.25rem 0;
-    min-height: 2rem;
-    font-weight: 500;
-    align-self: flex-start;
-  }
+  /* A chosen example: Selected, as SYSTEM.md has it. */
   .pg-presets {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: var(--weft-space-2);
     align-items: center;
   }
-  .pg-presets button {
-    min-height: 2.25rem;
-    padding: 0 0.7rem;
-    font-family: var(--weft-font-mono);
-    font-weight: 500;
-    font-size: var(--weft-type-xs);
-    background: transparent;
-    color: var(--weft-text-strong);
+  .pg-presets .btn {
+    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+  }
+  .pg-presets .btn[aria-pressed="true"] {
+    background: var(--weft-accent-soft);
+    border-color: var(--weft-accent-line);
   }
   .pg-args {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: var(--weft-space-2);
+  }
+  .pg-args:empty {
+    display: none;
   }
   .pg-arg {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--weft-space-3);
     align-items: center;
   }
-  .pg a:not(.pg-button, .pg-pill) {
-    color: var(--weft-accent-text);
-    text-underline-offset: 0.2em;
+  .pg .btn--text {
+    align-self: flex-start;
   }
   .pg-hint {
     margin: 0;
     font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
     color: var(--weft-text-subtle);
+  }
+  .pg-why {
+    color: var(--weft-text-muted);
   }
   .pg-details {
     display: grid;
     grid-template-columns: 7.5rem minmax(0, 1fr);
-    gap: 0.35rem 1rem;
+    gap: 6px var(--weft-space-4);
     margin: 0;
     font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
   }
   .pg-details dt {
     color: var(--weft-text-subtle);
@@ -1096,27 +1244,27 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     margin: 0;
     overflow-wrap: anywhere;
   }
-  .pg-out[data-tone="ok"] {
-    border-color: color-mix(in srgb, var(--weft-accent) 55%, transparent);
-  }
-  .pg-out[data-tone="err"] {
-    border-color: color-mix(in srgb, var(--weft-danger) 60%, transparent);
-  }
-  .pg-out[data-tone="pending"] {
-    color: var(--weft-text-subtle);
-  }
   .pg-out {
     margin: 0;
-    padding: 0.85rem;
-    border-radius: 0.6rem;
+    padding: var(--weft-space-3) var(--weft-space-4);
+    border-radius: var(--weft-radius-lg);
     background: var(--weft-bg);
     border: 1px solid var(--weft-line-strong);
-    font-family: var(--weft-font-mono);
-    font-size: var(--weft-type-xs);
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     max-height: 22rem;
     overflow: auto;
+  }
+  .pg-out[data-tone="ok"] {
+    border-color: var(--weft-accent-line);
+  }
+  .pg-out[data-tone="pending"] {
+    color: var(--weft-text-subtle);
+  }
+  .pg-out-link {
+    font-size: var(--weft-type-md);
+    align-self: flex-start;
   }
   .pg-log {
     list-style: none;
@@ -1124,13 +1272,16 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--weft-space-2);
     max-height: 28rem;
     overflow: auto;
   }
+  .pg-log:empty {
+    display: none;
+  }
   .pg-log li {
     border-left: 3px solid var(--weft-line-strong);
-    padding: 0.25rem 0 0.25rem 0.75rem;
+    padding: var(--weft-space-1) 0 var(--weft-space-1) var(--weft-space-3);
   }
   .pg-log li[data-tone="ok"] {
     border-color: var(--weft-accent);
@@ -1138,27 +1289,16 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-log li[data-tone="err"] {
     border-color: var(--weft-danger);
   }
-  .pg a.pg-button {
-    display: inline-flex;
-    align-items: center;
-    font-size: var(--weft-type-md);
-    font-weight: 600;
-    min-height: 2.75rem;
-    padding: 0 1rem;
-    border-radius: 0.6rem;
-    background: var(--weft-accent);
-    color: var(--weft-on-accent);
-    text-decoration: none;
+  .pg-log-head {
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    color: var(--weft-text-muted);
   }
-  .pg a.pg-button:hover {
-    filter: brightness(1.08);
-  }
-  .pg-out-link {
-    font-size: var(--weft-type-md);
-    align-self: flex-start;
-  }
-  .pg-hint[data-tone="err"] {
-    color: var(--weft-danger-text);
+  .pg-log pre {
+    margin: 6px 0 0;
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--weft-text-muted);
   }
   .pg-options {
     border: 0;
@@ -1166,17 +1306,17 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--weft-space-2);
   }
   .pg-options legend {
     width: 100%;
     padding: 0;
-    margin-bottom: 0.4rem;
+    margin-bottom: 6px;
   }
   .pg-stack {
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: var(--weft-space-3);
   }
   .pg-stack > h3 {
     margin: 0;
@@ -1184,39 +1324,45 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-option {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    min-height: 2.75rem;
-    padding: 0 0.9rem;
+    gap: var(--weft-space-2);
+    min-height: 44px;
+    padding: 0 14px;
     border: 1px solid var(--weft-line-strong);
-    border-radius: 0.6rem;
+    border-radius: var(--weft-radius-lg);
     font-size: var(--weft-type-md);
     cursor: pointer;
-    transition: border-color 140ms;
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      background-color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  @media (hover: hover) {
+    .pg-option:hover:not(:has(input:disabled)) {
+      border-color: var(--weft-text-subtle);
+    }
   }
   .pg-option:has(input:checked) {
-    border-color: var(--weft-warn);
+    background: var(--weft-accent-soft);
+    border-color: var(--weft-accent-line);
+  }
+  .pg-option:has(input:focus-visible) {
+    outline: var(--weft-focus-ring) solid var(--weft-focus);
+    outline-offset: var(--weft-focus-offset);
+  }
+  .pg-option input:focus-visible {
+    outline: none;
   }
   .pg-option:has(input:disabled) {
-    cursor: default;
+    cursor: not-allowed;
     color: var(--weft-text-subtle);
   }
-  .pg .pg-option input {
-    width: auto;
-    min-height: 0;
-    accent-color: var(--weft-warn);
-  }
-  .pg-new summary {
-    cursor: pointer;
-    font-size: var(--weft-type-md);
-    color: var(--weft-accent-text);
+  .pg-option input {
+    margin: 0;
+    accent-color: var(--weft-accent);
   }
   .pg-new[open] {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-  }
-  .pg-new button {
-    align-self: flex-start;
+    gap: var(--weft-space-3);
   }
   .pg-explorers,
   .pg-try {
@@ -1224,39 +1370,29 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--weft-space-3);
   }
   .pg-explorers {
     list-style: none;
   }
   .pg-explorer {
     border: 1px solid var(--weft-line-strong);
-    border-radius: 0.75rem;
-    padding: 0.85rem 1rem;
+    border-radius: var(--weft-radius-lg);
+    padding: var(--weft-space-3) var(--weft-space-4);
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 6px;
   }
   .pg-explorer a {
     font-weight: 600;
   }
   .pg-try {
     padding-left: 1.2rem;
-    gap: 0.4rem;
+    gap: 6px;
     font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
   }
-  .pg-log-head {
-    font-family: var(--weft-font-mono);
-    font-size: var(--weft-type-xs);
-    color: var(--weft-text-muted);
-  }
-  .pg-log pre {
-    margin: 0.35rem 0 0;
-    font-size: var(--weft-type-xs);
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    color: var(--weft-text-muted);
-    background: transparent;
-    padding: 0;
+  #pg-el-message:empty {
+    display: none;
   }
 </style>

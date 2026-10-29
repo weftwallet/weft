@@ -82,7 +82,7 @@ In the extension choose **Enrol with CA** and enter:
 
 | Field | Value |
 |---|---|
-| Enrollment ID / secret | `weftuser` / `weftpw` |
+| Enrolment ID and secret | `weftuser` / `weftpw` |
 | MSP ID | `Org1MSP` |
 | Channels | `mychannel` |
 | Relay URL | `http://localhost:8787` |

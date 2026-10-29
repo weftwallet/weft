@@ -10,7 +10,8 @@
     "./ProductSwitcher.astro": "./src/ProductSwitcher.astro",
     "./ThemeControl.astro": "./src/ThemeControl.astro",
     "./base.css": "./src/base.css",
-    "./links": "./src/links.ts"
+    "./links": "./src/links.ts",
+    "./ui": "./src/ui.ts"
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible-mono": "^5.3.0",

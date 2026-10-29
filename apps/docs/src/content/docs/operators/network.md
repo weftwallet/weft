@@ -13,7 +13,7 @@ The page holds no data. It reads each explorer's public API from your browser, a
 
 ## Checking a block in your browser
 
-**Check a block in your browser** doesn't rely on what the explorers say about each other. For each organisation's explorer, it:
+The *Check a block in your browser* panel, on each channel, doesn't rely on what the explorers say about each other. For each organisation's explorer, it:
 
 1. fetches the explorer's signed checkpoint, and checks the signature, and that the signing certificate was issued by that organisation's CA, as named in the channel configuration;
 2. fetches the block headers from your block up to the checkpoint, and recomputes each hash and each link to the block before;

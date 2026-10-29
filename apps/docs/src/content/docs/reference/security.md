@@ -35,9 +35,9 @@ The provider in the page (`window.weft`) only posts messages. A separate content
 
 The relay builds the Fabric messages; Weft doesn't trust it to build the right ones. Before each signature, Weft decodes the protobuf bytes and checks:
 
-- **Proposal:** channel, chaincode, function (with contract prefix), every argument, every private input (names and values), endorsing organisations if requested, signer MSP ID and certificate, and that the transaction ID in the header matches.
-- **Transaction:** same transaction ID and channel, and your certificate as creator.
-- **Commit status request:** same transaction ID and channel.
+- In the proposal: channel, chaincode, function (with contract prefix), every argument, every private input (names and values), endorsing organisations if requested, signer MSP ID and certificate, and that the transaction ID in the header matches.
+- In the transaction: the same transaction ID and channel, and your certificate as creator.
+- In the commit status request: the same transaction ID and channel.
 
 Any mismatch stops the flow with "Weft refused to sign". This is covered by tests that build real messages with `@hyperledger/fabric-gateway` and tamper with them.
 

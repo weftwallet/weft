@@ -11,7 +11,7 @@ Returned after ordering, when the block is committed.
 
 | Code | Weft says | Retry? |
 |---|---|---|
-| `VALID` | Committed | – |
+| `VALID` | Committed | Not needed |
 | `MVCC_READ_CONFLICT` | Someone else changed the same data first | Yes |
 | `PHANTOM_READ_CONFLICT` | The data changed while this was in flight | Yes |
 | `ENDORSEMENT_POLICY_FAILURE` | Not enough organisations approved it | Yes |

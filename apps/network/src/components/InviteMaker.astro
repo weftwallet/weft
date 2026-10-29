@@ -2,66 +2,94 @@
 // Builds an org invite, its share links and a QR code entirely in the browser.
 // Nothing typed here leaves the page.
 import { productHref } from "@weftwallet/ui/links";
+
+const fields = [
+  { name: "network", label: "Network name", placeholder: "Acme Supply Network" },
+  { name: "organization", label: "Organisation", placeholder: "Org1" },
+  { name: "mspId", label: "MSP ID", placeholder: "Org1MSP", mono: true },
+  { name: "channels", label: "Channels", hint: "separated by commas", placeholder: "mychannel", mono: true },
+  { name: "caUrl", label: "CA URL", placeholder: "https://ca.org1.example.com:7054", url: true },
+  { name: "caName", label: "CA name", hint: "optional", placeholder: "ca-org1", mono: true },
+  { name: "relayUrl", label: "Relay URL", placeholder: "https://relay.org1.example.com", url: true },
+  { name: "enrollmentId", label: "Enrolment ID", hint: "optional, for one person", mono: true },
+  { name: "explorerUrl", label: "Explorer URL", hint: "optional", placeholder: "https://explorer.org1.example.com", url: true },
+];
 ---
 
 <div class="weft-tool" data-join={productHref("site", "/join/")}>
-  <form id="invite-form" class="weft-form">
-    <details class="weft-profile">
+  <form id="invite-form" class="weft-form" novalidate>
+    <details class="disclosure weft-profile" id="profile-box">
       <summary>Start from a connection profile (JSON)</summary>
-      <p>
-        Paste your Fabric connection profile, for example <code>connection-org1.json</code>, to fill in the MSP ID and CA.
-        For YAML profiles use the CLI: <code>weft invite create --profile connection.yaml</code>.
-      </p>
-      <textarea id="profile" rows="6" placeholder='{"organizations": {...}, "certificateAuthorities": {...}}'></textarea>
-      <button type="button" id="load-profile">Fill from profile</button>
-      <p class="weft-error" id="profile-error" role="alert"></p>
+      <div class="weft-profile__body">
+        <p>
+          Paste your Fabric connection profile, for example <code>connection-org1.json</code>, to fill in the MSP ID and CA.
+          For YAML profiles use the CLI: <code>weft invite create --profile connection.yaml</code>.
+        </p>
+        <label class="visually-hidden" for="profile">Connection profile</label>
+        <textarea id="profile" class="input" rows="6" spellcheck="false" placeholder='{"organizations": {...}, "certificateAuthorities": {...}}'></textarea>
+        <div><button type="button" class="btn" id="load-profile">Fill from profile</button></div>
+        <div class="action-error" id="profile-failed" role="alert" hidden></div>
+      </div>
     </details>
 
     <div class="weft-grid">
-      <label>Network name<input name="network" required placeholder="Acme Supply Network" /></label>
-      <label>Organisation<input name="organization" required placeholder="Org1" /></label>
-      <label>MSP ID<input name="mspId" required placeholder="Org1MSP" class="mono" /></label>
-      <label>Channels <span>comma-separated</span><input name="channels" required placeholder="mychannel" class="mono" /></label>
-      <label>CA URL<input name="caUrl" type="url" required placeholder="https://ca.org1.example.com:7054" /></label>
-      <label>CA name <span>optional</span><input name="caName" placeholder="ca-org1" class="mono" /></label>
-      <label>Relay URL<input name="relayUrl" type="url" required placeholder="https://relay.org1.example.com" /></label>
-      <label>Enrollment ID <span>optional, per-person invites</span><input name="enrollmentId" class="mono" /></label>
-      <label>Explorer URL <span>optional</span><input name="explorerUrl" type="url" placeholder="https://explorer.org1.example.com" /></label>
+      {
+        fields.map((f) => (
+          <div class="field">
+            <label for={`invite-${f.name}`}>
+              {f.label}
+              {f.hint && <span class="field__hint">{f.hint}</span>}
+            </label>
+            <input
+              id={`invite-${f.name}`}
+              name={f.name}
+              class:list={["input", { mono: f.mono }]}
+              type={f.url ? "url" : "text"}
+              placeholder={f.placeholder}
+              spellcheck="false"
+            />
+          </div>
+        ))
+      }
     </div>
   </form>
 
-  <h3>invite.json</h3>
+  <h2>invite.json</h2>
   <p>Host this over HTTPS, or let your <a href={productHref("docs", "/operators/relay/")}>relay</a> serve it at <code>/.well-known/weft-invite.json</code>.</p>
-  <pre id="invite-json" class="weft-output">Fill in the form above.</pre>
+  <pre id="invite-json" class="weft-output">Fill in the fields above. The invite appears here as you type.</pre>
   <div class="weft-actions">
-    <button type="button" id="download-json">Download invite.json</button>
-    <button type="button" id="copy-json">Copy</button>
+    <button type="button" class="btn btn--primary" id="download-json">Download invite.json</button>
+    <button type="button" class="btn" id="copy-json">Copy</button>
   </div>
+  <div class="action-error" id="copy-json-error" role="alert" hidden></div>
 
-  <h3>Share links and QR code</h3>
-  <label class="weft-wide"
-    >Where the invite is hosted
-    <input id="invite-url" type="url" placeholder="https://relay.org1.example.com/.well-known/weft-invite.json" />
-  </label>
+  <h2>Share links and QR code</h2>
+  <div class="field">
+    <label for="invite-url">Where the invite is hosted</label>
+    <input id="invite-url" class="input" type="url" spellcheck="false" placeholder="https://relay.org1.example.com/.well-known/weft-invite.json" />
+  </div>
+  <p class="weft-muted" id="links-empty">Enter the invite's address to get its join link, Weft link and QR code.</p>
   <div id="links" hidden>
     <dl class="weft-links">
-      <dt>Join link <span>email, chat, docs</span></dt>
+      <dt>Join link <span>for email, chat and docs</span></dt>
       <dd><code id="join-link"></code></dd>
-      <dt>Weft link <span>paste into Weft</span></dt>
+      <dt>Weft link <span>to paste into Weft</span></dt>
       <dd><code id="weft-link"></code></dd>
     </dl>
     <div class="weft-qr">
       <div id="qr" aria-label="QR code of the join link" role="img"></div>
       <div class="weft-actions">
-        <button type="button" id="download-svg">Download QR (SVG)</button>
-        <button type="button" id="copy-join">Copy join link</button>
+        <button type="button" class="btn btn--primary" id="download-svg">Download QR (SVG)</button>
+        <button type="button" class="btn" id="copy-join">Copy join link</button>
       </div>
     </div>
+    <div class="action-error" id="copy-join-error" role="alert" hidden></div>
   </div>
 </div>
 
 <script>
   import QRCode from "qrcode";
+  import { announce, clearError, closesInReverse, conceal, isWebUrl, reveal, setFieldError, showError, watchFields } from "@weftwallet/ui/ui";
 
   // Mirrors inviteLinks() and the invite schema in @weftwallet/core, kept
   // inline so this page doesn't load the wallet's crypto code.
@@ -71,13 +99,37 @@ import { productHref } from "@weftwallet/ui/links";
   const form = document.getElementById("invite-form") as HTMLFormElement;
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
   const $ = (id: string) => document.getElementById(id)!;
+  const v = (name: string) => field(name).value.trim();
+  const channelList = () => v("channels").split(",").map((c) => c.trim()).filter(Boolean);
 
+  const required = (name: string, what: string) => () => (v(name) ? null : `Enter ${what}.`);
+  const url = (name: string, what: string, optional = false) => () => {
+    if (!v(name)) return optional ? null : `Enter ${what}.`;
+    return isWebUrl(v(name)) ? null : `Enter a full address starting with https://, for example ${field(name).placeholder}.`;
+  };
+
+  const checks = watchFields([
+    { field: field("network"), check: required("network", "the network's name") },
+    { field: field("organization"), check: required("organization", "your organisation's name") },
+    { field: field("mspId"), check: () => (!v("mspId") ? "Enter your organisation's MSP ID, for example Org1MSP." : /\s/.test(v("mspId")) ? "An MSP ID has no spaces." : null) },
+    {
+      field: field("channels"),
+      check: () => {
+        const list = channelList();
+        if (!list.length) return "Enter at least one channel, for example mychannel.";
+        const bad = list.find((c) => !/^[a-z][a-z0-9.-]*$/.test(c));
+        return bad ? `"${bad}" isn't a channel name: Fabric's are lower case letters, digits, dots and hyphens, starting with a letter.` : null;
+      },
+    },
+    { field: field("caUrl"), check: url("caUrl", "your CA's address") },
+    { field: field("relayUrl"), check: url("relayUrl", "your relay's address") },
+    { field: field("explorerUrl"), check: url("explorerUrl", "your explorer's address", true) },
+  ]);
+
+  /** The invite, or null while a required field is missing or wrong. */
   function currentInvite(): Record<string, unknown> | null {
-    const v = (name: string) => field(name).value.trim();
-    const channels = v("channels").split(",").map((c) => c.trim()).filter(Boolean);
-    if (!v("network") || !v("organization") || !v("mspId") || !v("caUrl") || !v("relayUrl") || channels.length === 0) {
-      return null;
-    }
+    const ok = v("network") && v("organization") && v("mspId") && !/\s/.test(v("mspId")) && channelList().length && isWebUrl(v("caUrl")) && isWebUrl(v("relayUrl"));
+    if (!ok || (v("explorerUrl") && !isWebUrl(v("explorerUrl")))) return null;
     return {
       weft: 1,
       network: v("network"),
@@ -86,194 +138,212 @@ import { productHref } from "@weftwallet/ui/links";
       caUrl: v("caUrl").replace(/\/+$/, ""),
       ...(v("caName") ? { caName: v("caName") } : {}),
       relayUrl: v("relayUrl").replace(/\/+$/, ""),
-      channels,
+      channels: channelList(),
       ...(v("enrollmentId") ? { enrollmentId: v("enrollmentId") } : {}),
       ...(v("explorerUrl") ? { explorerUrl: v("explorerUrl").replace(/\/+$/, "") } : {}),
     };
   }
 
   function download(name: string, type: string, text: string) {
-    const url = URL.createObjectURL(new Blob([text], { type }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    const href = URL.createObjectURL(new Blob([text], { type }));
+    const a = Object.assign(document.createElement("a"), { href, download: name });
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(href);
+  }
+
+  /** Copies, then says so on the button; if the browser refuses, selects the text instead. */
+  async function copy(button: HTMLElement, text: string, select: HTMLElement, errorBox: HTMLElement, what: string) {
+    const label = button.textContent;
+    clearError(errorBox);
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = "Copied";
+      announce(`${what} copied.`);
+      setTimeout(() => (button.textContent = label), 2000);
+    } catch {
+      getSelection()?.selectAllChildren(select);
+      showError(errorBox, `This browser didn't allow copying. The ${what.toLowerCase()} is selected: press Ctrl+C, or Cmd+C on a Mac.`);
+    }
   }
 
   let qrSvg = "";
 
   function renderInvite() {
     const invite = currentInvite();
-    $("invite-json").textContent = invite ? JSON.stringify(invite, null, 2) : "Fill in the required fields above.";
+    $("invite-json").textContent = invite ? JSON.stringify(invite, null, 2) : "Fill in the fields above. The invite appears here as you type.";
+    $("invite-json").dataset.ready = String(Boolean(invite));
   }
 
+  watchFields([
+    {
+      field: $("invite-url") as HTMLInputElement,
+      check: () => {
+        const raw = ($("invite-url") as HTMLInputElement).value.trim();
+        return !raw || isWebUrl(raw) ? null : "Enter the invite's full address, starting with https://.";
+      },
+    },
+  ]);
+
   async function renderLinks() {
-    const raw = (document.getElementById("invite-url") as HTMLInputElement).value.trim();
-    let url: URL;
-    try {
-      url = new URL(raw);
-      if (!/^https?:$/.test(url.protocol)) throw new Error();
-    } catch {
-      $("links").hidden = true;
+    const raw = ($("invite-url") as HTMLInputElement).value.trim();
+    if (!isWebUrl(raw)) {
+      conceal($("links"));
+      $("links-empty").hidden = false;
       return;
     }
+    const url = new URL(raw);
     const join = new URL(JOIN_PAGE);
     join.searchParams.set("weft-invite", url.toString());
     $("join-link").textContent = join.toString();
     $("weft-link").textContent = `weft://invite?u=${encodeURIComponent(url.toString())}`;
     qrSvg = await QRCode.toString(join.toString(), { type: "svg", margin: 2, errorCorrectionLevel: "M" });
     $("qr").innerHTML = qrSvg;
-    $("links").hidden = false;
+    $("links-empty").hidden = true;
+    reveal($("links"));
   }
 
   form.addEventListener("input", renderInvite);
-  document.getElementById("invite-url")!.addEventListener("input", () => void renderLinks());
+  form.addEventListener("submit", (e) => e.preventDefault());
+  $("invite-url").addEventListener("input", () => void renderLinks());
+  closesInReverse($("profile-box") as HTMLDetailsElement);
+
+  $("profile").addEventListener("input", () => {
+    clearError($("profile-failed"));
+    setFieldError($("profile") as HTMLTextAreaElement, null);
+  });
 
   $("load-profile").addEventListener("click", () => {
-    $("profile-error").textContent = "";
+    const textarea = $("profile") as HTMLTextAreaElement;
+    clearError($("profile-failed"));
+    const fail = (sentence: string, details?: string) => {
+      showError($("profile-failed"), sentence, details);
+      textarea.setAttribute("aria-invalid", "true");
+      textarea.setAttribute("aria-describedby", "profile-failed");
+      textarea.focus();
+    };
+    let profile: any;
     try {
-      const profile = JSON.parse((document.getElementById("profile") as HTMLTextAreaElement).value);
-      const orgs = Object.keys(profile.organizations ?? {});
-      const orgKey = profile.client?.organization ?? (orgs.length === 1 ? orgs[0] : undefined);
-      if (!orgKey) throw new Error(`The profile lists several organisations (${orgs.join(", ")}); keep only yours.`);
-      const org = profile.organizations[orgKey];
-      const caKey = org?.certificateAuthorities?.[0];
-      const ca = caKey ? profile.certificateAuthorities?.[caKey] : undefined;
-      if (!org?.mspid || !ca?.url) throw new Error("Couldn't find the organisation's mspid and CA url in that profile.");
-      field("organization").value = orgKey;
-      field("mspId").value = org.mspid;
-      field("caUrl").value = ca.url;
-      field("caName").value = ca.caName ?? "";
-      if (profile.name && !field("network").value) field("network").value = profile.name;
-      const channels = Object.keys(profile.channels ?? {});
-      if (channels.length) field("channels").value = channels.join(", ");
-      renderInvite();
+      profile = JSON.parse(textarea.value);
     } catch (error) {
-      $("profile-error").textContent = error instanceof Error ? error.message : String(error);
+      fail(textarea.value.trim() ? "That isn't valid JSON. Paste the whole connection profile file." : "Paste your connection profile first.", textarea.value.trim() ? String((error as Error).message) : undefined);
+      return;
     }
+    const orgs = Object.keys(profile?.organizations ?? {});
+    const orgKey = profile?.client?.organization ?? (orgs.length === 1 ? orgs[0] : undefined);
+    if (!orgKey) {
+      fail(orgs.length ? `The profile lists several organisations (${orgs.join(", ")}). Keep only yours, then try again.` : "The profile has no organizations section. Check it's a Fabric connection profile.");
+      return;
+    }
+    const org = profile.organizations[orgKey];
+    const caKey = org?.certificateAuthorities?.[0];
+    const ca = caKey ? profile.certificateAuthorities?.[caKey] : undefined;
+    if (!org?.mspid || !ca?.url) {
+      fail("Couldn't find your organisation's MSP ID and CA address in that profile. Fill them in below instead.");
+      return;
+    }
+    textarea.removeAttribute("aria-invalid");
+    textarea.removeAttribute("aria-describedby");
+    field("organization").value = orgKey;
+    field("mspId").value = org.mspid;
+    field("caUrl").value = ca.url;
+    field("caName").value = ca.caName ?? "";
+    if (profile.name && !field("network").value) field("network").value = profile.name;
+    const channels = Object.keys(profile.channels ?? {});
+    if (channels.length) field("channels").value = channels.join(", ");
+    renderInvite();
+    announce("Filled in from the profile. Check the fields, then add your relay's address.");
+    field("relayUrl").focus();
   });
 
   $("download-json").addEventListener("click", () => {
+    if (!checks.checkAll()) return;
     const invite = currentInvite();
     if (invite) download("invite.json", "application/json", `${JSON.stringify(invite, null, 2)}\n`);
   });
-  $("copy-json").addEventListener("click", () => void navigator.clipboard.writeText($("invite-json").textContent ?? ""));
+  $("copy-json").addEventListener("click", () => {
+    if (!checks.checkAll()) return;
+    void copy($("copy-json"), $("invite-json").textContent ?? "", $("invite-json"), $("copy-json-error"), "Invite");
+  });
   $("download-svg").addEventListener("click", () => download("weft-invite-qr.svg", "image/svg+xml", qrSvg));
-  $("copy-join").addEventListener("click", () => void navigator.clipboard.writeText($("join-link").textContent ?? ""));
+  $("copy-join").addEventListener("click", () => void copy($("copy-join"), $("join-link").textContent ?? "", $("join-link"), $("copy-join-error"), "Join link"));
 </script>
 
 <style>
-  /* Card styles set display, which would otherwise override the hidden attribute. */
-  .weft-tool [hidden] {
-    display: none !important;
-  }
   .weft-tool {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    margin-top: 1.5rem;
+    gap: var(--weft-space-4);
+    margin-top: var(--weft-space-6);
+  }
+  .weft-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-4);
   }
   .weft-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-    gap: 0.75rem 1rem;
+    gap: var(--weft-space-3) var(--weft-space-4);
+    align-items: start;
   }
-  .weft-tool label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-size: var(--weft-type-md);
-    color: var(--weft-text-muted);
-  }
-  .weft-tool label span {
-    color: var(--weft-text-subtle);
-    font-size: var(--weft-type-xs);
-  }
-  .weft-tool input,
-  .weft-tool textarea {
-    font: inherit;
-    font-size: var(--weft-type-md);
-    color: var(--weft-text-strong);
+  .weft-tool .input {
     background: var(--weft-bg-raised);
-    border: 1px solid var(--weft-line-strong);
-    border-radius: 0.5rem;
-    padding: 0.6rem 0.75rem;
-    min-height: 2.75rem;
-    width: 100%;
-  }
-  .weft-tool textarea {
-    font-family: var(--weft-font-mono);
-    font-size: var(--weft-type-xs);
-  }
-  .weft-tool .mono {
-    font-family: var(--weft-font-mono);
-  }
-  .weft-tool button {
-    font: inherit;
-    font-size: var(--weft-type-md);
-    min-height: 2.75rem;
-    padding: 0 1rem;
-    border-radius: 0.5rem;
-    border: 1px solid var(--weft-line-strong);
-    background: transparent;
-    color: var(--weft-text-strong);
-    cursor: pointer;
-  }
-  .weft-tool button:first-child {
-    background: var(--weft-accent);
-    border-color: var(--weft-accent);
-    color: var(--weft-bg);
-    font-weight: 600;
   }
   .weft-profile {
     border: 1px dashed var(--weft-line-strong);
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    border-radius: var(--weft-radius-lg);
+    padding: var(--weft-space-3) var(--weft-space-4);
   }
   .weft-profile summary {
-    cursor: pointer;
     font-weight: 600;
+    color: var(--weft-text-strong);
   }
-  .weft-profile > * + * {
-    margin-top: 0.5rem;
-  }
-  .weft-error {
-    color: var(--weft-danger-text);
-    font-size: var(--weft-type-md);
-    margin: 0;
+  .weft-profile__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
+    margin-top: var(--weft-space-3);
   }
   .weft-output {
     margin: 0;
-    padding: 1rem;
-    border-radius: 0.75rem;
+    padding: var(--weft-space-4);
+    border-radius: var(--weft-radius-lg);
     background: var(--weft-bg-raised);
     border: 1px solid var(--weft-line-strong);
-    font-family: var(--weft-font-mono);
-    font-size: var(--weft-type-xs);
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+  .weft-output[data-ready="false"],
+  .weft-output:not([data-ready]) {
+    color: var(--weft-text-subtle);
   }
   .weft-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--weft-space-2);
   }
-  .weft-tool h3 {
-    margin: 1rem 0 0;
+  .weft-tool h2 {
+    margin: var(--weft-space-4) 0 0;
+    font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
   }
   .weft-tool p {
     margin: 0;
   }
+  .weft-muted {
+    color: var(--weft-text-subtle);
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+  }
   .weft-links {
     display: grid;
-    gap: 0.25rem;
-    margin: 0 0 1rem;
+    gap: var(--weft-space-1);
+    margin: 0 0 var(--weft-space-4);
   }
   .weft-links dt {
     font-weight: 600;
-    margin-top: 0.5rem;
+    margin-top: var(--weft-space-2);
   }
   .weft-links dt span {
     font-weight: 400;
@@ -287,19 +357,27 @@ import { productHref } from "@weftwallet/ui/links";
   .weft-qr {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: var(--weft-space-4);
     align-items: flex-end;
   }
+  /* White behind the code in both themes, so every camera reads it; the
+     border keeps the tile from floating on the dark ground. */
   #qr {
     width: 12rem;
     height: 12rem;
     background: #fff;
-    border-radius: 0.75rem;
-    padding: 0.25rem;
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-lg);
+    padding: var(--weft-space-1);
   }
   #qr :global(svg) {
     width: 100%;
     height: 100%;
     display: block;
+  }
+  #links {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
   }
 </style>

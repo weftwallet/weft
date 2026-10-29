@@ -47,6 +47,17 @@ export default defineConfig({
       title: "weft docs",
       description: "Guides for people using Weft, building dApps and running Hyperledger Fabric networks.",
       favicon: "/favicon.svg",
+      // The page transition's direction (theme.css): back when going back
+      // through history, forward otherwise. As in packages/ui/src/Shell.astro.
+      head: [
+        {
+          tag: "script",
+          content: `const isBack = (type, from, to) => type === "traverse" && !(from != null && to != null && to > from);
+const goBack = (t) => { t.types.delete("forward"); t.types.add("back"); };
+addEventListener("pagereveal", (e) => { const a = window.navigation?.activation; if (e.viewTransition && a && isBack(a.navigationType, a.from?.index, a.entry?.index)) goBack(e.viewTransition); });
+addEventListener("pageswap", (e) => { const a = e.activation; if (e.viewTransition && a && isBack(a.navigationType, window.navigation?.currentEntry?.index, a.entry?.index)) goBack(e.viewTransition); });`,
+        },
+      ],
       // The mark weaves on hover; see src/components/SiteTitle.astro. The
       // products switcher and the theme control are the sites' own, from
       // @weftwallet/ui, in SocialIcons.astro and ThemeSelect.astro.
