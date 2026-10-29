@@ -1,13 +1,13 @@
 /* Weft colours mapped onto Starlight's theme variables.
    Source of truth: packages/brand/tokens.css */
 :root {
-  --sl-font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --sl-font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --sl-font: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-font-mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, monospace;
 }
 
 :root[data-theme="dark"] {
   --sl-color-accent-low: #102826;
-  --sl-color-accent: #2fa596;
+  --sl-color-accent: #3fc1b0;
   --sl-color-accent-high: #8fe3d8;
   --sl-color-white: #e8ecef;
   --sl-color-gray-1: #d3dae0;
@@ -21,7 +21,7 @@
 
 :root[data-theme="light"] {
   --sl-color-accent-low: #cdeee9;
-  --sl-color-accent: #1f7f73;
+  --sl-color-accent: #1a7468;
   --sl-color-accent-high: #11463f;
   --sl-color-white: #0b1218;
   --sl-color-gray-1: #17212b;
@@ -63,10 +63,10 @@
 
 :root[data-theme="light"] {
   --sl-color-blue-low: #dcf3ef;
-  --sl-color-blue: #1f7f73;
+  --sl-color-blue: #1a7468;
   --sl-color-blue-high: #11463f;
   --sl-color-purple-low: #dcf3ef;
-  --sl-color-purple: #1f7f73;
+  --sl-color-purple: #1a7468;
   --sl-color-purple-high: #11463f;
   --sl-color-orange-low: #f8ead2;
   --sl-color-orange: #a8650c;

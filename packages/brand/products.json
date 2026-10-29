@@ -1,0 +1,54 @@
+{
+  "$comment": "Weft's products: names, marks and where each one lives. Every app links to the others through products.mjs, which builds addresses from domain and subdomain (\"\" is the domain itself; null means no public site: the explorer is run by each organisation, the wallet is installed). dev is what `pnpm dev:<id>` serves. Change the domain here and every link follows.",
+  "domain": "weft.ifeanyiugwu.dev",
+  "products": {
+    "site": {
+      "name": "Weft",
+      "summary": "An identity wallet for Hyperledger Fabric.",
+      "mark": "logo/mark.svg",
+      "markSmall": "logo/mark-small.svg",
+      "subdomain": "",
+      "dev": "http://localhost:4321"
+    },
+    "docs": {
+      "name": "Weft Docs",
+      "summary": "Guides for people using Weft, building dApps and running networks.",
+      "mark": "logo/mark.svg",
+      "markSmall": "logo/mark-small.svg",
+      "subdomain": "docs",
+      "dev": "http://localhost:4322"
+    },
+    "playground": {
+      "name": "Weft Playground",
+      "summary": "Try a dApp against a Fabric network from your browser.",
+      "mark": "logo/products/playground.svg",
+      "markSmall": "logo/products/playground-small.svg",
+      "subdomain": "play",
+      "dev": "http://localhost:4323"
+    },
+    "network": {
+      "name": "Weft Network",
+      "summary": "Every organisation's explorer on one page, and tools for running a network.",
+      "mark": "logo/products/network.svg",
+      "markSmall": "logo/products/network-small.svg",
+      "subdomain": "network",
+      "dev": "http://localhost:4324"
+    },
+    "explorer": {
+      "name": "Weft Explorer",
+      "summary": "One organisation's view of its ledger, run by that organisation.",
+      "mark": "logo/products/explorer.svg",
+      "markSmall": "logo/products/explorer-small.svg",
+      "subdomain": null,
+      "dev": "http://localhost:8790"
+    },
+    "wallet": {
+      "name": "Weft Wallet",
+      "summary": "The browser extension that holds your identities and signs.",
+      "mark": "logo/mark.svg",
+      "markSmall": "logo/mark-small.svg",
+      "subdomain": null,
+      "dev": null
+    }
+  }
+}

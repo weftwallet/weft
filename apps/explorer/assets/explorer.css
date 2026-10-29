@@ -1,10 +1,11 @@
 /* Weft explorer. Tokens follow @weftwallet/brand; thread is the only accent,
    amber and signal mark status. */
 
-@font-face { font-family: "IBM Plex Sans"; font-weight: 400; font-display: swap; src: url("/assets/fonts/sans-400.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Sans"; font-weight: 500; font-display: swap; src: url("/assets/fonts/sans-500.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Sans"; font-weight: 600; font-display: swap; src: url("/assets/fonts/sans-600.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap; src: url("/assets/fonts/mono-400.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 400; font-display: swap; src: url("/assets/fonts/sans-400.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 500; font-display: swap; src: url("/assets/fonts/sans-500.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 600; font-display: swap; src: url("/assets/fonts/sans-600.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Mono"; font-weight: 400; font-display: swap; src: url("/assets/fonts/mono-400.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible Mono"; font-weight: 500; font-display: swap; src: url("/assets/fonts/mono-500.woff2") format("woff2"); }
 
 :root {
   --ink: #0b1218;
@@ -21,8 +22,8 @@
   --amber-soft: #2a2214;
   --signal: #e5675b;
   --signal-soft: #2a1817;
-  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --sans: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: dark;
 }
 
@@ -36,7 +37,7 @@
     --text: #0b1218;
     --muted: #3d4a56;
     --subtle: #5b6876;
-    --thread: #1f7f73;
+    --thread: #1a7468;
     --thread-soft: #e3f3f0;
     --amber: #8a5a10;
     --amber-soft: #f8eedb;

@@ -48,10 +48,11 @@ function font(pkg: string, file: string) {
 const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
   "explorer.css": { type: "text/css; charset=utf-8", body: () => asset("explorer.css") },
   "mark.svg": { type: "image/svg+xml", body: () => asset("mark.svg") },
-  "fonts/sans-400.woff2": { type: "font/woff2", body: () => font("@fontsource/ibm-plex-sans", "ibm-plex-sans-latin-400-normal.woff2") },
-  "fonts/sans-500.woff2": { type: "font/woff2", body: () => font("@fontsource/ibm-plex-sans", "ibm-plex-sans-latin-500-normal.woff2") },
-  "fonts/sans-600.woff2": { type: "font/woff2", body: () => font("@fontsource/ibm-plex-sans", "ibm-plex-sans-latin-600-normal.woff2") },
-  "fonts/mono-400.woff2": { type: "font/woff2", body: () => font("@fontsource/ibm-plex-mono", "ibm-plex-mono-latin-400-normal.woff2") },
+  "fonts/sans-400.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-400-normal.woff2") },
+  "fonts/sans-500.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-500-normal.woff2") },
+  "fonts/sans-600.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-600-normal.woff2") },
+  "fonts/mono-400.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-mono", "atkinson-hyperlegible-mono-latin-400-normal.woff2") },
+  "fonts/mono-500.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-mono", "atkinson-hyperlegible-mono-latin-500-normal.woff2") },
 };
 
 const PAGE = 20;

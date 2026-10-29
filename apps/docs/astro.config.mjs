@@ -25,10 +25,10 @@ export default defineConfig({
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/ifeanyi-ugwu/weft" }],
       editLink: { baseUrl: "https://github.com/ifeanyi-ugwu/weft/edit/main/apps/docs/" },
       customCss: [
-        "@fontsource/ibm-plex-sans/400.css",
-        "@fontsource/ibm-plex-sans/600.css",
-        "@fontsource/ibm-plex-mono/400.css",
-        "@fontsource/ibm-plex-mono/500.css",
+        "@fontsource/atkinson-hyperlegible-next/400.css",
+        "@fontsource/atkinson-hyperlegible-next/600.css",
+        "@fontsource/atkinson-hyperlegible-mono/400.css",
+        "@fontsource/atkinson-hyperlegible-mono/500.css",
         "./src/styles/theme.css",
       ],
       sidebar: [
