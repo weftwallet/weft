@@ -9,7 +9,7 @@
  */
 
 import type { OrgInvite } from "@weftwallet/protocol";
-import { InviteError, parseInvite } from "./invite.js";
+import { InviteError, parseInvite } from "./invite.ts";
 
 interface ProfileOrganization {
   mspid?: string;

@@ -9,8 +9,8 @@
  * authentication check, so it can't produce a wrong key silently.
  */
 
-import { toArrayBuffer } from "./bytes.js";
-import type { FabricCurve } from "./signing.js";
+import { toArrayBuffer } from "./bytes.ts";
+import type { EcKeyAlgorithm, FabricCurve } from "./signing.ts";
 
 /** OWASP's 2023 recommendation for PBKDF2-HMAC-SHA256. */
 export const PASSWORD_ITERATIONS = 600_000;

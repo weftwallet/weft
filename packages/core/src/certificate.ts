@@ -2,8 +2,8 @@
 import "reflect-metadata";
 import { Name, Pkcs10CertificateRequestGenerator, X509Certificate } from "@peculiar/x509";
 import type { IdentitySummary } from "@weftwallet/protocol";
-import { toHex, tryUtf8 } from "./bytes.js";
-import { sha256 } from "./signing.js";
+import { toHex, tryUtf8 } from "./bytes.ts";
+import { sha256, type EcKeyAlgorithm, type KeyPair } from "./signing.ts";
 
 /** OID Fabric CA uses to embed attributes as JSON: {"attrs": {...}}. */
 export const FABRIC_ATTRS_OID = "1.2.3.4.5.6.7.8.1";
@@ -79,7 +79,7 @@ export function certificateHealth(
 }
 
 /** Builds a PKCS#10 CSR (PEM) for enrolment with a Fabric CA. */
-export async function createCsr(keys: CryptoKeyPair, commonName: string): Promise<string> {
+export async function createCsr(keys: KeyPair, commonName: string): Promise<string> {
   const csr = await Pkcs10CertificateRequestGenerator.create({
     name: new Name([{ CN: [commonName] }]),
     keys,

@@ -7,9 +7,9 @@
  * transaction signature.
  */
 
-import { toArrayBuffer, utf8 } from "./bytes.js";
-import { parseCertificate } from "./certificate.js";
-import { parseDerSignature, type FabricCurve } from "./signing.js";
+import { toArrayBuffer, utf8 } from "./bytes.ts";
+import { parseCertificate } from "./certificate.ts";
+import { parseDerSignature, type EcKeyAlgorithm, type FabricCurve } from "./signing.ts";
 
 export const SIGN_IN_PREFIX = "weft-sign-in:v1";
 /** How long a sign-in message stays valid. Sites exchange it for a session straight away. */

@@ -12,7 +12,7 @@ import {
   utf8,
   wrapSigningKey,
   WrongSecretError,
-} from "./index.js";
+} from "./index.ts";
 
 // Fewer PBKDF2 rounds keep the tests fast; the algorithm is the same.
 const ROUNDS = 1000;

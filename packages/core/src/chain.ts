@@ -233,7 +233,7 @@ export async function verifyCheckpoint(signed: SignedCheckpoint, members: Member
   } catch {
     return { ok: false, checkpoint, reason: "Its certificate can't be read." };
   }
-  const algorithm = certificate.publicKey.algorithm as EcKeyAlgorithm;
+  const algorithm = certificate.publicKey.algorithm as { name: string; namedCurve: string };
   const size = CURVE_SIZES[algorithm.namedCurve];
   if (algorithm.name !== "ECDSA" || !size) return { ok: false, checkpoint, reason: "Its certificate isn't an ECDSA key Weft can check." };
   let valid = false;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inviteFromConnectionProfile, inviteLinks, resolveInviteUrl, InviteError } from "./index.js";
+import { inviteFromConnectionProfile, inviteLinks, resolveInviteUrl, InviteError } from "./index.ts";
 
 // Shape of fabric-samples' test-network/organizations/peerOrganizations/org1.example.com/connection-org1.json
 const org1Profile = {

@@ -3,7 +3,7 @@
  * See docs/adr/0002 for why signatures are converted to low-S DER.
  */
 
-import { toArrayBuffer } from "./bytes.js";
+import { toArrayBuffer } from "./bytes.ts";
 
 export type FabricCurve = "P-256" | "P-384";
 
@@ -98,6 +98,19 @@ export function isLowS(der: Uint8Array, curve: FabricCurve = "P-256"): boolean {
 }
 
 /**
+ * A WebCrypto key pair and an EC key's algorithm. Named here rather than taken
+ * from the DOM's types, so core type-checks in Node apps without them.
+ */
+export interface KeyPair {
+  privateKey: CryptoKey;
+  publicKey: CryptoKey;
+}
+export interface EcKeyAlgorithm {
+  name: string;
+  namedCurve: string;
+}
+
+/**
  * Generates a key pair. By default the private key is non-extractable: it can
  * sign but its material can never be read back by script. The wallet asks for
  * an extractable key only to encrypt it with the vault key straight away
@@ -106,7 +119,7 @@ export function isLowS(der: Uint8Array, curve: FabricCurve = "P-256"): boolean {
 export async function generateKeyPair(
   curve: FabricCurve = "P-256",
   options: { extractable?: boolean } = {},
-): Promise<CryptoKeyPair> {
+): Promise<KeyPair> {
   return crypto.subtle.generateKey({ name: "ECDSA", namedCurve: curve }, options.extractable ?? false, ["sign", "verify"]);
 }
 

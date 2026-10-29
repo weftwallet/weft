@@ -6,7 +6,7 @@
  *   common/common.proto, msp/identities.proto
  */
 
-import { Message } from "./protobuf.js";
+import { Message } from "./protobuf.ts";
 
 export interface DecodedProposal {
   /** From the gateway wrapper (ProposedTransaction.transaction_id). */

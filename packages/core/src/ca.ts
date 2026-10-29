@@ -4,9 +4,9 @@
  * the CA, so CORS on the CA does not matter.
  */
 
-import { fromBase64, toBase64, utf8 } from "./bytes.js";
-import { createCsr } from "./certificate.js";
-import { signForFabric } from "./signing.js";
+import { fromBase64, toBase64, utf8 } from "./bytes.ts";
+import { createCsr } from "./certificate.ts";
+import { signForFabric, type KeyPair } from "./signing.ts";
 
 export interface FabricCaResult {
   /** PEM certificate issued for the CSR. */
@@ -60,7 +60,7 @@ export class FabricCaClient {
    * registrar. Generates the CSR from the given key pair; the private key
    * never leaves this process.
    */
-  async enroll(enrollmentId: string, secret: string, keys: CryptoKeyPair): Promise<FabricCaResult> {
+  async enroll(enrollmentId: string, secret: string, keys: KeyPair): Promise<FabricCaResult> {
     const body = this.body(await createCsr(keys, enrollmentId));
     const auth = `Basic ${btoa(`${enrollmentId}:${secret}`)}`;
     return this.post("/api/v1/enroll", body, auth);
@@ -73,7 +73,7 @@ export class FabricCaClient {
    */
   async reenroll(
     current: { certificate: string; privateKey: CryptoKey },
-    newKeys: CryptoKeyPair,
+    newKeys: KeyPair,
     commonName: string,
   ): Promise<FabricCaResult> {
     const path = "/api/v1/reenroll";

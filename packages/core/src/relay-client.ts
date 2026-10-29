@@ -16,10 +16,10 @@ import {
   type RelaySubmitResponse,
   type SubmitResult,
 } from "@weftwallet/protocol";
-import { fromBase64, toBase64, tryUtf8 } from "./bytes.js";
-import { decodePreparedTransaction, decodeProposedTransaction, decodeSignedCommitStatusRequest } from "./fabric-messages.js";
-import { explainEndorseError, explainStatus, type StatusExplanation } from "./status.js";
-import { verifyCommitRequest, verifyProposal, verifyTransaction } from "./verify.js";
+import { fromBase64, toBase64, tryUtf8 } from "./bytes.ts";
+import { decodePreparedTransaction, decodeProposedTransaction, decodeSignedCommitStatusRequest } from "./fabric-messages.ts";
+import { explainEndorseError, explainStatus, type StatusExplanation } from "./status.ts";
+import { verifyCommitRequest, verifyProposal, verifyTransaction } from "./verify.ts";
 
 /** Signs Fabric message bytes (see signForFabric). Lets callers keep keys elsewhere. */
 export type Signer = (message: Uint8Array) => Promise<Uint8Array>;

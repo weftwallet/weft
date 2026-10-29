@@ -9,7 +9,7 @@ import {
   signForFabric,
   utf8,
   verifySignIn,
-} from "./index.js";
+} from "./index.ts";
 
 async function identity() {
   const keys = await generateKeyPair("P-256", { extractable: true });

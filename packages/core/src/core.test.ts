@@ -16,7 +16,7 @@ import {
   fromBase64,
   fromBase64Url,
   toBase64Url,
-} from "./index.js";
+} from "./index.ts";
 
 const P256_N = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551n;
 
@@ -134,7 +134,7 @@ describe("explanations", () => {
 
 describe("Fabric CA client", () => {
   it("explains an unreachable CA instead of 'Failed to fetch'", async () => {
-    const { FabricCaClient } = await import("./index.js");
+    const { FabricCaClient } = await import("./index.ts");
     const ca = new FabricCaClient({
       url: "https://localhost:7054",
       fetch: () => Promise.reject(new TypeError("Failed to fetch")),

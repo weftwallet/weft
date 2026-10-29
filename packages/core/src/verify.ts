@@ -4,7 +4,7 @@
  */
 
 import type { ContractCall, RelaySigner } from "@weftwallet/protocol";
-import type { DecodedCommitRequest, DecodedProposal, DecodedTransaction } from "./fabric-messages.js";
+import type { DecodedCommitRequest, DecodedProposal, DecodedTransaction } from "./fabric-messages.ts";
 
 export class VerificationError extends Error {
   readonly field: string;
