@@ -1,37 +1,60 @@
-/* Weft colours mapped onto Starlight's theme variables.
-   Source of truth: packages/brand/tokens.css */
+/* Weft's roles mapped onto Starlight's theme variables, so the docs follow
+   @weftwallet/brand's tokens (loaded before this file) like every other
+   Weft site. Starlight sets data-theme on <html>, and the roles change with
+   it, so most of this needs saying once.
+   Starlight's scale: white is the strongest text, gray-1 to gray-6 step from
+   text towards the ground, black is the ground. */
 :root {
-  --sl-font: "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --sl-font-mono: "Atkinson Hyperlegible Mono", ui-monospace, Menlo, monospace;
+  --sl-font: var(--weft-font-sans);
+  --sl-font-mono: var(--weft-font-mono);
 }
 
+:root[data-theme] {
+  --sl-color-white: var(--weft-text-strong);
+  --sl-color-gray-1: var(--weft-text);
+  --sl-color-gray-2: var(--weft-text-muted);
+  --sl-color-gray-3: var(--weft-text-subtle);
+  /* Between subtle text and a strong line: quiet borders and markers. */
+  --sl-color-gray-4: color-mix(in srgb, var(--weft-text-subtle), var(--weft-line-strong));
+  --sl-color-gray-5: var(--weft-line-strong);
+  --sl-color-black: var(--weft-bg);
+
+  --sl-color-accent-low: var(--weft-accent-soft);
+  --sl-color-accent: var(--weft-accent-text);
+  /* Starlight's high accent: the accent text pushed towards the strongest text. */
+  --sl-color-accent-high: color-mix(in srgb, var(--weft-accent-text) 60%, var(--weft-text-strong));
+
+  /* The page, header and sidebar share one ground, as on the sites. */
+  --sl-color-bg: var(--weft-bg);
+  --sl-color-bg-nav: var(--weft-bg);
+  --sl-color-bg-sidebar: var(--weft-bg);
+  --sl-color-bg-inline-code: var(--weft-bg-raised);
+  --sl-color-hairline: var(--weft-line);
+  --sl-color-hairline-light: var(--weft-line);
+  --sl-color-hairline-shade: var(--weft-line);
+  --sl-color-backdrop-overlay: var(--weft-scrim);
+
+  /* Links in the accent text. Starlight also fills the current page in the
+     sidebar with it; text-invert, the text on that fill, is set per theme
+     below. */
+  --sl-color-text-accent: var(--weft-accent-text);
+  --sl-color-bg-accent: var(--weft-accent);
+}
+
+/* gray-6 and gray-7 are a step and a half-step from the ground towards the
+   text, which is raised in dark and sunken in light. */
 :root[data-theme="dark"] {
-  --sl-color-accent-low: #102826;
-  --sl-color-accent: #3fc1b0;
-  --sl-color-accent-high: #8fe3d8;
-  --sl-color-white: #e8ecef;
-  --sl-color-gray-1: #d3dae0;
-  --sl-color-gray-2: #a9b5c1;
-  --sl-color-gray-3: #94a3b3;
-  --sl-color-gray-4: #5b6672;
-  --sl-color-gray-5: #2c3a48;
-  --sl-color-gray-6: #17212b;
-  --sl-color-black: #0b1218;
+  --sl-color-gray-6: var(--weft-bg-raised);
+  --sl-color-gray-7: var(--weft-bg-surface);
+  /* On the bright accent: ink, as on the sites' primary buttons. */
+  --sl-color-text-invert: var(--weft-on-accent);
 }
 
 :root[data-theme="light"] {
-  --sl-color-accent-low: #cdeee9;
-  --sl-color-accent: #1a7468;
-  --sl-color-accent-high: #11463f;
-  --sl-color-white: #0b1218;
-  --sl-color-gray-1: #17212b;
-  --sl-color-gray-2: #2e3842;
-  --sl-color-gray-3: #5b6672;
-  --sl-color-gray-4: #8a949e;
-  --sl-color-gray-5: #c9c4b8;
-  --sl-color-gray-6: #ece8df;
-  --sl-color-gray-7: #f5f3ee;
-  --sl-color-black: #fbfaf7;
+  --sl-color-gray-6: var(--weft-bg-sunken);
+  --sl-color-gray-7: var(--weft-bg-surface);
+  /* On the deep accent text: the ground. */
+  --sl-color-text-invert: var(--weft-bg);
 }
 
 .site-title img {
@@ -44,40 +67,25 @@
   font-size: 0.875em;
 }
 
-/* Asides in Weft's palette: thread for notes and tips, amber for cautions,
-   signal for danger. Starlight's defaults are blue, purple, orange and red. */
-:root[data-theme="dark"] {
-  --sl-color-blue-low: #102826;
-  --sl-color-blue: #3fc1b0;
-  --sl-color-blue-high: #c6efe9;
-  --sl-color-purple-low: #102826;
-  --sl-color-purple: #3fc1b0;
-  --sl-color-purple-high: #c6efe9;
-  --sl-color-orange-low: #2a2214;
-  --sl-color-orange: #e8a33d;
-  --sl-color-orange-high: #f6dcb3;
-  --sl-color-red-low: #2a1817;
-  --sl-color-red: #e5675b;
-  --sl-color-red-high: #f6cdc8;
-}
-
-:root[data-theme="light"] {
-  --sl-color-blue-low: #dcf3ef;
-  --sl-color-blue: #1a7468;
-  --sl-color-blue-high: #11463f;
-  --sl-color-purple-low: #dcf3ef;
-  --sl-color-purple: #1a7468;
-  --sl-color-purple-high: #11463f;
-  --sl-color-orange-low: #f8ead2;
-  --sl-color-orange: #a8650c;
-  --sl-color-orange-high: #5a3606;
-  --sl-color-red-low: #f8dfdc;
-  --sl-color-red: #b83a2f;
-  --sl-color-red-high: #5e1a14;
+/* Asides in Weft's roles: accent for notes and tips, warn for cautions,
+   danger for danger. Starlight's defaults are blue, purple, orange and red. */
+:root[data-theme] {
+  --sl-color-blue-low: var(--weft-accent-soft);
+  --sl-color-blue: var(--weft-accent-text);
+  --sl-color-blue-high: color-mix(in srgb, var(--weft-accent-text) 60%, var(--weft-text-strong));
+  --sl-color-purple-low: var(--weft-accent-soft);
+  --sl-color-purple: var(--weft-accent-text);
+  --sl-color-purple-high: color-mix(in srgb, var(--weft-accent-text) 60%, var(--weft-text-strong));
+  --sl-color-orange-low: var(--weft-warn-soft);
+  --sl-color-orange: var(--weft-warn-text);
+  --sl-color-orange-high: color-mix(in srgb, var(--weft-warn-text) 60%, var(--weft-text-strong));
+  --sl-color-red-low: var(--weft-danger-soft);
+  --sl-color-red: var(--weft-danger-text);
+  --sl-color-red-high: color-mix(in srgb, var(--weft-danger-text) 60%, var(--weft-text-strong));
 }
 
 .starlight-aside {
-  border-radius: 0 0.6rem 0.6rem 0;
+  border-radius: 0 var(--weft-radius-lg) var(--weft-radius-lg) 0;
 }
 
 /* Card icons in the brand accent rather than Starlight's rainbow. */
@@ -88,10 +96,10 @@
 }
 
 .card {
-  border-radius: 0.9rem;
+  border-radius: var(--weft-radius-xl);
   transition:
-    border-color 160ms,
-    transform 160ms;
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .card:hover {
@@ -101,7 +109,7 @@
 /* Links ease instead of snapping. */
 .sl-markdown-content a {
   text-underline-offset: 0.18em;
-  transition: color 140ms;
+  transition: color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 /* Landing page ------------------------------------------------------ */
@@ -133,17 +141,17 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .hero > * {
-    animation: weft-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: weft-rise var(--weft-duration-deliberate) var(--weft-ease-out) both;
   }
   .hero > :nth-child(2) {
-    animation-delay: 90ms;
+    animation-delay: calc(var(--weft-stagger) * 1.5);
   }
 }
 
 @keyframes weft-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(var(--weft-shift-md));
   }
 }
 
