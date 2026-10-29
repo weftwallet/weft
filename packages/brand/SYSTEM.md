@@ -111,7 +111,7 @@ Only the front page tells a story with motion. Elsewhere motion explains what ch
 
 ### Loading
 
-Weft has no generic spinner. A product shows it's working with its own mark, one pick pulled through its warps, seated, then drawn out the other side, every 1600ms (`logo/loaders/`, drawn by `scripts/loaders.mjs`). Each product passes its own thing through: Weft, the wallet and the docs their middle pick; the playground its unfinished last pick, which rests halfway, as in its mark; the network a pick that never stays; the explorer its middle row. A loader is decorative: the words beside it say what's happening.
+Weft has no generic spinner. A product shows it's working with its own mark, one pick pulled through its warps, seated, then drawn out the other side, every 1600ms (`logo/loaders/`, drawn by `scripts/loaders.mjs`). At 24px and below use the small drawing (`<id>-small.svg`): like the small marks it's on the 16px pixel grid, and its pick moves a whole pixel at a time. Each product passes its own thing through: Weft, the wallet and the docs their middle pick; the playground its unfinished last pick, which rests halfway, as in its mark; the network a pick that never stays; the explorer its middle row. A loader is decorative: the words beside it say what's happening.
 
 ### Arriving
 
@@ -123,11 +123,11 @@ Every control has the same states, in this order of precedence: disabled, loadin
 
 | State | Looks like |
 |---|---|
-| Hover | Borders step to `line-strong` or `text-subtle`; fills step to `accent-hover`. `duration-fast`. Only on devices that hover. |
+| Hover | Borders step to `line-strong` or `text-subtle`; fills step to `accent-hover`. `duration-fast`. Only on devices that hover: hover rules sit inside `@media (hover: hover)`. |
 | Pressed | Scales to `press-scale` (0.98) for `duration-instant`. |
 | Focus | A `focus-ring` (2px) outline in `focus`, `focus-offset` (2px) away, on keyboard focus only (`:focus-visible`). Never removed without a replacement. |
-| Loading | The label stays, the product's loader replaces the icon, and the control can't be pressed twice. The width doesn't change. |
-| Disabled | `disabled-opacity` (0.5), no hover or press. Say why nearby if it isn't obvious. |
+| Loading | The label stays, the product's loader replaces the icon, and the control can't be pressed twice. The width doesn't change. It keeps its full strength and `cursor: progress`. A busy control is marked `aria-disabled="true"` and ignores presses; it's never given `disabled`, which would throw keyboard focus off it. |
+| Disabled | `disabled-opacity` (0.5), no hover or press, `cursor: not-allowed`. Say why nearby if it isn't obvious. |
 | Selected | `accent-soft` ground and `accent-line` border, or a moving indicator for tabs. |
 
 ## Errors
@@ -140,9 +140,26 @@ Say what happened and what to do next, in plain words. Fabric codes and raw mess
 - Warnings (`warn-*`) are for something that will need attention: a certificate expiring, a write to the ledger. They aren't errors and don't block.
 - Empty states say what would be here and how to get it there.
 
+The pieces, the same in every product:
+
+- A field error is a `<p class="field-error" id="<field>-error">` right below the field: a 14px alert icon, then the sentence, in `type-xs`, weight 500, `danger-text`, `space-1` above. The field gets `aria-invalid="true"` and the error's id in its `aria-describedby`, after any hint's. Forms carry `novalidate`, so the browser's own bubbles never show.
+- An error from an action (a request that failed) sits where the action was, starts with a sentence in `danger-text`, and has `role="alert"`. Anything technical (a code, a raw message, a URL that failed) goes in `<details class="error-details"><summary>Details</summary>…</details>` below it, in Mono `type-xs`, `text-muted`.
+- A request that may never answer has a timeout, and timing out is an error like any other: say which service didn't answer and what to check.
+
 ## Navigation
 
-The current place is always marked: the selected tab, the current page in a sidebar, the product in the header. Going deeper moves the new screen in from the right (`shift-lg`); going back, from the left. Changing between sibling tabs crossfades. A page that loads in parts keeps its layout stable: content arrives into reserved space rather than pushing things down.
+The current place is always marked: the selected tab, the current page in a sidebar, the product in the header (`aria-current="page"`). Going deeper moves the new screen in from the right (`shift-lg`); going back, from the left. Changing between sibling tabs crossfades. A page that loads in parts keeps its layout stable: content arrives into reserved space rather than pushing things down.
+
+Between pages of a site the same holds, as a view transition (`@view-transition { navigation: auto }`): the new page fades in from `shift-md` to the right over `duration-base`, or from the left when going back through history. With reduced motion pages change at once.
+
+Focus follows the person:
+
+- Each screen and page has one `h1`. When a screen opens inside an app (the wallet, a step in a flow), focus moves to its `h1` (`tabindex="-1"`). A full page load leaves focus where the browser puts it.
+- When the thing that had focus goes away (a busy button, a removed row, a closed panel), focus moves to what took its place: the next row, the list's heading, the control that opened the panel.
+- Content that updates itself (a refreshing table, a ticking count) is updated in place, never replaced wholesale, so focus, selection and a half-typed form survive. New rows don't push what someone is reading: if they arrive above it, the scroll position moves with them.
+- Each page has one polite live region (`role="status"`) for changes the person should hear: a result, a connection, "Block 35 arrived". It's written only when something changes for them, never on a timer.
+
+A menu or a disclosure closes the way it opened, in reverse, with `ease-in` in about 70% of the time. A list item being removed leaves the same way before the list closes up.
 
 ## Writing
 
