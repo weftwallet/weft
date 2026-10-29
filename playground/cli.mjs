@@ -357,10 +357,10 @@ function startCaProxy({ https }) {
 
 async function startRelay(caUrl) {
   step(7, "Weft relay for Org1");
-  if (!existsSync(join(repo, "apps", "relay", "dist", "main.js"))) {
-    note("building the relay");
-    run("pnpm", ["--filter", "@weftwallet/relay...", "build"], { cwd: repo });
-  }
+  // Built every time, with the packages it uses: the stack runs the built
+  // code, as production does, and an old build would hide your changes.
+  note("building the relay");
+  run("pnpm", ["--filter", "@weftwallet/relay...", "build"], { cwd: repo });
   const invite = {
     weft: 1,
     network: "Weft playground",
@@ -392,10 +392,10 @@ async function startRelay(caUrl) {
  */
 async function startExplorer(stepNumber = 8) {
   step(stepNumber, "Explorers for Org1 and Org2");
-  if (!existsSync(join(repo, "apps", "explorer", "dist", "main.js"))) {
-    note("building the explorer");
-    run("pnpm", ["--filter", "@weftwallet/explorer...", "build"], { cwd: repo });
-  }
+  // Built every time, with the packages it uses: the stack runs the built
+  // code, as production does, and an old build would hide your changes.
+  note("building the explorer");
+  run("pnpm", ["--filter", "@weftwallet/explorer...", "build"], { cwd: repo });
   const orgs = [
     { name: "explorer", org: "org1", msp: "Org1MSP", peer: 7051, port: PORTS.explorer, other: PORTS.explorerOrg2, policy: "explorer.yaml" },
     { name: "explorer-org2", org: "org2", msp: "Org2MSP", peer: 9051, port: PORTS.explorerOrg2, other: PORTS.explorer, policy: "explorer-org2.yaml" },
