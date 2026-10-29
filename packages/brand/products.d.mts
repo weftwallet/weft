@@ -4,6 +4,8 @@ export interface Product {
   summary: string;
   mark: string;
   markSmall: string;
+  /** The product's loader: its mark with a pick pulled through, animated. */
+  loader: string;
   /** "" is the domain itself; null means no public site. */
   subdomain: string | null;
   dev: string | null;

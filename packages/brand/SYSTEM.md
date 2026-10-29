@@ -38,7 +38,7 @@ Construction, for any mark drawn later:
 - Every crossing shows which thread is on top: a weft is drawn over a 10-wide stroke of the ground, which cuts the warps it passes over; where the warp passes over instead, it's drawn back on top over a 7-wide stroke of the ground.
 - A small drawing for 32px and below, on the 16px pixel grid: 2px threads, 1px gaps, a 1px frame, every edge on a whole pixel. It may simplify the full drawing but never contradict it.
 
-`scripts/marks.mjs` draws the product marks and `scripts/lockups.mjs` the lockups, whose wordmark is converted to outlines so it never depends on a font loading.
+`scripts/marks.mjs` draws the product marks, `scripts/loaders.mjs` their loaders and `scripts/lockups.mjs` the lockups, whose wordmark is converted to outlines so it never depends on a font loading.
 
 ## Colour
 
@@ -105,9 +105,17 @@ Things arrive quickly and settle. Nothing bounces or overshoots.
 
 Entering: fade from 0 and move `shift-*` toward its place, with `ease-out`. Leaving: the reverse, in about 70% of the time, with `ease-in`. Small things (a tooltip, a hint) use `shift-sm`; panels and menus `shift-md`; screens `shift-lg`, in the direction of travel.
 
-With `prefers-reduced-motion`, the shift tokens are 0 and the press scale is 1, so the same animations become short fades. Spinners still turn; nothing else loops.
+With `prefers-reduced-motion`, the shift tokens are 0 and the press scale is 1, so the same animations become short fades. Loaders still turn; nothing else loops.
 
-Only the front page tells a story with motion. Elsewhere motion explains what changed: where something came from, where it went, what's now selected.
+Only the front page tells a story with motion. Elsewhere motion explains what changed: where something came from, where it went, what's now selected. Nothing moves on a timer to look alive, and the grounds are plain. The landing's hero alone has faint warps behind it, on the layout's columns, gone before the words: the loom its word is woven into.
+
+### Loading
+
+Weft has no generic spinner. A product shows it's working with its own mark, one pick pulled through its warps, seated, then drawn out the other side, every 1600ms (`logo/loaders/`, drawn by `scripts/loaders.mjs`). Each product passes its own thing through: Weft, the wallet and the docs their middle pick; the playground its unfinished last pick, which rests halfway, as in its mark; the network a pick that never stays; the explorer its middle row. A loader is decorative: the words beside it say what's happening.
+
+### Arriving
+
+When something new arrives while a person is looking (a block, a transaction), it comes in as a pick: a thread runs across its place over `duration-deliberate` with `ease-tension` and is gone before the words follow it in, then a 3px `accent` rule seats on its left. The rule stays four seconds and fades, so what's new since you looked is plain at a glance. With reduced motion the row fades in and its rule is simply there.
 
 ## States
 
@@ -118,7 +126,7 @@ Every control has the same states, in this order of precedence: disabled, loadin
 | Hover | Borders step to `line-strong` or `text-subtle`; fills step to `accent-hover`. `duration-fast`. Only on devices that hover. |
 | Pressed | Scales to `press-scale` (0.98) for `duration-instant`. |
 | Focus | A `focus-ring` (2px) outline in `focus`, `focus-offset` (2px) away, on keyboard focus only (`:focus-visible`). Never removed without a replacement. |
-| Loading | The label stays, a small spinner replaces the icon, and the control can't be pressed twice. The width doesn't change. |
+| Loading | The label stays, the product's loader replaces the icon, and the control can't be pressed twice. The width doesn't change. |
 | Disabled | `disabled-opacity` (0.5), no hover or press. Say why nearby if it isn't obvious. |
 | Selected | `accent-soft` ground and `accent-line` border, or a moving indicator for tabs. |
 

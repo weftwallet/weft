@@ -7,6 +7,7 @@
       "summary": "An identity wallet for Hyperledger Fabric.",
       "mark": "logo/mark.svg",
       "markSmall": "logo/mark-small.svg",
+      "loader": "logo/loaders/weft.svg",
       "subdomain": "",
       "dev": "http://localhost:4321"
     },
@@ -15,6 +16,7 @@
       "summary": "Guides for people using Weft, building dApps and running networks.",
       "mark": "logo/mark.svg",
       "markSmall": "logo/mark-small.svg",
+      "loader": "logo/loaders/weft.svg",
       "subdomain": "docs",
       "dev": "http://localhost:4322"
     },
@@ -23,6 +25,7 @@
       "summary": "Try a dApp against a Fabric network from your browser.",
       "mark": "logo/products/playground.svg",
       "markSmall": "logo/products/playground-small.svg",
+      "loader": "logo/loaders/playground.svg",
       "subdomain": "play",
       "dev": "http://localhost:4323"
     },
@@ -31,6 +34,7 @@
       "summary": "Every organisation's explorer on one page, and tools for running a network.",
       "mark": "logo/products/network.svg",
       "markSmall": "logo/products/network-small.svg",
+      "loader": "logo/loaders/network.svg",
       "subdomain": "network",
       "dev": "http://localhost:4324"
     },
@@ -39,6 +43,7 @@
       "summary": "One organisation's view of its ledger, run by that organisation.",
       "mark": "logo/products/explorer.svg",
       "markSmall": "logo/products/explorer-small.svg",
+      "loader": "logo/loaders/explorer.svg",
       "subdomain": null,
       "dev": "http://localhost:8790"
     },
@@ -47,6 +52,7 @@
       "summary": "The browser extension that holds your identities and signs.",
       "mark": "logo/mark.svg",
       "markSmall": "logo/mark-small.svg",
+      "loader": "logo/loaders/weft.svg",
       "subdomain": null,
       "dev": null
     }

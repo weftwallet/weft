@@ -25,7 +25,8 @@
   ],
   "scripts": {
     "tokens": "node scripts/tokens.mjs",
-    "marks": "node scripts/marks.mjs"
+    "marks": "node scripts/marks.mjs",
+    "loaders": "node scripts/loaders.mjs"
   },
   "devDependencies": {
     "@fontsource/atkinson-hyperlegible-mono": "^5.3.0",
