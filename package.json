@@ -6,12 +6,13 @@
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.28.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   },
   "scripts": {
     "build": "pnpm -r --filter \"./packages/**\" build && pnpm -r --filter \"./apps/**\" build",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "dev": "node scripts/dev-all.mjs",
     "dev:extension": "pnpm --filter @weftwallet/extension dev",
     "dev:site": "pnpm --filter @weftwallet/site dev",
     "dev:docs": "pnpm --filter @weftwallet/docs dev",
@@ -26,6 +27,7 @@
     "test:e2e": "WEFT_PRODUCTS=dev pnpm --filter @weftwallet/relay... --filter @weftwallet/site --filter @weftwallet/docs --filter @weftwallet/playground --filter @weftwallet/network build && pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/e2e test"
   },
   "devDependencies": {
+    "@laravel/multiplex": "^0.4.5",
     "typescript": "~5.9.3"
   }
 }

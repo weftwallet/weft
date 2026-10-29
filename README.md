@@ -57,7 +57,7 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 
 ## Develop
 
-Requires Node 22 and pnpm 10.
+Requires Node 22.13 or later and pnpm 10.
 
 ```sh
 pnpm install
@@ -65,7 +65,20 @@ pnpm test           # core unit tests + relay/core offline-signing integration t
 pnpm typecheck
 ```
 
-Then, in separate terminals:
+Then start the sites, all in one terminal:
+
+```sh
+pnpm dev                     # the site, docs, playground and network
+pnpm dev site playground     # only these
+pnpm dev all                 # the sites and the extension
+pnpm dev --stream            # start on the stream rather than the tabs
+```
+
+Each product gets a tab of its own logs. `s` switches to one stream of them all, labelled, and `t` back to the tabs. `r` restarts the product you're on, `/` searches, `f` picks which products the stream shows, and `q` stops them all and leaves their output in your terminal. Piped or in CI, it prints the labelled lines instead. The terminal view is [`@laravel/multiplex`](https://github.com/laravel/multiplex).
+
+The addresses are http://localhost:4321 (site), 4322 (docs), 4323 (playground) and 4324 (network). A product already running elsewhere isn't started twice: its tab says where it is.
+
+Each product also has its own command, for a terminal of its own:
 
 ```sh
 pnpm dev:extension  # Chrome with the extension loaded, hot reload
@@ -77,6 +90,8 @@ pnpm dev:playground # http://localhost:4323
 pnpm dev:network    # http://localhost:4324
 ```
 
+`pnpm dev relay` and `pnpm dev explorer` work too, but the playground stack runs its own relay and explorer on the same ports, so while the stack is up their tabs say so instead.
+
 Each product's address, local and public, is in `packages/brand/products.json`; their links to each other follow it.
 
 None of these need a build: they read `packages/` from source, so a change there shows up straight away. `pnpm build` (packages first, then apps) is for running the built apps, as production and the playground do. See [CONTRIBUTING.md](CONTRIBUTING.md#how-the-packages-resolve).
@@ -85,7 +100,7 @@ To try everything against a real network on your machine:
 
 ```sh
 pnpm playground:up   # Fabric test-network, the basic contract, demo users, the relay and an explorer (needs Docker)
-pnpm dev:playground  # then open http://localhost:4323
+pnpm dev             # then open http://localhost:4323
                      # the explorer is at http://localhost:8790
 ```
 

@@ -5,8 +5,7 @@
 ```sh
 pnpm playground:up       # first run downloads Fabric (5 to 10 minutes)
 pnpm playground:up --https   # the same, with the CA on https://localhost:7443 (needs mkcert)
-pnpm dev:playground      # in another terminal, then open http://localhost:4323
-pnpm dev:network         # the network page, http://localhost:4324
+pnpm dev                 # in another terminal: the sites, then open http://localhost:4323
 pnpm playground:down     # stop everything and remove the network
 pnpm playground:status   # what's running
 pnpm playground:explorer # start or restart only the explorers, on a running stack
