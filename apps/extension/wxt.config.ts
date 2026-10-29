@@ -55,7 +55,11 @@ export default defineConfig({
       else wxt.logger.warn("This Firefox starts with a new profile, because the terminal can't read Firefox's profiles.ini, which web-ext checks before reusing one. See the extension README.");
     },
   },
-  manifest: {
+  // Manifest V3 for Firefox too. WXT builds Firefox as V2 by default, and V2
+  // has no optional_host_permissions, so Weft could never ask for a network's
+  // hosts there.
+  manifestVersion: 3,
+  manifest: ({ browser }) => ({
     name: "Weft",
     description: "Identity wallet for Hyperledger Fabric. Sign transactions with your organisation's certificate.",
     // alarms: an hourly check for expiring certificates (lib/certificate-watch.ts).
@@ -66,5 +70,10 @@ export default defineConfig({
     ...(e2e ? { host_permissions: ["http://localhost/*", "http://127.0.0.1/*"] } : {}),
     action: { default_title: "Weft" },
     icons: { 16: "icon/16.png", 32: "icon/32.png", 48: "icon/48.png", 128: "icon/128.png" },
-  },
+    // Firefox wants an add-on ID, and new add-ons must say what data they
+    // collect: none, which needs Firefox 140.
+    ...(browser === "firefox"
+      ? { browser_specific_settings: { gecko: { id: "wallet@weft.ifeanyiugwu.dev", strict_min_version: "140.0", data_collection_permissions: { required: ["none"] } }, gecko_android: { strict_min_version: "142.0" } } }
+      : {}),
+  }),
 });

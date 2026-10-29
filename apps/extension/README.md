@@ -15,6 +15,17 @@ To change how either browser starts (another browser, a page to open), add a `we
 
 `pnpm --filter @weftwallet/extension build` writes an unpacked extension to `.output/chrome-mv3`. Load it from `chrome://extensions` with **Developer mode → Load unpacked**. `pnpm zip` produces the store upload.
 
+### Firefox
+
+Weft runs in Firefox 140 or later, as Manifest V3 like Chrome.
+
+```sh
+pnpm --filter @weftwallet/extension dev:firefox            # opens its own Firefox with Weft loaded
+pnpm --filter @weftwallet/extension build -b firefox       # writes .output/firefox-mv3
+```
+
+To load a build by hand, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on** and pick `manifest.json` in `.output/firefox-mv3`. Firefox removes a temporary add-on when it closes.
+
 ## How it fits together
 
 ```
