@@ -18,12 +18,17 @@ export const T = {
   pull: { unknot: 420, unknotSpread: 380, pullAt: 520, pullSpread: 420, pull: 620, lift: 0 },
 };
 T.total = T.first + T.every * (T.rows - 1) + 2400;
+// When the last row has seated, the calls come back, quiet, beside the rows
+// they became, bottom row first.
+T.callsAgain = T.first + T.every * (T.rows - 1) + 200 + 1560 - 210;
 
 export function create(canvas, glyphs, { frozen, autoplay } = {}) {
   const txs = glyphs.txs;
   let c = null;
   // The page's colours, from the theme; recolor() reads them again.
   let P = L.palette(canvas);
+  // A chosen row: the others dim, and its call is written in full strength.
+  let dim = [], emph = [], dimTo = [], emphTo = [];
 
   function layout(w, h) {
     if (c && c.w === w && c.h === h) return c;
@@ -47,7 +52,7 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
       const contours = tx.glyphs.flatMap((g) => L.place(g, sx, base, size));
       return { y, tx, base, sx, contours, thread: L.thread(contours, [x1, y], [x0, y], { midY: narrow ? base - (tx.xHeight * size) / 2 : y }) };
     });
-    c = { w, h, x0, x1, warps, top, bottom, pickW, rowGap, size, rows };
+    c = { w, h, x0, x1, warps, top, bottom, pickW, rowGap, size, rows, narrow };
     return c;
   }
 
@@ -105,7 +110,7 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
         ctx.save();
         ctx.globalAlpha = shown;
         ctx.translate((1 - shown) * -8, 0);
-        ctx.fillStyle = rgb(mix(P.text, TEAL, ease.out(phase(t, start - 120, 300))));
+        ctx.fillStyle = rgb(mix(P.text, P.accent, ease.out(phase(t, start - 120, 300))));
         ctx.fill(L.pathOf(row.contours));
         ctx.restore();
         return;
@@ -138,9 +143,77 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
         ctx.lineCap = "round";
       });
     });
+
+    // The ledger at rest. Wide, every call is written again, quiet, beside
+    // its row. Narrow, there's no room: a chosen row's call appears above it,
+    // over a patch of the ground.
+    if (!c.narrow) {
+      c.rows.forEach((row, r) => {
+        const k = ease.out(phase(t, T.callsAgain + r * 60, 420));
+        if (k <= 0) return;
+        ctx.save();
+        ctx.translate((1 - k) * -6, 0);
+        ctx.fillStyle = rgb(mix(P.subtle, P.text, emph[r] ?? 0), k);
+        ctx.fill(L.pathOf(row.contours));
+        ctx.restore();
+      });
+    }
+    // The other rows dim when one is chosen, calls and all.
+    c.rows.forEach((row, r) => {
+      const d = dim[r] ?? 0;
+      if (d < 0.01) return;
+      ctx.fillStyle = rgb(P.ground, d);
+      ctx.fillRect(0, row.y - c.rowGap / 2, c.x1 + c.pickW, c.rowGap);
+    });
+    if (c.narrow) {
+      c.rows.forEach((row, r) => {
+        const e = emph[r] ?? 0;
+        if (e < 0.01) return;
+        ctx.save();
+        ctx.globalAlpha = e;
+        ctx.fillStyle = rgb(P.ground, 0.94);
+        L.roundRect(ctx, row.sx - 6, row.base - 0.8 * c.size - 5, row.tx.width * c.size + 12, 1.05 * c.size + 10, 6);
+        ctx.fill();
+        ctx.fillStyle = rgb(P.text);
+        ctx.fill(L.pathOf(row.contours));
+        ctx.restore();
+      });
+    }
   }
 
   const api = L.run(canvas, draw, { total: T.total, frozen, autoplay });
+  /** Where the rows are, in CSS pixels, with each one's call: for the buttons laid over them. */
+  api.rows = () => (c ? { narrow: c.narrow, right: c.x1 + c.pickW, rows: c.rows.map((row) => ({ y: row.y - c.rowGap / 2, h: c.rowGap, call: row.tx.str })) } : null);
+  /** Clears any chosen row at once, without drawing: before a replay. */
+  api.reset = () => {
+    dim = [];
+    emph = [];
+  };
+  /** Chooses a row of the finished cloth, or none with -1. */
+  api.select = (r) => {
+    const n = c ? c.rows.length : 0;
+    dimTo = Array.from({ length: n }, (_, i) => (r >= 0 && i !== r ? 0.5 : 0));
+    emphTo = Array.from({ length: n }, (_, i) => (i === r ? 1 : 0));
+    let last = performance.now();
+    const step = (now) => {
+      const a = 1 - Math.exp(-(now - last) / 50);
+      last = now;
+      let moving = false;
+      dim = dimTo.map((v, i) => {
+        const x = (dim[i] ?? 0) + (v - (dim[i] ?? 0)) * a;
+        if (Math.abs(x - v) > 0.004) moving = true;
+        return x;
+      });
+      emph = emphTo.map((v, i) => {
+        const x = (emph[i] ?? 0) + (v - (emph[i] ?? 0)) * a;
+        if (Math.abs(x - v) > 0.004) moving = true;
+        return x;
+      });
+      api.show(T.total);
+      if (moving) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
   api.recolor = () => {
     P = L.palette(canvas);
     api.redraw();

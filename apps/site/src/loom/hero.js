@@ -25,11 +25,14 @@ const PICKS = [
   { y: 34, letters: [2, 3], over: [true, false] }, // f and t
 ];
 
-export function create(canvas, glyphs, { frozen, autoplay } = {}) {
+export function create(canvas, glyphs, { frozen, autoplay, clear = false } = {}) {
   const word = glyphs.weft;
   let c = null;
   // The page's ground and text, from the theme; recolor() reads them again.
   let P = L.palette(canvas);
+  // On a replay the word stays on screen, faint, while its letters are away
+  // being woven, so the stage never stands half empty.
+  let ghost = false;
 
   function layout(w, h) {
     if (c && c.w === w && c.h === h) return c;
@@ -61,8 +64,11 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
   function draw(ctx, t, w, h) {
     layout(w, h);
     const { u, mk, F } = c;
-    ctx.fillStyle = rgb(P.ground);
-    ctx.fillRect(0, 0, w, h);
+    // With clear, the page's own ground shows through around the loom.
+    if (!clear) {
+      ctx.fillStyle = rgb(P.ground);
+      ctx.fillRect(0, 0, w, h);
+    }
 
     const fp = ease.out(phase(t, ...T.fill));
     const threadCol = mix(TEAL, MARK_INK, fp), groundCol = mix(P.ground, TEAL, fp);
@@ -102,12 +108,19 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
     }
 
     // The word, until each letter starts its pick: text, then thread.
-    const inK = ease.out(phase(t, ...T.wordIn));
+    const inK = ghost ? 1 : ease.out(phase(t, ...T.wordIn));
     const conv = ease.out(phase(t, ...T.toThread));
     const w0 = F * 0.045;
     c.letters.forEach((contours, i) => {
       const pick = PICKS.findIndex((p) => p.letters.includes(i));
-      if (t >= T.picks[pick]) return;
+      if (t >= T.picks[pick]) {
+        if (ghost) {
+          const k = ease.out(phase(t, T.wordAgain + i * 60, 420));
+          ctx.fillStyle = rgb(P.text, 0.12 * (1 - k));
+          ctx.fill(L.pathOf(contours));
+        }
+        return;
+      }
       ctx.save();
       ctx.globalAlpha = inK;
       ctx.translate(0, (1 - inK) * 8);
@@ -175,6 +188,13 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
   }
 
   const api = L.run(canvas, draw, { total: T.total, frozen, autoplay });
+  /** Weaves the mark again from the word, keeping the word faint meanwhile. */
+  api.again = () => {
+    ghost = true;
+    api.replay();
+  };
+  /** The mark's square on the canvas, in CSS pixels: [x, y, size]. */
+  api.markRect = () => (c ? [...c.mk(2, 2), 44 * c.u] : null);
   api.recolor = () => {
     P = L.palette(canvas);
     api.redraw();

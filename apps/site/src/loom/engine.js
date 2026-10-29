@@ -223,5 +223,12 @@ export function palette(el) {
   const get = (name, fallback) => hex(cs.getPropertyValue(`--weft-${name}`)) ?? fallback;
   const ground = get("bg", MARK_INK);
   const dark = ground[0] + ground[1] + ground[2] < 384;
-  return { ground, text: get("text", [232, 236, 239]), subtle: get("text-subtle", [148, 163, 179]), shadow: dark ? 0.4 : 0.16 };
+  return {
+    ground,
+    text: get("text", [232, 236, 239]),
+    subtle: get("text-subtle", [148, 163, 179]),
+    // Teal as text: the thread itself in dark, a deeper teal on linen.
+    accent: get("accent-text", TEAL),
+    shadow: dark ? 0.4 : 0.16,
+  };
 }

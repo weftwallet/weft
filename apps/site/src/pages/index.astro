@@ -47,7 +47,9 @@ const audiences = [
   <section class="hero" aria-labelledby="hero-title">
     <h1 id="hero-title" class="visually-hidden">Weft, an identity wallet for Hyperledger Fabric</h1>
     <div class="hero__stage">
+      <div class="hero__ground" aria-hidden="true"></div>
       <canvas id="hero-loom" aria-hidden="true"></canvas>
+      <button type="button" class="hero__replay" id="hero-replay" aria-label="Weave the mark again"></button>
     </div>
     <div class="hero__text" data-arrive>
       <p class="hero__tagline">An identity wallet for Hyperledger Fabric.</p>
@@ -68,6 +70,7 @@ const audiences = [
     </div>
     <div class="cloth__stage">
       <canvas id="cloth-loom" aria-hidden="true"></canvas>
+      <ol class="ledger" id="ledger" aria-label="The transactions woven into the cloth" hidden></ol>
     </div>
   </section>
 
@@ -123,11 +126,19 @@ const audiences = [
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const heroCanvas = document.getElementById("hero-loom") as HTMLCanvasElement;
   const clothCanvas = document.getElementById("cloth-loom") as HTMLCanvasElement;
+  const replay = document.getElementById("hero-replay") as HTMLButtonElement;
+  const ledger = document.getElementById("ledger") as HTMLOListElement;
   const text = document.querySelector<HTMLElement>("[data-arrive]")!;
 
-  const start = () => {
-    const a = hero.create(heroCanvas, glyphs, { frozen: still ? hero.T.total : undefined });
-    const b = cloth.create(clothCanvas, glyphs, { frozen: still ? cloth.T.total : undefined, autoplay: false });
+  function startHero() {
+    // The page's ground shows through around the loom, faint warps and all.
+    const a = hero.create(heroCanvas, glyphs, { frozen: still ? hero.T.total : undefined, clear: true });
+    let playingUntil = still ? 0 : performance.now() + hero.T.total;
+    const busy = () => {
+      replay.setAttribute("aria-disabled", "true");
+      setTimeout(() => replay.removeAttribute("aria-disabled"), playingUntil - performance.now());
+    };
+    if (!still) busy();
 
     // The hero's words arrive as the word sets itself again beside the mark.
     if (!still) {
@@ -135,20 +146,84 @@ const audiences = [
       setTimeout(() => (text.dataset.arrive = "here"), hero.T.wordAgain + 200);
     }
 
-    // The cloth is woven when it comes into view, once.
-    if (!still) {
+    // The mark is a button, the mark's own size, laid over it: click, tap
+    // or Enter weaves it again from the word, which stays faintly in place.
+    const place = () => {
+      const m = a.markRect();
+      if (m) Object.assign(replay.style, { left: `${m[0]}px`, top: `${m[1]}px`, width: `${m[2]}px`, height: `${m[2]}px` });
+    };
+    new ResizeObserver(() => requestAnimationFrame(place)).observe(heroCanvas);
+    requestAnimationFrame(place);
+    replay.addEventListener("click", () => {
+      if (still || performance.now() < playingUntil) return;
+      a.again();
+      playingUntil = performance.now() + hero.T.total;
+      busy();
+    });
+    return a;
+  }
+
+  function startCloth() {
+    const b = cloth.create(clothCanvas, glyphs, { frozen: still ? cloth.T.total : undefined, autoplay: false });
+    let done = still;
+    let pinned = -1;
+
+    // The finished cloth is a ledger: buttons laid over its rows. Hover,
+    // focus or a tap chooses a row; a tap keeps it chosen until the next.
+    const build = () => {
+      const g = b.rows();
+      if (!g) return;
+      ledger.replaceChildren(
+        ...g.rows.map((row, r) => {
+          const li = document.createElement("li");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "ledger__row";
+          button.textContent = row.call;
+          button.setAttribute("aria-pressed", String(r === pinned));
+          Object.assign(button.style, { top: `${row.y}px`, height: `${row.h}px`, width: `${g.right}px` });
+          button.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && b.select(r));
+          button.addEventListener("focus", () => b.select(r));
+          button.addEventListener("blur", () => b.select(pinned));
+          button.addEventListener("click", () => {
+            pinned = pinned === r ? -1 : r;
+            ledger.querySelectorAll("button").forEach((o, i) => o.setAttribute("aria-pressed", String(i === pinned)));
+            b.select(pinned === -1 ? r : pinned);
+          });
+          li.append(button);
+          return li;
+        }),
+      );
+      ledger.hidden = false;
+    };
+    ledger.addEventListener("pointerleave", () => b.select(pinned));
+    new ResizeObserver(() => done && requestAnimationFrame(build)).observe(clothCanvas);
+
+    // Woven once, when the whole loom is on screen with room beneath it: its
+    // bottom rows are woven first, so they must be in view.
+    if (still) build();
+    else {
       const seen = new IntersectionObserver(
         (entries) => {
-          if (entries.some((e) => e.isIntersecting)) {
-            b.play();
+          if (entries.some((e) => e.isIntersecting && e.intersectionRatio > 0.98)) {
             seen.disconnect();
+            b.play();
+            setTimeout(() => {
+              done = true;
+              build();
+            }, cloth.T.total);
           }
         },
-        { threshold: 0.45 },
+        { rootMargin: "0px 0px -120px 0px", threshold: [0.98, 1] },
       );
       seen.observe(clothCanvas);
     }
+    return b;
+  }
 
+  const start = () => {
+    const a = startHero();
+    const b = startCloth();
     // The loom takes the page's colours, so it follows a theme change.
     const recolor = () => requestAnimationFrame(() => (a.recolor(), b.recolor()));
     new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -181,6 +256,58 @@ const audiences = [
     position: relative;
     width: 100%;
     height: clamp(260px, 52vh, 520px);
+  }
+  /* Faint warps behind the hero only: hairlines on the layout's twelve
+     columns, gone before the words. The loom the word is woven into. */
+  .hero__ground {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(to right, color-mix(in srgb, var(--weft-bg), var(--weft-text) 4%) 1px, transparent 1px);
+    background-size: calc(100% / 12) 100%;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
+  }
+  .hero__replay {
+    position: absolute;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    /* The tile's corner, as a share of its size. */
+    border-radius: 24%;
+  }
+  .hero__replay[aria-disabled="true"] {
+    cursor: default;
+  }
+  .hero__replay:focus-visible {
+    outline-offset: 4px;
+  }
+  /* The cloth's rows as real buttons over the canvas: the readable ledger. */
+  .ledger {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ledger[hidden] {
+    display: none;
+  }
+  /* Made by the script, so outside Astro's scoping. */
+  .ledger :global(.ledger__row) {
+    position: absolute;
+    left: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    font-size: 1px;
+    cursor: pointer;
+    border-radius: var(--weft-radius-sm);
+  }
+  .ledger :global(.ledger__row:focus-visible) {
+    outline-offset: -2px;
   }
   .hero__stage canvas,
   .cloth__stage canvas {
