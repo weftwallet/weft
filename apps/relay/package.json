@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "node --conditions=weft-source --env-file-if-exists=.env --watch src/main.ts",
+    "dev": "node ../../scripts/dev.mjs --conditions=weft-source --watch src/main.ts",
     "start": "node --env-file-if-exists=.env dist/main.js",
     "test": "vitest run"
   },

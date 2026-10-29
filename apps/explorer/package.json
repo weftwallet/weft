@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "node --conditions=weft-source --env-file-if-exists=.env --disable-warning=ExperimentalWarning --watch src/main.ts",
+    "dev": "node ../../scripts/dev.mjs --conditions=weft-source --disable-warning=ExperimentalWarning --watch src/main.ts",
     "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning dist/main.js",
     "test": "vitest run",
     "sample": "node --disable-warning=ExperimentalWarning src/test/serve-sample.ts"
