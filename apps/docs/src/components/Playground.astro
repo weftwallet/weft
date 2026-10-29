@@ -720,7 +720,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
 
   function describe(c: ChannelStatus | undefined): string {
-    if (!c) return "Doesn't publish this channel.";
+    if (!c) return "Doesn't publish this channel to everyone. If it's for members, sign in on this explorer to see it.";
     if (!c.publishes) return `Publishes ${c.channel} (${c.level}).`;
     const p = c.publishes;
     const parts = [
@@ -784,7 +784,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
         const head = document.createElement("div");
         head.className = "pg-head";
         const link = Object.assign(document.createElement("a"), { href: `${r.base}/channels/${encodeURIComponent(channel)}`, target: "_blank", rel: "noreferrer", textContent: `${r.name}'s explorer` });
-        const pill = Object.assign(document.createElement("span"), { className: "pg-pill", textContent: r.ok ? (r.c ? `${r.c.height} blocks` : "No channel") : "Unreachable" });
+        const pill = Object.assign(document.createElement("span"), { className: "pg-pill", textContent: r.ok ? (r.c ? `${r.c.height} blocks` : "Not public") : "Unreachable" });
         pill.dataset.state = r.ok && r.c ? "ok" : "missing";
         head.append(link, pill);
         const what = Object.assign(document.createElement("p"), { className: "pg-hint", textContent: r.ok ? describe(r.c) : `Couldn't reach ${r.base}.` });
@@ -794,9 +794,9 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       }),
     );
     const block = Math.max(1, (rows[0]?.c?.height ?? 2) - 1);
-    const tries: [string, string | null][] = [
-      [`Open block ${block} on each explorer: the same block, and each says how many organisations report it.`, null],
-    ];
+    const tries: [string, string | null][] = rows.some((r) => r.c)
+      ? [[`Open block ${block} on each explorer: the same block, and each says how many organisations report it.`, null]]
+      : [];
     const members = rows.find((r) => r.c?.publishes?.membersOnly.length);
     if (members) {
       tries.push([
@@ -809,6 +809,9 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     const ballots = rows.find((r) => r.c?.publishes?.elections);
     if (ballots) {
       tries.push([`See the elections, their ballots and results, and check a receipt.`, `${ballots.base}/channels/${encodeURIComponent(channel)}/elections`]);
+    }
+    if (rows.every((r) => r.ok && !r.c)) {
+      tries.push([`Sign in on the network page with Weft to see ${channel}, if your organisation is a member.`, `/operators/network/?explorer=${encodeURIComponent(explorerBase)}`]);
     }
     tries.push([`See every organisation's explorer on one page, and compare a block's hash across them.`, `/operators/network/?explorer=${encodeURIComponent(explorerBase)}`]);
     $("pg-ex-try").replaceChildren(

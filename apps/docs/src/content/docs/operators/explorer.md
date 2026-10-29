@@ -146,14 +146,14 @@ Members-only channels are cross-checked too. A members-only channel's checkpoint
 
 ## In the playground
 
-`pnpm playground:up` starts an explorer for each organisation, each reading `mychannel` from its own organisation's peer:
+`pnpm playground:up` starts an explorer for each organisation, each reading `mychannel` and a members-only channel, `members`, from its own organisation's peer:
 
 | Explorer | Policy | Publishes |
 |---|---|---|
 | Org1, [localhost:8790](http://localhost:8790) | `playground/explorer.yaml` | Everything, with submitters and the ballots' private data hashes. Contract approvals (`_lifecycle`) are for signed-in members only. |
 | Org2, [localhost:8791](http://localhost:8791) | `playground/explorer-org2.yaml` | No submitters. The `basic` contract's transactions are for signed-in members only. |
 
-Both show the elections the playground seeds, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground page](/playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
+Both show the elections the playground seeds and, once you sign in, the `members` channel's assets, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground page](/playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
 
 To link Weft to your own explorer, add `explorerUrl` to your organisation's [invite](/operators/invites/). To show every organisation's explorer on one page, link to the [network page](/operators/network/) with `?explorer=<your explorer>`.
 

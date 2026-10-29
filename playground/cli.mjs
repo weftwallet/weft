@@ -17,16 +17,19 @@
  *   2. Starts test-network with CAs, creates `mychannel`, deploys the
  *      asset-transfer `basic` contract and Weft's ballot contract
  *      (examples/ballot-contract) with its private collection.
- *   3. Registers demo users in Org1 with known secrets.
- *   4. Starts a proxy in front of Org1's CA on http://localhost, so the
+ *   3. Creates a second channel, `members`, with the basic contract, which
+ *      both explorers publish to signed-in members only.
+ *   4. Registers demo users in Org1 with known secrets.
+ *   5. Starts a proxy in front of Org1's CA on http://localhost, so the
  *      browser can enrol without trusting the CA's self-signed certificate.
  *      With --https it serves https://localhost:7443 instead, using a
  *      certificate from mkcert, whose root your system already trusts.
- *   5. Starts the Weft relay for Org1, serving the playground invite.
- *   6. Starts an explorer for each organisation, reading as its User1,
+ *   6. Starts the Weft relay for Org1, serving the playground invite.
+ *   7. Starts an explorer for each organisation, reading as its User1,
  *      publishing what explorer.yaml / explorer-org2.yaml allow, and
  *      cross-checking with the other.
- *   7. Seeds two elections (seed-elections.mjs): one counted, one open.
+ *   8. Seeds two elections (seed-elections.mjs), one counted and one open,
+ *      and the members channel's starting assets (seed-members.mjs).
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -46,6 +49,8 @@ const org1 = join(testNetwork, "organizations", "peerOrganizations", "org1.examp
 
 const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, docs: 4321, explorer: 8790, explorerOrg2: 8791 };
 const CHANNEL = "mychannel";
+/** Published to members only, for trying sign-in on the explorers and the network page. */
+const MEMBERS_CHANNEL = "members";
 const DEMO_USERS = [
   { id: "alice", secret: "alicepw", attrs: "role=auditor:ecert" },
   { id: "bob", secret: "bobpw", attrs: "role=trader:ecert" },
@@ -226,8 +231,9 @@ function startNetwork() {
     return;
   }
   const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
-  // A new network has none of the old one's contracts.
+  // A new network has none of the old one's contracts or channels.
   rmSync(join(state, "ballot-deployed"), { force: true });
+  rmSync(join(state, "members-channel"), { force: true });
   run("./network.sh", ["down"], { cwd: testNetwork, env });
   run("./network.sh", ["up", "createChannel", "-c", CHANNEL, "-ca"], { cwd: testNetwork, env });
   run(
@@ -261,18 +267,38 @@ function deployBallot() {
   writeFileSync(marker, new Date().toISOString());
 }
 
+/** The members-only channel, created once per network. A marker in .state records it. */
+function createMembersChannel() {
+  step(4, "Members-only channel");
+  const marker = join(state, "members-channel");
+  if (existsSync(marker)) {
+    note(`${MEMBERS_CHANNEL} already exists on this network`);
+    return;
+  }
+  const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
+  run("./network.sh", ["createChannel", "-c", MEMBERS_CHANNEL], { cwd: testNetwork, env });
+  run(
+    "./network.sh",
+    ["deployCC", "-c", MEMBERS_CHANNEL, "-ccn", "basic", "-ccp", "../asset-transfer-basic/chaincode-typescript", "-ccl", "typescript"],
+    { cwd: testNetwork, env },
+  );
+  writeFileSync(marker, new Date().toISOString());
+}
+
 function seedElections() {
-  step(8, "Elections");
+  step(9, "Elections and the members-only channel's assets");
   const organizations = join(testNetwork, "organizations", "peerOrganizations");
   const result = spawnSync(process.execPath, [join(here, "seed-elections.mjs"), organizations, join(state, "receipts.json")], {
     stdio: "inherit",
   });
   // The playground works without them, so a failure here isn't fatal.
   if (result.status !== 0) note("couldn't seed the elections; see the output above. Everything else is running.");
+  const members = spawnSync(process.execPath, [join(here, "seed-members.mjs"), organizations], { stdio: "inherit" });
+  if (members.status !== 0) note(`couldn't seed ${MEMBERS_CHANNEL}; see the output above. Everything else is running.`);
 }
 
 function registerUsers() {
-  step(4, "Demo users");
+  step(5, "Demo users");
   const caClient = join(samples, "bin", "fabric-ca-client");
   const tlsRoot = join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem");
   for (const user of DEMO_USERS) {
@@ -309,7 +335,7 @@ function mkcertCertificate() {
 }
 
 function startCaProxy({ https }) {
-  step(5, "Proxy for Org1's CA");
+  step(6, "Proxy for Org1's CA");
   const upstream = [
     "--target", "https://localhost:7054",
     "--upstream-ca", join(testNetwork, "organizations", "fabric-ca", "org1", "ca-cert.pem"),
@@ -330,7 +356,7 @@ function startCaProxy({ https }) {
 }
 
 async function startRelay(caUrl) {
-  step(6, "Weft relay for Org1");
+  step(7, "Weft relay for Org1");
   if (!existsSync(join(repo, "apps", "relay", "dist", "main.js"))) {
     note("building the relay");
     run("pnpm", ["--filter", "@weftwallet/relay...", "build"], { cwd: repo });
@@ -344,7 +370,7 @@ async function startRelay(caUrl) {
     caName: "ca-org1",
     relayUrl: `http://localhost:${PORTS.relay}`,
     explorerUrl: `http://localhost:${PORTS.explorer}`,
-    channels: [CHANNEL],
+    channels: [CHANNEL, MEMBERS_CHANNEL],
   };
   writeFileSync(join(state, "invite.json"), `${JSON.stringify(invite, null, 2)}\n`);
   startBackground("relay", join(repo, "apps", "relay", "dist", "main.js"), [], {
@@ -364,7 +390,7 @@ async function startRelay(caUrl) {
  * Two explorers, one per organisation, each reading from its own peer and
  * comparing signed checkpoints with the other (docs/adr/0004, phase 3).
  */
-async function startExplorer(stepNumber = 7) {
+async function startExplorer(stepNumber = 8) {
   step(stepNumber, "Explorers for Org1 and Org2");
   if (!existsSync(join(repo, "apps", "explorer", "dist", "main.js"))) {
     note("building the explorer");
@@ -409,7 +435,8 @@ ${bold("Weft playground is running.")}
   Relay       http://localhost:${PORTS.relay}
   Explorers   http://localhost:${PORTS.explorer} (Org1), http://localhost:${PORTS.explorerOrg2} (Org2)
   Org1 CA     ${caUrl}
-  Channel     ${CHANNEL}, contracts ${bold("basic")} and ${bold("ballot")}
+  Channels    ${CHANNEL} (public), contracts ${bold("basic")} and ${bold("ballot")}
+              ${MEMBERS_CHANNEL} (members only), contract ${bold("basic")}
   Elections   team-lunch (counted), board-2026 (open)
 
   Demo users (Org1):
@@ -421,6 +448,7 @@ Next:
   3. Join with Weft as one of the demo users, then run InitLedger
   4. Vote in board-2026 from the same page, and check your receipt in the explorer
   5. Compare the two explorers: Org2 publishes less, and both agree on every block
+  6. Sign in on the network page to see ${MEMBERS_CHANNEL}, the members-only channel
 
 Stop with ${bold("pnpm playground:down")}.
 `);
@@ -437,6 +465,7 @@ async function up(flags) {
   ensureFabric();
   startNetwork();
   deployBallot();
+  createMembersChannel();
   registerUsers();
   const proxy = startCaProxy({ https });
   await waitForPort(proxy.port, "The CA proxy");
@@ -470,6 +499,7 @@ function down() {
   }
   rmSync(join(state, "invite.json"), { force: true });
   rmSync(join(state, "ballot-deployed"), { force: true });
+  rmSync(join(state, "members-channel"), { force: true });
   rmSync(join(state, "receipts.json"), { force: true });
   // The next network starts from block 0, so the old index would be wrong.
   for (const name of ["explorer", "explorer-org2"]) {

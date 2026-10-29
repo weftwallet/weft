@@ -19,7 +19,7 @@ Then open [the playground](http://localhost:4321/playground/). It finds the loca
 
 - join as a demo user (`alice` / `alicepw` or `bob` / `bobpw`) and call the `basic` contract;
 - vote in an election with the [ballot contract](/guides/elections/), then check your receipt in the explorer;
-- compare the two organisations' [explorers](/operators/explorer/#in-the-playground), which publish different amounts of the same ledger and agree on every block.
+- compare the two organisations' [explorers](/operators/explorer/#in-the-playground), which publish different amounts of the same ledger and agree on every block, and sign in to see the members-only channel, `members`.
 
 `pnpm playground:down` removes everything.
 

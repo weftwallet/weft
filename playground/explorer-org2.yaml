@@ -10,3 +10,7 @@ channels:
     contracts:
       basic: members
     elections: ballot
+  members:
+    # Only for signed-in members of the channel: try signing in on the explorer
+    # or on the network page.
+    level: members
