@@ -5,6 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { productUrl, products } from "@weftwallet/brand/products";
 import { explainStatus } from "@weftwallet/core";
 import type { BlockRow, ChannelSummary, TransactionRow } from "./db.ts";
 import { html, raw, type Html } from "./html.ts";
@@ -29,9 +30,30 @@ export interface Site {
   networkPage?: string;
 }
 
+const require = createRequire(import.meta.url);
+/** A brand SVG, made decorative: the text beside it names it. */
+const markSvg = (file: string, size: number) =>
+  raw(
+    readFileSync(require.resolve(`@weftwallet/brand/${file}`), "utf8")
+      .replace(/<!--[\s\S]*?-->\s*/g, "")
+      .replace(/\s+role="img"\s+aria-label="[^"]*"/, ' aria-hidden="true" focusable="false"')
+      .replace(/width="\d+" height="\d+"/, `width="${size}" height="${size}"`),
+  );
+
 /** Weft Explorer's mark: the finished cloth, on ink in the loom's frame. */
-const MARK_FILE = readFileSync(createRequire(import.meta.url).resolve("@weftwallet/brand/logo/products/explorer-small.svg"), "utf8");
-const MARK = raw(MARK_FILE.replace(/\s+role="img"\s+aria-label="[^"]*"/, ' aria-hidden="true"').replace('width="16" height="16"', 'width="24" height="24"'));
+const MARK = markSvg(products.explorer.markSmall, 28);
+
+/**
+ * The other Weft products, as the sites' switcher lists them. They point at
+ * the public sites, or the local ones when WEFT_PRODUCTS=dev (the tests).
+ */
+const local = process.env.WEFT_PRODUCTS === "dev";
+const SITES = (["site", "docs", "playground", "network"] as const).map((id) => ({
+  ...products[id],
+  href: productUrl(id, { dev: local, path: "/" })!,
+  mark: markSvg(products[id].markSmall, 24),
+  small: markSvg(products[id].markSmall, 16),
+}));
 
 const enc = encodeURIComponent;
 const blockUrl = (channel: string, n: number) => `/channels/${enc(channel)}/blocks/${n}`;
@@ -92,32 +114,95 @@ function call(tx: TransactionRow): Html {
   return html`<a class="mono" href="${contractUrl(tx.channel, tx.chaincode)}">${tx.chaincode}</a><span class="mono subtle">.</span><span class="mono">${tx.fn ?? ""}</span>`;
 }
 
+const ICONS = {
+  grid: raw(`<svg class="switcher__grid" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg>`),
+  chevron: raw(`<svg class="switcher__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`),
+  system: raw(`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`),
+  light: raw(`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>`),
+  dark: raw(`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>`),
+};
+
+/** Before the first paint, so a chosen theme never flashes the other one. */
+const THEME_EARLY = `try { var t = localStorage.getItem("weft-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}`;
+
+/** The theme control and the products menu, as on Weft's sites. */
+const CHROME = `
+(function () {
+  var root = document.documentElement;
+  var buttons = document.querySelectorAll("[data-theme-choice]");
+  function mark(choice) { buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.themeChoice === choice)); }); }
+  mark(root.dataset.theme || "system");
+  buttons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var choice = b.dataset.themeChoice;
+      function apply() { if (choice === "system") delete root.dataset.theme; else root.dataset.theme = choice; mark(choice); }
+      try { if (choice === "system") localStorage.removeItem("weft-theme"); else localStorage.setItem("weft-theme", choice); } catch (e) {}
+      var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (document.startViewTransition && !still) document.startViewTransition(apply); else apply();
+    });
+  });
+  var switcher = document.querySelector("[data-switcher]");
+  if (switcher) {
+    document.addEventListener("click", function (e) { if (switcher.open && !switcher.contains(e.target)) switcher.open = false; });
+    switcher.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && switcher.open) { switcher.open = false; switcher.querySelector("summary").focus(); }
+    });
+  }
+})();`;
+
+const GITHUB = "https://github.com/ifeanyi-ugwu/weft";
+
 export function layout(site: Site, title: string, body: Html, options: { query?: string; live?: boolean } = {}): string {
   return html`<!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title} · ${site.name} explorer</title>
+<title>${title} | ${site.name}'s explorer</title>
+<script>${raw(THEME_EARLY)}</script>
+<link rel="stylesheet" href="/assets/tokens.css">
 <link rel="stylesheet" href="/assets/explorer.css">
-<link rel="icon" href="/assets/mark.svg">
+<link rel="icon" type="image/svg+xml" href="/assets/mark.svg">
 </head>
 <body>
+<a class="skip" href="#main">Skip to the content</a>
 <header class="top">
   <div class="wrap top__inner">
-    <a class="brand" href="/">${MARK}<span class="brand__name">weft</span><span class="brand__sub">explorer</span></a>
+    <a class="brand" href="/">${MARK}<span class="brand__name">weft<span class="brand__sub"> explorer</span></span></a>
     <span class="org" title="Run by ${site.name}">${site.name}</span>
     <form class="search" action="/search" role="search">
+      <svg class="search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
       <input name="q" type="search" value="${options.query ?? ""}" placeholder="Transaction ID, block number or contract" aria-label="Search" spellcheck="false" autocomplete="off">
     </form>
     ${account(site)}
+    <span class="top__break" aria-hidden="true"></span>
+    <div class="tools">
+      <details class="switcher" data-switcher>
+        <summary>${ICONS.grid}<span class="switcher__label">Products</span>${ICONS.chevron}</summary>
+        <ul class="switcher__menu">
+          ${SITES.map((p) => html`<li><a href="${p.href}">${p.mark}<span><strong>${p.name}</strong><span>${p.summary}</span></span></a></li>`)}
+        </ul>
+      </details>
+      <div class="theme" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="system" aria-pressed="true" title="Match the system">${ICONS.system}<span class="sr">System</span></button>
+        <button type="button" data-theme-choice="light" aria-pressed="false" title="Light">${ICONS.light}<span class="sr">Light</span></button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false" title="Dark">${ICONS.dark}<span class="sr">Dark</span></button>
+      </div>
+    </div>
   </div>
 </header>
 <p class="signin-note" id="signin-note" role="alert" hidden></p>
-<main class="wrap">${body}</main>
-<footer class="wrap foot">
-  <span>Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish.</span>
-  <a href="/api/v1/status">API</a>
+<main class="wrap" id="main">${body}</main>
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <p class="foot__run">Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish. <a href="/api/v1/status">The API</a></p>
+    <div class="foot__row">
+      <ul class="foot__products">
+        ${SITES.map((p) => html`<li><a href="${p.href}">${p.small}${p.name}</a></li>`)}
+      </ul>
+      <p>Weft is open source under the Apache 2.0 licence. <a href="${GITHUB}">Source on GitHub</a>.</p>
+    </div>
+  </div>
 </footer>
 <script>
 document.querySelectorAll("time[datetime]").forEach(function (el) {
@@ -125,6 +210,7 @@ document.querySelectorAll("time[datetime]").forEach(function (el) {
   var t = s < 45 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : s < 86400 ? Math.round(s / 3600) + " h ago" : null;
   if (t) el.textContent = t;
 });
+${raw(CHROME)}
 ${options.live ? raw(LIVE) : ""}
 ${site.signIn && !site.viewer ? raw(signInScript(site.name)) : ""}
 </script>
@@ -140,15 +226,11 @@ function account(site: Site): Html {
     </div>`;
   }
   if (!site.signIn) return html``;
-  return html`<button type="button" class="signin" id="signin">${WALLET_MARK}<span>Sign in with Weft</span></button>`;
+  return html`<button type="button" class="signin" id="signin">${WALLET_MARK}<span>Sign in<span class="signin__more"> with Weft</span></span></button>`;
 }
 
 /** The wallet's mark, on "Sign in with Weft": it's Weft that signs, not the explorer. */
-const WALLET_MARK = raw(
-  readFileSync(createRequire(import.meta.url).resolve("@weftwallet/brand/logo/mark-small.svg"), "utf8")
-    .replace(/<!--[\s\S]*?-->\s*/g, "")
-    .replace(/\s+role="img"\s+aria-label="[^"]*"/, ' aria-hidden="true"'),
-);
+const WALLET_MARK = markSvg(products.wallet.markSmall, 16);
 
 /**
  * Sign-in: connect, get a nonce, ask Weft to sign in, send the result back.
@@ -163,6 +245,7 @@ function signInScript(name: string): string {
   var note = document.getElementById("signin-note");
   if (!button) return;
   var label = button.querySelector("span");
+  var idle = label.innerHTML;
   function say(text) { note.textContent = text; note.hidden = false; }
   button.addEventListener("click", async function () {
     note.hidden = true;
@@ -180,7 +263,7 @@ function signInScript(name: string): string {
     } catch (error) {
       say(error && error.code === 4001 ? "Sign-in cancelled." : (error && error.message) || "Sign-in didn't work. Try again.");
       button.disabled = false;
-      label.textContent = "Sign in with Weft";
+      label.innerHTML = idle;
     }
   });
 })();`;
@@ -582,7 +665,7 @@ ${hashes.length
 <div class="card receipt receipt--local receipt--single">
   <p class="small">If you hold one of these values, check it's the one recorded. It stays in this browser.</p>
   <label><span>Value, exactly as stored</span><input id="pd-value" class="mono" spellcheck="false" autocomplete="off"></label>
-  <button type="button" class="signin" id="pd-check">Check</button>
+  <button type="button" class="button" id="pd-check">Check</button>
   <p id="pd-result" class="small" aria-live="polite"></p>
 </div>
 <script>
@@ -714,14 +797,14 @@ ${e.tally
   <form class="card receipt" method="get" action="#receipt">
     <label><span>Transaction ID</span><input name="tx" value="${receipt?.txId ?? ""}" class="mono" required spellcheck="false" autocomplete="off"></label>
     <label><span>Commitment</span><input name="commitment" value="${receipt?.commitment ?? ""}" class="mono" spellcheck="false" autocomplete="off" placeholder="optional"></label>
-    <button type="submit" class="signin">Check</button>
+    <button type="submit" class="button">Check</button>
   </form>
   ${receipt ? receiptResult(receipt) : ""}
   <div class="card receipt receipt--local" id="local" ${receipt?.result.commitment ? "" : "hidden"}>
     <p class="small">To confirm the commitment is your vote, enter the choice and the salt from your receipt. They stay in this browser.</p>
     <label><span>Your choice</span><select id="local-option">${e.options.map((o) => html`<option>${o}</option>`)}</select></label>
     <label><span>Salt</span><input id="local-salt" class="mono" spellcheck="false" autocomplete="off"></label>
-    <button type="button" class="signin" id="local-check">Check here</button>
+    <button type="button" class="button" id="local-check">Check here</button>
     <p id="local-result" class="small" aria-live="polite"></p>
   </div>
 </section>
