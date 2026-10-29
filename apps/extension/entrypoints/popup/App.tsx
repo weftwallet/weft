@@ -170,7 +170,7 @@ function Welcome({ navigate }: { navigate: (r: Route) => void }) {
           <div className="mono" style={{ fontSize: 40, fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1 }}>
             weft
           </div>
-          <p className="muted" style={{ margin: "10px 0 0", fontSize: 15 }}>
+          <p className="muted" style={{ margin: "10px 0 0", fontSize: "var(--weft-type-md)" }}>
             An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the transactions you approve.
           </p>
         </div>

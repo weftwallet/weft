@@ -59,11 +59,11 @@ function PasskeyWindow() {
           <span className="lock-badge">
             <Icon name="key" size={18} />
           </span>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+          <h1 style={{ margin: 0, fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>
             {action === "add" ? "Add a passkey" : "Unlock with a passkey"}
           </h1>
         </div>
-        <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+        <p className="muted" style={{ margin: 0, fontSize: "var(--weft-type-md)" }}>
           {action === "add"
             ? "Your browser asks you to create a passkey for Weft, on this device, your phone or a security key. Your password keeps working too."
             : "Your browser asks for one of the passkeys you added to Weft."}

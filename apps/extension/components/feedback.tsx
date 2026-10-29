@@ -183,7 +183,7 @@ export function CopyButton({ text, label, size = 16 }: { text: string; label: st
         });
       }}
     >
-      <Icon name={copied ? "check" : "copy"} size={size} color={copied ? "var(--weft-thread)" : "currentColor"} />
+      <Icon name={copied ? "check" : "copy"} size={size} color={copied ? "var(--weft-accent-text)" : "currentColor"} />
     </button>
   );
 }

@@ -102,7 +102,7 @@ export function Identities({
               detail={network.mspId}
               action={{ label: `Network settings for ${network.name}`, onClick: () => navigate({ name: "network", networkId: network.id }) }}
             />
-            <p className="subtle" style={{ fontSize: 12, margin: "0 4px" }}>
+            <p className="subtle" style={{ fontSize: "var(--weft-type-xs)", margin: "0 4px" }}>
               No identities on this network.
             </p>
           </section>
@@ -123,7 +123,7 @@ export function Identities({
                 <span className="avatar">{p.commonName.charAt(0)}</span>
                 <span className="list-item__body">
                   <span className="list-item__title">{p.commonName}</span>
-                  <span className="subtle one-line" style={{ fontSize: 12 }}>
+                  <span className="subtle one-line" style={{ fontSize: "var(--weft-type-xs)" }}>
                     {p.networkName}. Paste the issued certificate.
                   </span>
                 </span>
@@ -134,7 +134,7 @@ export function Identities({
 
         {state.identities.length === 0 && <AddIdentityOptions navigate={navigate} />}
 
-        <div className="row" style={{ marginTop: "auto", fontSize: 12, color: "var(--weft-text-muted)" }}>
+        <div className="row" style={{ marginTop: "auto", fontSize: "var(--weft-type-xs)", color: "var(--weft-text-muted)" }}>
           <Icon name="shield" size={18} />
           Private keys are created in this browser, encrypted with your password, and can never be exported, even by Weft.
         </div>
@@ -163,10 +163,10 @@ export function AddIdentityOptions({ navigate, showHeading = true }: { navigate:
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {showHeading && <div className="eyebrow">Add an identity</div>}
       <button type="button" className="invite-tile" onClick={() => navigate({ name: "join" })}>
-        <Icon name="qr" color="var(--weft-thread)" />
+        <Icon name="qr" color="var(--weft-accent-text)" />
         <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontWeight: 500 }}>Join from an org invite</span>
-          <span className="muted" style={{ fontSize: 12 }}>
+          <span className="muted" style={{ fontSize: "var(--weft-type-xs)" }}>
             Paste the link from your network admin
           </span>
         </span>

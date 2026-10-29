@@ -6,9 +6,9 @@ import { BackHeader, Icon, Spinner, shorten, timeAgo } from "../ui";
 import type { Navigate } from "./state";
 
 const HEADLINE = {
-  committed: { color: "var(--weft-thread)", text: "Committed to the ledger" },
+  committed: { color: "var(--weft-accent-text)", text: "Committed to the ledger" },
   evaluated: { color: "var(--weft-text-muted)", text: "Read only" },
-  failed: { color: "var(--weft-signal)", text: "Not committed" },
+  failed: { color: "var(--weft-danger-text)", text: "Not committed" },
   rejected: { color: "var(--weft-text-subtle)", text: "Rejected by you" },
 } as const;
 
@@ -55,22 +55,22 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="dot" style={{ width: 10, height: 10, borderRadius: 5, background: head.color }} />
-            <span style={{ fontSize: 13, fontWeight: 500, color: head.color }}>{head.text}</span>
+            <span style={{ fontSize: "var(--weft-type-md)", fontWeight: 500, color: head.color }}>{head.text}</span>
           </div>
-          <div className="mono" style={{ fontSize: 24, fontWeight: 600, overflowWrap: "anywhere" }}>
+          <div className="mono" style={{ fontSize: "var(--weft-type-xl)", fontWeight: 600, overflowWrap: "anywhere" }}>
             {item.call.fn}
           </div>
         </div>
 
         {item.status === "failed" && (
           <section className="notice notice--signal" style={{ flexDirection: "column" }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>{item.title}</div>
-            <div style={{ color: "#e2d2d0" }}>{item.detail}</div>
+            <div style={{ fontSize: "var(--weft-type-md)", fontWeight: 600 }}>{item.title}</div>
+            <div style={{ color: "var(--weft-text)" }}>{item.detail}</div>
             {item.endorsers && item.endorsers.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
                 {item.endorsers.map((e, i) => (
-                  <div key={i} className="mono" style={{ fontSize: 12, display: "flex", gap: 8 }}>
-                    <span style={{ color: "var(--weft-signal)" }}>✕</span>
+                  <div key={i} className="mono" style={{ fontSize: "var(--weft-type-xs)", display: "flex", gap: 8 }}>
+                    <span style={{ color: "var(--weft-danger-text)" }}>✕</span>
                     <span>{e.mspId ?? e.address ?? "peer"}</span>
                     <span className="muted" style={{ marginLeft: "auto", textAlign: "right" }}>
                       {e.message}
@@ -79,7 +79,7 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
                 ))}
               </div>
             )}
-            <div className="mono" style={{ fontSize: 11, color: "#c9a9a5" }}>
+            <div className="mono" style={{ fontSize: "var(--weft-type-xs)", color: "var(--weft-text-muted)" }}>
               {item.code}
             </div>
           </section>

@@ -175,7 +175,7 @@ function Settings({
       >
         <section className="card" aria-label="Network">
           <span className="eyebrow">{network.organization}</span>
-          <div style={{ fontSize: 20, fontWeight: 600 }}>{network.name}</div>
+          <div style={{ fontSize: "var(--weft-type-xl)", fontWeight: 600 }}>{network.name}</div>
           <dl className="details">
             <dt>MSP ID</dt>
             <dd className="mono">{network.mspId}</dd>
@@ -209,7 +209,7 @@ function Settings({
             </button>
           )
         ) : (
-          <p className="subtle" style={{ fontSize: 12, margin: 0 }}>
+          <p className="subtle" style={{ fontSize: "var(--weft-type-xs)", margin: 0 }}>
             Added without an invite. Change its channels and addresses under Advanced.
           </p>
         )}
@@ -222,7 +222,7 @@ function Settings({
           onClick={() => setAdvanced(!advanced)}
         >
           <span>Advanced</span>
-          <span className="subtle" style={{ fontSize: 12, marginLeft: "auto" }}>
+          <span className="subtle" style={{ fontSize: "var(--weft-type-xs)", marginLeft: "auto" }}>
             {editableChannels ? "Channels and addresses" : "Addresses"}
           </span>
           <Icon name="chevron" size={16} />
@@ -310,7 +310,7 @@ function InviteChanges({
   if (nothing) {
     return (
       <div className="notice notice--thread fade-in">
-        <Icon name="check" size={18} color="var(--weft-thread)" />
+        <Icon name="check" size={18} color="var(--weft-accent-text)" />
         <span style={{ flex: 1 }}>Up to date with your organisation's invite.</span>
         <button type="button" className="link-btn" style={{ width: "auto", padding: 0 }} onClick={onCancel}>
           OK
@@ -325,7 +325,7 @@ function InviteChanges({
         {added.length > 0 && (
           <>
             <dt>New channels</dt>
-            <dd className="mono" style={{ color: "var(--weft-thread)" }}>
+            <dd className="mono" style={{ color: "var(--weft-accent-text)" }}>
               {added.join(", ")}
             </dd>
           </>
@@ -333,7 +333,7 @@ function InviteChanges({
         {removed.length > 0 && (
           <>
             <dt>Removed</dt>
-            <dd className="mono" style={{ color: "var(--weft-amber)" }}>
+            <dd className="mono" style={{ color: "var(--weft-warn-text)" }}>
               {removed.join(", ")}
             </dd>
           </>
@@ -341,7 +341,7 @@ function InviteChanges({
         {changes.map((c) => (
           <div key={c.label} style={{ display: "contents" }}>
             <dt>{c.label}</dt>
-            <dd className="mono" style={{ fontSize: 12 }}>
+            <dd className="mono" style={{ fontSize: "var(--weft-type-xs)" }}>
               <span className="subtle" style={{ textDecoration: "line-through" }}>
                 {c.from}
               </span>

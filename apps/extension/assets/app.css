@@ -14,10 +14,11 @@
 html,
 body {
   margin: 0;
-  background: var(--weft-ink);
+  background: var(--weft-bg);
   color: var(--weft-text);
   font-family: var(--weft-font-sans);
-  font-size: 14px;
+  /* The interface size, with a ratio so larger inline sizes keep their leading. */
+  font-size: var(--weft-type-md);
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
@@ -61,59 +62,63 @@ body.window {
   flex-direction: column;
 }
 
-/* Motion: short and directional, never in the way. */
-:root {
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --fast: 140ms;
-  --base: 220ms;
-}
+/* Motion: short and directional, never in the way. Durations, curves and
+   distances are the brand's motion tokens; with reduced motion the distances
+   are 0, so arrivals become short fades. */
 
 .screen[data-dir="forward"] {
-  animation: screen-in-forward var(--base) var(--ease-out);
+  animation: screen-in-forward var(--weft-duration-base) var(--weft-ease-out);
 }
 
 .screen[data-dir="back"] {
-  animation: screen-in-back var(--base) var(--ease-out);
+  animation: screen-in-back var(--weft-duration-base) var(--weft-ease-out);
 }
 
 @keyframes screen-in-forward {
   from {
     opacity: 0;
-    transform: translateX(16px);
+    transform: translateX(var(--weft-shift-lg));
   }
 }
 
 @keyframes screen-in-back {
   from {
     opacity: 0;
-    transform: translateX(-16px);
+    transform: translateX(calc(var(--weft-shift-lg) * -1));
   }
 }
 
 .fade-in {
-  animation: fade-in var(--base) var(--ease-out);
+  animation: fade-in var(--weft-duration-base) var(--weft-ease-out);
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(var(--weft-shift-sm));
   }
 }
 
+/* With reduced motion the shift tokens are 0 and the press scale 1, so
+   arrivals are short fades and nothing travels. What can't become a fade is
+   set here: things that grow, pop or draw appear finished. Spinners still
+   turn, since they say something is happening. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    animation-delay: 0ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
+  .bar > div,
+  .success-mark,
+  .success-mark path,
+  .tabs__indicator,
+  .disclosure svg {
+    animation: none;
+    transition: none;
+  }
+  .success-mark path {
+    stroke-dashoffset: 0;
   }
 }
 
 a {
-  color: var(--weft-thread);
+  color: var(--weft-accent-text);
 }
 
 button,
@@ -125,7 +130,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--weft-thread);
+  outline: 2px solid var(--weft-focus);
   outline-offset: 2px;
 }
 
@@ -143,7 +148,7 @@ textarea {
 
 .eyebrow {
   font-family: var(--weft-font-mono);
-  font-size: 11px;
+  font-size: var(--weft-type-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--weft-text-subtle);
@@ -167,7 +172,7 @@ textarea {
 }
 
 .header__title {
-  font-size: 16px;
+  font-size: var(--weft-type-base);
   font-weight: 600;
 }
 
@@ -198,11 +203,11 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: linear-gradient(to bottom, transparent, var(--weft-ink) 14px);
+  background: linear-gradient(to bottom, transparent, var(--weft-bg) 14px);
 }
 
 .footer {
-  background: var(--weft-ink);
+  background: var(--weft-bg);
   padding: 14px 16px 16px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -223,7 +228,7 @@ textarea {
   border: 1px solid var(--weft-line-strong);
   background: transparent;
   color: var(--weft-text);
-  font-size: 15px;
+  font-size: var(--weft-type-md);
   font-weight: 500;
   cursor: pointer;
   padding: 0 16px;
@@ -236,10 +241,10 @@ textarea {
   justify-content: center;
   gap: 8px;
   transition:
-    background-color var(--fast),
-    border-color var(--fast),
-    opacity var(--fast),
-    transform var(--fast);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    opacity var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .btn:hover:not(:disabled) {
@@ -257,49 +262,49 @@ textarea {
 .invite-tile:active,
 .identity-option:active,
 .list-item:active {
-  transform: scale(0.98);
+  transform: scale(var(--weft-press-scale));
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: var(--weft-disabled-opacity);
   cursor: default;
 }
 
 .btn--danger {
   border: 0;
-  background: var(--weft-signal);
-  color: var(--weft-ink);
+  background: var(--weft-danger);
+  color: var(--weft-on-status);
   font-weight: 600;
 }
 
 .btn--primary {
   border: 0;
-  background: var(--weft-thread);
-  color: var(--weft-ink);
+  background: var(--weft-accent);
+  color: var(--weft-on-accent);
   font-weight: 600;
 }
 
 .btn--amber {
   border: 0;
-  background: var(--weft-amber);
-  color: var(--weft-ink);
+  background: var(--weft-warn);
+  color: var(--weft-on-status);
   font-weight: 600;
 }
 
 .btn--outline-amber {
   height: 44px;
-  border-color: var(--weft-amber);
-  color: var(--weft-amber);
+  border-color: var(--weft-warn);
+  color: var(--weft-warn-text);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--weft-type-md);
 }
 
 .btn--outline-signal {
   height: 44px;
-  border-color: var(--weft-signal);
-  color: var(--weft-signal);
+  border-color: var(--weft-danger);
+  color: var(--weft-danger-text);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--weft-type-md);
 }
 
 .icon-btn {
@@ -318,19 +323,19 @@ textarea {
 
 .icon-btn {
   transition:
-    background-color var(--fast),
-    color var(--fast),
-    transform var(--fast);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .icon-btn:hover {
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
   color: var(--weft-text);
 }
 
 .icon-btn--danger:hover {
-  background: var(--weft-signal-soft);
-  color: var(--weft-signal);
+  background: var(--weft-danger-soft);
+  color: var(--weft-danger-text);
 }
 
 .icon-btn--sm {
@@ -348,8 +353,8 @@ textarea {
   padding: 0 12px;
   border-radius: 20px;
   border: 1px solid var(--weft-line-strong);
-  background: var(--weft-slate);
-  font-size: 13px;
+  background: var(--weft-bg-raised);
+  font-size: var(--weft-type-md);
   position: relative;
 }
 
@@ -364,7 +369,7 @@ textarea {
 }
 
 .channel-picker select option {
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
 }
 
 .channel-picker svg {
@@ -377,7 +382,7 @@ textarea {
   width: 8px;
   height: 8px;
   border-radius: 4px;
-  background: var(--weft-thread);
+  background: var(--weft-accent);
   flex: none;
 }
 
@@ -388,7 +393,7 @@ textarea {
 }
 
 .field label {
-  font-size: 13px;
+  font-size: var(--weft-type-md);
   color: var(--weft-text-muted);
 }
 
@@ -399,20 +404,40 @@ textarea {
   color: var(--weft-text);
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line-strong);
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
   padding: 10px 12px;
   min-height: 44px;
 }
 
+/* A field's ring sits on its own border, not a step outside it. */
+.field input,
+.field textarea,
+.field select {
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: var(--weft-text-subtle);
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible {
+  border-color: var(--weft-focus);
+  outline-offset: -1px;
+}
+
 .field textarea {
   font-family: var(--weft-font-mono);
-  font-size: 12px;
+  font-size: var(--weft-type-xs);
   min-height: 110px;
   resize: vertical;
 }
 
 .field__hint {
-  font-size: 12px;
+  font-size: var(--weft-type-xs);
   color: var(--weft-text-subtle);
 }
 
@@ -420,7 +445,7 @@ textarea {
 
 .card {
   border-radius: var(--weft-radius-xl);
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
   border: 1px solid var(--weft-line);
   padding: 16px;
   display: flex;
@@ -430,16 +455,16 @@ textarea {
 
 .chip {
   font-family: var(--weft-font-mono);
-  font-size: 11px;
+  font-size: var(--weft-type-xs);
   padding: 4px 8px;
   border-radius: var(--weft-radius-sm);
   border: 1px solid var(--weft-line-strong);
-  color: #c9d2da;
+  color: var(--weft-text);
 }
 
 .chip--solid {
   border: 0;
-  background: var(--weft-ink);
+  background: var(--weft-bg);
 }
 
 .chips {
@@ -451,7 +476,7 @@ textarea {
 .bar {
   height: 6px;
   border-radius: 3px;
-  background: var(--weft-ink);
+  background: var(--weft-bg);
   overflow: hidden;
 }
 
@@ -459,7 +484,7 @@ textarea {
   height: 6px;
   border-radius: 3px;
   transform-origin: left;
-  animation: bar-grow 600ms var(--ease-out);
+  animation: bar-grow var(--weft-duration-deliberate) var(--weft-ease-tension);
 }
 
 @keyframes bar-grow {
@@ -474,8 +499,8 @@ textarea {
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--weft-radius-lg);
-  background: var(--weft-surface);
-  font-size: 13px;
+  background: var(--weft-bg-surface);
+  font-size: var(--weft-type-md);
 }
 
 .tabs {
@@ -485,7 +510,7 @@ textarea {
   gap: 4px;
   padding: 4px;
   border-radius: var(--weft-radius-lg);
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
 }
 
 .tabs__indicator {
@@ -496,18 +521,18 @@ textarea {
   width: calc((100% - 16px) / 3);
   border-radius: 9px;
   background: var(--weft-line);
-  transition: transform var(--base) var(--ease-out);
+  transition: transform var(--weft-duration-base) var(--weft-ease-out);
 }
 
 .tabs button {
   position: relative;
-  transition: color var(--fast);
+  transition: color var(--weft-duration-fast) var(--weft-ease-out);
   height: 36px;
   border: 0;
   border-radius: 9px;
   background: transparent;
   color: var(--weft-text-muted);
-  font-size: 13px;
+  font-size: var(--weft-type-md);
   cursor: pointer;
 }
 
@@ -528,14 +553,14 @@ textarea {
 .list-item {
   border-radius: 8px;
   transition:
-    background-color var(--fast),
-    transform var(--fast);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 4px;
   border: 0;
-  border-bottom: 1px solid #1c2733;
+  border-bottom: 1px solid var(--weft-line);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -543,7 +568,7 @@ textarea {
 }
 
 .list-item:hover {
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
 }
 
 .list-item:last-child {
@@ -569,7 +594,7 @@ textarea {
 }
 
 .list-item__title {
-  font-size: 14px;
+  font-size: var(--weft-type-md);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -582,7 +607,7 @@ textarea {
   gap: 12px;
   padding: 12px;
   border-radius: var(--weft-radius-lg);
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
   border: 1px solid var(--weft-line);
   text-align: left;
   cursor: pointer;
@@ -593,32 +618,32 @@ textarea {
 .add-tile,
 .invite-tile {
   transition:
-    background-color var(--fast),
-    border-color var(--fast),
-    transform var(--fast);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .identity-option:hover,
 .add-tile:hover {
   border-color: var(--weft-line-strong);
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
 }
 
 .invite-tile:hover {
-  background: #133330;
+  background: color-mix(in srgb, var(--weft-accent-soft), var(--weft-accent) 8%);
 }
 
 .identity-option[aria-pressed="true"] {
-  background: var(--weft-slate);
-  border-color: var(--weft-thread);
+  background: var(--weft-accent-soft);
+  border-color: var(--weft-accent-line);
 }
 
 .avatar {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #1c2733;
-  color: #c9d2da;
+  background: var(--weft-bg-overlay);
+  color: var(--weft-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -628,8 +653,8 @@ textarea {
 }
 
 .avatar--active {
-  background: #12302d;
-  color: var(--weft-thread);
+  background: var(--weft-accent);
+  color: var(--weft-on-accent);
 }
 
 .add-grid {
@@ -643,8 +668,8 @@ textarea {
   padding: 10px 6px;
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line);
-  background: var(--weft-surface);
-  font-size: 12px;
+  background: var(--weft-bg-surface);
+  font-size: var(--weft-type-xs);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -660,8 +685,8 @@ textarea {
   padding: 12px;
   min-height: 56px;
   border-radius: var(--weft-radius-lg);
-  border: 1px dashed var(--weft-thread);
-  background: var(--weft-thread-soft);
+  border: 1px dashed var(--weft-accent-line);
+  background: var(--weft-accent-soft);
   text-align: left;
   cursor: pointer;
 }
@@ -672,32 +697,32 @@ textarea {
   align-items: flex-start;
   padding: 12px;
   border-radius: var(--weft-radius-lg);
-  font-size: 13px;
+  font-size: var(--weft-type-md);
   line-height: 1.45;
 }
 
 .notice--amber {
-  background: var(--weft-amber-soft);
-  border: 1px solid var(--weft-amber);
+  background: var(--weft-warn-soft);
+  border: 1px solid var(--weft-warn-line);
 }
 
 .notice--thread {
-  background: var(--weft-thread-soft);
-  border: 1px solid var(--weft-thread);
+  background: var(--weft-accent-soft);
+  border: 1px solid var(--weft-accent-line);
 }
 
 .notice--signal {
-  background: var(--weft-signal-soft);
-  border: 1px solid #5a2b27;
+  background: var(--weft-danger-soft);
+  border: 1px solid var(--weft-danger-line);
 }
 
 .tag {
   font-family: var(--weft-font-mono);
-  font-size: 11px;
+  font-size: var(--weft-type-xs);
   font-weight: 500;
   padding: 3px 7px;
   border-radius: 5px;
-  color: var(--weft-ink);
+  color: var(--weft-on-status);
   flex: none;
 }
 
@@ -707,7 +732,7 @@ textarea {
   grid-template-columns: 96px minmax(0, 1fr);
   row-gap: 10px;
   column-gap: 12px;
-  font-size: 13px;
+  font-size: var(--weft-type-md);
 }
 
 .details dt {
@@ -721,7 +746,7 @@ textarea {
 
 .args {
   border-radius: var(--weft-radius-lg);
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
   border: 1px solid var(--weft-line);
   overflow: hidden;
 }
@@ -732,8 +757,8 @@ textarea {
   gap: 12px;
   padding: 10px 12px;
   font-family: var(--weft-font-mono);
-  font-size: 13px;
-  border-top: 1px solid #1c2733;
+  font-size: var(--weft-type-md);
+  border-top: 1px solid var(--weft-line);
   overflow-wrap: anywhere;
 }
 
@@ -743,7 +768,7 @@ textarea {
   padding-top: 6px;
   padding-bottom: 6px;
   font-family: var(--weft-font-sans);
-  font-size: 12px;
+  font-size: var(--weft-type-xs);
 }
 
 .args__reveal {
@@ -756,14 +781,14 @@ textarea {
   border: 0;
   border-radius: 16px;
   background: transparent;
-  color: var(--weft-thread);
-  font-size: 13px;
+  color: var(--weft-accent-text);
+  font-size: var(--weft-type-md);
   cursor: pointer;
   flex: none;
 }
 
 .args__reveal:hover {
-  background: color-mix(in srgb, var(--weft-thread) 12%, transparent);
+  background: color-mix(in srgb, var(--weft-accent) 12%, transparent);
 }
 
 .args__key {
@@ -783,11 +808,11 @@ textarea {
   margin: 0;
   padding: 12px;
   font-family: var(--weft-font-mono);
-  font-size: 11px;
+  font-size: var(--weft-type-xs);
   white-space: pre-wrap;
   word-break: break-all;
   color: var(--weft-text-muted);
-  border-top: 1px solid #1c2733;
+  border-top: 1px solid var(--weft-line);
 }
 
 .link-btn:hover {
@@ -798,24 +823,24 @@ textarea {
 .link-btn {
   border: 0;
   background: transparent;
-  color: var(--weft-thread);
+  color: var(--weft-accent-text);
   cursor: pointer;
   padding: 10px 12px;
   text-align: left;
   width: 100%;
-  font-size: 13px;
+  font-size: var(--weft-type-md);
 }
 
 .empty {
   padding: 24px 8px;
   text-align: center;
   color: var(--weft-text-subtle);
-  font-size: 13px;
+  font-size: var(--weft-type-md);
 }
 
 .error-text {
-  color: var(--weft-signal);
-  font-size: 13px;
+  color: var(--weft-danger-text);
+  font-size: var(--weft-type-md);
 }
 
 /* Lists with a trailing action ------------------------------------ */
@@ -837,7 +862,7 @@ textarea {
   gap: 12px;
   padding: 10px 8px 10px 12px;
   border-radius: var(--weft-radius-lg);
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
   border: 1px solid var(--weft-line);
 }
 
@@ -845,7 +870,7 @@ textarea {
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
   color: var(--weft-text-muted);
   display: flex;
   align-items: center;
@@ -859,20 +884,20 @@ textarea {
   border-radius: 16px;
   border: 1px solid var(--weft-line-strong);
   background: transparent;
-  font-size: 12px;
+  font-size: var(--weft-type-xs);
   font-weight: 500;
   cursor: pointer;
   color: var(--weft-text-muted);
   transition:
-    color var(--fast),
-    border-color var(--fast),
-    background-color var(--fast);
+    color var(--weft-duration-fast) var(--weft-ease-out),
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .small-btn:hover {
-  color: var(--weft-signal);
-  border-color: var(--weft-signal);
-  background: var(--weft-signal-soft);
+  color: var(--weft-danger-text);
+  border-color: var(--weft-danger);
+  background: var(--weft-danger-soft);
 }
 
 .empty__icon {
@@ -880,7 +905,7 @@ textarea {
   height: 44px;
   margin: 0 auto 10px;
   border-radius: 12px;
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
   border: 1px solid var(--weft-line);
   color: var(--weft-text-subtle);
   display: flex;
@@ -914,12 +939,12 @@ textarea {
   height: 36px;
   border-radius: 50%;
   border: 3px solid var(--weft-line);
-  border-top-color: var(--weft-thread);
+  border-top-color: var(--weft-accent);
   animation: spin 800ms linear infinite;
 }
 
 .spinner--amber {
-  border-top-color: var(--weft-amber);
+  border-top-color: var(--weft-warn);
 }
 
 .spinner--sm {
@@ -938,24 +963,24 @@ textarea {
   width: 64px;
   height: 64px;
   border-radius: 32px;
-  background: var(--weft-thread-soft);
-  border: 1px solid var(--weft-thread);
-  color: var(--weft-thread);
+  background: var(--weft-accent-soft);
+  border: 1px solid var(--weft-accent-line);
+  color: var(--weft-accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: pop 320ms var(--ease-out);
+  animation: pop var(--weft-duration-slow) var(--weft-ease-out);
 }
 
 .success-mark path {
   stroke-dasharray: 24;
   stroke-dashoffset: 24;
-  animation: draw 360ms 120ms var(--ease-out) forwards;
+  animation: draw var(--weft-duration-slow) 120ms var(--weft-ease-tension) forwards;
 }
 
 @keyframes pop {
   from {
-    transform: scale(0.6);
+    transform: scale(0.85);
     opacity: 0;
   }
 }
@@ -983,31 +1008,31 @@ textarea {
   position: absolute;
   inset: 0;
   z-index: 20;
-  background: rgba(5, 9, 12, 0.66);
+  background: var(--weft-scrim);
   display: flex;
   align-items: flex-end;
-  animation: backdrop-in 180ms ease-out both;
+  animation: backdrop-in var(--weft-duration-slow) var(--weft-ease-out) both;
 }
 
 .sheet-backdrop.is-closing {
-  animation: backdrop-out 160ms ease-in both;
+  animation: backdrop-out var(--weft-duration-base) var(--weft-ease-in) both;
 }
 
 .sheet-backdrop.is-closing .sheet {
-  animation: sheet-out 160ms ease-in both;
+  animation: sheet-out var(--weft-duration-base) var(--weft-ease-in) both;
 }
 
 .sheet {
   width: 100%;
   padding: 20px 16px 16px;
   border-radius: 18px 18px 0 0;
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
   border-top: 1px solid var(--weft-line-strong);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.35);
-  animation: sheet-in 240ms var(--ease-out) both;
+  box-shadow: var(--weft-shadow-3);
+  animation: sheet-in var(--weft-duration-slow) var(--weft-ease-out) both;
 }
 
 .sheet__icon {
@@ -1017,25 +1042,25 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--weft-signal-soft);
-  color: var(--weft-signal);
+  background: var(--weft-danger-soft);
+  color: var(--weft-danger-text);
 }
 
 .sheet__icon--caution {
-  background: var(--weft-amber-soft);
-  color: var(--weft-amber);
+  background: var(--weft-warn-soft);
+  color: var(--weft-warn-text);
 }
 
 .sheet__title {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--weft-type-lg);
   font-weight: 600;
 }
 
 .sheet__body {
   margin: 0;
   color: var(--weft-text-muted);
-  font-size: 13px;
+  font-size: var(--weft-type-md);
 }
 
 .sheet__actions {
@@ -1048,7 +1073,7 @@ textarea {
 /* Fade the backdrop's colour, not its opacity, so the sheet inside it stays solid. */
 @keyframes backdrop-in {
   from {
-    background-color: rgba(5, 9, 12, 0);
+    background-color: transparent;
   }
 }
 
@@ -1056,20 +1081,20 @@ textarea {
    from the first frame, so nothing behind it shows through. */
 @keyframes sheet-in {
   from {
-    transform: translateY(32px);
+    transform: translateY(calc(var(--weft-shift-lg) * 2));
   }
 }
 
 @keyframes sheet-out {
   to {
-    transform: translateY(32px);
+    transform: translateY(calc(var(--weft-shift-lg) * 2));
     opacity: 0;
   }
 }
 
 @keyframes backdrop-out {
   to {
-    background-color: rgba(5, 9, 12, 0);
+    background-color: transparent;
   }
 }
 
@@ -1086,19 +1111,19 @@ textarea {
   gap: 8px;
   padding: 8px 14px;
   border-radius: 20px;
-  background: var(--weft-text);
-  color: var(--weft-ink);
-  font-size: 13px;
+  background: var(--weft-text-strong);
+  color: var(--weft-bg);
+  font-size: var(--weft-type-md);
   font-weight: 500;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  animation: toast-in var(--base) var(--ease-out);
+  box-shadow: var(--weft-shadow-2);
+  animation: toast-in var(--weft-duration-base) var(--weft-ease-out);
   pointer-events: none;
 }
 
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 8px);
+    transform: translate(-50%, var(--weft-shift-md));
   }
 }
 
@@ -1119,23 +1144,23 @@ textarea {
   padding: 12px;
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line);
-  background: var(--weft-surface);
-  font-size: 14px;
+  background: var(--weft-bg-surface);
+  font-size: var(--weft-type-md);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition:
-    border-color var(--fast),
-    background-color var(--fast);
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .disclosure:hover {
   border-color: var(--weft-line-strong);
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
 }
 
 .disclosure svg {
-  transition: transform var(--base) var(--ease-out);
+  transition: transform var(--weft-duration-base) var(--weft-ease-out);
   color: var(--weft-text-subtle);
 }
 
@@ -1151,22 +1176,22 @@ textarea {
   padding: 12px;
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line);
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
   text-align: left;
   cursor: pointer;
   transition:
-    border-color var(--fast),
-    background-color var(--fast),
-    transform var(--fast);
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .nav-row:hover {
   border-color: var(--weft-line-strong);
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
 }
 
 .nav-row:active {
-  transform: scale(0.98);
+  transform: scale(var(--weft-press-scale));
 }
 
 .nav-row > svg:last-child {
@@ -1184,7 +1209,7 @@ textarea {
 }
 
 .identity-name {
-  font-size: 22px;
+  font-size: var(--weft-type-xl);
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -1234,13 +1259,13 @@ textarea {
   padding: 0 12px;
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line-strong);
-  background: var(--weft-surface);
+  background: var(--weft-bg-surface);
   color: var(--weft-text-subtle);
-  transition: border-color var(--fast);
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .filter:focus-within {
-  border-color: var(--weft-thread);
+  border-color: var(--weft-accent-line);
 }
 
 .filter input {
@@ -1250,7 +1275,7 @@ textarea {
   outline: none;
   background: transparent;
   color: var(--weft-text);
-  font-size: 13px;
+  font-size: var(--weft-type-md);
 }
 
 .group-head {
@@ -1262,7 +1287,7 @@ textarea {
 }
 
 .group-head__title {
-  font-size: 13px;
+  font-size: var(--weft-type-md);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1272,7 +1297,7 @@ textarea {
 }
 
 .group-head__detail {
-  font-size: 11px;
+  font-size: var(--weft-type-xs);
   color: var(--weft-text-subtle);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1295,18 +1320,18 @@ textarea {
   border-radius: 18px;
   border: 1px solid var(--weft-line-strong);
   background: transparent;
-  color: var(--weft-thread);
-  font-size: 13px;
+  color: var(--weft-accent-text);
+  font-size: var(--weft-type-md);
   font-weight: 500;
   cursor: pointer;
   transition:
-    border-color var(--fast),
-    background-color var(--fast);
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .header-action:hover {
-  border-color: var(--weft-thread);
-  background: var(--weft-thread-soft);
+  border-color: var(--weft-accent-line);
+  background: var(--weft-accent-soft);
 }
 
 /* The weave: the mark's weft threads drawn in (components/ui.tsx WeaveMark).
@@ -1380,9 +1405,9 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--weft-slate);
+  background: var(--weft-bg-raised);
   border: 1px solid var(--weft-line-strong);
-  color: var(--weft-thread);
+  color: var(--weft-accent-text);
 }
 
 /* Top-aligned so an error appearing below doesn't move the mark. */
@@ -1418,13 +1443,13 @@ textarea {
 }
 
 .status-screen__title {
-  font-size: 16px;
+  font-size: var(--weft-type-base);
   font-weight: 600;
   line-height: 24px;
 }
 
 .status-screen__detail {
-  font-size: 13px;
+  font-size: var(--weft-type-md);
   line-height: 20px;
 }
 
@@ -1441,7 +1466,7 @@ textarea {
 }
 
 .lock-badge--danger {
-  color: var(--weft-signal);
+  color: var(--weft-danger-text);
 }
 
 /* Hovering a resting mark weaves its weft in again, without the pulse. */

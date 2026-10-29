@@ -341,10 +341,10 @@ export function Field(props: {
 }
 
 const HEALTH_COLOR = {
-  valid: "var(--weft-thread)",
-  expiring: "var(--weft-amber)",
-  expired: "var(--weft-signal)",
-  "not-yet-valid": "var(--weft-amber)",
+  valid: "var(--weft-accent-text)",
+  expiring: "var(--weft-warn-text)",
+  expired: "var(--weft-danger-text)",
+  "not-yet-valid": "var(--weft-warn-text)",
 } as const;
 
 export function healthView(identity: Pick<IdentitySummary, "notAfter">) {

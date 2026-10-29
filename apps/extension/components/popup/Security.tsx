@@ -61,7 +61,7 @@ export function Security({
             </span>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ fontWeight: 500 }}>Unlocked</span>
-              <span className="muted" style={{ fontSize: 13 }}>
+              <span className="muted" style={{ fontSize: "var(--weft-type-md)" }}>
                 Signing needs your password or a passkey after Weft locks.
               </span>
             </div>
@@ -94,7 +94,7 @@ export function Security({
             </button>
           </div>
           {vault.passkeys.length === 0 ? (
-            <p className="subtle" style={{ fontSize: 13, margin: 0 }}>
+            <p className="subtle" style={{ fontSize: "var(--weft-type-md)", margin: 0 }}>
               Unlock with a fingerprint, face or security key instead of typing your password. The passkey needs to support
               the PRF extension. Weft checks when you add it.
             </p>
@@ -102,10 +102,10 @@ export function Security({
             <div className="list">
               {vault.passkeys.map((p) => (
                 <div key={p.id} className="list-item">
-                  <Icon name="key" size={18} color="var(--weft-thread)" />
+                  <Icon name="key" size={18} color="var(--weft-accent-text)" />
                   <span className="list-item__body">
                     <span className="list-item__title">{p.name}</span>
-                    <span className="subtle" style={{ fontSize: 12 }}>
+                    <span className="subtle" style={{ fontSize: "var(--weft-type-xs)" }}>
                       Added {timeAgo(p.createdAt)}
                     </span>
                   </span>
@@ -127,8 +127,8 @@ export function Security({
         <ChangePassword onDone={() => toast("Password changed")} />
 
         {legacy > 0 && (
-          <div className="notice notice--amber" style={{ fontSize: 13 }}>
-            <Icon name="alert" size={18} color="var(--weft-amber)" />
+          <div className="notice notice--amber" style={{ fontSize: "var(--weft-type-md)" }}>
+            <Icon name="alert" size={18} color="var(--weft-warn-text)" />
             <span>
               {legacy === 1 ? "One identity was" : `${legacy} identities were`} saved before Weft encrypted keys, so{" "}
               {legacy === 1 ? "its key isn't" : "their keys aren't"} encrypted on disk. Re-enrol from the identity card to

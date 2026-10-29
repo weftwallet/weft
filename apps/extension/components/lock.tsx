@@ -63,9 +63,9 @@ export function CreatePassword({
           <span className="lock-badge">
             <Icon name="lock" size={18} />
           </span>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{heading}</h1>
+          <h1 style={{ margin: 0, fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>{heading}</h1>
         </div>
-        <div className="muted" style={{ fontSize: 14 }}>
+        <div className="muted" style={{ fontSize: "var(--weft-type-md)" }}>
           {intro}
         </div>
         <Field label="Password" hint={short ? `At least ${MIN} characters.` : undefined}>
@@ -74,7 +74,7 @@ export function CreatePassword({
         <Field label="Password again" hint={mismatch ? "Doesn't match yet." : undefined}>
           <SecretInput required value={again} onChange={(e) => setAgain(e.target.value)} aria-label="Password again" />
         </Field>
-        <p className="subtle" style={{ fontSize: 13, margin: 0 }}>
+        <p className="subtle" style={{ fontSize: "var(--weft-type-md)", margin: 0 }}>
           Weft can't reset this password. If you forget it, you enrol your identities again with your CA. You can add a
           passkey later to unlock without typing it.
         </p>
@@ -164,8 +164,8 @@ export function Unlock({
           <WeaveMark size={56} mode={markMode} />
         </div>
         <div style={{ textAlign: "center" }}>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Weft is locked</h1>
-          <p className="muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
+          <h1 style={{ margin: 0, fontSize: "var(--weft-type-xl)", fontWeight: 600 }}>Weft is locked</h1>
+          <p className="muted" style={{ margin: "6px 0 0", fontSize: "var(--weft-type-md)" }}>
             {subtitle}
           </p>
         </div>
@@ -233,14 +233,14 @@ function ResetWeft({ onCancel, onDone }: { onCancel: () => void; onDone: () => v
           <span className="lock-badge lock-badge--danger">
             <Icon name="alert" size={18} />
           </span>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Reset Weft?</h1>
+          <h1 style={{ margin: 0, fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>Reset Weft?</h1>
         </div>
-        <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+        <p className="muted" style={{ margin: 0, fontSize: "var(--weft-type-md)" }}>
           Weft can't recover a forgotten password, because it never stores it. Resetting deletes every identity and private
           key in this browser, your activity and your site connections.
         </p>
-        <div className="notice notice--signal" style={{ fontSize: 13 }}>
-          <Icon name="alert" size={18} color="var(--weft-signal)" />
+        <div className="notice notice--signal" style={{ fontSize: "var(--weft-type-md)" }}>
+          <Icon name="alert" size={18} color="var(--weft-danger-text)" />
           <span>
             This can't be undone. Your certificates stay valid on the network, and your networks are kept, so you can enrol
             again with your CA's enrollment ID and secret.

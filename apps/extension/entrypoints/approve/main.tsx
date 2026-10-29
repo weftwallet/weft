@@ -127,7 +127,7 @@ function Origin({ origin, subtitle }: { origin: string; subtitle: string }) {
           width: 36,
           height: 36,
           borderRadius: 10,
-          background: "var(--weft-slate)",
+          background: "var(--weft-bg-raised)",
           border: "1px solid var(--weft-line-strong)",
           display: "flex",
           alignItems: "center",
@@ -139,8 +139,8 @@ function Origin({ origin, subtitle }: { origin: string; subtitle: string }) {
         <Icon name={origin.startsWith("https:") ? "lock" : "globe"} size={16} />
       </span>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 500, overflowWrap: "anywhere" }}>{new URL(origin).host}</span>
-        <span className="muted" style={{ fontSize: 12 }}>
+        <span style={{ fontSize: "var(--weft-type-md)", fontWeight: 500, overflowWrap: "anywhere" }}>{new URL(origin).host}</span>
+        <span className="muted" style={{ fontSize: "var(--weft-type-xs)" }}>
           {subtitle}
         </span>
       </div>
@@ -193,7 +193,7 @@ function ConnectRequest({
   return (
     <>
       <header className="header" style={{ height: "auto", padding: "18px 16px 14px", flexDirection: "column", alignItems: "stretch", gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 600 }}>Connect this site?</div>
+        <div style={{ fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>Connect this site?</div>
         <Origin origin={view.origin} subtitle="wants to use your Weft identity" />
       </header>
       <main className="page">
@@ -208,7 +208,7 @@ function ConnectRequest({
           {identity && Object.keys(identity.attributes).length > 0 && (
             <>
               <dt>Attributes</dt>
-              <dd className="mono" style={{ fontSize: 12 }}>
+              <dd className="mono" style={{ fontSize: "var(--weft-type-xs)" }}>
                 {Object.entries(identity.attributes)
                   .map(([k, v]) => `${k}=${v}`)
                   .join(", ")}
@@ -219,7 +219,7 @@ function ConnectRequest({
           <dd className="muted">Public certificate only</dd>
         </dl>
         <div className="notice notice--thread">
-          <Icon name="shield" size={18} color="var(--weft-thread)" />
+          <Icon name="shield" size={18} color="var(--weft-accent-text)" />
           <span>
             Connecting does not let the site sign anything. Every query and transaction will still ask for your approval.
           </span>
@@ -247,12 +247,12 @@ function SignInRequest({
   return (
     <>
       <header className="header" style={{ height: "auto", padding: "18px 16px 14px", flexDirection: "column", alignItems: "stretch", gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 600 }}>Sign in to {host}?</div>
+        <div style={{ fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>Sign in to {host}?</div>
         <Origin origin={view.origin} subtitle="wants to know it's you" />
       </header>
       <main className="page">
         {view.statement && (
-          <div className="card" style={{ fontSize: 14 }}>
+          <div className="card" style={{ fontSize: "var(--weft-type-md)" }}>
             <span className="eyebrow">The site says</span>
             <div style={{ overflowWrap: "anywhere" }}>{view.statement}</div>
           </div>
@@ -266,7 +266,7 @@ function SignInRequest({
           <dd>5 minutes, for {host} only</dd>
         </dl>
         <div className="notice notice--thread">
-          <Icon name="shield" size={18} color="var(--weft-thread)" />
+          <Icon name="shield" size={18} color="var(--weft-accent-text)" />
           <span>
             This proves to the site that you hold this identity. It doesn't sign a transaction or change anything on the
             ledger.
@@ -301,12 +301,12 @@ function SignRequest({
   return (
     <>
       <header className="header" style={{ height: "auto", padding: "18px 16px 14px", flexDirection: "column", alignItems: "stretch", gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 600 }}>Signature request</div>
+        <div style={{ fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>Signature request</div>
         <Origin origin={view.origin} subtitle={submit ? "wants you to sign a transaction" : "wants to read from the ledger"} />
       </header>
       <main className="page">
         <div className={`notice ${submit ? "notice--amber" : "notice--thread"}`}>
-          <span className="tag" style={{ background: submit ? "var(--weft-amber)" : "var(--weft-thread)" }}>
+          <span className="tag" style={{ background: submit ? "var(--weft-warn)" : "var(--weft-accent)" }}>
             {submit ? "SUBMIT" : "EVALUATE"}
           </span>
           <span>
@@ -318,7 +318,7 @@ function SignRequest({
 
         {view.identity && !view.identity.channels.includes(call.channel) && (
           <div className="notice notice--amber">
-            <Icon name="alert" size={18} color="var(--weft-amber)" />
+            <Icon name="alert" size={18} color="var(--weft-warn-text)" />
             <span>
               Your invite for {view.identity.networkName} doesn't list the channel <span className="mono">{call.channel}</span>.
               The network will likely reject this unless your organisation has joined it since.
@@ -331,7 +331,7 @@ function SignRequest({
           <dd>
             <IdentityLine identity={view.identity} />
             {health && health.state !== "valid" && (
-              <div style={{ fontSize: 12, color: health.color }}>{health.label}</div>
+              <div style={{ fontSize: "var(--weft-type-xs)", color: health.color }}>{health.label}</div>
             )}
           </dd>
           <dt>Channel</dt>
@@ -342,7 +342,7 @@ function SignRequest({
             {call.contract ? ` / ${call.contract}` : ""}
           </dd>
           <dt>Function</dt>
-          <dd className="mono" style={{ color: "var(--weft-thread)", fontWeight: 500 }}>
+          <dd className="mono" style={{ color: "var(--weft-accent-text)", fontWeight: 500 }}>
             {call.fn}
           </dd>
         </dl>
@@ -411,23 +411,23 @@ function SignRequest({
         {submit &&
           (call.endorsingOrganizations?.length ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div className="subtle" style={{ fontSize: 13 }}>
+              <div className="subtle" style={{ fontSize: "var(--weft-type-md)" }}>
                 Will be sent for approval to
               </div>
               <div className="chips">
                 {call.endorsingOrganizations.map((msp) => (
-                  <span key={msp} className="chip" style={{ fontSize: 12 }}>
+                  <span key={msp} className="chip" style={{ fontSize: "var(--weft-type-xs)" }}>
                     {msp}
                   </span>
                 ))}
               </div>
             </div>
           ) : (
-            <p className="subtle" style={{ fontSize: 13, margin: 0 }}>
+            <p className="subtle" style={{ fontSize: "var(--weft-type-md)", margin: 0 }}>
               The network asks the organisations the contract's endorsement policy requires.
             </p>
           ))}
-        <p className="subtle" style={{ fontSize: 12, margin: 0 }}>
+        <p className="subtle" style={{ fontSize: "var(--weft-type-xs)", margin: 0 }}>
           Weft checks that the network's request matches exactly what is shown here before signing.
         </p>
       </main>
@@ -484,7 +484,7 @@ function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (
   return (
     <>
       <header className="header" style={{ height: "auto", padding: "18px 16px 14px", flexDirection: "column", alignItems: "stretch", gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 600 }}>Add a network?</div>
+        <div style={{ fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>Add a network?</div>
         <Origin origin={view.origin} subtitle="wants you to join a network" />
       </header>
       {!invite ? (
@@ -495,7 +495,7 @@ function AddNetworkRequest({ view, onDecide }: { view: ApprovalView; onDecide: (
               <dd className="mono">{new URL(inviteUrl).host}</dd>
             </dl>
             <div className="notice notice--thread">
-              <Icon name="shield" size={18} color="var(--weft-thread)" />
+              <Icon name="shield" size={18} color="var(--weft-accent-text)" />
               <span>
                 Weft loads the invite from that address, not from the site, and shows you what it contains before you
                 enter anything.
@@ -590,10 +590,10 @@ function Progress({
       <>
         <main className="page">
           <section className="notice notice--signal" style={{ flexDirection: "column" }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>{outcome.title}</div>
-            <div style={{ color: "#e2d2d0" }}>{outcome.detail}</div>
+            <div style={{ fontSize: "var(--weft-type-md)", fontWeight: 600 }}>{outcome.title}</div>
+            <div style={{ color: "var(--weft-text)" }}>{outcome.detail}</div>
           </section>
-          <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+          <p className="muted" style={{ fontSize: "var(--weft-type-md)", margin: 0 }}>
             Nothing was written to the ledger. The details are saved in your Weft activity.
           </p>
         </main>

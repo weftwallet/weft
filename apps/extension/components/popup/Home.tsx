@@ -142,16 +142,16 @@ function IdentityCard({
         <div className="identity-name" title={identity.name}>
           {identity.name}
         </div>
-        <div className="muted one-line" style={{ fontSize: 13 }} title={identity.organization}>
+        <div className="muted one-line" style={{ fontSize: "var(--weft-type-md)" }} title={identity.organization}>
           {identity.organization}
         </div>
-        <div className="mono subtle one-line" style={{ fontSize: 12 }} title={identity.networkName}>
+        <div className="mono subtle one-line" style={{ fontSize: "var(--weft-type-xs)" }} title={identity.networkName}>
           {identity.networkName}
         </div>
       </div>
-      <div className="mono subtle" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+      <div className="mono subtle" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--weft-type-xs)" }}>
         <span>SHA-256</span>
-        <span style={{ color: "#c9d2da" }}>{shorten(identity.fingerprint, 11, 5)}</span>
+        <span style={{ color: "var(--weft-text)" }}>{shorten(identity.fingerprint, 11, 5)}</span>
         <span style={{ marginLeft: "auto" }}>
           <CopyButton text={identity.fingerprint} label="Copy fingerprint" />
         </span>
@@ -166,7 +166,7 @@ function IdentityCard({
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--weft-type-md)" }}>
           <span style={{ color: health.color, fontWeight: 500 }}>{health.label}</span>
           <span className="subtle">{health.detail}</span>
         </div>
@@ -174,8 +174,8 @@ function IdentityCard({
           <div style={{ width: `${health.width}%`, background: health.color }} />
         </div>
         {identity.legacyKey && health.state !== "expired" && (
-          <div className="notice notice--amber" style={{ fontSize: 13 }}>
-            <Icon name="lock" size={18} color="var(--weft-amber)" />
+          <div className="notice notice--amber" style={{ fontSize: "var(--weft-type-md)" }}>
+            <Icon name="lock" size={18} color="var(--weft-warn-text)" />
             <span>
               This key was saved before Weft encrypted keys with your password, so it isn't encrypted on disk.
               {identity.enrollmentId && caUrl ? " Re-enrol to replace it with an encrypted one." : " Add this identity again to encrypt it."}
@@ -205,10 +205,10 @@ function IdentityCard({
 }
 
 const STATUS_STYLE = {
-  committed: { icon: "check", bg: "#12302d", fg: "var(--weft-thread)", label: "VALID" },
-  evaluated: { icon: "search", bg: "#1c2733", fg: "var(--weft-text-muted)", label: "READ" },
-  failed: { icon: "alert", bg: "#3a1d1b", fg: "var(--weft-signal)", label: "FAILED" },
-  rejected: { icon: "alert", bg: "#1c2733", fg: "var(--weft-text-subtle)", label: "REJECTED" },
+  committed: { icon: "check", bg: "var(--weft-accent-soft)", fg: "var(--weft-accent-text)", label: "VALID" },
+  evaluated: { icon: "search", bg: "var(--weft-bg-overlay)", fg: "var(--weft-text-muted)", label: "READ" },
+  failed: { icon: "alert", bg: "var(--weft-danger-soft)", fg: "var(--weft-danger-text)", label: "FAILED" },
+  rejected: { icon: "alert", bg: "var(--weft-bg-overlay)", fg: "var(--weft-text-subtle)", label: "REJECTED" },
 } as const;
 
 function ActivityList({ navigate }: { navigate: Navigate }) {
@@ -237,7 +237,7 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
         </section>
       ))}
       {items.length >= 50 && (
-        <p className="subtle" style={{ fontSize: 12, textAlign: "center", margin: "8px 0 0" }}>
+        <p className="subtle" style={{ fontSize: "var(--weft-type-xs)", textAlign: "center", margin: "8px 0 0" }}>
           Showing the 50 most recent.
         </p>
       )}
@@ -282,21 +282,21 @@ function ActivityRow({ item, navigate }: { item: ActivityRecord; navigate: Navig
                 {item.call.fn}
               </span>
               {item.status === "failed" ? (
-                <span className="one-line" style={{ fontSize: 12, color: "var(--weft-signal)" }}>
+                <span className="one-line" style={{ fontSize: "var(--weft-type-xs)", color: "var(--weft-danger-text)" }}>
                   {item.title}
                 </span>
               ) : (
-                <span className="mono subtle one-line" style={{ fontSize: 11 }}>
+                <span className="mono subtle one-line" style={{ fontSize: "var(--weft-type-xs)" }}>
                   {item.call.chaincode}
                   {item.blockNumber ? ` · block ${Number(item.blockNumber).toLocaleString()}` : item.kind === "evaluate" ? " · query" : ""}
                 </span>
               )}
             </span>
             <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flex: "none" }}>
-              <span className="mono" style={{ fontSize: 11, color: s.fg }}>
+              <span className="mono" style={{ fontSize: "var(--weft-type-xs)", color: s.fg }}>
                 {s.label}
               </span>
-              <span className="subtle" style={{ fontSize: 11 }}>
+              <span className="subtle" style={{ fontSize: "var(--weft-type-xs)" }}>
                 {timeAgo(item.at)}
               </span>
             </span>
@@ -371,11 +371,11 @@ export function IdentityOption({
         <span className="list-item__title" title={identity.name}>
           {identity.name}
         </span>
-        <span className="mono subtle one-line" style={{ fontSize: 11 }}>
+        <span className="mono subtle one-line" style={{ fontSize: "var(--weft-type-xs)" }}>
           {[showMsp ? identity.mspId : null, identity.role ?? "no role"].filter(Boolean).join(" · ")}
         </span>
       </span>
-      <span style={{ fontSize: 12, color: health.state === "valid" ? "var(--weft-text-subtle)" : health.color }}>
+      <span style={{ fontSize: "var(--weft-type-xs)", color: health.state === "valid" ? "var(--weft-text-subtle)" : health.color }}>
         {health.short}
       </span>
     </button>
@@ -419,7 +419,7 @@ function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletS
                 .map((id) => state.identities.find((i) => i.id === id)?.name)
                 .filter((n): n is string => Boolean(n));
               return (
-                <span className="subtle one-line" style={{ fontSize: 11 }} title={names.length ? `Connected as ${names.join(", ")}` : undefined}>
+                <span className="subtle one-line" style={{ fontSize: "var(--weft-type-xs)" }} title={names.length ? `Connected as ${names.join(", ")}` : undefined}>
                   {names.length ? `As ${namesSummary(names)} · ${timeAgo(site.connectedAt)}` : `Connected ${timeAgo(site.connectedAt)}`}
                 </span>
               );
