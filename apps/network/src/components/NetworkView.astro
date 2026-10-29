@@ -9,7 +9,7 @@
  */
 ---
 
-<div class="nw not-content">
+<div class="nw">
   <form class="nw-card nw-source" id="nw-form">
     <label class="nw-label" for="nw-input">An explorer, or your organisation's invite</label>
     <div class="nw-row">
@@ -532,8 +532,8 @@
     margin-top: 1.5rem;
   }
   .nw-card {
-    border: 1px solid var(--sl-color-gray-5);
-    background: var(--sl-color-gray-6);
+    border: 1px solid var(--weft-line-strong);
+    background: var(--weft-bg-raised);
     border-radius: 1rem;
     padding: 1.25rem;
     display: flex;
@@ -541,7 +541,7 @@
     gap: 0.85rem;
   }
   .nw h2 {
-    font-size: var(--sl-text-lg);
+    font-size: var(--weft-type-lg);
     margin: 0;
   }
   .nw-head {
@@ -551,8 +551,8 @@
     gap: 1rem;
   }
   .nw-label {
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-gray-2);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-muted);
   }
   .nw-row {
     display: flex;
@@ -564,35 +564,35 @@
   }
   .nw input {
     font: inherit;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-white);
-    background: var(--sl-color-black);
-    border: 1px solid var(--sl-color-gray-5);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-strong);
+    background: var(--weft-bg);
+    border: 1px solid var(--weft-line-strong);
     border-radius: 0.5rem;
     padding: 0.55rem 0.7rem;
     min-height: 2.75rem;
     transition: border-color 140ms;
   }
   .nw input:hover {
-    border-color: var(--sl-color-gray-4);
+    border-color: var(--weft-text-subtle);
   }
   .nw input.mono,
   .nw .mono {
-    font-family: var(--sl-font-mono);
+    font-family: var(--weft-font-mono);
   }
   .nw input[type="number"] {
     flex: 0 0 8rem;
   }
   .nw button {
     font: inherit;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     font-weight: 600;
     min-height: 2.75rem;
     padding: 0 1rem;
     border-radius: 0.6rem;
-    border: 1px solid var(--sl-color-accent);
-    background: var(--sl-color-accent);
-    color: var(--sl-color-black);
+    border: 1px solid var(--weft-accent);
+    background: var(--weft-accent);
+    color: var(--weft-bg);
     cursor: pointer;
     transition:
       filter 140ms,
@@ -607,21 +607,20 @@
   .nw button:focus-visible,
   .nw input:focus-visible,
   .nw summary:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
+    outline: 2px solid var(--weft-accent);
     outline-offset: 2px;
   }
-  /* Inside .not-content, so links need the theme's colour back. */
   .nw a {
-    color: var(--sl-color-text-accent);
+    color: var(--weft-accent-text);
     text-underline-offset: 0.2em;
   }
   .nw-hint {
     margin: 0;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-gray-3);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-subtle);
   }
   .nw-hint[data-tone="err"] {
-    color: #e5675b;
+    color: var(--weft-danger-text);
   }
   .nw-channels {
     display: flex;
@@ -635,15 +634,15 @@
     gap: 1rem;
     flex-wrap: wrap;
     padding-top: 0.85rem;
-    border-top: 1px solid var(--sl-color-gray-5);
+    border-top: 1px solid var(--weft-line-strong);
   }
   .nw-signin .nw-hint {
     flex: 1 1 16rem;
   }
   .nw button.nw-secondary {
     background: transparent;
-    color: var(--sl-color-white);
-    border-color: var(--sl-color-gray-4);
+    color: var(--weft-text-strong);
+    border-color: var(--weft-text-subtle);
   }
   .nw button:disabled {
     opacity: 0.6;
@@ -652,44 +651,44 @@
   }
   .nw-tag {
     margin-left: 0.6rem;
-    font-family: var(--sl-font-sans);
-    font-size: var(--sl-text-xs);
+    font-family: var(--weft-font-sans);
+    font-size: var(--weft-type-xs);
     font-weight: 500;
-    color: var(--sl-color-gray-3);
+    color: var(--weft-text-subtle);
     vertical-align: middle;
   }
   .nw [hidden] {
     display: none !important;
   }
   .nw-pill {
-    font-family: var(--sl-font-mono);
-    font-size: var(--sl-text-xs);
+    font-family: var(--weft-font-mono);
+    font-size: var(--weft-type-xs);
     padding: 0.25rem 0.6rem;
     border-radius: 999px;
-    border: 1px solid var(--sl-color-gray-5);
-    color: var(--sl-color-gray-2);
+    border: 1px solid var(--weft-line-strong);
+    color: var(--weft-text-muted);
   }
   .nw-pill--ok {
-    border-color: #3fc1b0;
-    color: var(--sl-color-accent-high);
+    border-color: var(--weft-accent);
+    color: var(--weft-accent-text);
   }
   .nw-pill--bad {
-    border-color: #e5675b;
-    color: #e5675b;
+    border-color: var(--weft-danger);
+    color: var(--weft-danger-text);
   }
   .nw-verdict {
     margin: 0;
     padding: 0.7rem 0.9rem;
     border-radius: 0.6rem;
-    font-size: var(--sl-text-sm);
-    border-left: 3px solid var(--sl-color-gray-5);
-    background: var(--sl-color-black);
+    font-size: var(--weft-type-md);
+    border-left: 3px solid var(--weft-line-strong);
+    background: var(--weft-bg);
   }
   .nw-verdict--ok {
-    border-left-color: #3fc1b0;
+    border-left-color: var(--weft-accent);
   }
   .nw-verdict--bad {
-    border-left-color: #e5675b;
+    border-left-color: var(--weft-danger);
   }
   .nw-table {
     overflow-x: auto;
@@ -697,23 +696,23 @@
   .nw table {
     width: 100%;
     border-collapse: collapse;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     margin: 0;
   }
   .nw th {
     text-align: left;
     font-weight: 500;
-    color: var(--sl-color-gray-3);
-    font-size: var(--sl-text-xs);
+    color: var(--weft-text-subtle);
+    font-size: var(--weft-type-xs);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     padding: 0 0.75rem 0.5rem 0;
-    border-bottom: 1px solid var(--sl-color-gray-5);
+    border-bottom: 1px solid var(--weft-line-strong);
   }
   .nw td {
     padding: 0.7rem 0.75rem 0.7rem 0;
     vertical-align: top;
-    border-bottom: 1px solid var(--sl-color-gray-5);
+    border-bottom: 1px solid var(--weft-line-strong);
   }
   .nw tr:last-child td {
     border-bottom: 0;
@@ -726,13 +725,13 @@
     font-variant-numeric: tabular-nums;
   }
   .nw-sub {
-    font-size: var(--sl-text-xs);
-    color: var(--sl-color-gray-3);
+    font-size: var(--weft-type-xs);
+    color: var(--weft-text-subtle);
   }
   .nw summary {
     cursor: pointer;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-accent-high);
+    font-size: var(--weft-type-md);
+    color: var(--weft-accent-text);
   }
   .nw details[open] {
     display: flex;
@@ -753,16 +752,16 @@
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
-    background: var(--sl-color-black);
-    border-left: 3px solid var(--sl-color-gray-5);
-    font-size: var(--sl-text-xs);
+    background: var(--weft-bg);
+    border-left: 3px solid var(--weft-line-strong);
+    font-size: var(--weft-type-xs);
     overflow-wrap: anywhere;
   }
   .nw-hash--ok {
-    border-left-color: #3fc1b0;
+    border-left-color: var(--weft-accent);
   }
   .nw-hash--bad {
-    border-left-color: #e5675b;
+    border-left-color: var(--weft-danger);
   }
   .nw-hash-who {
     font-weight: 600;
@@ -773,7 +772,7 @@
     gap: 0.2rem;
   }
   .nw-summary {
-    color: var(--sl-color-white);
+    color: var(--weft-text-strong);
   }
   .nw button:disabled {
     opacity: 0.6;
@@ -788,7 +787,7 @@
       grid-template-columns: 1fr auto;
       gap: 0.25rem 0.75rem;
       padding: 0.7rem 0;
-      border-bottom: 1px solid var(--sl-color-gray-5);
+      border-bottom: 1px solid var(--weft-line-strong);
     }
     .nw tr:last-child {
       border-bottom: 0;
@@ -803,7 +802,7 @@
     }
     .nw-num::after {
       content: " blocks";
-      color: var(--sl-color-gray-3);
+      color: var(--weft-text-subtle);
     }
     .nw-hash {
       grid-template-columns: 1fr;

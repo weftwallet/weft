@@ -3,7 +3,7 @@
 // keyboard focus. Same 16px-grid small mark as packages/brand/logo/mark-small.svg.
 ---
 
-<a href="/" class="site-title weft-title" aria-label="weft, home">
+<a href="/" class="site-title weft-title" aria-label="Weft Docs, home">
   <svg class="weft-title__mark" width="32" height="32" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
     <defs>
       <clipPath id="weft-title-r1"><rect class="weft-title__reveal weft-title__reveal--1" x="2" y="2" width="12" height="6"></rect></clipPath>
@@ -23,7 +23,7 @@
       <rect x="9" y="9" width="4" height="4" fill="#3FC1B0"></rect><rect x="9" y="10" width="4" height="2" fill="#0B1218"></rect>
     </g>
   </svg>
-  <span class="weft-title__word">weft</span>
+  <span class="weft-title__word">weft <span class="weft-title__product">docs</span></span>
 </a>
 
 <style>
@@ -39,6 +39,9 @@
     font-size: 1.35rem;
     font-weight: 500;
     letter-spacing: -0.02em;
+  }
+  .weft-title__product {
+    color: var(--sl-color-gray-3);
   }
   .weft-title__reveal {
     transform-box: fill-box;

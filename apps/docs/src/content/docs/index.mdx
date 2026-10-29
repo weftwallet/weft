@@ -1,37 +1,44 @@
 ---
-title: weft
-description: An identity wallet for Hyperledger Fabric. Every transaction Weft signs is decoded and shown to you first.
-template: splash
-hero:
-  tagline: An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the transactions you approve.
-  image:
-    # Served as-is: Starlight would shrink a hero `file` to a 400px WebP.
-    html: '<img src="/hero-product.png" width="953" height="1020" alt="The Weft wallet showing an identity and its recent transactions, next to a signature request for a TransferShipment transaction." />'
-  actions:
-    - text: Get started
-      link: /start/what-is-weft/
-      icon: right-arrow
-    - text: Build a dApp
-      link: /dapps/quickstart/
-      variant: minimal
+title: Weft documentation
+description: Guides for people using Weft, building dApps and running Hyperledger Fabric networks.
+tableOfContents: false
+editUrl: false
 ---
 
-import { Card, CardGrid } from "@astrojs/starlight/components";
+import { LinkCard, CardGrid } from "@astrojs/starlight/components";
+
+Weft is an identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued you, and signs only the transactions you approve after showing you what they do. These guides are for the three kinds of people who use it.
+
+## Using Weft
 
 <CardGrid>
-  <Card title="X.509 identities" icon="seti:lock">
-    Weft holds the X.509 certificate your organisation's CA issued you, shows you when it
-    expires, and renews it in one click.
-  </Card>
-  <Card title="Decoded requests" icon="document">
-    Every request shows the channel, contract, function and decoded arguments, and says plainly whether it reads or
-    writes the ledger.
-  </Card>
-  <Card title="Keys never leave the browser" icon="approve-check">
-    Private keys are created in the browser and stored encrypted with your password. The relay only ever sees
-    certificates, unsigned messages and signatures.
-  </Card>
-  <Card title="Failures in plain English" icon="information">
-    `ENDORSEMENT_POLICY_FAILURE` becomes "Not enough organisations approved it", with which ones did and didn't.
-  </Card>
+  <LinkCard title="What is Weft?" href="/start/what-is-weft/" description="What it holds, what it signs, and what it never sees." />
+  <LinkCard title="Install and add an identity" href="/start/install/" description="From an organisation's invite, or by hand." />
+  <LinkCard title="Reading a signature request" href="/guides/signing/" description="Everything a request shows before you approve it." />
+  <LinkCard title="When a transaction fails" href="/guides/failures/" description="What each failure means and what to do about it." />
+</CardGrid>
+
+## Building a dApp
+
+<CardGrid>
+  <LinkCard title="Quickstart" href="/dapps/quickstart/" description="Connect to Weft and call a contract in a few lines." />
+  <LinkCard title="Provider API" href="/dapps/provider-api/" description="Every method a page can call, and what each returns." />
+  <LinkCard title="Local test network" href="/dapps/test-network/" description="Run Fabric, a relay and two explorers on your machine." />
+  <LinkCard title="Weft Playground" href="weft:playground/" description="Try a dApp against a network from your browser." />
+</CardGrid>
+
+## Running a network
+
+<CardGrid>
+  <LinkCard title="Deploy the relay" href="/operators/relay/" description="The one service your organisation runs for Weft." />
+  <LinkCard title="Publish an org invite" href="/operators/invites/" description="So your users can join in one step." />
+  <LinkCard title="Run an explorer" href="/operators/explorer/" description="Your organisation's view of the ledger, published as you choose." />
+  <LinkCard title="Weft Network" href="weft:network/" description="Every organisation's explorer on one page, and the invite maker." />
+</CardGrid>
+
+## Reference
+
+<CardGrid>
+  <LinkCard title="Security model" href="/reference/security/" description="What Weft protects, and from whom." />
+  <LinkCard title="Transaction codes" href="/reference/transaction-codes/" description="Fabric's validation codes in plain words." />
 </CardGrid>

@@ -1,12 +1,12 @@
 # Weft playground stack
 
-`pnpm playground:up` starts a local Hyperledger Fabric network configured for Weft. Use it to try the wallet, build a dApp, or run the docs' playground page against a real network on your machine.
+`pnpm playground:up` starts a local Hyperledger Fabric network configured for Weft. Use it to try the wallet, build a dApp, or run Weft Playground against a real network on your machine.
 
 ```sh
 pnpm playground:up       # first run downloads Fabric (5 to 10 minutes)
 pnpm playground:up --https   # the same, with the CA on https://localhost:7443 (needs mkcert)
-pnpm dev:docs            # in another terminal
-# open http://localhost:4321/playground/
+pnpm dev:playground      # in another terminal, then open http://localhost:4323
+pnpm dev:network         # the network page, http://localhost:4324
 pnpm playground:down     # stop everything and remove the network
 pnpm playground:status   # what's running
 pnpm playground:explorer # start or restart only the explorers, on a running stack
@@ -55,4 +55,4 @@ Set `WEFT_FABRIC_SAMPLES` to an existing checkout that has `bin/` and `test-netw
 
 ## Hosting it
 
-The same pieces run on a server. Put the relay and the CA proxy behind real TLS (the proxy takes `--cert` and `--key`), set the relay's `WEFT_PUBLIC_URL`, and point the docs playground's `?invite=` at the public invite. For a public demo, add rate limiting and reset the network on a schedule.
+The same pieces run on a server. Put the relay and the CA proxy behind real TLS (the proxy takes `--cert` and `--key`), set the relay's `WEFT_PUBLIC_URL`, and point the playground's `?invite=` at the public invite. For a public demo, add rate limiting and reset the network on a schedule.

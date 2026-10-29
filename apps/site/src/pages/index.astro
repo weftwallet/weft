@@ -1,0 +1,138 @@
+---
+// The front page, until the landing designed around the weave replaces it.
+import Shell from "@weftwallet/ui/Shell.astro";
+import { productHref } from "@weftwallet/ui/links";
+
+const docs = (path: string) => productHref("docs", path);
+const features = [
+  ["Your organisation's identity", "Weft holds the X.509 certificate your organisation's CA issued you, shows when it expires, and renews it in one step."],
+  ["Every request decoded", "Each request shows the channel, contract, function and arguments, and says plainly whether it reads or writes the ledger."],
+  ["Keys stay in your browser", "Private keys are created in the browser and stored encrypted with your password. The relay only ever sees certificates, unsigned messages and signatures."],
+  ["Failures in plain words", "ENDORSEMENT_POLICY_FAILURE becomes \"Not enough organisations approved it\", with which ones did and didn't."],
+];
+---
+
+<Shell product="site" description="An identity wallet for Hyperledger Fabric. Every transaction Weft signs is decoded and shown to you first." wide>
+  <Fragment slot="nav">
+    <a href={docs("/")}>Docs</a>
+    <a href={productHref("playground")}>Playground</a>
+  </Fragment>
+
+  <section class="hero">
+    <div class="hero__text">
+      <h1>An identity wallet for Hyperledger Fabric</h1>
+      <p>Weft holds the certificate your organisation's CA issued you and signs only the transactions you approve, after showing you exactly what they do.</p>
+      <div class="hero__actions">
+        <a class="action action--primary" href={docs("/start/install/")}>Install Weft</a>
+        <a class="action" href={docs("/start/what-is-weft/")}>How it works</a>
+        <a class="action" href={productHref("playground")}>Try the playground</a>
+      </div>
+    </div>
+    <img src="/hero-product.png" width="953" height="1020" alt="The Weft wallet showing an identity and its recent transactions, next to a signature request for a TransferShipment transaction." />
+  </section>
+
+  <ul class="features">
+    {
+      features.map(([title, body]) => (
+        <li>
+          <h2>{title}</h2>
+          <p>{body}</p>
+        </li>
+      ))
+    }
+  </ul>
+</Shell>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: 6fr 5fr;
+    gap: var(--weft-space-12);
+    align-items: center;
+  }
+  .hero__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-5);
+  }
+  .hero h1 {
+    font-size: var(--weft-type-display);
+    line-height: var(--weft-leading-display);
+    letter-spacing: -0.03em;
+  }
+  .hero p {
+    font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
+    color: var(--weft-text-muted);
+    max-width: 36rem;
+  }
+  .hero img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-3);
+  }
+  .action {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 var(--weft-space-5);
+    border-radius: var(--weft-radius-lg);
+    border: 1px solid var(--weft-line-strong);
+    color: var(--weft-text);
+    font-size: var(--weft-type-md);
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
+  }
+  .action:hover {
+    border-color: var(--weft-text-subtle);
+  }
+  .action:active {
+    transform: scale(var(--weft-press-scale));
+  }
+  .action--primary {
+    background: var(--weft-accent);
+    border-color: transparent;
+    color: var(--weft-on-accent);
+    font-weight: 600;
+  }
+  .action--primary:hover {
+    background: var(--weft-accent-hover);
+    border-color: transparent;
+  }
+  .features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--weft-space-4);
+  }
+  .features li {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-2);
+    padding: var(--weft-space-6);
+    background: var(--weft-bg-raised);
+    border: 1px solid var(--weft-line);
+    border-radius: var(--weft-radius-xl);
+  }
+  .features h2 {
+    font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
+  }
+  .features p {
+    color: var(--weft-text-muted);
+  }
+  @media (max-width: 860px) {
+    .hero,
+    .features {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

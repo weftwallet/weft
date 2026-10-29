@@ -1,0 +1,21 @@
+{
+  "name": "@weftwallet/ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "The page shell, base styles and product links shared by Weft's sites",
+  "type": "module",
+  "exports": {
+    "./Shell.astro": "./src/Shell.astro",
+    "./base.css": "./src/base.css",
+    "./links": "./src/links.ts"
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible-mono": "^5.3.0",
+    "@fontsource/atkinson-hyperlegible-next": "^5.3.0",
+    "@weftwallet/brand": "workspace:*"
+  },
+  "peerDependencies": {
+    "astro": "^7.4.1"
+  }
+}

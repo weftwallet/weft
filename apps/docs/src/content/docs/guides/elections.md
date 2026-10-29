@@ -12,7 +12,7 @@ The [ballot contract](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/ba
 
 ## Try it
 
-`pnpm playground:up` deploys the ballot contract with two elections: `team-lunch`, already counted, and `board-2026`, open. On the [playground page](/playground/), vote in `board-2026` as a demo user, or start an election of your own, then follow the link on your receipt to check it in the explorer. See [Local test network](/dapps/test-network/).
+`pnpm playground:up` deploys the ballot contract with two elections: `team-lunch`, already counted, and `board-2026`, open. In the [playground](weft:playground/), vote in `board-2026` as a demo user, or start an election of your own, then follow the link on your receipt to check it in the explorer. See [Local test network](/dapps/test-network/).
 
 ## How a ballot stays private
 

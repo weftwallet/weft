@@ -41,13 +41,17 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 | `apps/extension` | `@weftwallet/extension` | The MV3 browser extension (WXT + React). |
 | `apps/relay` | `@weftwallet/relay` | The relay service (Fastify + fabric-gateway). Dockerfile included. |
 | `apps/explorer` | `@weftwallet/explorer` | A block explorer one organisation runs for the channels it publishes. |
-| `apps/docs` | `@weftwallet/docs` | The documentation site (Astro Starlight). |
+| `apps/site` | `@weftwallet/site` | Weft's front page, and the join page invite links open. |
+| `apps/docs` | `@weftwallet/docs` | Weft Docs, the documentation (Astro Starlight). |
+| `apps/playground` | `@weftwallet/playground` | Weft Playground: try a dApp against a Fabric network from the browser. |
+| `apps/network` | `@weftwallet/network` | Weft Network: every organisation's explorer on one page, and the invite maker. |
 | `packages/protocol` | `@weftwallet/protocol` | Types shared by everything: provider API, errors, relay API, invites. |
 | `packages/core` | `@weftwallet/core` | Signing, certificates, Fabric CA client, message decoding and verification, relay client. |
 | `packages/sdk` | `@weftwallet/sdk` | What dApps import to talk to the wallet. |
 | `packages/cli` | `@weftwallet/cli` | `weft` command for operators: build invites from connection profiles, share links and QR codes, check a deployment. |
-| `packages/brand` | `@weftwallet/brand` | Logo files and design tokens. |
-| `playground/` | – | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the docs' playground page. |
+| `packages/brand` | `@weftwallet/brand` | The design system: tokens, logos and product marks, and where each product lives (`products.json`). |
+| `packages/ui` | `@weftwallet/ui` | The page shell, base styles and links between products, shared by the site, the playground and the network page. |
+| `playground/` | – | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the playground. |
 | `examples/` | – | A plain-HTML demo dApp, a sample org invite, and a ballot contract for elections the explorer can check. |
 | `docs/adr/` | – | Architecture decision records. |
 
@@ -67,8 +71,13 @@ Then, in separate terminals:
 pnpm dev:extension  # Chrome with the extension loaded, hot reload
 pnpm dev:relay      # needs apps/relay/.env, see .env.example
 pnpm dev:explorer   # set its variables in apps/explorer/.env, see the explorer docs
-pnpm dev:docs       # http://localhost:4321
+pnpm dev:site       # http://localhost:4321, the front page
+pnpm dev:docs       # http://localhost:4322
+pnpm dev:playground # http://localhost:4323
+pnpm dev:network    # http://localhost:4324
 ```
+
+Each product's address, local and public, is in `packages/brand/products.json`; their links to each other follow it.
 
 None of these need a build: they read `packages/` from source, so a change there shows up straight away. `pnpm build` (packages first, then apps) is for running the built apps, as production and the playground do. See [CONTRIBUTING.md](CONTRIBUTING.md#how-the-packages-resolve).
 
@@ -76,7 +85,7 @@ To try everything against a real network on your machine:
 
 ```sh
 pnpm playground:up   # Fabric test-network, the basic contract, demo users, the relay and an explorer (needs Docker)
-pnpm dev:docs        # then open http://localhost:4321/playground/
+pnpm dev:playground  # then open http://localhost:4323
                      # the explorer is at http://localhost:8790
 ```
 

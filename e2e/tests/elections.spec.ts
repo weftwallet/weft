@@ -4,12 +4,12 @@ import { expect, stack, test } from "../support/fixtures.ts";
 // Needs the playground: the ballot contract, and explorers named in the invite.
 test("vote from the docs playground and check the receipt in the explorer", { tag: "@fabric" }, async ({ wallet }) => {
   const s = stack();
-  test.skip(!s.docsUrl || !s.explorerUrl, "Needs the built docs and the playground's explorers.");
+  test.skip(!s.sites.playground || !s.explorerUrl, "Needs the built playground and the playground's explorers.");
   const dapp = await wallet.dapp();
   await wallet.join(dapp, "alice", s.users.alice!);
 
   const page = await wallet.context.newPage();
-  await page.goto(`${s.docsUrl}/playground/?invite=${encodeURIComponent(s.inviteUrl)}`);
+  await page.goto(`${s.sites.playground}/?invite=${encodeURIComponent(s.inviteUrl)}`);
   await wallet.approve(
     () => page.locator("#pg-connect").click(),
     (win) => win.locator("footer").getByRole("button", { name: "Connect" }).click(),

@@ -1,9 +1,10 @@
 ---
 // The landing page behind invite links: previews the invite and hands it to
 // the Weft extension with weft_addNetwork.
+import { productHref } from "@weftwallet/ui/links";
 ---
 
-<div class="weft-join not-content">
+<div class="weft-join">
   <div id="join-missing" class="weft-card" hidden>
     <p><strong>This link is missing its invite.</strong> Ask your network administrator for the full link.</p>
   </div>
@@ -28,7 +29,7 @@
     <div class="weft-card" id="join-install" hidden>
       <p><strong>Weft isn't installed in this browser.</strong></p>
       <p>
-        <a href="/start/install/">Install Weft</a>, then come back to this page. Or, in Weft, choose
+        <a href={productHref("docs", "/start/install/")}>Install Weft</a>, then come back to this page. Or, in Weft, choose
         <em>Join from an org invite</em> and paste this link:
       </p>
       <code id="join-weft-link"></code>
@@ -115,8 +116,8 @@
     margin-top: 1rem;
   }
   .weft-card {
-    border: 1px solid var(--sl-color-gray-5);
-    background: var(--sl-color-gray-6);
+    border: 1px solid var(--weft-line-strong);
+    background: var(--weft-bg-raised);
     border-radius: 1rem;
     padding: 1.25rem;
     display: flex;
@@ -127,14 +128,14 @@
     margin: 0;
   }
   .weft-eyebrow {
-    font-family: var(--sl-font-mono);
-    font-size: var(--sl-text-xs);
+    font-family: var(--weft-font-mono);
+    font-size: var(--weft-type-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--sl-color-gray-3);
+    color: var(--weft-text-subtle);
   }
   .weft-title {
-    font-size: var(--sl-text-2xl);
+    font-size: var(--weft-type-2xl);
     font-weight: 600;
   }
   .weft-details {
@@ -142,20 +143,20 @@
     grid-template-columns: 8rem minmax(0, 1fr);
     gap: 0.4rem 1rem;
     margin: 0.5rem 0 0;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
   }
   .weft-details dt {
-    color: var(--sl-color-gray-3);
+    color: var(--weft-text-subtle);
   }
   .weft-details dd {
     margin: 0;
   }
   .mono {
-    font-family: var(--sl-font-mono);
+    font-family: var(--weft-font-mono);
   }
   .weft-muted {
-    color: var(--sl-color-gray-3);
-    font-size: var(--sl-text-sm);
+    color: var(--weft-text-subtle);
+    font-size: var(--weft-type-md);
   }
   .weft-actions button {
     font: inherit;
@@ -164,16 +165,16 @@
     padding: 0 1.5rem;
     border-radius: 0.75rem;
     border: 0;
-    background: var(--sl-color-accent);
-    color: var(--sl-color-black);
+    background: var(--weft-accent);
+    color: var(--weft-bg);
     cursor: pointer;
   }
   .weft-status {
     margin: 0;
-    color: var(--sl-color-gray-2);
+    color: var(--weft-text-muted);
   }
   #join-weft-link {
     overflow-wrap: anywhere;
-    font-size: var(--sl-text-xs);
+    font-size: var(--weft-type-xs);
   }
 </style>

@@ -1,9 +1,11 @@
 ---
 // An interactive dApp for trying Weft against any network that publishes an
 // invite: the local playground stack, a hosted demo, or your own.
+import { productHref } from "@weftwallet/ui/links";
+const docs = (path: string) => productHref("docs", path);
 ---
 
-<div class="pg not-content">
+<div class="pg" data-docs={productHref("docs")} data-network={productHref("network")}>
   <section class="pg-card">
     <div class="pg-head">
       <h2>1. Network</h2>
@@ -89,7 +91,7 @@
       <span class="pg-pill" id="pg-el-state" data-state="pending">Connect first</span>
     </div>
     <p class="pg-hint">
-      Uses the <a href="/guides/elections/">ballot contract</a>, which the local playground deploys with an open election, <code>board-2026</code>.
+      Uses the <a href={docs("/guides/elections/")}>ballot contract</a>, which the local playground deploys with an open election, <code>board-2026</code>.
       Your choice is sent as private data. The ledger gets only a commitment, which your receipt lets you check.
     </p>
     <div class="pg-row">
@@ -137,7 +139,7 @@
       <button type="button" id="pg-ex-refresh" class="pg-link">Refresh</button>
     </div>
     <p class="pg-hint">
-      Each organisation runs its own <a href="/operators/explorer/">explorer</a>, reads the ledger from its own peer, and publishes only what its
+      Each organisation runs its own <a href={docs("/operators/explorer/")}>explorer</a>, reads the ledger from its own peer, and publishes only what its
       policy allows. They compare signed checkpoints, so every block page says how many organisations report the same block.
     </p>
     <ul class="pg-explorers" id="pg-ex-list"></ul>
@@ -170,6 +172,10 @@
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const w = window as any;
+  /** The other products this page links to, from @weftwallet/brand's registry. */
+  const root = document.querySelector<HTMLElement>(".pg")!;
+  const docsAt = (path: string) => new URL(path, root.dataset.docs).toString();
+  const networkPage = (explorer: string) => `${new URL("/", root.dataset.network)}?explorer=${encodeURIComponent(explorer)}`;
   let weft: any = null;
   let connected = false;
   /** The organisation's explorer, when the invite names one. */
@@ -224,7 +230,7 @@
       const link = Object.assign(document.createElement("a"), {
         id: "pg-weft",
         className: "pg-pill",
-        href: "/start/install/",
+        href: docsAt("/start/install/"),
         textContent: pill.textContent,
         title: "Install Weft, then reload this page.",
       });
@@ -811,9 +817,9 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       tries.push([`See the elections, their ballots and results, and check a receipt.`, `${ballots.base}/channels/${encodeURIComponent(channel)}/elections`]);
     }
     if (rows.every((r) => r.ok && !r.c)) {
-      tries.push([`Sign in on the network page with Weft to see ${channel}, if your organisation is a member.`, `/operators/network/?explorer=${encodeURIComponent(explorerBase)}`]);
+      tries.push([`Sign in on the network page with Weft to see ${channel}, if your organisation is a member.`, networkPage(explorerBase)]);
     }
-    tries.push([`See every organisation's explorer on one page, and compare a block's hash across them.`, `/operators/network/?explorer=${encodeURIComponent(explorerBase)}`]);
+    tries.push([`See every organisation's explorer on one page, and compare a block's hash across them.`, networkPage(explorerBase)]);
     $("pg-ex-try").replaceChildren(
       ...tries.map(([text, href]) => {
         const li = document.createElement("li");
@@ -839,8 +845,8 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     display: none !important;
   }
   .pg-card {
-    border: 1px solid var(--sl-color-gray-5);
-    background: var(--sl-color-gray-6);
+    border: 1px solid var(--weft-line-strong);
+    background: var(--weft-bg-raised);
     border-radius: 1rem;
     padding: 1.25rem;
     display: flex;
@@ -848,13 +854,13 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     gap: 0.85rem;
   }
   .pg h2 {
-    font-size: var(--sl-text-lg);
+    font-size: var(--weft-type-lg);
     margin: 0;
   }
   .pg h3 {
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     margin: 0.5rem 0 0;
-    color: var(--sl-color-gray-2);
+    color: var(--weft-text-muted);
   }
   .pg-head {
     display: flex;
@@ -864,24 +870,24 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     flex-wrap: wrap;
   }
   .pg-pill {
-    font-family: var(--sl-font-mono);
-    font-size: var(--sl-text-xs);
+    font-family: var(--weft-font-mono);
+    font-size: var(--weft-type-xs);
     padding: 0.25rem 0.6rem;
     border-radius: 999px;
-    border: 1px solid var(--sl-color-gray-5);
-    color: var(--sl-color-gray-2);
+    border: 1px solid var(--weft-line-strong);
+    color: var(--weft-text-muted);
   }
   .pg-pill[data-state="ok"] {
-    border-color: var(--sl-color-accent);
-    color: var(--sl-color-accent-high);
+    border-color: var(--weft-accent);
+    color: var(--weft-accent-text);
   }
   .pg-pill[data-state="missing"] {
-    border-color: #e8a33d;
-    color: #e8a33d;
+    border-color: var(--weft-warn);
+    color: var(--weft-warn-text);
     text-decoration: none;
   }
   a.pg-pill[data-state="missing"]:hover {
-    background: color-mix(in srgb, #e8a33d 12%, transparent);
+    background: color-mix(in srgb, var(--weft-warn) 12%, transparent);
   }
   .pg-pill {
     transition:
@@ -903,8 +909,8 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-gray-2);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-muted);
   }
   .pg-row {
     display: flex;
@@ -925,10 +931,10 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg input,
   .pg select {
     font: inherit;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-white);
-    background: var(--sl-color-black);
-    border: 1px solid var(--sl-color-gray-5);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-strong);
+    background: var(--weft-bg);
+    border: 1px solid var(--weft-line-strong);
     border-radius: 0.5rem;
     padding: 0.55rem 0.7rem;
     min-height: 2.75rem;
@@ -936,18 +942,18 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
   .pg .mono,
   .pg input.mono {
-    font-family: var(--sl-font-mono);
+    font-family: var(--weft-font-mono);
   }
   .pg button {
     font: inherit;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     font-weight: 600;
     min-height: 2.75rem;
     padding: 0 1rem;
     border-radius: 0.6rem;
-    border: 1px solid var(--sl-color-gray-5);
-    background: var(--sl-color-accent);
-    color: var(--sl-color-black);
+    border: 1px solid var(--weft-line-strong);
+    background: var(--weft-accent);
+    color: var(--weft-bg);
     cursor: pointer;
   }
   .pg button {
@@ -967,7 +973,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg button:focus-visible,
   .pg input:focus-visible,
   .pg select:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
+    outline: 2px solid var(--weft-accent);
     outline-offset: 2px;
   }
   /* Disabled reads as unavailable, not as a dimmer version of the colour. */
@@ -975,15 +981,15 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg button.pg-teal:disabled,
   .pg button.pg-amber:disabled {
     background: transparent;
-    border-color: var(--sl-color-gray-5);
+    border-color: var(--weft-line-strong);
     border-style: dashed;
-    color: var(--sl-color-gray-3);
+    color: var(--weft-text-subtle);
     cursor: not-allowed;
     filter: none;
   }
   .pg button.pg-secondary:hover:not(:disabled),
   .pg-presets button:hover {
-    border-color: var(--sl-color-accent);
+    border-color: var(--weft-accent);
     filter: none;
   }
   .pg input,
@@ -992,7 +998,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
   .pg input:hover,
   .pg select:hover {
-    border-color: var(--sl-color-gray-4);
+    border-color: var(--weft-text-subtle);
   }
   .pg-log li {
     animation: pg-in 220ms ease-out;
@@ -1010,26 +1016,26 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
   .pg button.pg-secondary {
     background: transparent;
-    color: var(--sl-color-white);
+    color: var(--weft-text-strong);
   }
   .pg button.pg-teal {
-    background: #3fc1b0;
-    border-color: #3fc1b0;
-    color: #0b1218;
+    background: var(--weft-accent);
+    border-color: var(--weft-accent);
+    color: var(--weft-on-accent);
   }
   .pg button.pg-amber {
-    background: #e8a33d;
-    border-color: #e8a33d;
-    color: #0b1218;
+    background: var(--weft-warn);
+    border-color: var(--weft-warn);
+    color: var(--weft-on-accent);
   }
   .pg button.pg-suggested {
-    outline: 2px solid var(--sl-color-white);
+    outline: 2px solid var(--weft-text-strong);
     outline-offset: 2px;
   }
   .pg button.pg-link {
     background: transparent;
     border: 0;
-    color: var(--sl-color-accent-high);
+    color: var(--weft-accent-text);
     padding: 0.25rem 0;
     min-height: 2rem;
     font-weight: 500;
@@ -1044,11 +1050,11 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-presets button {
     min-height: 2.25rem;
     padding: 0 0.7rem;
-    font-family: var(--sl-font-mono);
+    font-family: var(--weft-font-mono);
     font-weight: 500;
-    font-size: var(--sl-text-xs);
+    font-size: var(--weft-type-xs);
     background: transparent;
-    color: var(--sl-color-white);
+    color: var(--weft-text-strong);
   }
   .pg-args {
     display: flex;
@@ -1060,47 +1066,46 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     gap: 0.5rem;
     align-items: center;
   }
-  /* Inside .not-content, so links need the theme's colour back. */
   .pg a:not(.pg-button, .pg-pill) {
-    color: var(--sl-color-text-accent);
+    color: var(--weft-accent-text);
     text-underline-offset: 0.2em;
   }
   .pg-hint {
     margin: 0;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-gray-3);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-subtle);
   }
   .pg-details {
     display: grid;
     grid-template-columns: 7.5rem minmax(0, 1fr);
     gap: 0.35rem 1rem;
     margin: 0;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
   }
   .pg-details dt {
-    color: var(--sl-color-gray-3);
+    color: var(--weft-text-subtle);
   }
   .pg-details dd {
     margin: 0;
     overflow-wrap: anywhere;
   }
   .pg-out[data-tone="ok"] {
-    border-color: color-mix(in srgb, #3fc1b0 55%, transparent);
+    border-color: color-mix(in srgb, var(--weft-accent) 55%, transparent);
   }
   .pg-out[data-tone="err"] {
-    border-color: color-mix(in srgb, #e5675b 60%, transparent);
+    border-color: color-mix(in srgb, var(--weft-danger) 60%, transparent);
   }
   .pg-out[data-tone="pending"] {
-    color: var(--sl-color-gray-3);
+    color: var(--weft-text-subtle);
   }
   .pg-out {
     margin: 0;
     padding: 0.85rem;
     border-radius: 0.6rem;
-    background: var(--sl-color-black);
-    border: 1px solid var(--sl-color-gray-5);
-    font-family: var(--sl-font-mono);
-    font-size: var(--sl-text-xs);
+    background: var(--weft-bg);
+    border: 1px solid var(--weft-line-strong);
+    font-family: var(--weft-font-mono);
+    font-size: var(--weft-type-xs);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     max-height: 22rem;
@@ -1117,36 +1122,36 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     overflow: auto;
   }
   .pg-log li {
-    border-left: 3px solid var(--sl-color-gray-5);
+    border-left: 3px solid var(--weft-line-strong);
     padding: 0.25rem 0 0.25rem 0.75rem;
   }
   .pg-log li[data-tone="ok"] {
-    border-color: #3fc1b0;
+    border-color: var(--weft-accent);
   }
   .pg-log li[data-tone="err"] {
-    border-color: #e5675b;
+    border-color: var(--weft-danger);
   }
   .pg a.pg-button {
     display: inline-flex;
     align-items: center;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     font-weight: 600;
     min-height: 2.75rem;
     padding: 0 1rem;
     border-radius: 0.6rem;
-    background: #3fc1b0;
-    color: #0b1218;
+    background: var(--weft-accent);
+    color: var(--weft-on-accent);
     text-decoration: none;
   }
   .pg a.pg-button:hover {
     filter: brightness(1.08);
   }
   .pg-out-link {
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     align-self: flex-start;
   }
   .pg-hint[data-tone="err"] {
-    color: #e5675b;
+    color: var(--weft-danger-text);
   }
   .pg-options {
     border: 0;
@@ -1175,28 +1180,28 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     gap: 0.5rem;
     min-height: 2.75rem;
     padding: 0 0.9rem;
-    border: 1px solid var(--sl-color-gray-5);
+    border: 1px solid var(--weft-line-strong);
     border-radius: 0.6rem;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     cursor: pointer;
     transition: border-color 140ms;
   }
   .pg-option:has(input:checked) {
-    border-color: #e8a33d;
+    border-color: var(--weft-warn);
   }
   .pg-option:has(input:disabled) {
     cursor: default;
-    color: var(--sl-color-gray-3);
+    color: var(--weft-text-subtle);
   }
   .pg .pg-option input {
     width: auto;
     min-height: 0;
-    accent-color: #e8a33d;
+    accent-color: var(--weft-warn);
   }
   .pg-new summary {
     cursor: pointer;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-accent-high);
+    font-size: var(--weft-type-md);
+    color: var(--weft-accent-text);
   }
   .pg-new[open] {
     display: flex;
@@ -1218,7 +1223,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     list-style: none;
   }
   .pg-explorer {
-    border: 1px solid var(--sl-color-gray-5);
+    border: 1px solid var(--weft-line-strong);
     border-radius: 0.75rem;
     padding: 0.85rem 1rem;
     display: flex;
@@ -1231,19 +1236,19 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-try {
     padding-left: 1.2rem;
     gap: 0.4rem;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
   }
   .pg-log-head {
-    font-family: var(--sl-font-mono);
-    font-size: var(--sl-text-xs);
-    color: var(--sl-color-gray-2);
+    font-family: var(--weft-font-mono);
+    font-size: var(--weft-type-xs);
+    color: var(--weft-text-muted);
   }
   .pg-log pre {
     margin: 0.35rem 0 0;
-    font-size: var(--sl-text-xs);
+    font-size: var(--weft-type-xs);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    color: var(--sl-color-gray-2);
+    color: var(--weft-text-muted);
     background: transparent;
     padding: 0;
   }

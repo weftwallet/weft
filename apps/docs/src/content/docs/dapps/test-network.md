@@ -12,10 +12,10 @@ From the Weft repository:
 ```sh
 pnpm install
 pnpm playground:up      # first run downloads Fabric, 5 to 10 minutes
-pnpm dev:docs           # in another terminal
+pnpm dev:playground     # in another terminal
 ```
 
-Then open [the playground](http://localhost:4321/playground/). It finds the local network, and lets you:
+Then open the [playground](weft:playground/). It finds the local network, and lets you:
 
 - join as a demo user (`alice` / `alicepw` or `bob` / `bobpw`) and call the `basic` contract;
 - vote in an election with the [ballot contract](/guides/elections/), then check your receipt in the explorer;
@@ -102,7 +102,7 @@ Or publish an [invite](/operators/invites/) with the same values and use **Join 
 
 ### 5. Call the contract
 
-Use [the playground](/playground/), or serve any page on `localhost` and run:
+Use the [playground](weft:playground/), or serve any page on `localhost` and run:
 
 ```ts
 import { getWeft } from "@weftwallet/sdk";

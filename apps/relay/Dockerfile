@@ -4,6 +4,7 @@ FROM node:22-alpine AS build
 WORKDIR /repo
 RUN corepack enable
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/brand packages/brand
 COPY packages/protocol packages/protocol
 COPY packages/core packages/core
 COPY apps/relay apps/relay

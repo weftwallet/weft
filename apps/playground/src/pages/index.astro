@@ -1,0 +1,26 @@
+---
+import Shell from "@weftwallet/ui/Shell.astro";
+import { productHref } from "@weftwallet/ui/links";
+import Playground from "../components/Playground.astro";
+
+const docs = (path: string) => productHref("docs", path);
+---
+
+<Shell product="playground" description="Try Weft against a real Fabric network: join, connect, and call a contract while watching every provider request." wide>
+  <Fragment slot="nav">
+    <a href="/" aria-current="page">Playground</a>
+    <a href={docs("/dapps/test-network/")}>Local test network</a>
+    <a href={docs("/dapps/provider-api/")}>Provider API</a>
+  </Fragment>
+
+  <div class="page-intro">
+    <h1>Try a dApp against a Fabric network</h1>
+    <p>A small dApp for trying Weft. It works with any network that publishes an <a href={docs("/operators/invites/")}>org invite</a>, and shows every request it sends to the wallet.</p>
+    <ul>
+      <li>On your machine, run <code>pnpm playground:up</code> in the Weft repository. It starts Fabric's test network with the <code>basic</code> asset contract, the ballot contract, a relay and an explorer for each organisation, and this page finds it by itself. See <a href={docs("/dapps/test-network/")}>Local test network</a>.</li>
+      <li>For your own network, paste your organisation's invite URL below, or open this page with <code>?invite=&lt;url&gt;</code>.</li>
+    </ul>
+  </div>
+
+  <Playground />
+</Shell>

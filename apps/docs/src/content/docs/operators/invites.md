@@ -41,7 +41,7 @@ Without a connection profile, use `--msp Org1MSP --ca https://ca.org1.example.co
 
 ### In the browser
 
-The [invite maker](/operators/invite-maker/) builds the file, the links and the QR code in the page, and can read a JSON connection profile.
+The [invite maker](weft:network/invite/) in Weft Network builds the file, the links and the QR code in the page, and can read a JSON connection profile.
 
 ## What Weft reads from a connection profile
 

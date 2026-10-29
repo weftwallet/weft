@@ -9,6 +9,7 @@
  */
 
 import type { OrgInvite } from "@weftwallet/protocol";
+import { productUrl } from "@weftwallet/brand/products";
 import { InviteError, parseInvite } from "./invite.ts";
 
 interface ProfileOrganization {
@@ -94,8 +95,8 @@ export function inviteFromConnectionProfile(profile: ConnectionProfile, options:
 /* Links                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Where the hosted "join" page lives. Override for self-hosted docs. */
-export const DEFAULT_JOIN_PAGE = "https://weft.ifeanyiugwu.dev/join/";
+/** Where the hosted "join" page lives, on Weft's site. Override for your own copy. */
+export const DEFAULT_JOIN_PAGE = productUrl("site", { path: "/join/" })!;
 
 export interface InviteLinks {
   /** The invite JSON itself. */

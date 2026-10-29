@@ -47,7 +47,7 @@ function font(pkg: string, file: string) {
 
 const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
   "explorer.css": { type: "text/css; charset=utf-8", body: () => asset("explorer.css") },
-  "mark.svg": { type: "image/svg+xml", body: () => asset("mark.svg") },
+  "mark.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/products/explorer-small.svg")) },
   "fonts/sans-400.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-400-normal.woff2") },
   "fonts/sans-500.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-500-normal.woff2") },
   "fonts/sans-600.woff2": { type: "font/woff2", body: () => font("@fontsource/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-600-normal.woff2") },

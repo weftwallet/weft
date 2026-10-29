@@ -17,12 +17,16 @@ import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { productUrl } from "../../packages/brand/products.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const EXTENSION = join(ROOT, "apps/extension/.output-e2e/chrome-mv3");
-const DOCS_DIST = join(ROOT, "apps/docs/dist");
 
-export const PORTS = { ca: 7054, caShort: 7055, proxy: 7080, proxyShort: 7081, relay: 8787, docs: 4321, site: 5175, explorer: 8790 } as const;
+/** Weft's sites, built with WEFT_PRODUCTS=dev so they link to each other locally. */
+const SITES = ["site", "docs", "playground", "network"] as const;
+type SiteId = (typeof SITES)[number];
+
+export const PORTS = { ca: 7054, caShort: 7055, proxy: 7080, proxyShort: 7081, relay: 8787, site: 5175, explorer: 8790 } as const;
 
 export interface StackInfo {
   mode: "ca" | "playground";
@@ -36,8 +40,11 @@ export interface StackInfo {
   users: Record<string, string>;
   /** Users on the ten-day CA. */
   shortUsers: Record<string, string>;
-  /** Base URL of the built docs site, or null when it isn't built. */
-  docsUrl: string | null;
+  /**
+   * Each Weft site, served from its build at the local address in
+   * packages/brand/products.json, or null when it isn't built.
+   */
+  sites: Record<SiteId, string | null>;
   /** The playground's explorer, when it's running (playground mode only). */
   explorerUrl: string | null;
 }
@@ -143,7 +150,7 @@ async function startCa(name: string, port: number, proxyPort: number, expiry: st
   return { tls };
 }
 
-/** Serves a folder, for the built docs site. */
+/** Serves a folder, for a built site. */
 function serveStatic(dir: string, port: number): Promise<void> {
   const types: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".json": "application/json", ".woff2": "font/woff2", ".webp": "image/webp" };
   const server = createServer((req, res) => {
@@ -169,10 +176,15 @@ export async function startStack(): Promise<StackInfo> {
   }
   workDir = mkdtempSync(join(tmpdir(), "weft-e2e-"));
 
-  let docsUrl: string | null = null;
-  if (existsSync(join(DOCS_DIST, "playground/index.html")) && (await portFree(PORTS.docs))) {
-    await serveStatic(DOCS_DIST, PORTS.docs);
-    docsUrl = `http://localhost:${PORTS.docs}`;
+  const sites = {} as Record<SiteId, string | null>;
+  for (const id of SITES) {
+    const dist = join(ROOT, "apps", id, "dist");
+    const url = new URL(productUrl(id, { dev: true })!);
+    sites[id] = null;
+    if (existsSync(join(dist, "index.html")) && (await portFree(Number(url.port)))) {
+      await serveStatic(dist, Number(url.port));
+      sites[id] = url.origin;
+    }
   }
 
   if (mode === "playground") {
@@ -185,7 +197,7 @@ export async function startStack(): Promise<StackInfo> {
     return {
       mode, inviteUrl, shortInviteUrl: null,
       caUrl: `http://localhost:${PORTS.proxy}`, relayUrl: `http://localhost:${PORTS.relay}`,
-      users: { alice: "alicepw", bob: "bobpw" }, shortUsers: {}, docsUrl, explorerUrl,
+      users: { alice: "alicepw", bob: "bobpw" }, shortUsers: {}, sites, explorerUrl,
     };
   }
 
@@ -231,7 +243,7 @@ export async function startStack(): Promise<StackInfo> {
   return {
     mode, inviteUrl: `${relayUrl}/.well-known/weft-invite.json`,
     shortInviteUrl: `http://localhost:${PORTS.proxyShort + 1000}/invite.json`,
-    caUrl: invite.caUrl, relayUrl, users, shortUsers, docsUrl, explorerUrl: null,
+    caUrl: invite.caUrl, relayUrl, users, shortUsers, sites, explorerUrl: null,
   };
 }
 

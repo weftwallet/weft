@@ -75,7 +75,7 @@ Config blocks hold the channel's whole configuration. The explorer compares each
 | `WEFT_EXPLORER_PUBLIC_URL` | Behind a proxy | The address people open, e.g. `https://explorer.org1.example`. Sign-ins must name it. Defaults to the address each request arrived at. |
 | `WEFT_EXPLORER_SESSION_SECRET` | No | Signs session cookies. Without it, a random secret is made at start, which signs everyone out when the explorer restarts. |
 | `WEFT_EXPLORER_PEERS` | No | Other organisations' explorers to cross-check with, comma-separated base URLs. HTTPS, except `localhost`. |
-| `WEFT_EXPLORER_NETWORK_PAGE` | No | The [network page](/operators/network/) that block pages link to, for checking a block without relying on this explorer. It's also the only page whose Weft sign-ins this explorer accepts, for members-only channels. Defaults to the one on this site; set it to your own docs' page, or `off`. |
+| `WEFT_EXPLORER_NETWORK_PAGE` | No | The [network page](/operators/network/) that block pages link to, for checking a block without relying on this explorer. It's also the only page whose Weft sign-ins this explorer accepts, for members-only channels. Defaults to [Weft Network](weft:network/); set it to your own copy, or `off`. |
 | `PORT` | No | Default `8790`. |
 
 Register a client identity for the explorer with your CA rather than reusing a person's. It needs to satisfy the channel's `Readers` policy, which a client of a member organisation does.
@@ -153,9 +153,9 @@ Members-only channels are cross-checked too. A members-only channel's checkpoint
 | Org1, [localhost:8790](http://localhost:8790) | `playground/explorer.yaml` | Everything, with submitters and the ballots' private data hashes. Contract approvals (`_lifecycle`) are for signed-in members only. |
 | Org2, [localhost:8791](http://localhost:8791) | `playground/explorer-org2.yaml` | No submitters. The `basic` contract's transactions are for signed-in members only. |
 
-Both show the elections the playground seeds and, once you sign in, the `members` channel's assets, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground page](/playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
+Both show the elections the playground seeds and, once you sign in, the `members` channel's assets, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground](weft:playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
 
-To link Weft to your own explorer, add `explorerUrl` to your organisation's [invite](/operators/invites/). To show every organisation's explorer on one page, link to the [network page](/operators/network/) with `?explorer=<your explorer>`.
+To link Weft to your own explorer, add `explorerUrl` to your organisation's [invite](/operators/invites/). To show every organisation's explorer on one page, link to [Weft Network](weft:network/) with `?explorer=<your explorer>`.
 
 ## API
 

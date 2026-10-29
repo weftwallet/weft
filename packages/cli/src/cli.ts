@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
+import { productUrl } from "@weftwallet/brand/products";
 import { checkInvite, createInvite, shareInvite } from "./commands.ts";
 
 const HELP = `weft: tools for Weft network operators
@@ -30,7 +31,7 @@ invite share    Print share links for a hosted invite, and make a QR code
 invite check    Validate an invite and check its relay, CA and explorer answer
 
 The relay can also serve the invite for you at /.well-known/weft-invite.json;
-see https://weft.ifeanyiugwu.dev/operators/invites/`;
+see ${productUrl("docs", { path: "/operators/invites/" })}`;
 
 function fail(message: string): never {
   process.stderr.write(`weft: ${message}\n`);

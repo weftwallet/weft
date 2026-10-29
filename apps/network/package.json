@@ -1,0 +1,23 @@
+{
+  "name": "@weftwallet/network",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Every organisation's explorer on one page, and the invite maker.",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@weftwallet/brand": "workspace:*",
+    "@weftwallet/core": "workspace:*",
+    "@weftwallet/ui": "workspace:*",
+    "astro": "^7.4.1",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6"
+  }
+}

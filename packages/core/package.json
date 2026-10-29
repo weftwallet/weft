@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@peculiar/x509": "^2.2.0",
+    "@weftwallet/brand": "workspace:*",
     "@weftwallet/protocol": "workspace:*",
     "reflect-metadata": "^0.2.2"
   },

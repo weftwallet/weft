@@ -3,10 +3,10 @@ import { expect, stack, test } from "../support/fixtures.ts";
 // Needs the playground's two explorers and the built docs.
 test("the network page finds every explorer and compares their blocks", { tag: "@fabric" }, async ({ wallet }) => {
   const s = stack();
-  test.skip(!s.docsUrl || !s.explorerUrl, "Needs the built docs and the playground's explorers.");
+  test.skip(!s.sites.network || !s.explorerUrl, "Needs the built network page and the playground's explorers.");
   const page = await wallet.context.newPage();
   // One explorer is enough: the page finds Org2's through Org1's.
-  await page.goto(`${s.docsUrl}/operators/network/?explorer=${encodeURIComponent(s.explorerUrl!)}`);
+  await page.goto(`${s.sites.network}/?explorer=${encodeURIComponent(s.explorerUrl!)}`);
   const channel = page.locator(".nw-card", { has: page.locator("h2", { hasText: "mychannel" }) });
   await expect(channel.locator("tbody tr")).toHaveCount(2);
   await expect(channel.getByText("Org2MSP", { exact: true })).toBeVisible();
@@ -23,16 +23,16 @@ test("the network page finds every explorer and compares their blocks", { tag: "
   const block = await wallet.context.newPage();
   await block.goto(`${s.explorerUrl}/channels/mychannel/blocks/3`);
   await expect(block.getByText("Your browser computed the same hash from this header.")).toBeVisible();
-  await expect(block.getByRole("link", { name: "network page" })).toHaveAttribute("href", /operators\/network\/\?explorer=/);
+  await expect(block.getByRole("link", { name: "network page" })).toHaveAttribute("href", `${s.sites.network}/?explorer=${encodeURIComponent(s.explorerUrl!)}`);
 });
 
 test("signing in on the network page shows the members-only channel", { tag: "@fabric" }, async ({ wallet }) => {
   const s = stack();
-  test.skip(!s.docsUrl || !s.explorerUrl, "Needs the built docs and the playground's explorers.");
+  test.skip(!s.sites.network || !s.explorerUrl, "Needs the built network page and the playground's explorers.");
   const dapp = await wallet.dapp();
   await wallet.join(dapp, "alice", s.users.alice!);
   const page = await wallet.context.newPage();
-  await page.goto(`${s.docsUrl}/operators/network/?explorer=${encodeURIComponent(s.explorerUrl!)}`);
+  await page.goto(`${s.sites.network}/?explorer=${encodeURIComponent(s.explorerUrl!)}`);
   const members = page.locator(".nw-card", { has: page.locator("h2", { hasText: /^members/ }) });
   await expect(page.locator(".nw-card", { has: page.locator("h2", { hasText: "mychannel" }) })).toBeVisible();
   await expect(members).toHaveCount(0);

@@ -1,0 +1,18 @@
+---
+import Shell from "@weftwallet/ui/Shell.astro";
+import { productHref } from "@weftwallet/ui/links";
+import JoinInvite from "../../components/JoinInvite.astro";
+---
+
+<Shell product="site" title="Join a network" description="Accept an invite to a Hyperledger Fabric network in Weft.">
+  <Fragment slot="nav">
+    <a href={productHref("docs", "/")}>Docs</a>
+  </Fragment>
+
+  <div class="page-intro">
+    <h1>Join a network</h1>
+    <p>Your network administrator sent you here to set up Weft. Have your enrolment ID and secret ready; you'll enter them in Weft, never on this page.</p>
+  </div>
+
+  <JoinInvite />
+</Shell>

@@ -1,0 +1,22 @@
+---
+import Shell from "@weftwallet/ui/Shell.astro";
+import { productHref } from "@weftwallet/ui/links";
+import InviteMaker from "../../components/InviteMaker.astro";
+
+const docs = (path: string) => productHref("docs", path);
+---
+
+<Shell product="network" title="Invite maker" description="Build your organisation's Weft invite, share links and QR code in the browser.">
+  <Fragment slot="nav">
+    <a href="/">Network page</a>
+    <a href="/invite/" aria-current="page">Invite maker</a>
+    <a href={docs("/operators/invites/")}>About invites</a>
+  </Fragment>
+
+  <div class="page-intro">
+    <h1>Make your organisation's invite</h1>
+    <p>An invite tells Weft how to reach your network: your CA, your relay and your channels. Fill in your organisation's details, or start from your connection profile, and get the invite file, share links and a QR code. Everything runs in this page; nothing you type is sent anywhere. From a terminal, <code>weft invite create</code> and <code>weft invite share</code> in <a href={docs("/operators/invites/#with-the-cli")}><code>@weftwallet/cli</code></a> do the same.</p>
+  </div>
+
+  <InviteMaker />
+</Shell>

@@ -2,9 +2,9 @@ import { expect, stack, test } from "../support/fixtures.ts";
 
 test("the docs playground follows the wallet's connection", async ({ wallet }) => {
   const s = stack();
-  test.skip(!s.docsUrl, "Build the docs first (pnpm --filter @weftwallet/docs build).");
+  test.skip(!s.sites.playground, "Build the playground first (pnpm --filter @weftwallet/playground build).");
   const page = await wallet.context.newPage();
-  await page.goto(`${s.docsUrl}/playground/?invite=${encodeURIComponent(s.inviteUrl)}`);
+  await page.goto(`${s.sites.playground}/?invite=${encodeURIComponent(s.inviteUrl)}`);
   await expect(page.locator("#pg-weft")).toHaveAttribute("data-state", "ok");
   await expect(page.locator("#pg-join")).toBeEnabled();
 

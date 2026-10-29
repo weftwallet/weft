@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { productUrl } from "@weftwallet/brand/products";
 import { loadPolicy, type Policy } from "./policy.ts";
 
 export interface ExplorerConfig {
@@ -27,8 +28,8 @@ export interface ExplorerConfig {
   networkPage: string | undefined;
 }
 
-/** The hosted docs' network page. Self-hosted docs can be named with WEFT_EXPLORER_NETWORK_PAGE. */
-const DEFAULT_NETWORK_PAGE = "https://weft.ifeanyiugwu.dev/operators/network/";
+/** Weft Network's network page. Another copy can be named with WEFT_EXPLORER_NETWORK_PAGE. */
+const DEFAULT_NETWORK_PAGE = productUrl("network", { path: "/" })!;
 
 function required(env: NodeJS.ProcessEnv, name: string, example: string): string {
   const value = env[name];

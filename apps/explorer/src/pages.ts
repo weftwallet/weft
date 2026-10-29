@@ -3,6 +3,8 @@
  * add relative times and a notice when new blocks arrive.
  */
 
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { explainStatus } from "@weftwallet/core";
 import type { BlockRow, ChannelSummary, TransactionRow } from "./db.ts";
 import { html, raw, type Html } from "./html.ts";
@@ -27,15 +29,9 @@ export interface Site {
   networkPage?: string;
 }
 
-const MARK = raw(`<svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
-  <rect width="16" height="16" rx="4" fill="#3FC1B0"/>
-  <rect x="4" y="2" width="2" height="12" fill="#0B1218"/><rect x="10" y="2" width="2" height="12" fill="#0B1218"/>
-  <rect x="2" y="4" width="12" height="2" fill="#0B1218"/><rect x="2" y="10" width="12" height="2" fill="#0B1218"/>
-  <rect x="9" y="3" width="4" height="4" fill="#3FC1B0"/><rect x="10" y="3" width="2" height="4" fill="#0B1218"/>
-  <rect x="3" y="9" width="4" height="4" fill="#3FC1B0"/><rect x="4" y="9" width="2" height="4" fill="#0B1218"/>
-  <rect x="3" y="3" width="4" height="4" fill="#3FC1B0"/><rect x="3" y="4" width="4" height="2" fill="#0B1218"/>
-  <rect x="9" y="9" width="4" height="4" fill="#3FC1B0"/><rect x="9" y="10" width="4" height="2" fill="#0B1218"/>
-</svg>`);
+/** Weft Explorer's mark: the finished cloth, on ink in the loom's frame. */
+const MARK_FILE = readFileSync(createRequire(import.meta.url).resolve("@weftwallet/brand/logo/products/explorer-small.svg"), "utf8");
+const MARK = raw(MARK_FILE.replace(/\s+role="img"\s+aria-label="[^"]*"/, ' aria-hidden="true"').replace('width="16" height="16"', 'width="24" height="24"'));
 
 const enc = encodeURIComponent;
 const blockUrl = (channel: string, n: number) => `/channels/${enc(channel)}/blocks/${n}`;
@@ -144,10 +140,15 @@ function account(site: Site): Html {
     </div>`;
   }
   if (!site.signIn) return html``;
-  return html`<button type="button" class="signin" id="signin">${MARK_SMALL}<span>Sign in with Weft</span></button>`;
+  return html`<button type="button" class="signin" id="signin">${WALLET_MARK}<span>Sign in with Weft</span></button>`;
 }
 
-const MARK_SMALL = raw(MARK.value.replace('width="24" height="24"', 'width="16" height="16"'));
+/** The wallet's mark, on "Sign in with Weft": it's Weft that signs, not the explorer. */
+const WALLET_MARK = raw(
+  readFileSync(createRequire(import.meta.url).resolve("@weftwallet/brand/logo/mark-small.svg"), "utf8")
+    .replace(/<!--[\s\S]*?-->\s*/g, "")
+    .replace(/\s+role="img"\s+aria-label="[^"]*"/, ' aria-hidden="true"'),
+);
 
 /**
  * Sign-in: connect, get a nonce, ask Weft to sign in, send the result back.

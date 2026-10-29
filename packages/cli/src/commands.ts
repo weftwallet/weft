@@ -10,6 +10,7 @@ import {
 import type { OrgInvite } from "@weftwallet/protocol";
 import QRCode from "qrcode";
 import { parse as parseYaml } from "yaml";
+import { productUrl } from "@weftwallet/brand/products";
 
 export async function readStructured(path: string): Promise<unknown> {
   const text = await readFile(path, "utf8");
@@ -113,7 +114,7 @@ export async function checkInvite(input: string, fetchImpl: typeof fetch = fetch
     if (/^(https?|weft):/i.test(input)) {
       const url = resolveInviteUrl(input);
       // Send an Origin so CORS headers come back, as they would for the join page.
-      const response = await fetchImpl(url, { headers: { accept: "application/json", origin: "https://weft.ifeanyiugwu.dev" } });
+      const response = await fetchImpl(url, { headers: { accept: "application/json", origin: productUrl("site")! } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const cors = response.headers.get("access-control-allow-origin");
       invite = parseInvite(await response.json());

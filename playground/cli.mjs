@@ -36,6 +36,7 @@ import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } 
 import { connect } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { productUrl } from "../packages/brand/products.mjs";
 
 const FABRIC_VERSION = "2.5.16";
 const CA_VERSION = "1.5.17";
@@ -47,7 +48,9 @@ const samples = resolve(process.env.WEFT_FABRIC_SAMPLES ?? join(here, ".fabric",
 const testNetwork = join(samples, "test-network");
 const org1 = join(testNetwork, "organizations", "peerOrganizations", "org1.example.com");
 
-const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, docs: 4321, explorer: 8790, explorerOrg2: 8791 };
+const PORTS = { relay: 8787, caProxy: 7080, caProxyHttps: 7443, explorer: 8790, explorerOrg2: 8791 };
+/** The local addresses of Weft's sites, as their dev servers serve them. */
+const local = (id, path = "/") => productUrl(id, { dev: true, path });
 const CHANNEL = "mychannel";
 /** Published to members only, for trying sign-in on the explorers and the network page. */
 const MEMBERS_CHANNEL = "members";
@@ -380,7 +383,7 @@ async function startRelay(caUrl) {
     WEFT_PEER_TLS_CA_CERT: join(org1, "peers", "peer0.org1.example.com", "tls", "ca.crt"),
     WEFT_INVITE_FILE: join(state, "invite.json"),
     WEFT_PUBLIC_URL: `http://localhost:${PORTS.relay}`,
-    WEFT_JOIN_PAGE: `http://localhost:${PORTS.docs}/join/`,
+    WEFT_JOIN_PAGE: local("site", "/join/"),
   });
   await waitFor(`http://localhost:${PORTS.relay}/v1/health`, "The relay");
   ensureStillRunning("relay");
@@ -414,8 +417,8 @@ async function startExplorer(stepNumber = 8) {
       WEFT_EXPLORER_POLICY: join(here, o.policy),
       WEFT_EXPLORER_DB: join(state, `${o.name}.db`),
       WEFT_EXPLORER_PEERS: `http://localhost:${o.other}`,
-      // Block pages link to the network page; the local docs can reach local explorers.
-      WEFT_EXPLORER_NETWORK_PAGE: `http://localhost:${PORTS.docs}/operators/network/`,
+      // Block pages link to the network page; the local one can reach local explorers.
+      WEFT_EXPLORER_NETWORK_PAGE: local("network"),
       NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
     });
   }
@@ -427,7 +430,7 @@ async function startExplorer(stepNumber = 8) {
 
 function summary(caUrl) {
   const inviteUrl = `http://localhost:${PORTS.relay}/.well-known/weft-invite.json`;
-  const playground = `http://localhost:${PORTS.docs}/playground/?invite=${encodeURIComponent(inviteUrl)}`;
+  const playground = local("playground", `/?invite=${encodeURIComponent(inviteUrl)}`);
   console.log(`
 ${bold("Weft playground is running.")}
 
@@ -443,12 +446,12 @@ ${bold("Weft playground is running.")}
 ${DEMO_USERS.map((u) => `    ${u.id.padEnd(8)} secret ${u.secret.padEnd(10)} ${dim(u.attrs.replace(":ecert", ""))}`).join("\n")}
 
 Next:
-  1. ${bold("pnpm dev:docs")} in another terminal
+  1. ${bold("pnpm dev:playground")} in another terminal, and ${bold("pnpm dev:network")} for the network page
   2. Open ${teal(playground)}
   3. Join with Weft as one of the demo users, then run InitLedger
   4. Vote in board-2026 from the same page, and check your receipt in the explorer
   5. Compare the two explorers: Org2 publishes less, and both agree on every block
-  6. Sign in on the network page to see ${MEMBERS_CHANNEL}, the members-only channel
+  6. Sign in on the network page, ${teal(local("network"))}, to see ${MEMBERS_CHANNEL}, the members-only channel
 
 Stop with ${bold("pnpm playground:down")}.
 `);

@@ -1,9 +1,10 @@
 ---
 // Builds an org invite, its share links and a QR code entirely in the browser.
 // Nothing typed here leaves the page.
+import { productHref } from "@weftwallet/ui/links";
 ---
 
-<div class="weft-tool not-content">
+<div class="weft-tool" data-join={productHref("site", "/join/")}>
   <form id="invite-form" class="weft-form">
     <details class="weft-profile">
       <summary>Start from a connection profile (JSON)</summary>
@@ -30,7 +31,7 @@
   </form>
 
   <h3>invite.json</h3>
-  <p>Host this over HTTPS, or let your <a href="../relay/">relay</a> serve it at <code>/.well-known/weft-invite.json</code>.</p>
+  <p>Host this over HTTPS, or let your <a href={productHref("docs", "/operators/relay/")}>relay</a> serve it at <code>/.well-known/weft-invite.json</code>.</p>
   <pre id="invite-json" class="weft-output">Fill in the form above.</pre>
   <div class="weft-actions">
     <button type="button" id="download-json">Download invite.json</button>
@@ -64,7 +65,8 @@
 
   // Mirrors inviteLinks() and the invite schema in @weftwallet/core, kept
   // inline so this page doesn't load the wallet's crypto code.
-  const JOIN_PAGE = new URL("/join/", window.location.origin).toString();
+  // The page invite links open: Weft's own join page.
+  const JOIN_PAGE = document.querySelector<HTMLElement>(".weft-tool")!.dataset.join!;
 
   const form = document.getElementById("invite-form") as HTMLFormElement;
   const field = (name: string) => form.elements.namedItem(name) as HTMLInputElement;
@@ -179,51 +181,51 @@
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-gray-2);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-muted);
   }
   .weft-tool label span {
-    color: var(--sl-color-gray-3);
-    font-size: var(--sl-text-xs);
+    color: var(--weft-text-subtle);
+    font-size: var(--weft-type-xs);
   }
   .weft-tool input,
   .weft-tool textarea {
     font: inherit;
-    font-size: var(--sl-text-sm);
-    color: var(--sl-color-white);
-    background: var(--sl-color-gray-6);
-    border: 1px solid var(--sl-color-gray-5);
+    font-size: var(--weft-type-md);
+    color: var(--weft-text-strong);
+    background: var(--weft-bg-raised);
+    border: 1px solid var(--weft-line-strong);
     border-radius: 0.5rem;
     padding: 0.6rem 0.75rem;
     min-height: 2.75rem;
     width: 100%;
   }
   .weft-tool textarea {
-    font-family: var(--sl-font-mono);
-    font-size: var(--sl-text-xs);
+    font-family: var(--weft-font-mono);
+    font-size: var(--weft-type-xs);
   }
   .weft-tool .mono {
-    font-family: var(--sl-font-mono);
+    font-family: var(--weft-font-mono);
   }
   .weft-tool button {
     font: inherit;
-    font-size: var(--sl-text-sm);
+    font-size: var(--weft-type-md);
     min-height: 2.75rem;
     padding: 0 1rem;
     border-radius: 0.5rem;
-    border: 1px solid var(--sl-color-gray-5);
+    border: 1px solid var(--weft-line-strong);
     background: transparent;
-    color: var(--sl-color-white);
+    color: var(--weft-text-strong);
     cursor: pointer;
   }
   .weft-tool button:first-child {
-    background: var(--sl-color-accent);
-    border-color: var(--sl-color-accent);
-    color: var(--sl-color-black);
+    background: var(--weft-accent);
+    border-color: var(--weft-accent);
+    color: var(--weft-bg);
     font-weight: 600;
   }
   .weft-profile {
-    border: 1px dashed var(--sl-color-gray-5);
+    border: 1px dashed var(--weft-line-strong);
     border-radius: 0.75rem;
     padding: 0.75rem 1rem;
     display: flex;
@@ -238,18 +240,18 @@
     margin-top: 0.5rem;
   }
   .weft-error {
-    color: #e5675b;
-    font-size: var(--sl-text-sm);
+    color: var(--weft-danger-text);
+    font-size: var(--weft-type-md);
     margin: 0;
   }
   .weft-output {
     margin: 0;
     padding: 1rem;
     border-radius: 0.75rem;
-    background: var(--sl-color-gray-6);
-    border: 1px solid var(--sl-color-gray-5);
-    font-family: var(--sl-font-mono);
-    font-size: var(--sl-text-xs);
+    background: var(--weft-bg-raised);
+    border: 1px solid var(--weft-line-strong);
+    font-family: var(--weft-font-mono);
+    font-size: var(--weft-type-xs);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
@@ -275,8 +277,8 @@
   }
   .weft-links dt span {
     font-weight: 400;
-    color: var(--sl-color-gray-3);
-    font-size: var(--sl-text-xs);
+    color: var(--weft-text-subtle);
+    font-size: var(--weft-type-xs);
   }
   .weft-links dd {
     margin: 0;
