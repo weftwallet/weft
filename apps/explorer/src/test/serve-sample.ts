@@ -19,6 +19,6 @@ for (let i = 1; i < 30; i++) {
   });
 }
 for (const b of chain("mychannel", specs)) db.addBlock(publishBlock(policy, decodeBlock(b)));
-const app = buildServer({ name: "Org1", channels: publishedChannels(policy), db, status: () => [{ channel: "mychannel", state: "following", peerHeight: 30, lastError: null, lastBlockAt: Date.now() }] });
+const app = buildServer({ name: "Org1", channels: publishedChannels(policy), policy, db, status: () => [{ channel: "mychannel", state: "following", peerHeight: 30, lastError: null, lastBlockAt: Date.now() }] });
 await app.listen({ port: 8799, host: "127.0.0.1" });
 console.log("http://localhost:8799");
