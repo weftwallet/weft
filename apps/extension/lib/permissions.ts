@@ -8,24 +8,36 @@ import { UiError } from "./messages";
  * if access is refused, e.g. "your organisation's CA and relay".
  */
 export async function requestHostAccess(urls: string[], what = "your organisation's CA and relay"): Promise<void> {
-  let origins: string[];
+  let parsed: URL[];
   try {
-    origins = Array.from(new Set(urls.filter(Boolean).map((u) => `${new URL(u).origin}/*`)));
+    parsed = urls.filter(Boolean).map((u) => new URL(u));
   } catch {
     throw new UiError("One of the addresses isn't a valid URL. Check it starts with https://.", urls.join(", "));
   }
-  if (origins.length === 0) return;
-  const hosts = origins.map((o) => new URL(o.slice(0, -2)).host).join(" and ");
-  // Call request() first, with no await before it: an earlier await can
-  // lose the user gesture. Already-granted origins resolve without a prompt.
+  if (parsed.length === 0) return;
+  const hosts = Array.from(new Set(parsed.map((u) => u.host))).join(" and ");
+  // Weft can only ask for https:// hosts, and plain http:// on this machine.
+  // Checked before asking, with no await, so the user gesture is kept.
+  const plain = parsed.filter((u) => u.protocol === "http:" && u.hostname !== "localhost" && u.hostname !== "127.0.0.1");
+  if (plain.length) {
+    throw new UiError(`Weft can't reach ${plain.map((u) => u.host).join(" and ")} over plain http://. Use an https:// address; http:// only works for localhost.`);
+  }
+  // Each host is asked for without its port, so the grant covers the host
+  // on any port. Chrome would accept a port, but Firefox reads
+  // "localhost:8787" as a different host from the manifest's "localhost"
+  // and refuses it as undeclared.
+  const origins = Array.from(new Set(parsed.map((u) => `${u.protocol}//${u.hostname}/*`)));
+  // Already-granted origins resolve without a prompt.
   let granted: boolean;
   try {
     granted = await browser.permissions.request({ origins });
   } catch (error) {
-    throw new UiError(
-      `Weft can't ask for access to ${hosts}. Use an https:// address; plain http:// only works for localhost.`,
-      error instanceof Error ? error.message : String(error),
-    );
+    // A browser can refuse to ask for a host it already has, as in a dev
+    // build, where WXT makes the hosts required to reload content scripts.
+    // Access is what matters, so check for it before calling this a failure.
+    if (await browser.permissions.contains({ origins }).catch(() => false)) return;
+    // Not the address: the browser itself refused, and its reason is in the details.
+    throw new UiError(`The browser wouldn't let Weft ask for access to ${hosts}.`, error instanceof Error ? error.message : String(error));
   }
   if (!granted) {
     throw new UiError(`Weft needs access to ${what} (${hosts}) to continue. Try again and choose Allow.`);
