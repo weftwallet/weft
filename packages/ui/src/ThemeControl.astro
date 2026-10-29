@@ -1,0 +1,123 @@
+---
+/**
+ * The theme control every Weft site shows: match the system, light or dark.
+ * The choice is kept in localStorage; with no choice stored the page follows
+ * the system. The page's own early script applies a stored choice before the
+ * first paint (Shell.astro has it; in the docs, Starlight's does).
+ */
+interface Props {
+  /** Where the choice is kept. The docs use Starlight's key. */
+  storageKey?: string;
+  /**
+   * Set data-theme to the system's theme when following the system, rather
+   * than removing it. Starlight's styles need data-theme to be set.
+   */
+  alwaysSet?: boolean;
+}
+
+const { storageKey = "weft-theme", alwaysSet = false } = Astro.props;
+---
+
+<div class="weft-theme" role="group" aria-label="Theme" data-weft-theme={storageKey} data-always-set={alwaysSet ? "" : undefined}>
+  <button type="button" data-theme-choice="system" aria-pressed="true" title="Match the system">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg>
+    <span class="weft-theme__sr">System</span>
+  </button>
+  <button type="button" data-theme-choice="light" aria-pressed="false" title="Light">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"></path></svg>
+    <span class="weft-theme__sr">Light</span>
+  </button>
+  <button type="button" data-theme-choice="dark" aria-pressed="false" title="Dark">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg>
+    <span class="weft-theme__sr">Dark</span>
+  </button>
+</div>
+
+<script>
+  type Choice = "system" | "light" | "dark";
+  const root = document.documentElement;
+  const groups = [...document.querySelectorAll<HTMLElement>("[data-weft-theme]")];
+  const key = groups[0]?.dataset.weftTheme ?? "weft-theme";
+  const alwaysSet = groups.some((g) => g.hasAttribute("data-always-set"));
+  const system = matchMedia("(prefers-color-scheme: light)");
+
+  const stored = (): Choice => {
+    try {
+      const t = localStorage.getItem(key);
+      return t === "light" || t === "dark" ? t : "system";
+    } catch {
+      return "system";
+    }
+  };
+  // Every control on the page (the docs have one in the header and one in
+  // the mobile menu) shows the same choice.
+  const mark = (choice: Choice) =>
+    groups.forEach((g) => g.querySelectorAll<HTMLButtonElement>("[data-theme-choice]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === choice))));
+  const apply = (choice: Choice) => {
+    if (choice !== "system") root.dataset.theme = choice;
+    else if (alwaysSet) root.dataset.theme = system.matches ? "light" : "dark";
+    else delete root.dataset.theme;
+    mark(choice);
+  };
+
+  mark(stored());
+  if (alwaysSet) system.addEventListener("change", () => stored() === "system" && apply("system"));
+
+  groups.forEach((g) =>
+    g.querySelectorAll<HTMLButtonElement>("[data-theme-choice]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const choice = b.dataset.themeChoice as Choice;
+        try {
+          if (choice === "system") localStorage.removeItem(key);
+          else localStorage.setItem(key, choice);
+        } catch {}
+        // The whole page crossfades once; with reduced motion it changes at once.
+        const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (document.startViewTransition && !still) document.startViewTransition(() => apply(choice));
+        else apply(choice);
+      }),
+    ),
+  );
+</script>
+
+<style>
+  .weft-theme {
+    display: flex;
+    align-self: center;
+    flex: none;
+    padding: 2px;
+    gap: 2px;
+    border: 1px solid var(--weft-line);
+    border-radius: var(--weft-radius-lg);
+  }
+  .weft-theme button {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--weft-radius-sm);
+    background: transparent;
+    color: var(--weft-text-subtle);
+    cursor: pointer;
+    transition:
+      color var(--weft-duration-fast) var(--weft-ease-out),
+      background-color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  .weft-theme button:hover {
+    color: var(--weft-text);
+  }
+  .weft-theme button[aria-pressed="true"] {
+    background: var(--weft-bg-raised);
+    color: var(--weft-text-strong);
+  }
+  .weft-theme__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>

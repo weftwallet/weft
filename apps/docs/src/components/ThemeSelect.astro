@@ -1,0 +1,8 @@
+---
+// The sites' theme control in place of Starlight's menu. It keeps
+// Starlight's storage key, so Starlight's early script still applies the
+// choice before the first paint.
+import ThemeControl from "@weftwallet/ui/ThemeControl.astro";
+---
+
+<ThemeControl storageKey="starlight-theme" alwaysSet />

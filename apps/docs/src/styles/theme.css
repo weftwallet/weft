@@ -146,3 +146,12 @@
     transform: translateY(10px);
   }
 }
+
+/* In the mobile menu the products switcher sits at the bottom of the
+   screen, so its list opens upwards. */
+.mobile-preferences .weft-switcher__menu {
+  top: auto;
+  bottom: calc(100% + var(--weft-space-2));
+  left: 0;
+  right: auto;
+}

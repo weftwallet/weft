@@ -48,10 +48,12 @@ export default defineConfig({
       description: "Guides for people using Weft, building dApps and running Hyperledger Fabric networks.",
       favicon: "/favicon.svg",
       // The mark weaves on hover; see src/components/SiteTitle.astro. The
-      // header's links to the other products are in SocialIcons.astro.
+      // products switcher and the theme control are the sites' own, from
+      // @weftwallet/ui, in SocialIcons.astro and ThemeSelect.astro.
       components: {
         SiteTitle: "./src/components/SiteTitle.astro",
         SocialIcons: "./src/components/SocialIcons.astro",
+        ThemeSelect: "./src/components/ThemeSelect.astro",
       },
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/ifeanyi-ugwu/weft" }],
       editLink: { baseUrl: "https://github.com/ifeanyi-ugwu/weft/edit/main/apps/docs/" },
@@ -60,6 +62,7 @@ export default defineConfig({
         "@fontsource/atkinson-hyperlegible-next/600.css",
         "@fontsource/atkinson-hyperlegible-mono/400.css",
         "@fontsource/atkinson-hyperlegible-mono/500.css",
+        "@weftwallet/brand/tokens.css",
         "./src/styles/theme.css",
       ],
       sidebar: [

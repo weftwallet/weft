@@ -1,0 +1,180 @@
+---
+/**
+ * The menu of Weft's products, as every site's header shows it: a button
+ * that opens a list of the products with their marks and what each is for.
+ * The docs use it too, so moving between products works the same from all
+ * of them.
+ */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { products, type ProductId } from "@weftwallet/brand/products";
+import { productHref, siteProducts } from "./links";
+
+interface Props {
+  /** The product this page belongs to, marked as current in the list. */
+  product: ProductId;
+}
+
+const { product } = Astro.props;
+const require = createRequire(import.meta.url);
+const markOf = (id: ProductId) =>
+  readFileSync(require.resolve(`@weftwallet/brand/${products[id].markSmall}`), "utf8")
+    .replace(/<!--[\s\S]*?-->\s*/g, "")
+    .replace(/<svg /, '<svg aria-hidden="true" focusable="false" ')
+    .replace(/\s+role="img"/, "")
+    .replace(/\s+aria-label="[^"]*"/, "");
+---
+
+<details class="weft-switcher" data-weft-switcher>
+  <summary>
+    <svg class="weft-switcher__grid" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>
+    <span class="weft-switcher__label">Products</span>
+    <svg class="weft-switcher__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+  </summary>
+  <ul class="weft-switcher__menu">
+    {
+      siteProducts.map((p) => (
+        <li>
+          <a href={productHref(p.id)} aria-current={p.id === product ? "page" : undefined}>
+            <Fragment set:html={markOf(p.id)} />
+            <span>
+              <strong>{p.name}</strong>
+              <span>{p.summary}</span>
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</details>
+
+<script>
+  // The menu closes on Escape and on a click outside it.
+  document.querySelectorAll<HTMLDetailsElement>("[data-weft-switcher]").forEach((switcher) => {
+    document.addEventListener("click", (e) => {
+      if (switcher.open && !switcher.contains(e.target as Node)) switcher.open = false;
+    });
+    switcher.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && switcher.open) {
+        switcher.open = false;
+        switcher.querySelector("summary")?.focus();
+      }
+    });
+  });
+</script>
+
+<style>
+  .weft-switcher {
+    position: relative;
+  }
+  .weft-switcher summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--weft-space-1);
+    height: 36px;
+    padding: 0 var(--weft-space-3);
+    border: 1px solid var(--weft-line);
+    border-radius: var(--weft-radius-lg);
+    color: var(--weft-text-muted);
+    font: var(--weft-type-md) / 1 var(--weft-font-sans);
+    cursor: pointer;
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  .weft-switcher summary::-webkit-details-marker {
+    display: none;
+  }
+  .weft-switcher summary:hover,
+  .weft-switcher[open] summary {
+    border-color: var(--weft-line-strong);
+    color: var(--weft-text);
+  }
+  .weft-switcher__chevron {
+    transition: transform var(--weft-duration-base) var(--weft-ease-out);
+  }
+  .weft-switcher[open] .weft-switcher__chevron {
+    transform: rotate(180deg);
+  }
+  .weft-switcher__grid {
+    display: none;
+  }
+  .weft-switcher__menu {
+    position: absolute;
+    z-index: 30;
+    right: 0;
+    top: calc(100% + var(--weft-space-2));
+    width: min(340px, calc(100vw - 2 * var(--weft-space-4)));
+    margin: 0;
+    padding: var(--weft-space-2);
+    list-style: none;
+    background: var(--weft-bg-overlay);
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-xl);
+    box-shadow: var(--weft-shadow-3);
+    animation: weft-switcher-arrive var(--weft-duration-base) var(--weft-ease-out) both;
+  }
+  @keyframes weft-switcher-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(calc(var(--weft-shift-md) * -1));
+    }
+  }
+  .weft-switcher__menu li {
+    margin: 0;
+  }
+  .weft-switcher__menu a {
+    display: flex;
+    gap: var(--weft-space-3);
+    align-items: flex-start;
+    padding: var(--weft-space-3);
+    border-radius: var(--weft-radius-lg);
+    color: var(--weft-text);
+    text-decoration: none;
+    transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  .weft-switcher__menu a:hover {
+    background: var(--weft-bg-raised);
+  }
+  .weft-switcher__menu a[aria-current="page"] {
+    background: var(--weft-accent-soft);
+  }
+  .weft-switcher__menu :global(svg) {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    display: block;
+  }
+  .weft-switcher__menu a > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+  }
+  .weft-switcher__menu strong {
+    font-weight: 600;
+    color: var(--weft-text-strong);
+  }
+  .weft-switcher__menu a > span > span {
+    color: var(--weft-text-muted);
+    font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
+  }
+  @media (max-width: 720px) {
+    .weft-switcher__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    .weft-switcher__chevron {
+      display: none;
+    }
+    .weft-switcher__grid {
+      display: block;
+    }
+  }
+</style>

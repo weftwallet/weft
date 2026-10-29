@@ -1,39 +1,9 @@
 ---
-// Starlight's header icons, with links to the other Weft products before them.
+// The sites' products switcher before Starlight's header icons, so moving
+// between Weft's products works the same from the docs.
 import Default from "@astrojs/starlight/components/SocialIcons.astro";
-import { productHref } from "@weftwallet/ui/links";
-
-const links = [
-  ["Weft", productHref("site")],
-  ["Playground", productHref("playground")],
-  ["Network", productHref("network")],
-];
+import ProductSwitcher from "@weftwallet/ui/ProductSwitcher.astro";
 ---
 
-<nav class="products" aria-label="Other Weft products">
-  {links.map(([label, href]) => <a href={href}>{label}</a>)}
-</nav>
+<ProductSwitcher product="docs" />
 <Default />
-
-<style>
-  .products {
-    display: flex;
-    gap: 1rem;
-    margin-right: 0.5rem;
-    padding-right: 1rem;
-    border-right: 1px solid var(--sl-color-hairline-shade);
-  }
-  .products a {
-    color: var(--sl-color-gray-2);
-    font-size: var(--sl-text-sm);
-    text-decoration: none;
-  }
-  .products a:hover {
-    color: var(--sl-color-white);
-  }
-  @media (max-width: 50rem) {
-    .products {
-      display: none;
-    }
-  }
-</style>

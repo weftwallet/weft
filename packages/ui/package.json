@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "The page shell, base styles and product links shared by Weft's sites",
+  "description": "The page shell, header controls, base styles and product links shared by Weft's sites and docs",
   "type": "module",
   "exports": {
     "./Shell.astro": "./src/Shell.astro",
+    "./ProductSwitcher.astro": "./src/ProductSwitcher.astro",
+    "./ThemeControl.astro": "./src/ThemeControl.astro",
     "./base.css": "./src/base.css",
     "./links": "./src/links.ts"
   },
