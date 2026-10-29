@@ -280,6 +280,8 @@ export class ExplorerDb {
       /** Leave out members-level rows, for filters a non-member mustn't be able to probe. */
       publicOnly?: boolean;
       before?: number;
+      /** From this block on, oldest first: the page after an older one. */
+      after?: number;
       limit?: number;
     } = {},
   ): TransactionRow[] {
@@ -291,8 +293,10 @@ export class ExplorerDb {
     if (options.creatorName) (where.push("creator_name = ?"), params.push(options.creatorName));
     if (options.publicOnly) where.push("level = 'public'");
     if (options.before !== undefined) (where.push("block_number < ?"), params.push(options.before));
+    if (options.after !== undefined) (where.push("block_number >= ?"), params.push(options.after));
+    const order = options.after !== undefined ? "block_number, idx" : "block_number DESC, idx DESC";
     const rows = this.db
-      .prepare(`SELECT * FROM transactions WHERE ${where.join(" AND ")} ORDER BY block_number DESC, idx DESC LIMIT ?`)
+      .prepare(`SELECT * FROM transactions WHERE ${where.join(" AND ")} ORDER BY ${order} LIMIT ?`)
       .all(...params, options.limit ?? 20) as Row[];
     return rows.map(toTransaction);
   }

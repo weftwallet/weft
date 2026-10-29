@@ -11,7 +11,7 @@ const membersOnly = (page: Page) =>
 /** Clicks "Sign in with Weft" and approves the connect and sign-in windows. */
 async function signIn(wallet: Wallet, page: Page) {
   const connectWindow = wallet.context.waitForEvent("page");
-  await page.getByRole("button", { name: "Sign in with Weft" }).click();
+  await page.locator("header").getByRole("button", { name: "Sign in with Weft" }).click();
   const connect = await connectWindow;
   await connect.locator("footer").getByRole("button", { name: "Connect" }).click();
   const signInWindow = await wallet.context.waitForEvent("page");
@@ -37,7 +37,7 @@ test("signing in to the explorer with Weft shows what members see", { tag: "@fab
   expect(await membersOnly(page)).toBe(0);
 
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("button", { name: "Sign in with Weft" })).toBeVisible();
+  await expect(page.locator("header").getByRole("button", { name: "Sign in with Weft" })).toBeVisible();
 });
 
 // The playground runs explorers for Org1 and Org2, each from its own peer.

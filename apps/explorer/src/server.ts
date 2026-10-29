@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { SignInError } from "@weftwallet/core";
-import { Auth, SESSION_COOKIE, type Viewer } from "./auth.ts";
+import { Auth, SESSION_COOKIE, UnreadableSignIn, type Viewer } from "./auth.ts";
 import type { ExplorerDb, TransactionRow } from "./db.ts";
 import type { ChannelStatus } from "./indexer.ts";
 import * as pages from "./pages.ts";
@@ -60,6 +60,7 @@ const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
 };
 
 const PAGE = 20;
+const CONTRACT_PAGE = 50;
 /** Most headers one request returns. */
 const HEADERS = 1000;
 
@@ -72,7 +73,10 @@ function int(value: unknown): number | undefined {
 export function buildServer(options: ServerOptions): FastifyInstance {
   const { db, channels, policy } = options;
   const auth = options.auth ?? new Auth();
-  const app = Fastify({ logger: options.logger ?? false });
+  // Errors the router finds before any route runs (a malformed address) go
+  // to the same handler as the routes' own, set below.
+  let onError: (error: { statusCode?: number; message?: string }, request: FastifyRequest, reply: FastifyReply) => unknown = () => undefined;
+  const app = Fastify({ logger: options.logger ?? false, frameworkErrors: (error, request, reply) => onError(error, request, reply) });
   // Requests are logged only when something goes wrong: the pages poll, and
   // other explorers check in every few seconds.
   app.addHook("onRoute", (route) => {
@@ -116,7 +120,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   const send = (reply: FastifyReply, body: string, code = 200) =>
     reply.code(code).header("content-type", "text/html; charset=utf-8").header("cache-control", "no-store").send(body);
-  const notFound = (reply: FastifyReply, site: pages.Site, what: string) => send(reply, pages.notFoundPage(site, what), 404);
+  const notFound = (reply: FastifyReply, site: pages.Site, what: string, options: { title?: string; signIn?: boolean } = {}) =>
+    send(reply, pages.notFoundPage(site, what, options), 404);
+  /** Why a sign-in failed, for the person, with any technical reason apart. */
+  const signInFailure = (error: unknown) =>
+    error instanceof UnreadableSignIn
+      ? { error: error.message, detail: error.detail }
+      : error instanceof SignInError
+        ? { error: error.message }
+        : { error: "This explorer couldn't check that sign-in. Try again.", detail: (error as Error)?.message ?? String(error) };
 
   app.addHook("onSend", async (request, reply) => {
     // Public data can be read by anyone, including other organisations'
@@ -156,8 +168,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       );
       return { mspId: viewer.mspId, name: viewer.name };
     } catch (error) {
-      const message = error instanceof SignInError ? error.message : "That sign-in couldn't be checked.";
-      return reply.code(401).send({ error: message });
+      return reply.code(401).send(signInFailure(error));
     }
   });
 
@@ -186,8 +197,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       const viewer = await auth.verify(request.body ?? {}, networkOrigin, membersOf, Date.now(), "chosen");
       return { token: auth.token(viewer), expires: viewer.expires, mspId: viewer.mspId, name: viewer.name };
     } catch (error) {
-      const message = error instanceof SignInError ? error.message : "That sign-in couldn't be checked.";
-      return reply.code(401).send({ error: message });
+      return reply.code(401).send(signInFailure(error));
     }
   });
 
@@ -220,7 +230,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.get("/me", async (request, reply) => {
     const s = scope(request);
-    if (!s.viewer) return reply.redirect("/", 303);
+    if (!s.viewer) return send(reply, pages.signedOutMePage(s.site));
     const txs = s.viewer.name ? db.transactions(s.visible, { mspId: s.viewer.mspId, creatorName: s.viewer.name, limit: 50 }).map(s.view) : [];
     return send(reply, pages.mePage(s.site, s.viewer, txs));
   });
@@ -228,10 +238,16 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.get<{ Params: { channel: string }; Querystring: { before?: string } }>("/channels/:channel", async (request, reply) => {
     const s = scope(request);
     const { channel } = request.params;
-    if (!s.canSee(channel)) return notFound(reply, s.site, "That channel isn't published here, or only its members can see it.");
+    if (!s.canSee(channel)) {
+      return notFound(reply, s.site, "That channel isn't published here, or only its members can see it.", { title: "Channel not found", signIn: true });
+    }
     const [summary] = db.channels([channel]);
-    const blocks = db.blocks(channel, { before: int(request.query.before), limit: PAGE });
-    return send(reply, pages.channelPage(s.site, summary!, statusOf(channel), blocks, db.contracts(channel, s.memberOf(channel))));
+    const before = int(request.query.before);
+    const blocks = db.blocks(channel, { before, limit: PAGE });
+    return send(
+      reply,
+      pages.channelPage(s.site, summary!, statusOf(channel), blocks, db.contracts(channel, s.memberOf(channel)), { ...(before !== undefined ? { before } : {}), size: PAGE }),
+    );
   });
 
   app.get<{ Params: { channel: string; number: string } }>("/channels/:channel/blocks/:number", async (request, reply) => {
@@ -239,7 +255,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const { channel } = request.params;
     const number = int(request.params.number);
     const found = s.canSee(channel) && number !== undefined ? db.block(channel, number) : null;
-    if (!found) return notFound(reply, s.site, "That block isn't here. It may not be indexed yet.");
+    if (!found) return notFound(reply, s.site, "That block isn't here. It may not be indexed yet.", { title: "Block not found", signIn: !s.canSee(channel) });
     const hasNext = db.block(channel, number! + 1) !== null;
     return send(reply, pages.blockPage(s.site, found.block, found.transactions.map(s.view), hasNext));
   });
@@ -248,7 +264,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const s = scope(request);
     const { channel, txId } = request.params;
     const tx = s.canSee(channel) ? db.transaction(channel, txId) : null;
-    if (!tx) return notFound(reply, s.site, "No published transaction has that ID.");
+    if (!tx) {
+      return notFound(reply, s.site, "No published transaction has that ID. It may be in a block this explorer hasn't indexed yet.", { title: "Transaction not found", signIn: !s.canSee(channel) });
+    }
     return send(reply, pages.transactionPage(s.site, s.view(tx)));
   });
 
@@ -257,18 +275,28 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     async (request, reply) => {
       const s = scope(request);
       const { channel, name } = request.params;
-      if (!s.canSee(channel) || !s.canSeeContract(channel, name)) return notFound(reply, s.site, "No published transactions call that contract.");
+      const missing = () => notFound(reply, s.site, "No published transactions call that contract.", { title: "Contract not found", signIn: true });
+      if (!s.canSee(channel) || !s.canSeeContract(channel, name)) return missing();
       const before = int(request.query.before);
-      const txs = db.transactions(s.visible, { channel, chaincode: name, before, limit: 50 }).map(s.view);
-      if (txs.length === 0 && before === undefined) return notFound(reply, s.site, "No published transactions call that contract.");
-      return send(reply, pages.contractPage(s.site, channel, name, txs, before));
+      const txs = db.transactions(s.visible, { channel, chaincode: name, before, limit: CONTRACT_PAGE }).map(s.view);
+      if (txs.length === 0 && before === undefined) return missing();
+      const url = `/channels/${encodeURIComponent(channel)}/contracts/${encodeURIComponent(name)}`;
+      // The page after this one, going newer: it starts where this one ends.
+      let newer: string | null = null;
+      if (before !== undefined) {
+        const ahead = db.transactions(s.visible, { channel, chaincode: name, after: before, limit: CONTRACT_PAGE + 1 });
+        newer = ahead.length <= CONTRACT_PAGE ? url : `${url}?before=${ahead[CONTRACT_PAGE - 1]!.blockNumber + 1}`;
+      }
+      const oldest = txs.at(-1)?.blockNumber;
+      const older = txs.length === CONTRACT_PAGE && oldest !== undefined && oldest > 0 ? `${url}?before=${oldest}` : null;
+      return send(reply, pages.contractPage(s.site, channel, name, txs, { ...(before !== undefined ? { before } : {}), newer, older }));
     },
   );
 
   app.get<{ Querystring: { q?: string } }>("/search", async (request, reply) => {
     const s = scope(request);
     const query = (request.query.q ?? "").trim();
-    const results = { blocks: [] as ReturnType<typeof db.blocks>, txs: [] as TransactionRow[], contracts: [] as { channel: string; chaincode: string }[] };
+    const results: pages.SearchResults = { blocks: [], txs: [], contracts: [] };
     if (query) {
       const number = int(query.replace(/^#/, ""));
       if (number !== undefined) {
@@ -289,6 +317,17 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         if (results.blocks[0]) return reply.redirect(`/channels/${encodeURIComponent(results.blocks[0].channel)}/blocks/${results.blocks[0].number}`);
         if (results.txs[0] && results.txs[0].txId === query.toLowerCase())
           return reply.redirect(`/channels/${encodeURIComponent(results.txs[0].channel)}/transactions/${results.txs[0].txId}`);
+        if (results.contracts[0] && results.contracts[0].chaincode.toLowerCase() === query.toLowerCase())
+          return reply.redirect(`/channels/${encodeURIComponent(results.contracts[0].channel)}/contracts/${encodeURIComponent(results.contracts[0].chaincode)}`);
+      }
+      // Nothing: say why, when the query shows it.
+      if (total === 0) {
+        if (number !== undefined) {
+          const newest = Math.max(-1, ...db.channels(s.visible).map((c) => c.height - 1));
+          results.hint = newest < 0 ? "No blocks are indexed yet." : `No channel has a block #${number} yet. The newest is #${newest}.`;
+        } else if (/^[0-9a-f]{1,5}$/i.test(query)) {
+          results.hint = "To find a transaction, enter at least its first 6 characters.";
+        }
       }
     }
     return send(reply, pages.searchPage(s.site, query, results));
@@ -306,7 +345,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.get<{ Params: { channel: string } }>("/channels/:channel/elections", async (request, reply) => {
     const data = electionData(request, request.params.channel);
-    if (!data) return notFound(reply, scope(request).site, "This channel has no published elections.");
+    if (!data) return notFound(reply, scope(request).site, "This channel has no published elections.", { title: "Elections not found", signIn: true });
     return send(reply, pages.electionsPage(data.s.site, request.params.channel, data.list));
   });
 
@@ -316,7 +355,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       const { channel, id } = request.params;
       const data = electionData(request, channel);
       const election = data?.list.find((e) => e.id === id);
-      if (!data || !election) return notFound(reply, scope(request).site, "No published election has that ID.");
+      if (!data || !election) return notFound(reply, scope(request).site, "No published election has that ID.", { title: "Election not found", signIn: true });
       const txId = (request.query.tx ?? "").trim().toLowerCase();
       const receipt = txId
         ? { txId, commitment: request.query.commitment ?? "", result: checkReceipt(id, (() => { const t = db.transaction(channel, txId); return t ? data.s.view(t) : null; })()) }
@@ -449,8 +488,24 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   });
 
   app.setNotFoundHandler((request, reply) =>
-    request.url.startsWith("/api/") ? reply.code(404).send({ error: "not found" }) : notFound(reply, scope(request).site, "There's no page here."),
+    request.url.startsWith("/api/") ? reply.code(404).send({ error: "not found" }) : notFound(reply, scope(request).site, "There's no page at this address."),
   );
+
+  // Pages get a page when something goes wrong; the API gets JSON.
+  onError = (error, request, reply) => {
+    const code = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500;
+    const message = code >= 500 ? "Internal error" : (error.message ?? "Bad request");
+    if (code >= 500) request.log.error(error);
+    if (request.url.startsWith("/api/") || request.url.startsWith("/auth/")) return reply.code(code).send({ error: message });
+    let site: pages.Site;
+    try {
+      site = scope(request).site;
+    } catch {
+      site = { name: options.name, channels: [], viewer: null, signIn: false, peers: () => [], elections: () => false };
+    }
+    return send(reply, pages.errorPage(site, code, message), code);
+  };
+  app.setErrorHandler((error: { statusCode?: number; message?: string }, request, reply) => onError(error, request, reply));
 
   return app;
 }

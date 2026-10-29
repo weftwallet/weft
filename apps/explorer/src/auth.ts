@@ -21,6 +21,18 @@ import { SignInError, fromBase64, parseSignInMessage, verifySignIn } from "@weft
 import { revokedBy } from "./crl.ts";
 import type { ChannelMember } from "./decode.ts";
 
+/**
+ * A sign-in that couldn't be read, as opposed to one that was refused. The
+ * message is for the person; `detail` is the technical reason, for "Details".
+ */
+export class UnreadableSignIn extends SignInError {
+  readonly detail: string;
+  constructor(message: string, detail: string) {
+    super(message);
+    this.detail = detail;
+  }
+}
+
 export interface Viewer {
   mspId: string;
   name: string | null;
@@ -112,9 +124,14 @@ export class Auth {
     nonces: "issued" | "chosen" = "issued",
   ): Promise<Viewer> {
     if (typeof body.message !== "string" || typeof body.signature !== "string" || typeof body.certificate !== "string") {
-      throw new SignInError("Send message, signature and certificate.");
+      throw new UnreadableSignIn("Weft didn't send a complete sign-in. Update Weft and try again.", "Send message, signature and certificate.");
     }
-    const fields = parseSignInMessage(body.message);
+    let fields: ReturnType<typeof parseSignInMessage>;
+    try {
+      fields = parseSignInMessage(body.message);
+    } catch (error) {
+      throw new UnreadableSignIn("Weft sent a sign-in this explorer can't read. Update Weft and try again.", (error as Error).message);
+    }
     if (fields.origin !== expectedOrigin) throw new SignInError("This sign-in was made for another site.");
     if (nonces === "issued") {
       const issued = this.nonces.get(fields.nonce);
@@ -135,7 +152,7 @@ export class Auth {
     try {
       signature = fromBase64(body.signature);
     } catch {
-      throw new SignInError("The signature isn't valid base64.");
+      throw new UnreadableSignIn("Weft sent a signature this explorer can't read. Try again.", "The signature isn't valid base64.");
     }
     if (!(await verifySignIn(body.message, signature, body.certificate))) {
       throw new SignInError("The signature doesn't match the certificate.");
