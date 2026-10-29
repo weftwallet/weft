@@ -1,14 +1,39 @@
 ---
-// The front page, until the landing designed around the weave replaces it.
 import Shell from "@weftwallet/ui/Shell.astro";
 import { productHref } from "@weftwallet/ui/links";
 
 const docs = (path: string) => productHref("docs", path);
-const features = [
-  ["Your organisation's identity", "Weft holds the X.509 certificate your organisation's CA issued you, shows when it expires, and renews it in one step."],
-  ["Every request decoded", "Each request shows the channel, contract, function and arguments, and says plainly whether it reads or writes the ledger."],
-  ["Keys stay in your browser", "Private keys are created in the browser and stored encrypted with your password. The relay only ever sees certificates, unsigned messages and signatures."],
-  ["Failures in plain words", "ENDORSEMENT_POLICY_FAILURE becomes \"Not enough organisations approved it\", with which ones did and didn't."],
+const shown = [
+  ["Who's asking", "The site's address, and which of your identities it wants to use."],
+  ["What it calls", "The channel, the contract and the function, and every argument decoded."],
+  ["Read or write", "Whether it only reads the ledger or changes it, said plainly."],
+  ["What happens next", "Which organisations must approve it, and afterwards whether they did."],
+];
+const audiences = [
+  {
+    title: "Signing transactions",
+    body: "Your organisation sends you an invite. Weft enrols you with its CA, keeps your key encrypted in the browser, and tells you before your certificate expires.",
+    links: [
+      ["Install Weft", docs("/start/install/")],
+      ["Reading a signature request", docs("/guides/signing/")],
+    ],
+  },
+  {
+    title: "Building a dApp",
+    body: "Call a Fabric contract from a web page, the way an Ethereum dApp asks MetaMask. Weft shows the user each request and signs it with their own identity.",
+    links: [
+      ["Quickstart", docs("/dapps/quickstart/")],
+      ["Try the playground", productHref("playground")],
+    ],
+  },
+  {
+    title: "Running a network",
+    body: "Run a small relay for your organisation and publish an invite. An explorer shows your ledger as you choose, and the network page puts every organisation's side by side.",
+    links: [
+      ["Deploy the relay", docs("/operators/relay/")],
+      ["Weft Network", productHref("network")],
+    ],
+  },
 ];
 ---
 
@@ -16,65 +41,201 @@ const features = [
   <Fragment slot="nav">
     <a href={docs("/")}>Docs</a>
     <a href={productHref("playground")}>Playground</a>
+    <a href={productHref("network")}>Network</a>
   </Fragment>
 
-  <section class="hero">
-    <div class="hero__text">
-      <h1>An identity wallet for Hyperledger Fabric</h1>
-      <p>Weft holds the certificate your organisation's CA issued you and signs only the transactions you approve, after showing you exactly what they do.</p>
-      <div class="hero__actions">
+  <section class="hero" aria-labelledby="hero-title">
+    <h1 id="hero-title" class="visually-hidden">Weft, an identity wallet for Hyperledger Fabric</h1>
+    <div class="hero__stage">
+      <canvas id="hero-loom" aria-hidden="true"></canvas>
+    </div>
+    <div class="hero__text" data-arrive>
+      <p class="hero__tagline">An identity wallet for Hyperledger Fabric.</p>
+      <p class="hero__sub">Weft holds the certificate your organisation's CA issued you, and signs only what you approve, after showing you exactly what it does.</p>
+      <div class="actions">
         <a class="action action--primary" href={docs("/start/install/")}>Install Weft</a>
-        <a class="action" href={docs("/start/what-is-weft/")}>How it works</a>
         <a class="action" href={productHref("playground")}>Try the playground</a>
+        <a class="action" href={docs("/start/what-is-weft/")}>How it works</a>
       </div>
     </div>
-    <img src="/hero-product.png" width="953" height="1020" alt="The Weft wallet showing an identity and its recent transactions, next to a signature request for a TransferShipment transaction." />
   </section>
 
-  <ul class="features">
-    {
-      features.map(([title, body]) => (
-        <li>
-          <h2>{title}</h2>
-          <p>{body}</p>
-        </li>
-      ))
-    }
-  </ul>
+  <section class="cloth" aria-labelledby="cloth-title">
+    <div class="cloth__text">
+      <span class="eyebrow">How it works</span>
+      <h2 id="cloth-title">Every transaction, shown first</h2>
+      <p>A dApp asks Weft to sign. Weft decodes the request, shows you what it calls, and signs only if you approve. Then the organisations it needs endorse it, and it's woven into the ledger every one of them keeps.</p>
+    </div>
+    <div class="cloth__stage">
+      <canvas id="cloth-loom" aria-hidden="true"></canvas>
+    </div>
+  </section>
+
+  <section class="sheet" aria-labelledby="sheet-title">
+    <div class="sheet__text">
+      <span class="eyebrow">Before you sign</span>
+      <h2 id="sheet-title">Nothing is signed that you haven't read</h2>
+      <dl class="shown">
+        {
+          shown.map(([term, detail]) => (
+            <div>
+              <dt>{term}</dt>
+              <dd>{detail}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+    <img
+      src="/hero-product.png"
+      width="953"
+      height="1020"
+      loading="lazy"
+      alt="The Weft wallet showing an identity and its recent transactions, next to a signature request for a TransferShipment transaction."
+    />
+  </section>
+
+  <section class="who" aria-labelledby="who-title">
+    <h2 id="who-title">Weft is for three kinds of people</h2>
+    <ul class="who__list">
+      {
+        audiences.map((a) => (
+          <li>
+            <h3>{a.title}</h3>
+            <p>{a.body}</p>
+            <div class="who__links">
+              {a.links.map(([label, href]) => (
+                <a href={href}>{label}</a>
+              ))}
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
 </Shell>
 
+<script>
+  import glyphs from "../loom/glyphs.json";
+  import * as hero from "../loom/hero.js";
+  import * as cloth from "../loom/cloth.js";
+
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const heroCanvas = document.getElementById("hero-loom") as HTMLCanvasElement;
+  const clothCanvas = document.getElementById("cloth-loom") as HTMLCanvasElement;
+  const text = document.querySelector<HTMLElement>("[data-arrive]")!;
+
+  const start = () => {
+    const a = hero.create(heroCanvas, glyphs, { frozen: still ? hero.T.total : undefined });
+    const b = cloth.create(clothCanvas, glyphs, { frozen: still ? cloth.T.total : undefined, autoplay: false });
+
+    // The hero's words arrive as the word sets itself again beside the mark.
+    if (!still) {
+      text.dataset.arrive = "waiting";
+      setTimeout(() => (text.dataset.arrive = "here"), hero.T.wordAgain + 200);
+    }
+
+    // The cloth is woven when it comes into view, once.
+    if (!still) {
+      const seen = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            b.play();
+            seen.disconnect();
+          }
+        },
+        { threshold: 0.45 },
+      );
+      seen.observe(clothCanvas);
+    }
+
+    // The loom takes the page's colours, so it follows a theme change.
+    const recolor = () => requestAnimationFrame(() => (a.recolor(), b.recolor()));
+    new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", recolor);
+  };
+
+  // The organisations' names on the loom are drawn in the mono, so wait for it.
+  (document.fonts?.ready ?? Promise.resolve()).then(start);
+</script>
+
 <style>
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Hero: the loom, then the words beneath it. */
   .hero {
-    display: grid;
-    grid-template-columns: 6fr 5fr;
-    gap: var(--weft-space-12);
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: var(--weft-space-6);
+    margin-top: calc(var(--weft-space-12) * -1);
+  }
+  .hero__stage {
+    position: relative;
+    width: 100%;
+    height: clamp(260px, 52vh, 520px);
+  }
+  .hero__stage canvas,
+  .cloth__stage canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
   }
   .hero__text {
     display: flex;
     flex-direction: column;
-    gap: var(--weft-space-5);
+    align-items: center;
+    gap: var(--weft-space-4);
+    max-width: 40rem;
+    text-align: center;
   }
-  .hero h1 {
-    font-size: var(--weft-type-display);
-    line-height: var(--weft-leading-display);
-    letter-spacing: -0.03em;
+  /* Visible unless the script is about to bring it in with the word. */
+  .hero__text[data-arrive="waiting"] > * {
+    opacity: 0;
+    transform: translateY(var(--weft-shift-md));
   }
-  .hero p {
+  .hero__text[data-arrive="here"] > * {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--weft-duration-slow) var(--weft-ease-out),
+      transform var(--weft-duration-slow) var(--weft-ease-out);
+  }
+  .hero__text[data-arrive="here"] > :nth-child(2) {
+    transition-delay: var(--weft-stagger);
+  }
+  .hero__text[data-arrive="here"] > :nth-child(3) {
+    transition-delay: calc(var(--weft-stagger) * 2);
+  }
+  .hero__tagline {
+    font-size: var(--weft-type-2xl);
+    line-height: var(--weft-leading-2xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--weft-text-strong);
+    text-wrap: balance;
+  }
+  .hero__sub {
     font-size: var(--weft-type-lg);
     line-height: var(--weft-leading-lg);
     color: var(--weft-text-muted);
-    max-width: 36rem;
+    text-wrap: balance;
   }
-  .hero img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-  .hero__actions {
+  .actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: var(--weft-space-3);
+    padding-top: var(--weft-space-2);
   }
   .action {
     display: inline-flex;
@@ -87,7 +248,10 @@ const features = [
     font-size: var(--weft-type-md);
     font-weight: 500;
     text-decoration: none;
-    transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      background-color var(--weft-duration-fast) var(--weft-ease-out),
+      transform var(--weft-duration-instant) var(--weft-ease-out);
   }
   .action:hover {
     border-color: var(--weft-text-subtle);
@@ -105,34 +269,116 @@ const features = [
     background: var(--weft-accent-hover);
     border-color: transparent;
   }
-  .features {
+
+  /* Sections after the hero */
+  section:not(.hero) {
+    padding-top: var(--weft-space-24);
+  }
+  h2 {
+    font-size: var(--weft-type-2xl);
+    line-height: var(--weft-leading-2xl);
+    letter-spacing: -0.02em;
+  }
+
+  .cloth {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--weft-space-8);
+    align-items: center;
+  }
+  .cloth__text,
+  .sheet__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-4);
+  }
+  .cloth__text p {
+    color: var(--weft-text-muted);
+    max-width: 34rem;
+  }
+  .cloth__stage {
+    position: relative;
+    height: clamp(300px, 42vw, 440px);
+  }
+
+  .sheet {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: var(--weft-space-12);
+    align-items: center;
+  }
+  .sheet img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .shown {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-4);
+  }
+  .shown div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-1);
+    padding-left: var(--weft-space-4);
+    border-left: 2px solid var(--weft-accent-line);
+  }
+  .shown dt {
+    font-weight: 600;
+    color: var(--weft-text-strong);
+  }
+  .shown dd {
+    margin: 0;
+    color: var(--weft-text-muted);
+  }
+
+  .who {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-8);
+  }
+  .who__list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--weft-space-4);
   }
-  .features li {
+  .who__list li {
     display: flex;
     flex-direction: column;
-    gap: var(--weft-space-2);
+    gap: var(--weft-space-3);
     padding: var(--weft-space-6);
     background: var(--weft-bg-raised);
     border: 1px solid var(--weft-line);
     border-radius: var(--weft-radius-xl);
   }
-  .features h2 {
+  .who__list h3 {
     font-size: var(--weft-type-lg);
     line-height: var(--weft-leading-lg);
   }
-  .features p {
+  .who__list p {
     color: var(--weft-text-muted);
+    flex: 1;
   }
+  .who__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-2) var(--weft-space-4);
+    font-size: var(--weft-type-md);
+  }
+
   @media (max-width: 860px) {
-    .hero,
-    .features {
+    .cloth,
+    .sheet,
+    .who__list {
       grid-template-columns: minmax(0, 1fr);
+    }
+    .cloth__stage {
+      height: 340px;
     }
   }
 </style>
