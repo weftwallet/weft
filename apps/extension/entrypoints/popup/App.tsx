@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
 import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../components/popup/AddForms";
-import { Home } from "../../components/popup/Home";
+import { Home, type HomeMemory } from "../../components/popup/Home";
 import { AddIdentity, AddIdentityOptions, Identities } from "../../components/popup/Identities";
 import { NetworkSettings } from "../../components/popup/NetworkSettings";
 import { Security } from "../../components/popup/Security";
 import { CreatePassword, Unlock } from "../../components/lock";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { useWallet, type Route } from "../../components/popup/state";
-import { FeedbackProvider } from "../../components/feedback";
-import { Spinner, WeaveMark } from "../../components/ui";
+import { FeedbackProvider, useFeedback } from "../../components/feedback";
+import { Button, ErrorDetails, Splash, StatusScreen, WeaveMark, useFocusOnArrival } from "../../components/ui";
 
 /** How deep each screen sits, so moving deeper slides one way and back the other. */
 const DEPTH: Record<Route["name"], number> = {
@@ -35,9 +35,13 @@ export function App() {
 
 function Screens() {
   const { state, setState, error, refresh } = useWallet();
+  const { toast } = useFeedback();
   const [route, setRoute] = useState<Route>({ name: "home" });
   const direction = useRef<"forward" | "back" | "none">("none");
   const visits = useRef(0);
+  // Home's tab and scroll position, kept while a deeper screen is open.
+  const homeMemory = useRef<HomeMemory>({ tab: "activity", scrollTop: 0 });
+  const [retrying, setRetrying] = useState(false);
 
   const navigate = (next: Route) => {
     direction.current = DEPTH[next.name] >= DEPTH[route.name] ? "forward" : "back";
@@ -47,47 +51,36 @@ function Screens() {
 
   if (error) {
     return (
-      <div className="status-screen">
-        <div className="error-text">{error}</div>
-        <button type="button" className="btn" onClick={() => void refresh()}>
-          Try again
-        </button>
-      </div>
+      <StatusScreen
+        mark={<WeaveMark size={56} mode="still" />}
+        title="Weft couldn't open"
+        detail="Its background service didn't answer. Try again, or close the popup and open it again."
+      >
+        <div className="status-screen__actions">
+          <Button
+            busy={retrying}
+            onClick={async () => {
+              setRetrying(true);
+              await refresh();
+              setRetrying(false);
+            }}
+          >
+            Try again
+          </Button>
+          {error.message && <ErrorDetails>{[error.message, error.detail].filter(Boolean).join(" ")}</ErrorDetails>}
+        </div>
+      </StatusScreen>
     );
   }
-  if (!state) {
-    return (
-      <div className="splash">
-        <Spinner />
-      </div>
-    );
-  }
+  if (!state) return <Splash label="Opening Weft" />;
 
-  const onDone = async () => {
+  const onDone = async (added?: string, to: "home" | "identities" = "home") => {
     await refresh();
-    navigate({ name: "home" });
+    navigate({ name: to });
+    if (added) toast(added);
   };
   const props = { state, navigate, onDone };
 
-  // The lock comes before everything else (docs/adr/0005).
-  if (state.vault.state === "locked") {
-    return (
-      <div className="screen fade-in">
-        <Unlock
-          status={state.vault}
-          passkey="window"
-          onUnlocked={() => {
-            setRoute({ name: "home" });
-            void refresh();
-          }}
-          onReset={() => {
-            setRoute({ name: "home" });
-            void refresh();
-          }}
-        />
-      </div>
-    );
-  }
   if (state.vault.state === "none" && (state.identities.length > 0 || state.pendingCsrs.length > 0)) {
     return (
       <div className="screen fade-in">
@@ -112,6 +105,7 @@ function Screens() {
     );
   }
 
+  const from = "from" in route ? route.from : undefined;
   let screen;
   switch (route.name) {
     case "security":
@@ -124,16 +118,16 @@ function Screens() {
       screen = <AddIdentity state={state} navigate={navigate} />;
       break;
     case "join":
-      screen = <JoinInvite {...props} />;
+      screen = <JoinInvite {...props} from={from} />;
       break;
     case "enroll":
-      screen = <EnrollForm {...props} />;
+      screen = <EnrollForm {...props} from={from} />;
       break;
     case "import":
-      screen = <ImportForm {...props} />;
+      screen = <ImportForm {...props} from={from} />;
       break;
     case "csr":
-      screen = <CsrForm {...props} />;
+      screen = <CsrForm {...props} from={from} />;
       break;
     case "complete-csr":
       screen = <CompleteCsr {...props} pendingId={route.pendingId} />;
@@ -149,33 +143,63 @@ function Screens() {
         state.identities.length === 0 ? (
           <Welcome navigate={navigate} />
         ) : (
-          <Home state={state} onState={setState} navigate={navigate} />
+          <Home state={state} onState={setState} navigate={navigate} memory={homeMemory.current} />
         );
   }
 
+  // The lock comes before everything else (docs/adr/0005). A screen that was
+  // open when Weft locked stays mounted underneath, hidden, so whatever was
+  // typed into it is still there after unlocking.
+  const locked = state.vault.state === "locked";
   return (
-    <div key={visits.current} className="screen" data-dir={direction.current}>
-      {screen}
-    </div>
+    <>
+      {locked && (
+        <div className="screen fade-in">
+          <Unlock
+            status={state.vault}
+            passkey="window"
+            onUnlocked={() => {
+              direction.current = "none";
+              void refresh().then(() => {
+                // The screen underneath was there all along: move focus to its heading.
+                requestAnimationFrame(() => document.querySelector<HTMLElement>(".screen h1")?.focus({ preventScroll: true }));
+              });
+            }}
+            onReset={() => {
+              direction.current = "none";
+              setRoute({ name: "home" });
+              void refresh();
+            }}
+          />
+        </div>
+      )}
+      {(!locked || route.name !== "home") && (
+        <div key={visits.current} className="screen" data-dir={locked ? undefined : direction.current} hidden={locked}>
+          {screen}
+        </div>
+      )}
+    </>
   );
 }
 
 function Welcome({ navigate }: { navigate: (r: Route) => void }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useFocusOnArrival(heading);
   return (
     <main className="page" style={{ gap: 24, paddingTop: 40 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 16 }}>
         <WeaveMark size={72} mode="draw" />
         {/* The words follow once the mark has drawn itself. */}
         <div className="fade-in" style={{ animationDelay: "420ms", animationFillMode: "both" }}>
-          <div className="mono" style={{ fontSize: 40, fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1 }}>
+          <h1 ref={heading} tabIndex={-1} className="wordmark">
             weft
-          </div>
-          <p className="muted" style={{ margin: "10px 0 0", fontSize: "var(--weft-type-md)" }}>
+          </h1>
+          <p className="muted" style={{ margin: "10px 0 0" }}>
             An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the transactions you approve.
           </p>
         </div>
       </div>
-      <AddIdentityOptions navigate={navigate} />
+      <AddIdentityOptions navigate={navigate} from="home" />
     </main>
   );
 }

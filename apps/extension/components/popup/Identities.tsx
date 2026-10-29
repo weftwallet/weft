@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { ui, type WalletState } from "../../lib/messages";
 import { useFeedback } from "../feedback";
-import { BackHeader, Empty, Icon } from "../ui";
-import { FILTER_FROM, FilterInput, GroupHeading, groupByNetwork, matches } from "./lists";
+import { BackHeader, Empty, Icon, toErrorInfo } from "../ui";
+import { FILTER_FROM, FilterInput, GroupHeading, focusTargetAfter, groupByNetwork, matches, useLeaving } from "./lists";
 import { IdentityOption } from "./Home";
-import type { Navigate } from "./state";
+import { useAction, type AddFrom, type Navigate } from "./state";
 
 export function Identities({
   state,
@@ -16,7 +16,8 @@ export function Identities({
   navigate: Navigate;
 }) {
   const { confirm, toast } = useFeedback();
-  const remove = async (identityId: string, name: string, mspId: string) => {
+  const leaving = useLeaving();
+  const remove = async (identityId: string, name: string, mspId: string, row: Element | null) => {
     const last = state.identities.length === 1;
     const ok = await confirm({
       title: `Remove ${name}?`,
@@ -37,9 +38,28 @@ export function Identities({
       icon: "trash",
     });
     if (!ok) return;
-    onState(await ui("removeIdentity", { identityId }));
-    toast(`Removed ${name}`);
+    const heading = row?.closest("section")?.querySelector<HTMLElement>("h2") ?? null;
+    const refocus = focusTargetAfter(row, () => (heading?.isConnected ? heading : document.querySelector<HTMLElement>(".screen h1")));
+    await leaving.leave(identityId);
+    try {
+      onState(await ui("removeIdentity", { identityId }));
+      toast(`Removed ${name}`);
+      refocus();
+    } catch (error) {
+      leaving.stay(identityId);
+      toast(`Couldn't remove ${name}. ${toErrorInfo(error).message}`, "error");
+    }
   };
+
+  const select = useAction(async (identityId: string, name: string) => {
+    if (identityId === state.settings.activeIdentityId) return;
+    try {
+      onState(await ui("setActive", { identityId }));
+      toast(`Switched to ${name}`);
+    } catch (error) {
+      toast(`Couldn't switch to ${name}. ${toErrorInfo(error).message}`, "error");
+    }
+  });
 
   const [query, setQuery] = useState("");
   const activeId = state.settings.activeIdentityId;
@@ -63,7 +83,7 @@ export function Identities({
         )}
 
         {groups.map((group) => (
-          <section key={group.networkId} style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-label={group.network?.name}>
+          <section key={group.networkId} className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-label={group.network?.name}>
             <GroupHeading
               title={group.network?.name ?? "Unknown network"}
               detail={group.network?.mspId}
@@ -74,19 +94,19 @@ export function Identities({
               }
             />
             {group.identities.map((identity) => (
-              <div key={identity.id} className="manage-row">
+              <div key={identity.id} className={`manage-row ${leaving.isLeaving(identity.id) ? "is-leaving" : ""}`}>
                 <IdentityOption
                   identity={identity}
                   active={identity.id === activeId}
                   showMsp={false}
-                  onSelect={async () => onState(await ui("setActive", { identityId: identity.id }))}
+                  onSelect={() => void select.run(identity.id, identity.name)}
                 />
                 <button
                   type="button"
                   className="icon-btn icon-btn--danger"
                   aria-label={`Remove ${identity.name}`}
                   title={`Remove ${identity.name}`}
-                  onClick={() => void remove(identity.id, identity.name, identity.mspId)}
+                  onClick={(e) => void remove(identity.id, identity.name, identity.mspId, e.currentTarget.closest(".manage-row"))}
                 >
                   <Icon name="trash" size={18} />
                 </button>
@@ -102,17 +122,21 @@ export function Identities({
               detail={network.mspId}
               action={{ label: `Network settings for ${network.name}`, onClick: () => navigate({ name: "network", networkId: network.id }) }}
             />
-            <p className="subtle" style={{ fontSize: "var(--weft-type-xs)", margin: "0 4px" }}>
+            <p className="subtle type-xs" style={{ margin: "0 4px" }}>
               No identities on this network.
             </p>
           </section>
         ))}
 
-        {query && groups.length === 0 && <Empty icon="search">Nothing matches "{query}".</Empty>}
+        {query && groups.length === 0 && (
+          <Empty icon="search" action={{ label: "Clear filter", onClick: () => setQuery("") }}>
+            Nothing matches “{query}”.
+          </Empty>
+        )}
 
         {state.pendingCsrs.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div className="eyebrow">Waiting for a certificate</div>
+            <h2 className="eyebrow">Waiting for a certificate</h2>
             {state.pendingCsrs.map((p) => (
               <button
                 key={p.id}
@@ -120,21 +144,21 @@ export function Identities({
                 className="identity-option"
                 onClick={() => navigate({ name: "complete-csr", pendingId: p.id })}
               >
-                <span className="avatar">{p.commonName.charAt(0)}</span>
+                <span className="avatar" aria-hidden="true">
+                  {p.commonName.trim().charAt(0) || "?"}
+                </span>
                 <span className="list-item__body">
                   <span className="list-item__title">{p.commonName}</span>
-                  <span className="subtle one-line" style={{ fontSize: "var(--weft-type-xs)" }}>
-                    {p.networkName}. Paste the issued certificate.
-                  </span>
+                  <span className="subtle one-line type-xs">{p.networkName}. Paste the issued certificate.</span>
                 </span>
               </button>
             ))}
           </div>
         )}
 
-        {state.identities.length === 0 && <AddIdentityOptions navigate={navigate} />}
+        {state.identities.length === 0 && <AddIdentityOptions navigate={navigate} from="identities" />}
 
-        <div className="row" style={{ marginTop: "auto", fontSize: "var(--weft-type-xs)", color: "var(--weft-text-muted)" }}>
+        <div className="row type-xs" style={{ marginTop: "auto", color: "var(--weft-text-muted)" }}>
           <Icon name="shield" size={18} />
           Private keys are created in this browser, encrypted with your password, and can never be exported, even by Weft.
         </div>
@@ -147,40 +171,44 @@ export function Identities({
 export function AddIdentity({ state, navigate }: { state: WalletState; navigate: Navigate }) {
   return (
     <>
-      <BackHeader
-        title="Add an identity"
-        onBack={() => navigate({ name: state.identities.length ? "identities" : "home" })}
-      />
+      <BackHeader title="Add an identity" onBack={() => navigate({ name: state.identities.length ? "identities" : "home" })} />
       <main className="page">
-        <AddIdentityOptions navigate={navigate} showHeading={false} />
+        <AddIdentityOptions navigate={navigate} showHeading={false} from="add" />
       </main>
     </>
   );
 }
 
-export function AddIdentityOptions({ navigate, showHeading = true }: { navigate: Navigate; showHeading?: boolean }) {
+export function AddIdentityOptions({
+  navigate,
+  showHeading = true,
+  from,
+}: {
+  navigate: Navigate;
+  showHeading?: boolean;
+  /** The screen these options are on, which the form's Back returns to. */
+  from: AddFrom;
+}) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {showHeading && <div className="eyebrow">Add an identity</div>}
-      <button type="button" className="invite-tile" onClick={() => navigate({ name: "join" })}>
+    <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {showHeading && <h2 className="eyebrow">Add an identity</h2>}
+      <button type="button" className="invite-tile" onClick={() => navigate({ name: "join", from })}>
         <Icon name="qr" color="var(--weft-accent-text)" />
         <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontWeight: 500 }}>Join from an org invite</span>
-          <span className="muted" style={{ fontSize: "var(--weft-type-xs)" }}>
-            Paste the link from your network admin
-          </span>
+          <span style={{ fontWeight: 500 }}>Join from an invite</span>
+          <span className="muted type-xs">Paste the link from your network admin</span>
         </span>
       </button>
       <div className="add-grid">
-        <button type="button" className="add-tile" onClick={() => navigate({ name: "enroll" })}>
+        <button type="button" className="add-tile" onClick={() => navigate({ name: "enroll", from })}>
           <Icon name="key" size={18} />
           Enrol with CA
         </button>
-        <button type="button" className="add-tile" onClick={() => navigate({ name: "import" })}>
+        <button type="button" className="add-tile" onClick={() => navigate({ name: "import", from })}>
           <Icon name="file" size={18} />
           Import PEM
         </button>
-        <button type="button" className="add-tile" onClick={() => navigate({ name: "csr" })}>
+        <button type="button" className="add-tile" onClick={() => navigate({ name: "csr", from })}>
           <Icon name="upload" size={18} />
           Generate CSR
         </button>

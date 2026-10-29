@@ -79,6 +79,8 @@ export interface ActivityRecord {
   detail?: string;
   /** Per-organisation endorsement errors, when the network returned them. */
   endorsers?: { mspId?: string; address?: string; message: string }[];
+  /** The network's own words about a failure, shown behind "Details". */
+  raw?: string;
 }
 
 export interface Settings {

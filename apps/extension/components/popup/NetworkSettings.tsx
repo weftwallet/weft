@@ -3,8 +3,10 @@ import { useState, type FormEvent } from "react";
 import type { NetworkRecord } from "../../lib/db";
 import { ui, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
+import * as check from "../../lib/validate";
 import { useFeedback, useLeaveGuard } from "../feedback";
-import { BackHeader, Empty, Field, Icon, Spinner } from "../ui";
+import { useChecks } from "../form";
+import { ActionError, BackHeader, Button, Empty, Field, Icon } from "../ui";
 import { useAction, type Navigate } from "./state";
 
 /**
@@ -49,6 +51,7 @@ function Settings({
 }) {
   const { confirm, toast } = useFeedback();
   const [advanced, setAdvanced] = useState(false);
+  const [closingAdvanced, setClosingAdvanced] = useState(false);
   const [relayUrl, setRelayUrl] = useState(network.relayUrl);
   const [caUrl, setCaUrl] = useState(network.caUrl);
   const [caName, setCaName] = useState(network.caName ?? "");
@@ -70,10 +73,29 @@ function Settings({
   const explorerChanged = explorerUrl.trim() !== (network.explorerUrl ?? "");
   const dirty = endpointsChanged || channelsChanged || explorerChanged;
   const leave = useLeaveGuard(dirty, onBack);
+  const checks = useChecks({
+    channels: () => (editableChannels ? check.channels(channels) : null),
+    relayUrl: () => check.url(relayUrl, "Enter the relay's address."),
+    caUrl: () => check.url(caUrl, "Enter the CA's address."),
+    explorerUrl: () => check.url(explorerUrl),
+  });
+
+  // Advanced closes the way it opened, in reverse.
+  const toggleAdvanced = () => {
+    if (!advanced) return setAdvanced(true);
+    setClosingAdvanced(true);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(
+      () => {
+        setAdvanced(false);
+        setClosingAdvanced(false);
+      },
+      reduced ? 0 : 160,
+    );
+  };
 
   const save = useAction(async (force: boolean) => {
     setProblems(null);
-    if (editableChannels && channelList.length === 0) throw new Error("Enter at least one channel.");
     // Only channels or the explorer changed: no endpoints to test or confirm.
     // Weft only opens the explorer as a link; it never sends anything to it.
     if (!endpointsChanged) {
@@ -86,7 +108,7 @@ function Settings({
       toast(explorerChanged && !channelsChanged ? "Explorer saved" : "Network saved");
       return;
     }
-    await requestHostAccess([relayUrl.trim(), caUrl.trim()]);
+    await requestHostAccess([relayUrl.trim(), caUrl.trim()], "the relay and CA");
     if (!force) {
       const found = await ui("checkEndpoints", { relayUrl: relayUrl.trim(), caUrl: caUrl.trim(), caName: caName.trim() || undefined });
       if (found.relay || found.ca) {
@@ -129,7 +151,7 @@ function Settings({
   });
 
   const refresh = useAction(async () => {
-    if (network.inviteUrl) await requestHostAccess([network.inviteUrl]);
+    if (network.inviteUrl) await requestHostAccess([network.inviteUrl], "the server your invite comes from");
     const loaded = await ui("refreshInvite", { networkId: network.id });
     if (loaded.mspId !== network.mspId) {
       throw new Error(
@@ -165,12 +187,13 @@ function Settings({
 
   return (
     <>
-      <BackHeader title="Network" onBack={() => void leave()} />
+      <BackHeader title={network.name} onBack={() => void leave()} />
       <form
         className="page"
+        noValidate
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
-          void save.run(false);
+          if (checks.submit()) void save.run(false);
         }}
       >
         <section className="card" aria-label="Network">
@@ -196,84 +219,76 @@ function Settings({
           invite ? (
             <InviteChanges network={network} invite={invite} busy={apply.busy} onApply={() => void apply.run(invite)} onCancel={() => setInvite(null)} />
           ) : (
-            <button type="button" className="btn" disabled={refresh.busy} onClick={() => void refresh.run()}>
-              {refresh.busy ? (
-                <>
-                  <Spinner small /> Checking the invite…
-                </>
-              ) : (
-                <>
-                  <Icon name="upload" size={18} /> Refresh from invite
-                </>
-              )}
-            </button>
+            <Button icon="upload" busy={refresh.busy} onClick={() => void refresh.run()}>
+              Refresh from invite
+            </Button>
           )
         ) : (
-          <p className="subtle" style={{ fontSize: "var(--weft-type-xs)", margin: 0 }}>
+          <p className="subtle type-xs" style={{ margin: 0 }}>
             Added without an invite. Change its channels and addresses under Advanced.
           </p>
         )}
-        {(refresh.error || apply.error) && <div className="error-text">{refresh.error ?? apply.error}</div>}
+        <ActionError error={refresh.error ?? apply.error} />
 
         <button
           type="button"
           className="disclosure"
-          aria-expanded={advanced}
-          onClick={() => setAdvanced(!advanced)}
+          aria-expanded={advanced && !closingAdvanced}
+          aria-controls="network-advanced"
+          onClick={toggleAdvanced}
         >
           <span>Advanced</span>
-          <span className="subtle" style={{ fontSize: "var(--weft-type-xs)", marginLeft: "auto" }}>
+          <span className="subtle type-xs" style={{ marginLeft: "auto" }}>
             {editableChannels ? "Channels and addresses" : "Addresses"}
           </span>
           <Icon name="chevron" size={16} />
         </button>
 
         {advanced && (
-          <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div id="network-advanced" className={`panel ${closingAdvanced ? "is-leaving" : ""}`} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {editableChannels && (
               <Field
                 label="Channels"
-                hint="Comma-separated. Listing a channel doesn't give access: your organisation must be a member of it."
+                hint="Separate several with commas. Listing a channel doesn't give access: your organisation must be a member of it."
+                {...checks.field("channels")}
               >
-                <input className="mono" value={channels} onChange={(e) => setChannels(e.target.value)} />
+                {(a) => <input {...a} className="mono" value={channels} onChange={(e) => setChannels(e.target.value)} />}
               </Field>
             )}
-            <Field label="Relay URL" hint="Your organisation's Weft relay. It picks which peers to use.">
-              <input required type="url" value={relayUrl} onChange={(e) => setRelayUrl(e.target.value)} />
+            <Field label="Relay URL" hint="Your organisation's Weft relay. It picks which peers to use." {...checks.field("relayUrl")}>
+              {(a) => <input {...a} type="url" value={relayUrl} onChange={(e) => setRelayUrl(e.target.value)} />}
             </Field>
-            <Field label="CA URL" hint="Used to enrol and renew certificates.">
-              <input required type="url" value={caUrl} onChange={(e) => setCaUrl(e.target.value)} />
+            <Field label="CA URL" hint="Used to enrol and renew certificates." {...checks.field("caUrl")}>
+              {(a) => <input {...a} type="url" value={caUrl} onChange={(e) => setCaUrl(e.target.value)} />}
             </Field>
             <Field label="CA name" hint="Only if your CA server hosts more than one CA">
-              <input className="mono" value={caName} onChange={(e) => setCaName(e.target.value)} />
+              {(a) => <input {...a} className="mono" value={caName} onChange={(e) => setCaName(e.target.value)} />}
             </Field>
-            <Field label="Explorer URL" hint="Optional. Your organisation's explorer, linked from each transaction.">
-              <input type="url" value={explorerUrl} onChange={(e) => setExplorerUrl(e.target.value)} />
+            <Field label="Explorer URL" hint="Optional. Your organisation's explorer, linked from each transaction." {...checks.field("explorerUrl")}>
+              {(a) => <input {...a} type="url" value={explorerUrl} onChange={(e) => setExplorerUrl(e.target.value)} />}
             </Field>
-            {dirty && (
-              <div className="page__actions">
-                {problems && (
-                  <div className="notice notice--amber fade-in" style={{ flexDirection: "column", gap: 4 }} role="alert">
-                    <div style={{ fontWeight: 600 }}>Weft couldn't confirm these addresses</div>
-                    {problems.relay && <div>The relay {problems.relay}.</div>}
-                    {problems.ca && <div>The CA {problems.ca}.</div>}
-                    <button type="button" className="link-btn" style={{ padding: "4px 0 0" }} onClick={() => void save.run(true)}>
-                      Save anyway
-                    </button>
-                  </div>
-                )}
-                {save.error && <div className="error-text">{save.error}</div>}
-                <button type="submit" className="btn btn--primary" disabled={save.busy}>
-                  {save.busy ? (
-                    <>
-                      <Spinner small /> Checking…
-                    </>
-                  ) : (
-                    endpointsChanged ? "Test and save" : "Save"
-                  )}
-                </button>
-              </div>
-            )}
+            <div className="page__actions">
+              {problems && (
+                <div className="notice notice--amber fade-in" style={{ flexDirection: "column", gap: 4 }} role="alert">
+                  <div style={{ fontWeight: 600 }}>Weft couldn't confirm these addresses</div>
+                  {problems.relay && <div>The relay {problems.relay}.</div>}
+                  {problems.ca && <div>The CA {problems.ca}.</div>}
+                  <button type="button" className="link-btn link-btn--inline" onClick={() => void save.run(true)}>
+                    Save anyway
+                  </button>
+                </div>
+              )}
+              <ActionError error={save.error} />
+              {dirty ? (
+                <Button type="submit" className="btn btn--primary" busy={save.busy}>
+                  {endpointsChanged ? "Test and save" : "Save"}
+                </Button>
+              ) : (
+                <p className="subtle type-xs" style={{ margin: 0, textAlign: "center" }}>
+                  Change an address or channel to save it.
+                </p>
+              )}
+            </div>
           </div>
         )}
       </form>
@@ -312,7 +327,7 @@ function InviteChanges({
       <div className="notice notice--thread fade-in">
         <Icon name="check" size={18} color="var(--weft-accent-text)" />
         <span style={{ flex: 1 }}>Up to date with your organisation's invite.</span>
-        <button type="button" className="link-btn" style={{ width: "auto", padding: 0 }} onClick={onCancel}>
+        <button type="button" className="link-btn link-btn--inline" onClick={onCancel}>
           OK
         </button>
       </div>
@@ -341,11 +356,13 @@ function InviteChanges({
         {changes.map((c) => (
           <div key={c.label} style={{ display: "contents" }}>
             <dt>{c.label}</dt>
-            <dd className="mono" style={{ fontSize: "var(--weft-type-xs)" }}>
+            <dd className="mono type-xs">
               <span className="subtle" style={{ textDecoration: "line-through" }}>
+                <span className="visually-hidden">Was </span>
                 {c.from}
               </span>
               <br />
+              <span className="visually-hidden">Now </span>
               {c.to}
             </dd>
           </div>
@@ -355,9 +372,9 @@ function InviteChanges({
         <button type="button" className="btn" onClick={onCancel}>
           Not now
         </button>
-        <button type="button" className="btn btn--primary" disabled={busy} onClick={onApply}>
-          {busy ? <Spinner small /> : "Update"}
-        </button>
+        <Button className="btn btn--primary" busy={busy} onClick={onApply}>
+          Update
+        </Button>
       </div>
     </section>
   );

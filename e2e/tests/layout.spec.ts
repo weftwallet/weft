@@ -12,7 +12,7 @@ test("the approval window keeps Reject and Sign on screen with many arguments", 
   const win = await opened;
   await win.setViewportSize({ width: 380, height: 640 });
   await win.waitForLoadState();
-  const sign = win.getByRole("button", { name: "Sign & submit" });
+  const sign = win.getByRole("button", { name: "Sign and submit" });
   await expect(sign).toBeInViewport();
   await expect(win.getByRole("button", { name: "Reject" })).toBeInViewport();
   // Every argument is listed (the list scrolls, it doesn't squash).

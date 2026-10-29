@@ -55,6 +55,10 @@ body.window {
   flex-direction: column;
 }
 
+.screen[hidden] {
+  display: none;
+}
+
 .screen > form {
   flex: 1;
   min-height: 0;
@@ -62,15 +66,49 @@ body.window {
   flex-direction: column;
 }
 
-/* Motion: short and directional, never in the way. Durations, curves and
-   distances are the brand's motion tokens; with reduced motion the distances
-   are 0, so arrivals become short fades. */
+h1,
+h2 {
+  margin: 0;
+}
 
-.screen[data-dir="forward"] {
+/* Programmatic focus lands on headings (SYSTEM.md, Navigation); only keyboard
+   focus on a control shows the ring. */
+h1[tabindex="-1"]:focus,
+h2[tabindex="-1"]:focus {
+  outline: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.type-xs {
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+}
+
+/* Motion ------------------------------------------------------------ */
+
+/* Short and directional, never in the way. Durations, curves and distances
+   are the brand's motion tokens; with reduced motion the distances are 0, so
+   arrivals become short fades. Leaving is the reverse, with ease-in, in about
+   70% of the time. */
+
+.screen[data-dir="forward"],
+.step[data-dir="forward"] {
   animation: screen-in-forward var(--weft-duration-base) var(--weft-ease-out);
 }
 
-.screen[data-dir="back"] {
+.screen[data-dir="back"],
+.step[data-dir="back"] {
   animation: screen-in-back var(--weft-duration-base) var(--weft-ease-out);
 }
 
@@ -99,21 +137,157 @@ body.window {
   }
 }
 
+/* Sibling tabs crossfade: no travel. */
+.crossfade {
+  animation: crossfade var(--weft-duration-base) var(--weft-ease-out);
+}
+
+@keyframes crossfade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Panels (a disclosure's content, an inline form) arrive with shift-md and
+   leave in reverse. */
+.panel {
+  animation: panel-in var(--weft-duration-base) var(--weft-ease-out);
+}
+
+.panel.is-leaving {
+  animation: panel-out 160ms var(--weft-ease-in) both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--weft-shift-md) * -1));
+  }
+}
+
+@keyframes panel-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--weft-shift-md) * -1));
+  }
+}
+
+/* Rows being removed leave before the list closes up. */
+.site-row.is-leaving,
+.manage-row.is-leaving,
+.list-row.is-leaving {
+  animation: row-out 160ms var(--weft-ease-in) both;
+  pointer-events: none;
+}
+
+@keyframes row-out {
+  to {
+    opacity: 0;
+    transform: translateX(var(--weft-shift-md));
+  }
+}
+
+/* Items arriving together: up to five, a stagger apart; the rest with the fifth. */
+.stagger > * {
+  animation: fade-in var(--weft-duration-base) var(--weft-ease-out) both;
+}
+
+.stagger > :nth-child(2) {
+  animation-delay: var(--weft-stagger);
+}
+
+.stagger > :nth-child(3) {
+  animation-delay: calc(var(--weft-stagger) * 2);
+}
+
+.stagger > :nth-child(4) {
+  animation-delay: calc(var(--weft-stagger) * 3);
+}
+
+.stagger > :nth-child(n + 5) {
+  animation-delay: calc(var(--weft-stagger) * 4);
+}
+
+/* Something new while you look (SYSTEM.md, Arriving): a thread runs across
+   its place and is gone, the words follow it in, then a 3px rule seats on the
+   left, stays four seconds and fades. */
+.list-item.is-new {
+  position: relative;
+  animation: fade-in var(--weft-duration-base) var(--weft-ease-out) var(--weft-duration-deliberate) both;
+}
+
+.list-item.is-new::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--weft-accent);
+  transform-origin: left;
+  animation: pick var(--weft-duration-deliberate) var(--weft-ease-tension) both;
+  pointer-events: none;
+}
+
+.list-item.is-new::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--weft-accent);
+  animation:
+    rule-in var(--weft-duration-base) var(--weft-ease-out) var(--weft-duration-deliberate) both,
+    rule-out var(--weft-duration-slow) var(--weft-ease-in) calc(var(--weft-duration-deliberate) + 4s) forwards;
+}
+
+@keyframes pick {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  75% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes rule-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+}
+
+@keyframes rule-out {
+  to {
+    opacity: 0;
+  }
+}
+
 /* With reduced motion the shift tokens are 0 and the press scale 1, so
    arrivals are short fades and nothing travels. What can't become a fade is
    set here: things that grow, pop or draw appear finished. The loader still
    turns, since it says something is happening. */
 @media (prefers-reduced-motion: reduce) {
   .bar > div,
-  .success-mark,
-  .success-mark path,
   .tabs__indicator,
   .disclosure svg {
     animation: none;
     transition: none;
   }
-  .success-mark path {
-    stroke-dashoffset: 0;
+  .list-item.is-new::after {
+    display: none;
+  }
+  .list-item.is-new,
+  .list-item.is-new::before {
+    animation-delay: 0s;
   }
 }
 
@@ -130,8 +304,8 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--weft-focus);
-  outline-offset: 2px;
+  outline: var(--weft-focus-ring) solid var(--weft-focus);
+  outline-offset: var(--weft-focus-offset);
 }
 
 .mono {
@@ -149,6 +323,8 @@ textarea {
 .eyebrow {
   font-family: var(--weft-font-mono);
   font-size: var(--weft-type-xs);
+  font-weight: 400;
+  line-height: var(--weft-leading-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--weft-text-subtle);
@@ -174,6 +350,70 @@ textarea {
 .header__title {
   font-size: var(--weft-type-base);
   font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The header of the extension's windows: the mark and name, the question, who asks. */
+.request-header {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid var(--weft-line);
+  flex: none;
+}
+
+.request-header__title {
+  font-size: var(--weft-type-lg);
+  line-height: var(--weft-leading-lg);
+  font-weight: 600;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--weft-font-mono);
+  font-weight: 500;
+  font-size: var(--weft-type-md);
+  color: var(--weft-text-muted);
+}
+
+.origin-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--weft-radius-lg);
+  background: var(--weft-bg-raised);
+  border: 1px solid var(--weft-line-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--weft-text-muted);
+  flex: none;
+}
+
+/* A screen's title with its badge (password, reset, passkey). */
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-title h1 {
+  font-size: var(--weft-type-lg);
+  line-height: var(--weft-leading-lg);
+  font-weight: 600;
+}
+
+.wordmark {
+  font-family: var(--weft-font-mono);
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .page {
@@ -187,6 +427,8 @@ textarea {
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--weft-line-strong) transparent;
+  /* A field scrolled into view isn't hidden under the sticky submit button. */
+  scroll-padding-bottom: 96px;
 }
 
 /* The page scrolls; its children must keep their size rather than shrink to fit. */
@@ -233,9 +475,6 @@ textarea {
   cursor: pointer;
   padding: 0 16px;
   text-decoration: none;
-}
-
-.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -247,34 +486,14 @@ textarea {
     transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.btn:hover:not(:disabled) {
-  border-color: var(--weft-text-subtle);
-}
-
-.btn--primary:hover:not(:disabled),
-.btn--amber:hover:not(:disabled) {
-  filter: brightness(1.07);
-}
-
-.btn:active:not(:disabled),
-.icon-btn:active,
-.add-tile:active,
-.invite-tile:active,
-.identity-option:active,
-.list-item:active {
-  transform: scale(var(--weft-press-scale));
-}
-
-.btn:disabled {
-  opacity: var(--weft-disabled-opacity);
-  cursor: default;
-}
-
-/* Loading isn't disabled-looking: the label stays, the loader turns, and it
-   just can't be pressed twice (SYSTEM.md, States). */
-.btn:disabled:has(.loader) {
-  opacity: 1;
-  cursor: progress;
+/* A long label (an enrolment ID) wraps rather than overflowing. */
+.btn--wrap {
+  height: auto;
+  min-height: 44px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .btn--danger {
@@ -284,6 +503,7 @@ textarea {
   font-weight: 600;
 }
 
+/* Teal reads and confirms; amber writes to the ledger. */
 .btn--primary {
   border: 0;
   background: var(--weft-accent);
@@ -303,7 +523,6 @@ textarea {
   border-color: var(--weft-warn);
   color: var(--weft-warn-text);
   font-weight: 600;
-  font-size: var(--weft-type-md);
 }
 
 .btn--outline-signal {
@@ -311,14 +530,86 @@ textarea {
   border-color: var(--weft-danger);
   color: var(--weft-danger-text);
   font-weight: 600;
-  font-size: var(--weft-type-md);
+}
+
+@media (hover: hover) {
+  .btn:hover:not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--weft-text-subtle);
+  }
+
+  .btn--primary:hover:not(:disabled, [aria-disabled="true"]) {
+    background: var(--weft-accent-hover);
+  }
+
+  /* Status fills have no hover role; a step toward the strongest text colour
+     lightens them in dark and darkens them in light. */
+  .btn--amber:hover:not(:disabled, [aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--weft-warn) 88%, var(--weft-text-strong));
+  }
+
+  .btn--danger:hover:not(:disabled, [aria-disabled="true"]) {
+    background: color-mix(in srgb, var(--weft-danger) 88%, var(--weft-text-strong));
+  }
+
+  .btn--outline-amber:hover:not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--weft-warn);
+    background: var(--weft-warn-soft);
+  }
+
+  .btn--outline-signal:hover:not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--weft-danger);
+    background: var(--weft-danger-soft);
+  }
+}
+
+/* Pressed: a quick scale, for duration-instant. */
+:is(
+    .btn,
+    .icon-btn,
+    .add-tile,
+    .invite-tile,
+    .identity-option,
+    .list-item,
+    .tabs button,
+    .small-btn,
+    .header-action,
+    .disclosure,
+    .link-btn,
+    .args__reveal
+  ):active:not(:disabled, [aria-disabled="true"]) {
+  transform: scale(var(--weft-press-scale));
+  transition-duration: var(--weft-duration-instant);
+}
+
+/* The eye button keeps its centring while pressed. */
+.secret .icon-btn:active {
+  transform: translateY(-50%) scale(var(--weft-press-scale));
+}
+
+.btn:disabled,
+.icon-btn:disabled,
+.small-btn:disabled,
+.field select:disabled {
+  opacity: var(--weft-disabled-opacity);
+  cursor: not-allowed;
+}
+
+/* Busy isn't disabled-looking: the label stays, the loader turns, it keeps its
+   strength and can't be pressed twice (SYSTEM.md, States). */
+[data-busy="true"] {
+  cursor: progress;
+}
+
+/* Blocked while something else is busy: full strength, no press, no hover. */
+[aria-disabled="true"]:not([data-busy]) {
+  cursor: not-allowed;
 }
 
 .icon-btn {
   width: 44px;
   height: 44px;
   border: 0;
-  border-radius: 22px;
+  border-radius: var(--weft-radius-pill);
   background: transparent;
   color: var(--weft-text-muted);
   display: flex;
@@ -326,28 +617,52 @@ textarea {
   justify-content: center;
   cursor: pointer;
   flex: none;
-}
-
-.icon-btn {
+  position: relative;
   transition:
     background-color var(--weft-duration-fast) var(--weft-ease-out),
     color var(--weft-duration-fast) var(--weft-ease-out),
     transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.icon-btn:hover {
-  background: var(--weft-bg-surface);
-  color: var(--weft-text);
+@media (hover: hover) {
+  .icon-btn:hover {
+    background: var(--weft-bg-surface);
+    color: var(--weft-text);
+  }
+
+  .icon-btn--danger:hover {
+    background: var(--weft-danger-soft);
+    color: var(--weft-danger-text);
+  }
 }
 
-.icon-btn--danger:hover {
-  background: var(--weft-danger-soft);
-  color: var(--weft-danger-text);
-}
-
+/* Small to look at, 44px to press. */
 .icon-btn--sm {
   width: 32px;
   height: 32px;
+}
+
+.icon-btn--sm::before,
+.small-btn::before,
+.args__reveal::before,
+.header-action::before,
+.tabs button::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+.tabs button::before {
+  inset: -4px 0;
+}
+
+.header-action::before {
+  inset: -4px 0;
+}
+
+.icon-swap {
+  display: inline-flex;
+  animation: crossfade var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 .channel-picker {
@@ -358,21 +673,47 @@ textarea {
   align-items: center;
   gap: 8px;
   padding: 0 12px;
-  border-radius: 20px;
-  border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-pill);
+  border: 1px solid var(--weft-line);
   background: var(--weft-bg-raised);
   font-size: var(--weft-type-md);
   position: relative;
+  overflow: hidden;
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+/* With more than one channel it's a control: a stronger border, hover, and
+   the focus ring on the whole pill. */
+.channel-picker--choice {
+  border-color: var(--weft-line-strong);
+}
+
+@media (hover: hover) {
+  .channel-picker--choice:hover {
+    border-color: var(--weft-text-subtle);
+  }
+}
+
+.channel-picker--choice:has(select:focus-visible) {
+  outline: var(--weft-focus-ring) solid var(--weft-focus);
+  outline-offset: var(--weft-focus-offset);
 }
 
 .channel-picker select {
   appearance: none;
   border: 0;
   background: transparent;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   cursor: pointer;
   padding-right: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-picker select:focus-visible {
+  outline: none;
 }
 
 .channel-picker select option {
@@ -388,10 +729,12 @@ textarea {
 .dot {
   width: 8px;
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--weft-radius-pill);
   background: var(--weft-accent);
   flex: none;
 }
+
+/* Fields ------------------------------------------------------------ */
 
 .field {
   display: flex;
@@ -414,26 +757,32 @@ textarea {
   background: var(--weft-bg-surface);
   padding: 10px 12px;
   min-height: 44px;
-}
-
-/* A field's ring sits on its own border, not a step outside it. */
-.field input,
-.field textarea,
-.field select {
   transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.field input:hover,
-.field textarea:hover,
-.field select:hover {
-  border-color: var(--weft-text-subtle);
+@media (hover: hover) {
+  .field input:hover,
+  .field textarea:hover,
+  .field select:hover {
+    border-color: var(--weft-text-subtle);
+  }
 }
 
+/* A field's ring sits on its own border, not a step outside it. */
 .field input:focus-visible,
 .field textarea:focus-visible,
 .field select:focus-visible {
   border-color: var(--weft-focus);
   outline-offset: -1px;
+}
+
+.field [aria-invalid="true"],
+.field [aria-invalid="true"]:hover {
+  border-color: var(--weft-danger);
+}
+
+.field [aria-invalid="true"]:focus-visible {
+  outline-color: var(--weft-danger);
 }
 
 .field textarea {
@@ -444,8 +793,112 @@ textarea {
 }
 
 .field__hint {
+  margin: 0;
   font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
   color: var(--weft-text-subtle);
+}
+
+/* SYSTEM.md, Errors: right below the field, an icon then the sentence. */
+.field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--weft-space-1) 0 0;
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+  font-weight: 500;
+  color: var(--weft-danger-text);
+}
+
+.field-error svg {
+  margin-top: 1px;
+}
+
+/* An action that failed: where the action was, until it's tried again. */
+.action-error {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.action-error__message {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--weft-danger-text);
+  font-size: var(--weft-type-md);
+}
+
+.action-error__message svg {
+  margin-top: 2px;
+}
+
+details.error-details {
+  font-family: var(--weft-font-mono);
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+  color: var(--weft-text-muted);
+}
+
+details.error-details summary {
+  cursor: pointer;
+  width: fit-content;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  font-family: var(--weft-font-sans);
+  color: var(--weft-text-muted);
+}
+
+details.error-details summary::-webkit-details-marker {
+  display: none;
+}
+
+details.error-details summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+details.error-details[open] summary::before {
+  transform: rotate(45deg);
+}
+
+.error-details__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 4px 0 2px;
+  animation: crossfade var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+/* A select with its chevron drawn in currentColor, so it follows the theme. */
+.select {
+  position: relative;
+  display: block;
+}
+
+.field .select select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+.select > svg {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--weft-text-subtle);
+  pointer-events: none;
 }
 
 /* Surfaces -------------------------------------------------------- */
@@ -482,16 +935,20 @@ textarea {
 
 .bar {
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--weft-radius-pill);
   background: var(--weft-bg);
   overflow: hidden;
 }
 
+/* Drawn with a scale, so a change in health moves rather than jumps. */
 .bar > div {
   height: 6px;
-  border-radius: 3px;
+  border-radius: var(--weft-radius-pill);
   transform-origin: left;
   animation: bar-grow var(--weft-duration-deliberate) var(--weft-ease-tension);
+  transition:
+    transform var(--weft-duration-deliberate) var(--weft-ease-tension),
+    background-color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 @keyframes bar-grow {
@@ -507,7 +964,6 @@ textarea {
   padding: 10px 12px;
   border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-surface);
-  font-size: var(--weft-type-md);
 }
 
 .tabs {
@@ -526,25 +982,29 @@ textarea {
   bottom: 4px;
   left: 4px;
   width: calc((100% - 16px) / 3);
-  border-radius: 9px;
+  border-radius: var(--weft-radius-sm);
   background: var(--weft-line);
-  transition: transform var(--weft-duration-base) var(--weft-ease-out);
+  transition: transform var(--weft-duration-base) var(--weft-ease-in-out);
 }
 
 .tabs button {
   position: relative;
-  transition: color var(--weft-duration-fast) var(--weft-ease-out);
+  transition:
+    color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
   height: 36px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--weft-radius-sm);
   background: transparent;
   color: var(--weft-text-muted);
   font-size: var(--weft-type-md);
   cursor: pointer;
 }
 
-.tabs button:hover {
-  color: var(--weft-text);
+@media (hover: hover) {
+  .tabs button:hover {
+    color: var(--weft-text);
+  }
 }
 
 .tabs button[aria-selected="true"] {
@@ -557,8 +1017,12 @@ textarea {
   flex-direction: column;
 }
 
+.list-placeholder {
+  min-height: 160px;
+}
+
 .list-item {
-  border-radius: 8px;
+  border-radius: var(--weft-radius-lg);
   transition:
     background-color var(--weft-duration-fast) var(--weft-ease-out),
     transform var(--weft-duration-fast) var(--weft-ease-out);
@@ -574,18 +1038,30 @@ textarea {
   width: 100%;
 }
 
-.list-item:hover {
-  background: var(--weft-bg-surface);
+@media (hover: hover) {
+  .list-item:hover {
+    background: var(--weft-bg-surface);
+  }
 }
 
-.list-item:last-child {
+.list-item:last-child,
+.list-row:last-child {
   border-bottom: 0;
+}
+
+/* A row that isn't itself a control (a passkey, with its own remove button). */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 4px 4px;
+  border-bottom: 1px solid var(--weft-line);
 }
 
 .list-item__icon {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--weft-radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -606,6 +1082,15 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Status words in a list, set like eyebrows. */
+.status-label {
+  font-family: var(--weft-font-mono);
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .identity-option {
@@ -630,14 +1115,16 @@ textarea {
     transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.identity-option:hover,
-.add-tile:hover {
-  border-color: var(--weft-line-strong);
-  background: var(--weft-bg-raised);
-}
+@media (hover: hover) {
+  .identity-option:hover,
+  .add-tile:hover:not([aria-disabled="true"]) {
+    border-color: var(--weft-line-strong);
+    background: var(--weft-bg-raised);
+  }
 
-.invite-tile:hover {
-  background: color-mix(in srgb, var(--weft-accent-soft), var(--weft-accent) 8%);
+  .invite-tile:hover {
+    border-color: var(--weft-accent);
+  }
 }
 
 .identity-option[aria-pressed="true"] {
@@ -648,7 +1135,7 @@ textarea {
 .avatar {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-overlay);
   color: var(--weft-text);
   display: flex;
@@ -683,6 +1170,13 @@ textarea {
   justify-content: center;
   gap: 6px;
   cursor: pointer;
+}
+
+.add-tile--row {
+  min-height: 48px;
+  flex-direction: row;
+  gap: 8px;
+  font-size: var(--weft-type-md);
 }
 
 .invite-tile {
@@ -728,8 +1222,10 @@ textarea {
   font-size: var(--weft-type-xs);
   font-weight: 500;
   padding: 3px 7px;
-  border-radius: 5px;
+  border-radius: var(--weft-radius-sm);
   color: var(--weft-on-status);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   flex: none;
 }
 
@@ -779,6 +1275,7 @@ textarea {
 }
 
 .args__reveal {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -786,16 +1283,21 @@ textarea {
   padding: 0 10px;
   margin-right: -6px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--weft-radius-pill);
   background: transparent;
   color: var(--weft-accent-text);
   font-size: var(--weft-type-md);
   cursor: pointer;
   flex: none;
+  transition:
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.args__reveal:hover {
-  background: color-mix(in srgb, var(--weft-accent) 12%, transparent);
+@media (hover: hover) {
+  .args__reveal:hover {
+    background: var(--weft-accent-soft);
+  }
 }
 
 .args__key {
@@ -803,6 +1305,7 @@ textarea {
   max-width: 40%;
 }
 
+/* A long value scrolls in its row rather than pushing the buttons away. */
 .args__value {
   min-width: 0;
   text-align: right;
@@ -822,20 +1325,33 @@ textarea {
   border-top: 1px solid var(--weft-line);
 }
 
-.link-btn:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .link-btn {
   border: 0;
   background: transparent;
   color: var(--weft-accent-text);
   cursor: pointer;
   padding: 10px 12px;
+  min-height: 44px;
   text-align: left;
   width: 100%;
   font-size: var(--weft-type-md);
+  border-radius: var(--weft-radius-sm);
+  transition: transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+/* Sized to its words, for a link inside a line or centred on its own. */
+.link-btn--inline {
+  width: auto;
+  padding: 0 4px;
+  align-self: flex-start;
+  text-align: center;
+}
+
+@media (hover: hover) {
+  .link-btn:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 .empty {
@@ -845,9 +1361,14 @@ textarea {
   font-size: var(--weft-type-md);
 }
 
-.error-text {
-  color: var(--weft-danger-text);
-  font-size: var(--weft-type-md);
+.empty .link-btn--inline {
+  align-self: center;
+  margin-top: 4px;
+}
+
+.empty .action-error {
+  align-items: center;
+  text-align: left;
 }
 
 /* Lists with a trailing action ------------------------------------ */
@@ -876,7 +1397,7 @@ textarea {
 .site-row__icon {
   width: 32px;
   height: 32px;
-  border-radius: 9px;
+  border-radius: var(--weft-radius-sm);
   background: var(--weft-bg-raised);
   color: var(--weft-text-muted);
   display: flex;
@@ -886,9 +1407,10 @@ textarea {
 }
 
 .small-btn {
+  position: relative;
   height: 32px;
   padding: 0 12px;
-  border-radius: 16px;
+  border-radius: var(--weft-radius-pill);
   border: 1px solid var(--weft-line-strong);
   background: transparent;
   font-size: var(--weft-type-xs);
@@ -898,20 +1420,23 @@ textarea {
   transition:
     color var(--weft-duration-fast) var(--weft-ease-out),
     border-color var(--weft-duration-fast) var(--weft-ease-out),
-    background-color var(--weft-duration-fast) var(--weft-ease-out);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.small-btn:hover {
-  color: var(--weft-danger-text);
-  border-color: var(--weft-danger);
-  background: var(--weft-danger-soft);
+@media (hover: hover) {
+  .small-btn:hover {
+    color: var(--weft-danger-text);
+    border-color: var(--weft-danger);
+    background: var(--weft-danger-soft);
+  }
 }
 
 .empty__icon {
   width: 44px;
   height: 44px;
   margin: 0 auto 10px;
-  border-radius: 12px;
+  border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-surface);
   border: 1px solid var(--weft-line);
   color: var(--weft-text-subtle);
@@ -939,7 +1464,14 @@ textarea {
   height: 36px;
 }
 
-/* Loader and success ------------------------------------------------ */
+/* A 44px target around the 36px button, inside the field's edge. */
+.secret .icon-btn::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+/* Loader ------------------------------------------------------------ */
 
 /* Weft's loader (components/ui.tsx Spinner). */
 .loader {
@@ -960,36 +1492,20 @@ textarea {
   height: 16px;
 }
 
-.success-mark {
-  width: 64px;
-  height: 64px;
-  border-radius: 32px;
-  background: var(--weft-accent-soft);
-  border: 1px solid var(--weft-accent-line);
-  color: var(--weft-accent-text);
+/* A screen waiting on something: shown only if the wait is noticeable. */
+.splash {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: pop var(--weft-duration-slow) var(--weft-ease-out);
 }
 
-.success-mark path {
-  stroke-dasharray: 24;
-  stroke-dashoffset: 24;
-  animation: draw var(--weft-duration-slow) 120ms var(--weft-ease-tension) forwards;
-}
-
-@keyframes pop {
-  from {
-    transform: scale(0.85);
-    opacity: 0;
-  }
-}
-
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
+.splash__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: crossfade var(--weft-duration-base) var(--weft-ease-out) 200ms both;
 }
 
 .status-screen {
@@ -1001,6 +1517,58 @@ textarea {
   gap: 14px;
   padding: 24px;
   text-align: center;
+  overflow-y: auto;
+}
+
+/* Status screens: the text block has a fixed height so the mark never moves. */
+.status-screen__mark {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-screen__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  /* title (one line) plus up to two lines of detail */
+  min-height: calc(24px + 6px + 2 * 20px);
+  max-width: 280px;
+}
+
+.status-screen__title {
+  font-size: var(--weft-type-base);
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.status-screen__detail {
+  font-size: var(--weft-type-md);
+  line-height: 20px;
+}
+
+/* A report (a failure with its own body) has no fixed-height text block. */
+.status-screen--report .status-screen__text {
+  min-height: 0;
+}
+
+.status-screen__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 300px;
+  text-align: left;
+}
+
+.status-screen__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
 }
 
 /* Confirmation sheet ------------------------------------------------ */
@@ -1015,19 +1583,20 @@ textarea {
   animation: backdrop-in var(--weft-duration-slow) var(--weft-ease-out) both;
 }
 
+/* Closing is the opening in reverse, with ease-in, in about 70% of the time. */
 .sheet-backdrop.is-closing {
-  animation: backdrop-out var(--weft-duration-base) var(--weft-ease-in) both;
+  animation: backdrop-out 250ms var(--weft-ease-in) both;
 }
 
 .sheet-backdrop.is-closing .sheet {
-  animation: sheet-out var(--weft-duration-base) var(--weft-ease-in) both;
+  animation: sheet-out 250ms var(--weft-ease-in) both;
 }
 
 .sheet {
   width: 100%;
   padding: 20px 16px 16px;
-  border-radius: 18px 18px 0 0;
-  background: var(--weft-bg-raised);
+  border-radius: var(--weft-radius-2xl) var(--weft-radius-2xl) 0 0;
+  background: var(--weft-bg-overlay);
   border-top: 1px solid var(--weft-line-strong);
   display: flex;
   flex-direction: column;
@@ -1039,7 +1608,7 @@ textarea {
 .sheet__icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: var(--weft-radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1101,19 +1670,24 @@ textarea {
 
 /* Toast ------------------------------------------------------------- */
 
+/* Shown, not read: what it says goes to the page's live region. */
 .toast {
   position: absolute;
-  left: 50%;
+  left: 16px;
+  right: 16px;
   bottom: 20px;
   z-index: 30;
-  transform: translateX(-50%);
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100% - 32px);
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border-radius: 20px;
-  background: var(--weft-text-strong);
-  color: var(--weft-bg);
+  border-radius: var(--weft-radius-pill);
+  background: var(--weft-bg-overlay);
+  border: 1px solid var(--weft-line-strong);
+  color: var(--weft-text-strong);
   font-size: var(--weft-type-md);
   font-weight: 500;
   box-shadow: var(--weft-shadow-2);
@@ -1121,18 +1695,30 @@ textarea {
   pointer-events: none;
 }
 
+.toast > svg {
+  color: var(--weft-accent-text);
+}
+
+.toast--error > svg {
+  color: var(--weft-danger-text);
+}
+
+.toast.is-leaving {
+  animation: toast-out 150ms var(--weft-ease-in) both;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translate(-50%, var(--weft-shift-md));
+    transform: translateY(var(--weft-shift-md));
   }
 }
 
-.splash {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(var(--weft-shift-md));
+  }
 }
 
 /* Disclosure for advanced settings ----------------------------------- */
@@ -1152,52 +1738,24 @@ textarea {
   cursor: pointer;
   transition:
     border-color var(--weft-duration-fast) var(--weft-ease-out),
-    background-color var(--weft-duration-fast) var(--weft-ease-out);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.disclosure:hover {
-  border-color: var(--weft-line-strong);
-  background: var(--weft-bg-raised);
+@media (hover: hover) {
+  .disclosure:hover {
+    border-color: var(--weft-line-strong);
+    background: var(--weft-bg-raised);
+  }
 }
 
 .disclosure svg {
-  transition: transform var(--weft-duration-base) var(--weft-ease-out);
+  transition: transform var(--weft-duration-base) var(--weft-ease-in-out);
   color: var(--weft-text-subtle);
 }
 
 .disclosure[aria-expanded="true"] svg {
   transform: rotate(180deg);
-}
-
-.nav-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px;
-  border-radius: var(--weft-radius-lg);
-  border: 1px solid var(--weft-line);
-  background: var(--weft-bg-surface);
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color var(--weft-duration-fast) var(--weft-ease-out),
-    background-color var(--weft-duration-fast) var(--weft-ease-out),
-    transform var(--weft-duration-fast) var(--weft-ease-out);
-}
-
-.nav-row:hover {
-  border-color: var(--weft-line-strong);
-  background: var(--weft-bg-raised);
-}
-
-.nav-row:active {
-  transform: scale(var(--weft-press-scale));
-}
-
-.nav-row > svg:last-child {
-  transform: rotate(-90deg);
-  color: var(--weft-text-subtle);
 }
 
 /* Lists that hold up with many items and long names ------------------- */
@@ -1223,10 +1781,6 @@ textarea {
 
 /* The header picker never grows past its box: the MSP ID gives way first,
    so the channel and the identities button stay visible. */
-.channel-picker {
-  overflow: hidden;
-}
-
 .channel-picker__msp {
   font-weight: 500;
   flex: 0 1 auto;
@@ -1245,18 +1799,11 @@ textarea {
   white-space: nowrap;
 }
 
-.channel-picker select {
-  flex: 1 1 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .filter {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 40px;
+  height: 44px;
   padding: 0 12px;
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line-strong);
@@ -1265,8 +1812,11 @@ textarea {
   transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.filter:focus-within {
-  border-color: var(--weft-accent-line);
+/* The ring is on the box, so the input inside needs none of its own. */
+.filter:has(input:focus-visible) {
+  border-color: var(--weft-focus);
+  outline: var(--weft-focus-ring) solid var(--weft-focus);
+  outline-offset: -1px;
 }
 
 .filter input {
@@ -1312,13 +1862,14 @@ textarea {
 }
 
 .header-action {
+  position: relative;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   height: 36px;
   padding: 0 12px;
-  border-radius: 18px;
+  border-radius: var(--weft-radius-pill);
   border: 1px solid var(--weft-line-strong);
   background: transparent;
   color: var(--weft-accent-text);
@@ -1327,12 +1878,15 @@ textarea {
   cursor: pointer;
   transition:
     border-color var(--weft-duration-fast) var(--weft-ease-out),
-    background-color var(--weft-duration-fast) var(--weft-ease-out);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-.header-action:hover {
-  border-color: var(--weft-accent-line);
-  background: var(--weft-accent-soft);
+@media (hover: hover) {
+  .header-action:hover:not([aria-disabled="true"]) {
+    border-color: var(--weft-accent-line);
+    background: var(--weft-accent-soft);
+  }
 }
 
 /* The weave: the mark's weft threads drawn in (components/ui.tsx WeaveMark).
@@ -1343,37 +1897,29 @@ textarea {
   transform: scaleX(0);
 }
 
-.weave--loop .weave__reveal--1 { animation: weave-l1 1800ms linear infinite; }
-.weave--loop .weave__reveal--2 { animation: weave-l2 1800ms linear infinite; }
-.weave--loop .weave__reveal--3 { animation: weave-l3 1800ms linear infinite; }
-.weave--loop .weave__rows { animation: weave-fade 1800ms linear infinite; }
-
-@keyframes weave-l1 { 0% { transform: scaleX(0); animation-timing-function: cubic-bezier(.3,.7,.2,1); } 25%, 100% { transform: scaleX(1); } }
-@keyframes weave-l2 { 0%, 10% { transform: scaleX(0); animation-timing-function: cubic-bezier(.3,.7,.2,1); } 35%, 100% { transform: scaleX(1); } }
-@keyframes weave-l3 { 0%, 20% { transform: scaleX(0); animation-timing-function: cubic-bezier(.3,.7,.2,1); } 45%, 100% { transform: scaleX(1); } }
-@keyframes weave-fade { 0%, 78% { opacity: 1; } 90%, 100% { opacity: 0; } }
-
-.weave--settle .weave__reveal { animation: weave-in 380ms cubic-bezier(.2,.8,.2,1) both; }
+.weave--settle .weave__reveal { animation: weave-in 380ms var(--weft-ease-out) both; }
 .weave--settle .weave__reveal--2 { animation-delay: 120ms; }
 .weave--settle .weave__reveal--3 { animation-delay: 240ms; }
-.weave--settle { transform-origin: center; animation: weave-pulse 420ms 560ms cubic-bezier(.2,.8,.2,1) both; }
 
-.weave--draw .weave__ground { transform-box: fill-box; transform-origin: center; animation: weave-ground 200ms cubic-bezier(.2,.8,.2,1) both; }
-.weave--draw .weave__warps { transform-box: fill-box; transform-origin: top center; animation: weave-warps 200ms 80ms cubic-bezier(.2,.8,.2,1) both; }
-.weave--draw .weave__reveal { animation: weave-in 300ms cubic-bezier(.2,.8,.2,1) both; }
+.weave--draw .weave__ground { transform-box: fill-box; transform-origin: center; animation: weave-ground 200ms var(--weft-ease-out) both; }
+.weave--draw .weave__warps { transform-box: fill-box; transform-origin: top center; animation: weave-warps 200ms 80ms var(--weft-ease-out) both; }
+.weave--draw .weave__reveal { animation: weave-in 300ms var(--weft-ease-out) both; }
 .weave--draw .weave__reveal--1 { animation-delay: 200ms; }
 .weave--draw .weave__reveal--2 { animation-delay: 280ms; }
 .weave--draw .weave__reveal--3 { animation-delay: 360ms; }
 
 .weave--still .weave__reveal { transform: scaleX(1); }
 
+/* Hovering a resting mark weaves its weft in again. */
+.weave--weave .weave__reveal { animation: weave-in 380ms var(--weft-ease-out) both; }
+.weave--weave .weave__reveal--2 { animation-delay: 120ms; }
+.weave--weave .weave__reveal--3 { animation-delay: 240ms; }
+
 @keyframes weave-in { to { transform: scaleX(1); } }
-@keyframes weave-pulse { 0% { transform: scale(1); } 45% { transform: scale(1.08); } 100% { transform: scale(1); } }
 @keyframes weave-ground { from { transform: scale(.85); opacity: 0; } }
 @keyframes weave-warps { from { transform: scaleY(0); } }
 
-/* Reduced motion: the finished mark, still. (The global rule above would end
-   the loop on its faded-out frame.) */
+/* Reduced motion: the finished mark, still. */
 @media (prefers-reduced-motion: reduce) {
   .weave,
   .weave .weave__reveal,
@@ -1394,14 +1940,10 @@ textarea {
   margin-left: -6px;
 }
 
-.header__actions .icon-btn {
-  width: 40px;
-}
-
 .lock-badge {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--weft-radius-lg);
   flex: none;
   display: flex;
   align-items: center;
@@ -1409,6 +1951,10 @@ textarea {
   background: var(--weft-bg-raised);
   border: 1px solid var(--weft-line-strong);
   color: var(--weft-accent-text);
+}
+
+.lock-badge--danger {
+  color: var(--weft-danger-text);
 }
 
 /* Top-aligned so an error appearing below doesn't move the mark. */
@@ -1422,62 +1968,23 @@ textarea {
 .lock-screen__mark {
   display: flex;
   justify-content: center;
+  align-items: center;
+  height: 56px;
   margin-bottom: 4px;
 }
 
-/* Status screens: the text block has a fixed height so the mark never moves. */
-.status-screen__mark {
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.status-screen__text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  /* title (one line) plus up to two lines of detail */
-  min-height: calc(24px + 6px + 2 * 20px);
-  max-width: 280px;
-}
-
-.status-screen__title {
-  font-size: var(--weft-type-base);
+.lock-screen__title {
+  font-size: var(--weft-type-xl);
+  line-height: var(--weft-leading-xl);
   font-weight: 600;
-  line-height: 24px;
 }
-
-.status-screen__detail {
-  font-size: var(--weft-type-md);
-  line-height: 20px;
-}
-
-/* Selects draw their own chevron, inset like the other fields' icons. */
-.field select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 40px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  background-size: 16px;
-  cursor: pointer;
-}
-
-.lock-badge--danger {
-  color: var(--weft-danger-text);
-}
-
-/* Hovering a resting mark weaves its weft in again, without the pulse. */
-.weave--weave .weave__reveal { animation: weave-in 380ms cubic-bezier(.2,.8,.2,1) both; }
-.weave--weave .weave__reveal--2 { animation-delay: 120ms; }
-.weave--weave .weave__reveal--3 { animation-delay: 240ms; }
 
 /* The small header mark: its two weft rows pass through again on hover. */
+.logo { flex: none; }
 .logo .logo__reveal { transform-box: fill-box; transform-origin: left center; }
-.logo:hover .logo__reveal--1 { animation: weave-in-from 260ms cubic-bezier(.2,.8,.2,1) both; }
-.logo:hover .logo__reveal--2 { animation: weave-in-from 260ms 80ms cubic-bezier(.2,.8,.2,1) both; }
+@media (hover: hover) {
+  .logo:hover .logo__reveal--1 { animation: weave-in-from 260ms var(--weft-ease-out) both; }
+  .logo:hover .logo__reveal--2 { animation: weave-in-from 260ms 80ms var(--weft-ease-out) both; }
+}
 @keyframes weave-in-from { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { .logo:hover .logo__reveal { animation: none; } }

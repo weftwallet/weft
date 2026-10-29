@@ -16,17 +16,48 @@ export interface FabricCaResult {
   caName: string | null;
 }
 
+/**
+ * A CA request that failed. The message says what happened in plain words;
+ * `detail` keeps what the CA itself said, for "Details".
+ */
 export class FabricCaError extends Error {
   readonly status: number;
   readonly errors: { code: number; message: string }[];
+  readonly detail: string;
 
-  constructor(status: number, errors: { code: number; message: string }[]) {
-    super(errors.map((e) => e.message).join("; ") || `Fabric CA returned HTTP ${status}`);
+  constructor(status: number, errors: { code: number; message: string }[], message?: string) {
+    const raw = errors.map((e) => (e.code ? `${e.code}: ${e.message}` : e.message)).join("; ");
+    super(message ?? explainCaErrors(status, errors));
     this.name = "FabricCaError";
     this.status = status;
     this.errors = errors;
+    this.detail = raw || `HTTP ${status}`;
   }
 }
+
+/** Fabric CA's messages are written for its operators; these are for the person enrolling. */
+function explainCaErrors(status: number, errors: { code: number; message: string }[]): string {
+  const text = errors.map((e) => e.message).join(" ").toLowerCase();
+  if (errors.some((e) => e.code === 20) || status === 401 || text.includes("authentication failure")) {
+    return "The CA didn't accept that enrolment ID and secret. Check them with your registrar: a secret usually works only once.";
+  }
+  if (text.includes("max") && text.includes("enroll")) {
+    return "This enrolment ID has been used as many times as the CA allows. Ask your registrar for a new secret.";
+  }
+  if (text.includes("revoked")) {
+    return "The CA has revoked this identity. Ask your organisation's administrator.";
+  }
+  if (text.includes("not found") || text.includes("not registered") || text.includes("unknown identity")) {
+    return "The CA doesn't know this enrolment ID. Check it with your registrar.";
+  }
+  if (text.includes("ca") && text.includes("does not exist")) {
+    return "The CA server doesn't host a CA with that name. Check the CA name in the network's settings.";
+  }
+  return "The CA refused the request. If it keeps happening, show the details to your CA administrator.";
+}
+
+/** How long Weft waits for the CA before saying it didn't answer. */
+const CA_TIMEOUT_MS = 15_000;
 
 interface CaResponse {
   success: boolean;
@@ -93,23 +124,33 @@ export class FabricCaClient {
         method: "POST",
         headers: { "content-type": "application/json", authorization },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(CA_TIMEOUT_MS),
       });
-    } catch {
+    } catch (cause) {
+      if (cause instanceof Error && cause.name === "TimeoutError") {
+        throw new FabricCaError(
+          0,
+          [{ code: 0, message: `No answer from ${this.url}${path} within ${CA_TIMEOUT_MS / 1000} seconds.` }],
+          `The CA at ${this.url} didn't answer within ${CA_TIMEOUT_MS / 1000} seconds. Check it's running, then try again.`,
+        );
+      }
       // Browsers report TLS and connection failures only as "Failed to fetch".
-      throw new FabricCaError(0, [
-        {
-          code: 0,
-          message:
-            `Couldn't reach the CA at ${this.url}. Check it's running, and that its HTTPS certificate is one this ` +
-            "computer trusts: browsers refuse self-signed CA certificates.",
-        },
-      ]);
+      throw new FabricCaError(
+        0,
+        [{ code: 0, message: `${this.url}${path}: ${String(cause)}` }],
+        `Couldn't reach the CA at ${this.url}. Check it's running, and that its HTTPS certificate is one this ` +
+          "computer trusts: browsers refuse self-signed CA certificates.",
+      );
     }
     let json: CaResponse;
     try {
       json = (await response.json()) as CaResponse;
     } catch {
-      throw new FabricCaError(response.status, [{ code: 0, message: `Fabric CA returned HTTP ${response.status}` }]);
+      throw new FabricCaError(
+        response.status,
+        [{ code: 0, message: `${this.url}${path} returned HTTP ${response.status} without a Fabric CA answer.` }],
+        `The address ${this.url} answered, but not like a Fabric CA. Check the CA address in the network's settings.`,
+      );
     }
     if (!response.ok || !json.success || !json.result?.Cert) {
       throw new FabricCaError(response.status, json.errors ?? []);

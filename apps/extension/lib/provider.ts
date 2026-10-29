@@ -33,7 +33,7 @@ import {
 import { certificateProblem, type MemberCas } from "@weftwallet/core/chain";
 import { browser } from "wxt/browser";
 import { db, newId, type ActivityRecord, type NetworkRecord } from "./db";
-import type { ApprovalOutcome, ApprovalView } from "./messages";
+import type { ApprovalOutcome, ApprovalView, UiEvent } from "./messages";
 import { connectSite, connectedIdentityIds, disconnectSites, isConnected } from "./sites";
 import { activeIdentity, activeSummary, identityView, signerFor } from "./wallet";
 
@@ -225,16 +225,19 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
 
   const relay = new RelayClient(active.network.relayUrl);
   const signer = { mspId: active.record.mspId, certificate: active.record.certificate };
+  // Which step the flow reached, so a failure after submitting isn't reported as "nothing written".
+  let stage: string | null = null;
+  const progress = { onStage: (s: string) => void (stage = s) };
   try {
     const sign = await signerFor(active.record);
     if (method === "weft_evaluate") {
-      const result = await evaluateCall(relay, signer, call, sign);
-      await db.put<ActivityRecord>("activity", { ...base, status: "evaluated" });
+      const result = await evaluateCall(relay, signer, call, sign, progress);
+      await saveActivity({ ...base, status: "evaluated" });
       finish(approval, { status: "approved", activityId: base.id });
       return result;
     }
-    const result = await submitCall(relay, signer, call, sign);
-    await db.put<ActivityRecord>("activity", {
+    const result = await submitCall(relay, signer, call, sign, progress);
+    await saveActivity({
       ...base,
       status: "committed",
       transactionId: result.transactionId,
@@ -248,10 +251,45 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
     // Peers say only "access denied" for a revoked certificate. The network's
     // explorer has the channel's revocation lists, so Weft can tell.
     if (failure.record.code === "ACCESS_DENIED") failure = (await revokedFailure(active, call.channel)) ?? failure;
-    await db.put<ActivityRecord>("activity", { ...base, status: "failed", ...failure.record });
-    finish(approval, { status: "failed", activityId: base.id, title: failure.record.title, detail: failure.record.detail });
+    if (method === "weft_submit" && mayHaveCommitted(stage, error)) {
+      failure.record = {
+        ...failure.record,
+        title: "Weft couldn't confirm this transaction",
+        detail:
+          "It was sent to the network, but Weft got no answer about whether it committed. Check the site or your organisation's explorer before sending it again.",
+      };
+    }
+    await saveActivity({ ...base, status: "failed", ...failure.record });
+    finish(approval, {
+      status: "failed",
+      activityId: base.id,
+      title: failure.record.title,
+      detail: failure.record.detail,
+      code: failure.record.code,
+      ...(failure.record.raw ? { raw: failure.record.raw } : {}),
+      retryable: failure.retryable,
+      uncertain: method === "weft_submit" && mayHaveCommitted(stage, error),
+    });
     throw failure.error;
   }
+}
+
+/**
+ * True when the transaction may already be on its way to the ledger: the
+ * relay took it, or the failure came while waiting for the commit. A relay
+ * that answered the submit with its own error didn't take it.
+ */
+function mayHaveCommitted(stage: string | null, error: unknown): boolean {
+  if (error instanceof CommitError) return false;
+  if (stage === "committing") return true;
+  if (stage !== "submitting") return false;
+  return !(error instanceof RelayError) || error.kind === "unreachable" || error.kind === "timeout";
+}
+
+/** Saves an activity record and tells any open popup, so the row arrives while it's looked at. */
+async function saveActivity(record: ActivityRecord): Promise<void> {
+  await db.put<ActivityRecord>("activity", record);
+  void browser.runtime.sendMessage({ channel: "weft-ui-event", event: "activity" } satisfies UiEvent).catch(() => {});
 }
 
 /**
@@ -280,12 +318,14 @@ async function revokedFailure(
   return {
     error: new WeftError(ErrorCode.TransactionFailed, title, { code: "CERTIFICATE_REVOKED" }),
     record: { code: "CERTIFICATE_REVOKED", title, detail },
+    retryable: false,
   };
 }
 
 function describeFailure(error: unknown): {
   error: WeftError;
   record: Required<Pick<ActivityRecord, "code" | "title" | "detail">> & Partial<ActivityRecord>;
+  retryable: boolean;
 } {
   if (error instanceof CommitError) {
     const e = error.explanation;
@@ -295,20 +335,29 @@ function describeFailure(error: unknown): {
         status: error.status,
       }),
       record: { code: error.status, title: e.title, detail: e.detail, transactionId: error.transactionId },
+      retryable: e.retryable,
     };
   }
   if (error instanceof RelayError) {
     const e = error.explanation;
-    const code = error.kind === "unreachable" ? ErrorCode.NetworkUnavailable : ErrorCode.TransactionFailed;
+    const code = error.kind === "unreachable" || error.kind === "timeout" ? ErrorCode.NetworkUnavailable : ErrorCode.TransactionFailed;
     return {
       error: new WeftError(code, e.title, { code: e.code, details: error.details }),
-      record: { code: e.code, title: e.title, detail: e.detail, ...(error.details ? { endorsers: error.details } : {}) },
+      record: {
+        code: e.code,
+        title: e.title,
+        detail: e.detail,
+        ...(e.raw ? { raw: e.raw } : {}),
+        ...(error.details ? { endorsers: error.details } : {}),
+      },
+      retryable: e.retryable,
     };
   }
   if (error instanceof VaultLockedError) {
     return {
       error: new WeftError(ErrorCode.UserRejected, "Weft locked before it could sign."),
-      record: { code: "LOCKED", title: "Weft locked before signing", detail: "Nothing was signed. Unlock Weft and try again." },
+      record: { code: "LOCKED", title: "Weft locked before signing", detail: "Nothing was signed. Unlock Weft, then send the request again from the site." },
+      retryable: true,
     };
   }
   if (error instanceof VerificationError) {
@@ -317,14 +366,22 @@ function describeFailure(error: unknown): {
       record: {
         code: "VERIFICATION_FAILED",
         title: "Weft refused to sign",
-        detail: `${error.message} The relay may be misconfigured or compromised.`,
+        detail: "What the relay sent back didn't match the request you approved, so Weft didn't sign it. The relay may be misconfigured or compromised.",
+        raw: error.message,
       },
+      retryable: false,
     };
   }
   const message = error instanceof Error ? error.message : String(error);
   return {
     error: new WeftError(ErrorCode.Internal, message),
-    record: { code: "INTERNAL", title: "Something went wrong in Weft", detail: message },
+    record: {
+      code: "INTERNAL",
+      title: "Something went wrong in Weft",
+      detail: "Weft hit an error it didn't expect. Try again, and if it keeps happening, report it with the details.",
+      raw: message,
+    },
+    retryable: true,
   };
 }
 
@@ -405,7 +462,15 @@ async function signIn(origin: string, params: unknown) {
     return { message, signature: toBase64(signature), certificate: active.record.certificate.trim(), mspId: active.record.mspId };
   } catch (error) {
     const failure = describeFailure(error);
-    finish(approval, { status: "failed", activityId: null, title: failure.record.title, detail: failure.record.detail });
+    finish(approval, {
+      status: "failed",
+      activityId: null,
+      title: failure.record.title,
+      detail: failure.record.detail,
+      code: failure.record.code,
+      ...(failure.record.raw ? { raw: failure.record.raw } : {}),
+      retryable: failure.retryable,
+    });
     throw failure.error;
   }
 }

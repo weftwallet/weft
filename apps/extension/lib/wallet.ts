@@ -211,7 +211,7 @@ export async function reenroll(identityId: string): Promise<IdentityView> {
   const network = await db.get<NetworkRecord>("networks", identity.networkId);
   if (!network) throw new Error("This identity's network was removed.");
   const commonName = identity.enrollmentId ?? parseCertificate(identity.certificate).subjectName.getField("CN")[0];
-  if (!commonName) throw new Error("Cannot tell which enrollment ID to renew.");
+  if (!commonName) throw new Error("Weft can't tell which enrolment ID to renew this certificate for.");
   const keys = await newKeys();
   const ca = new FabricCaClient({ url: network.caUrl, ...(network.caName ? { caName: network.caName } : {}) });
   // The CA checks the request is signed with the current key.

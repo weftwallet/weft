@@ -3,11 +3,13 @@
  * passkey dialog takes focus, so the popup sends passkey work here.
  */
 import "reflect-metadata";
-import { StrictMode, useState } from "react";
+import { StrictMode, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { browser } from "wxt/browser";
 import "../../assets/app.css";
-import { Field, Icon, Spinner, StatusScreen, WeaveMark } from "../../components/ui";
+import { FeedbackProvider } from "../../components/feedback";
+import { useAction } from "../../components/popup/state";
+import { ActionError, Brand, Button, Field, Icon, StatusScreen, WeaveMark, useFocusOnArrival } from "../../components/ui";
 import { addPasskey, unlockWithPasskey } from "../../lib/passkey";
 
 const params = new URLSearchParams(location.search);
@@ -15,28 +17,22 @@ const action = params.get("action") === "add" ? "add" : "unlock";
 
 function PasskeyWindow() {
   const [name, setName] = useState(params.get("name") ?? "");
-  const [phase, setPhase] = useState<"ready" | "working" | "done">("ready");
-  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const title = useRef<HTMLHeadingElement>(null);
+  useFocusOnArrival(title);
 
-  const start = async () => {
-    setPhase("working");
-    setError(null);
-    try {
-      if (action === "add") await addPasskey(name.trim());
-      else await unlockWithPasskey();
-      setPhase("done");
-      setTimeout(async () => {
-        // Back to the popup where the user started, where the browser allows it.
-        await browser.action.openPopup?.().catch(() => {});
-        window.close();
-      }, 900);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setPhase("ready");
-    }
-  };
+  const start = useAction(async () => {
+    if (action === "add") await addPasskey(name.trim());
+    else await unlockWithPasskey();
+    setDone(true);
+    setTimeout(async () => {
+      // Back to the popup where the user started, where the browser allows it.
+      await browser.action.openPopup?.().catch(() => {});
+      window.close();
+    }, 1400);
+  });
 
-  if (phase === "done") {
+  if (done) {
     return (
       <StatusScreen
         mark={<WeaveMark size={64} mode="settle" />}
@@ -49,51 +45,43 @@ function PasskeyWindow() {
   return (
     <form
       style={{ display: "contents" }}
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        void start();
+        void start.run();
       }}
     >
+      <header className="request-header">
+        <Brand />
+      </header>
       <main className="page fade-in">
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="page-title">
           <span className="lock-badge">
             <Icon name="key" size={18} />
           </span>
-          <h1 style={{ margin: 0, fontSize: "var(--weft-type-lg)", fontWeight: 600 }}>
+          <h1 ref={title} tabIndex={-1}>
             {action === "add" ? "Add a passkey" : "Unlock with a passkey"}
           </h1>
         </div>
-        <p className="muted" style={{ margin: 0, fontSize: "var(--weft-type-md)" }}>
+        <p className="muted" style={{ margin: 0 }}>
           {action === "add"
             ? "Your browser asks you to create a passkey for Weft, on this device, your phone or a security key. Your password keeps working too."
             : "Your browser asks for one of the passkeys you added to Weft."}
         </p>
         {action === "add" && (
-          <Field label="Name" hint="So you can tell your passkeys apart, e.g. “Laptop” or “YubiKey”.">
-            <input autoFocus value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+          <Field label="Name" hint="So you can tell your passkeys apart, for example “Laptop” or “YubiKey”. Up to 40 characters.">
+            {(a) => <input {...a} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />}
           </Field>
         )}
-        {error && (
-          <div className="error-text" role="alert">
-            {error}
-          </div>
-        )}
+        <ActionError error={start.error} />
       </main>
       <footer className="footer">
         <button type="button" className="btn" onClick={() => window.close()}>
           Cancel
         </button>
-        <button type="submit" className="btn btn--primary" disabled={phase === "working"}>
-          {phase === "working" ? (
-            <>
-              <Spinner small /> Waiting…
-            </>
-          ) : action === "add" ? (
-            "Create passkey"
-          ) : (
-            "Use passkey"
-          )}
-        </button>
+        <Button type="submit" className="btn btn--primary" busy={start.busy}>
+          {action === "add" ? "Create passkey" : "Use passkey"}
+        </Button>
       </footer>
     </form>
   );
@@ -102,6 +90,8 @@ function PasskeyWindow() {
 document.body.classList.add("window");
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <PasskeyWindow />
+    <FeedbackProvider>
+      <PasskeyWindow />
+    </FeedbackProvider>
   </StrictMode>,
 );

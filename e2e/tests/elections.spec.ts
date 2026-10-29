@@ -32,12 +32,12 @@ test("vote from the docs playground and check the receipt in the explorer", { ta
     () => page.locator("#pg-new-create").click(),
     async (win) => {
       readBack = wallet.context.waitForEvent("page");
-      await win.getByRole("button", { name: "Sign & submit" }).click();
+      await win.getByRole("button", { name: "Sign and submit" }).click();
     },
   );
   const query = await readBack!;
   await query.waitForLoadState();
-  await query.getByRole("button", { name: "Sign & query" }).click();
+  await query.getByRole("button", { name: "Sign and query" }).click();
   await expect(page.locator("#pg-el-state")).toHaveText("Open");
 
   await page.getByLabel("Amber").check();
@@ -49,7 +49,7 @@ test("vote from the docs playground and check the receipt in the explorer", { ta
       await expect(win.getByText("Amber")).toHaveCount(0);
       await win.getByRole("button", { name: "Show" }).click();
       await expect(win.getByText(/"option":"Amber"/)).toBeVisible();
-      await win.getByRole("button", { name: "Sign & submit" }).click();
+      await win.getByRole("button", { name: "Sign and submit" }).click();
     },
   );
   await expect(page.locator("#pg-receipt")).toBeVisible({ timeout: 30_000 });

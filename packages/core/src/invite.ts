@@ -1,9 +1,13 @@
 import type { OrgInvite } from "@weftwallet/protocol";
 
 export class InviteError extends Error {
-  constructor(message: string) {
+  /** What went wrong underneath, for "Details". */
+  readonly detail: string | undefined;
+
+  constructor(message: string, detail?: string) {
     super(message);
     this.name = "InviteError";
+    this.detail = detail;
   }
 }
 
@@ -90,7 +94,43 @@ export function parseInvite(json: unknown): OrgInvite {
 
 export async function fetchInvite(input: string, fetchImpl: typeof fetch = fetch): Promise<OrgInvite> {
   const url = resolveInviteUrl(input);
-  const response = await fetchImpl(url, { headers: { accept: "application/json" } });
-  if (!response.ok) throw new InviteError(`Could not load the invite (HTTP ${response.status}).`);
-  return parseInvite(await response.json());
+  const host = new URL(url).host;
+  let response: Response;
+  try {
+    response = await fetchImpl(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(INVITE_TIMEOUT_MS) });
+  } catch (cause) {
+    if (cause instanceof Error && cause.name === "TimeoutError") {
+      throw new InviteError(
+        `The invite server at ${host} didn't answer within ${INVITE_TIMEOUT_MS / 1000} seconds. Try again, or ask your administrator to check it's running.`,
+        `No answer from ${url}.`,
+      );
+    }
+    throw new InviteError(
+      `Couldn't load the invite from ${host}. Check the link, or ask your administrator to check the invite server is running.`,
+      `${url}: ${String(cause)}`,
+    );
+  }
+  if (!response.ok) {
+    throw new InviteError(
+      response.status === 404 || response.status === 410
+        ? "This invite link no longer works. Ask your administrator for a new one."
+        : `The invite server at ${host} returned an error. Try again shortly.`,
+      `${url} returned HTTP ${response.status}.`,
+    );
+  }
+  let json: unknown;
+  try {
+    json = await response.json();
+  } catch {
+    throw new InviteError("This link doesn't lead to a Weft invite. Check you copied the whole link.", `${url} didn't return JSON.`);
+  }
+  try {
+    return parseInvite(json);
+  } catch (error) {
+    if (!(error instanceof InviteError)) throw error;
+    throw new InviteError("This invite has mistakes in it, so Weft can't use it. Ask your administrator for a new one.", error.message);
+  }
 }
+
+/** How long Weft waits for an invite server. */
+const INVITE_TIMEOUT_MS = 15_000;

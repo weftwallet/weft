@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ui, type WalletState } from "../../lib/messages";
+import * as check from "../../lib/validate";
 import { AUTO_LOCK_CHOICES } from "../../lib/vault";
 import { useFeedback } from "../feedback";
+import { useChecks } from "../form";
 import { openPasskeyWindow } from "../lock";
-import { BackHeader, Field, Icon, SecretInput, Spinner, timeAgo } from "../ui";
+import { ActionError, BackHeader, Button, Field, Icon, SecretInput, Select, timeAgo, toErrorInfo } from "../ui";
+import { focusTargetAfter, useLeaving } from "./lists";
 import { useAction, type Navigate } from "./state";
 
 function lockLabel(minutes: number): string {
@@ -26,6 +29,7 @@ export function Security({
   const vault = state.vault;
   const refresh = async () => onState(await ui("state"));
   const legacy = state.identities.filter((i) => i.legacyKey).length;
+  const leaving = useLeaving();
 
   const lock = useAction(async () => {
     await ui("vaultLock");
@@ -34,10 +38,11 @@ export function Security({
   const autoLock = useAction(async (minutes: number) => {
     await ui("setAutoLock", { minutes });
     await refresh();
-    toast("Auto-lock updated");
+    toast(`Weft now locks ${lockLabel(minutes).toLowerCase()}`);
   });
+  const addPasskey = useAction(() => openPasskeyWindow("add"));
 
-  const removePasskey = async (id: string, name: string) => {
+  const removePasskey = async (id: string, name: string, row: Element | null) => {
     const ok = await confirm({
       title: `Remove ${name}?`,
       body: "Weft stops accepting this passkey. Your password and any other passkeys keep working. The passkey itself stays on your device until you delete it there.",
@@ -45,9 +50,17 @@ export function Security({
       icon: "key",
     });
     if (!ok) return;
-    await ui("passkeyRemove", { credentialId: id });
-    await refresh();
-    toast(`Removed ${name}`);
+    const refocus = focusTargetAfter(row, () => document.getElementById("passkeys-heading"));
+    await leaving.leave(id);
+    try {
+      await ui("passkeyRemove", { credentialId: id });
+      await refresh();
+      toast(`Removed ${name}`);
+      refocus();
+    } catch (error) {
+      leaving.stay(id);
+      toast(`Couldn't remove ${name}. ${toErrorInfo(error).message}`, "error");
+    }
   };
 
   return (
@@ -61,60 +74,63 @@ export function Security({
             </span>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ fontWeight: 500 }}>Unlocked</span>
-              <span className="muted" style={{ fontSize: "var(--weft-type-md)" }}>
-                Signing needs your password or a passkey after Weft locks.
-              </span>
+              <span className="muted">Signing needs your password or a passkey after Weft locks.</span>
             </div>
           </div>
-          <button type="button" className="btn" disabled={lock.busy} onClick={() => void lock.run()}>
+          <Button icon="lock" iconSize={16} busy={lock.busy} onClick={() => void lock.run()}>
             Lock now
-          </button>
+          </Button>
+          <ActionError error={lock.error} />
         </section>
 
         <Field label="Lock automatically" hint="Counted from the last time you used Weft. Closing the browser always locks it.">
-          <select
-            value={vault.autoLockMinutes}
-            disabled={autoLock.busy}
-            onChange={(e) => void autoLock.run(Number(e.target.value))}
-          >
-            {AUTO_LOCK_CHOICES.map((m) => (
-              <option key={m} value={m}>
-                {lockLabel(m)}
-              </option>
-            ))}
-          </select>
+          {(a) => (
+            <Select
+              {...a}
+              value={vault.autoLockMinutes}
+              aria-busy={autoLock.busy || undefined}
+              onChange={(e) => void autoLock.run(Number(e.target.value))}
+            >
+              {AUTO_LOCK_CHOICES.map((m) => (
+                <option key={m} value={m}>
+                  {lockLabel(m)}
+                </option>
+              ))}
+            </Select>
+          )}
         </Field>
-        {autoLock.error && <div className="error-text">{autoLock.error}</div>}
+        <ActionError error={autoLock.error} />
 
-        <section style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-label="Passkeys">
+        <section style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-labelledby="passkeys-heading">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span className="eyebrow">Passkeys</span>
-            <button type="button" className="header-action" onClick={() => void openPasskeyWindow("add")}>
-              <Icon name="plus" size={16} /> Add
-            </button>
+            <h2 id="passkeys-heading" className="eyebrow" tabIndex={-1}>
+              Passkeys
+            </h2>
+            <Button className="header-action" icon="plus" iconSize={16} busy={addPasskey.busy} onClick={() => void addPasskey.run()}>
+              Add
+            </Button>
           </div>
+          <ActionError error={addPasskey.error} />
           {vault.passkeys.length === 0 ? (
-            <p className="subtle" style={{ fontSize: "var(--weft-type-md)", margin: 0 }}>
+            <p className="subtle" style={{ margin: 0 }}>
               Unlock with a fingerprint, face or security key instead of typing your password. The passkey needs to support
               the PRF extension. Weft checks when you add it.
             </p>
           ) : (
-            <div className="list">
+            <div className="list stagger">
               {vault.passkeys.map((p) => (
-                <div key={p.id} className="list-item">
+                <div key={p.id} className={`list-row ${leaving.isLeaving(p.id) ? "is-leaving" : ""}`}>
                   <Icon name="key" size={18} color="var(--weft-accent-text)" />
                   <span className="list-item__body">
                     <span className="list-item__title">{p.name}</span>
-                    <span className="subtle" style={{ fontSize: "var(--weft-type-xs)" }}>
-                      Added {timeAgo(p.createdAt)}
-                    </span>
+                    <span className="subtle type-xs">Added {timeAgo(p.createdAt)}</span>
                   </span>
                   <button
                     type="button"
                     className="icon-btn icon-btn--danger"
                     aria-label={`Remove ${p.name}`}
                     title={`Remove ${p.name}`}
-                    onClick={() => void removePasskey(p.id, p.name)}
+                    onClick={(e) => void removePasskey(p.id, p.name, e.currentTarget.closest(".list-row"))}
                   >
                     <Icon name="trash" size={18} />
                   </button>
@@ -127,7 +143,7 @@ export function Security({
         <ChangePassword onDone={() => toast("Password changed")} />
 
         {legacy > 0 && (
-          <div className="notice notice--amber" style={{ fontSize: "var(--weft-type-md)" }}>
+          <div className="notice notice--amber">
             <Icon name="alert" size={18} color="var(--weft-warn-text)" />
             <span>
               {legacy === 1 ? "One identity was" : `${legacy} identities were`} saved before Weft encrypted keys, so{" "}
@@ -143,57 +159,97 @@ export function Security({
 
 function ChangePassword({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
+  const opener = useRef<HTMLButtonElement>(null);
+  const checks = useChecks({
+    current: () => check.required(current, "Enter your current password."),
+    next: () => check.newPassword(next),
+    again: () => check.samePassword(again, next),
+  });
+  // The worker's answer about the current password belongs to that field.
+  const [wrong, setWrong] = useState<{ current: string; message: string } | null>(null);
+
+  // Closes the way it opened, then gives focus back to the button that opened it.
+  const close = () => {
+    setClosing(true);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(
+      () => {
+        setOpen(false);
+        setClosing(false);
+        setCurrent("");
+        setNext("");
+        setAgain("");
+        setWrong(null);
+        change.setError(null);
+        requestAnimationFrame(() => opener.current?.focus());
+      },
+      reduced ? 0 : 160,
+    );
+  };
+
   const change = useAction(async () => {
-    if (next !== again) throw new Error("The new passwords don't match.");
-    await ui("changePassword", { current, next });
-    setOpen(false);
-    setCurrent("");
-    setNext("");
-    setAgain("");
+    try {
+      await ui("changePassword", { current, next });
+    } catch (error) {
+      const info = toErrorInfo(error);
+      if (/password/i.test(info.message) && /right|wrong/i.test(info.message)) {
+        setWrong({ current, message: info.message });
+        document.getElementById(checks.field("current").id)?.focus();
+        return;
+      }
+      throw error;
+    }
     onDone();
+    close();
   });
 
   if (!open) {
     return (
-      <button type="button" className="btn" onClick={() => setOpen(true)}>
+      <button ref={opener} type="button" className="btn" aria-expanded={false} onClick={() => setOpen(true)}>
         Change password
       </button>
     );
   }
+  const currentField = checks.field("current");
   return (
     <form
-      className="card fade-in"
+      className={`card panel ${closing ? "is-leaving" : ""}`}
       style={{ gap: 12 }}
+      noValidate
+      aria-labelledby="change-password-heading"
       onSubmit={(e) => {
         e.preventDefault();
-        void change.run();
+        if (checks.submit()) void change.run();
       }}
     >
-      <span className="eyebrow">Change password</span>
-      <Field label="Current password">
-        <SecretInput required autoFocus value={current} onChange={(e) => setCurrent(e.target.value)} aria-label="Current password" />
+      <h2 id="change-password-heading" className="eyebrow">
+        Change password
+      </h2>
+      <Field
+        label="Current password"
+        {...currentField}
+        error={currentField.error ?? (wrong && wrong.current === current ? wrong.message : null)}
+      >
+        {(a) => <SecretInput {...a} autoFocus value={current} onChange={(e) => setCurrent(e.target.value)} />}
       </Field>
-      <Field label="New password">
-        <SecretInput required value={next} onChange={(e) => setNext(e.target.value)} aria-label="New password" />
+      <Field label="New password" {...checks.field("next")}>
+        {(a) => <SecretInput {...a} value={next} onChange={(e) => setNext(e.target.value)} />}
       </Field>
-      <Field label="New password again">
-        <SecretInput required value={again} onChange={(e) => setAgain(e.target.value)} aria-label="New password again" />
+      <Field label="New password again" {...checks.field("again")}>
+        {(a) => <SecretInput {...a} value={again} onChange={(e) => setAgain(e.target.value)} />}
       </Field>
-      {change.error && (
-        <div className="error-text" role="alert">
-          {change.error}
-        </div>
-      )}
+      <ActionError error={change.error} />
       <div style={{ display: "flex", gap: 8 }}>
-        <button type="button" className="btn" style={{ flex: 1 }} onClick={() => setOpen(false)}>
+        <button type="button" className="btn" style={{ flex: 1 }} onClick={close}>
           Cancel
         </button>
-        <button type="submit" className="btn btn--primary" style={{ flex: 1 }} disabled={change.busy}>
-          {change.busy ? <Spinner small /> : "Change"}
-        </button>
+        <Button type="submit" className="btn btn--primary" style={{ flex: 1 }} busy={change.busy}>
+          Change
+        </Button>
       </div>
     </form>
   );

@@ -53,7 +53,19 @@ export interface ApprovalView {
 
 export type ApprovalOutcome =
   | { status: "approved"; activityId: string | null }
-  | { status: "failed"; activityId: string | null; title: string; detail: string }
+  | {
+      status: "failed";
+      activityId: string | null;
+      title: string;
+      detail: string;
+      /** Fabric or Weft code and the network's own words, for "Details". */
+      code?: string;
+      raw?: string;
+      /** Trying again unchanged has a reasonable chance of working. */
+      retryable?: boolean;
+      /** It was sent to the network, but Weft didn't learn whether it committed. */
+      uncertain?: boolean;
+    }
   | { status: "rejected" };
 
 /** Every UI request: name -> [payload, result]. */
@@ -111,7 +123,24 @@ export interface UiRequest<M extends UiMethod = UiMethod> {
   payload: UiApi[M][0];
 }
 
-export type UiResponse<T> = { ok: true; value: T } | { ok: false; error: string };
+export type UiResponse<T> = { ok: true; value: T } | { ok: false; error: string; detail?: string };
+
+/** An error from the worker: a plain message, and anything technical for "Details". */
+export class UiError extends Error {
+  readonly detail: string | undefined;
+
+  constructor(message: string, detail?: string) {
+    super(message);
+    this.name = "UiError";
+    this.detail = detail;
+  }
+}
+
+/** Sent by the worker to open extension pages when something they show has changed. */
+export interface UiEvent {
+  channel: "weft-ui-event";
+  event: "activity";
+}
 
 /** Calls the background worker from an extension page. */
 export async function ui<M extends UiMethod>(
@@ -120,8 +149,8 @@ export async function ui<M extends UiMethod>(
 ): Promise<UiApi[M][1]> {
   const request: UiRequest<M> = { channel: "weft-ui", method, payload: payload[0] as UiApi[M][0] };
   const response = (await browser.runtime.sendMessage(request)) as UiResponse<UiApi[M][1]> | undefined;
-  if (!response) throw new Error("The wallet did not respond. Try reopening it.");
-  if (!response.ok) throw new Error(response.error);
+  if (!response) throw new UiError("Weft's background service didn't answer. Close this window and open Weft again.");
+  if (!response.ok) throw new UiError(response.error, response.detail);
   return response.value;
 }
 

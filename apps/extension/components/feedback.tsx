@@ -1,5 +1,6 @@
 /**
- * Confirmation sheets and toasts for the popup and approval window.
+ * Confirmation sheets, toasts and the page's live region, for the popup and
+ * the extension's windows.
  * Destructive actions go through confirm(): a bottom sheet that says what will
  * happen, with Cancel focused so Enter never deletes anything by accident.
  */
@@ -17,57 +18,91 @@ export interface ConfirmOptions {
 
 interface Feedback {
   confirm: (options: ConfirmOptions) => Promise<boolean>;
-  toast: (message: string) => void;
+  /** A short note at the bottom of the screen, also read out. `tone: "error"` for something that didn't work. */
+  toast: (message: string, tone?: "done" | "error") => void;
+  /** Read out through the page's one polite live region, without showing anything. */
+  announce: (message: string) => void;
 }
 
 const FeedbackContext = createContext<Feedback>({
   confirm: async () => false,
   toast: () => {},
+  announce: () => {},
 });
 
 export const useFeedback = () => useContext(FeedbackContext);
 
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Long enough to read: about 60ms a character, between 2.4 and 6 seconds. */
+const toastTime = (text: string) => Math.min(6000, Math.max(2400, text.length * 60));
+
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<(ConfirmOptions & { resolve: (ok: boolean) => void }) | null>(null);
-  const [toastText, setToastText] = useState<{ text: string; key: number } | null>(null);
+  const [toastState, setToastState] = useState<{ text: string; tone: "done" | "error"; key: number; leaving: boolean } | null>(null);
+  const [live, setLive] = useState("");
+
+  const announce = useCallback((text: string) => {
+    // Cleared first, so the same words twice are still read twice.
+    setLive("");
+    setTimeout(() => setLive(text), 60);
+  }, []);
 
   const confirm = useCallback(
     (options: ConfirmOptions) => new Promise<boolean>((resolve) => setPending({ ...options, resolve })),
     [],
   );
-  const toast = useCallback((text: string) => setToastText({ text, key: Date.now() }), []);
+  const toast = useCallback(
+    (text: string, tone: "done" | "error" = "done") => {
+      setToastState({ text, tone, key: Date.now(), leaving: false });
+      announce(text);
+    },
+    [announce],
+  );
 
   useEffect(() => {
-    if (!toastText) return;
-    const t = setTimeout(() => setToastText(null), 1600);
+    if (!toastState || toastState.leaving) return;
+    const t = setTimeout(() => setToastState((s) => (s && s.key === toastState.key ? { ...s, leaving: true } : s)), toastTime(toastState.text));
     return () => clearTimeout(t);
-  }, [toastText]);
+  }, [toastState]);
 
   const [closing, setClosing] = useState(false);
-  const close = (ok: boolean) => {
-    if (closing) return;
-    pending?.resolve(ok);
-    // Let the sheet slide away before unmounting it.
+  const closingRef = useRef(false);
+  const pendingRef = useRef(pending);
+  pendingRef.current = pending;
+  const close = useCallback((ok: boolean) => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    pendingRef.current?.resolve(ok);
     setClosing(true);
-    setTimeout(
-      () => {
-        setPending(null);
-        setClosing(false);
-      },
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 160,
-    );
-  };
+  }, []);
+  // The sheet leaves the way it came, then unmounts (on its animationend).
+  const closed = useCallback(() => {
+    closingRef.current = false;
+    setPending(null);
+    setClosing(false);
+  }, []);
 
   return (
-    <FeedbackContext.Provider value={{ confirm, toast }}>
+    <FeedbackContext.Provider value={{ confirm, toast, announce }}>
       {children}
-      {pending && <ConfirmSheet options={pending} onClose={close} closing={closing} />}
-      {toastText && (
-        <div key={toastText.key} className="toast" role="status">
-          <Icon name="check" size={16} />
-          {toastText.text}
+      {pending && <ConfirmSheet options={pending} onClose={close} closing={closing} onClosed={closed} />}
+      {toastState && (
+        <div
+          key={toastState.key}
+          className={`toast ${toastState.tone === "error" ? "toast--error" : ""} ${toastState.leaving ? "is-leaving" : ""}`}
+          aria-hidden="true"
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget && toastState.leaving) setToastState(null);
+          }}
+        >
+          <Icon name={toastState.tone === "error" ? "alert" : "check"} size={16} />
+          {toastState.text}
         </div>
       )}
+      <div className="visually-hidden" role="status" aria-live="polite">
+        {live}
+      </div>
     </FeedbackContext.Provider>
   );
 }
@@ -76,21 +111,27 @@ function ConfirmSheet({
   options,
   onClose,
   closing,
+  onClosed,
 }: {
   options: ConfirmOptions;
   onClose: (ok: boolean) => void;
   closing: boolean;
+  onClosed: () => void;
 }) {
   const cancel = useRef<HTMLButtonElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
 
+  // onClose is stable, so this runs once: focus isn't moved again on later renders.
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     // preventScroll: the sheet starts below the fold while it slides in, and a
     // plain focus() would scroll the whole popup to reach the button.
     cancel.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose(false);
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose(false);
+      }
       // Keep Tab inside the sheet.
       if (e.key === "Tab" && sheet.current) {
         const buttons = Array.from(sheet.current.querySelectorAll<HTMLButtonElement>("button"));
@@ -108,12 +149,23 @@ function ConfirmSheet({
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
-      previous?.focus?.({ preventScroll: true });
+      // Back to what opened it, if it's still there. A removed row's caller moves focus itself.
+      if (previous?.isConnected && !document.activeElement?.closest(".screen")) previous.focus({ preventScroll: true });
     };
   }, [onClose]);
 
+  useEffect(() => {
+    if (closing && reducedMotion()) onClosed();
+  }, [closing, onClosed]);
+
   return (
-    <div className={`sheet-backdrop ${closing ? "is-closing" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}>
+    <div
+      className={`sheet-backdrop ${closing ? "is-closing" : ""}`}
+      onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}
+      onAnimationEnd={(e) => {
+        if (closing && e.target === sheet.current) onClosed();
+      }}
+    >
       <div ref={sheet} className="sheet" role="alertdialog" aria-modal="true" aria-labelledby="sheet-title" aria-describedby="sheet-body">
         <span className={`sheet__icon ${options.tone === "caution" ? "sheet__icon--caution" : ""}`}>
           <Icon name={options.icon ?? "alert"} size={20} />
@@ -162,9 +214,25 @@ export function useLeaveGuard(dirty: boolean, leave: () => void) {
   };
 }
 
+/** Copies text, confirming with a toast; says so if the browser refuses. */
+export function useCopy() {
+  const { toast } = useFeedback();
+  return (text: string, done = "Copied") =>
+    navigator.clipboard.writeText(text).then(
+      () => {
+        toast(done);
+        return true;
+      },
+      () => {
+        toast("Couldn't copy. Select the text and copy it instead.", "error");
+        return false;
+      },
+    );
+}
+
 /** A copy button that confirms with a check and a toast. */
 export function CopyButton({ text, label, size = 16 }: { text: string; label: string; size?: number }) {
-  const { toast } = useFeedback();
+  const copy = useCopy();
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -176,15 +244,12 @@ export function CopyButton({ text, label, size = 16 }: { text: string; label: st
       type="button"
       className="icon-btn icon-btn--sm"
       aria-label={label}
-      onClick={() => {
-        void navigator.clipboard.writeText(text).then(() => {
-          setCopied(true);
-          toast("Copied");
-        });
-      }}
+      title={label}
+      onClick={() => void copy(text).then((ok) => ok && setCopied(true))}
     >
-      <Icon name={copied ? "check" : "copy"} size={size} color={copied ? "var(--weft-accent-text)" : "currentColor"} />
+      <span key={String(copied)} className="icon-swap">
+        <Icon name={copied ? "check" : "copy"} size={size} color={copied ? "var(--weft-accent-text)" : "currentColor"} />
+      </span>
     </button>
   );
 }
-

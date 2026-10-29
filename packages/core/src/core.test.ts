@@ -144,3 +144,49 @@ describe("Fabric CA client", () => {
     );
   });
 });
+
+describe("plain errors for services that don't answer", () => {
+  it("says the relay couldn't be reached, not that the contract failed", async () => {
+    const { RelayClient, RelayError } = await import("./index.ts");
+    const relay = new RelayClient("https://relay.example.com", () => Promise.reject(new TypeError("Failed to fetch")));
+    const error = await relay.propose({ mspId: "Org1MSP", certificate: "" }, { channel: "c", chaincode: "cc", fn: "f" }).catch((e) => e);
+    expect(error).toBeInstanceOf(RelayError);
+    expect(error.explanation).toMatchObject({ code: "RELAY_UNREACHABLE", retryable: true });
+    expect(error.explanation.detail).toContain("relay.example.com");
+    expect(error.detail).toContain("Failed to fetch");
+  });
+
+  it("names a timeout as the relay not answering", async () => {
+    const { RelayClient } = await import("./index.ts");
+    const timeout = Object.assign(new Error("signal timed out"), { name: "TimeoutError" });
+    const relay = new RelayClient("https://relay.example.com", () => Promise.reject(timeout));
+    const error = await relay.propose({ mspId: "Org1MSP", certificate: "" }, { channel: "c", chaincode: "cc", fn: "f" }).catch((e) => e);
+    expect(error.explanation.code).toBe("RELAY_TIMEOUT");
+  });
+
+  it("keeps the contract's own words out of the headline", () => {
+    const explained = explainEndorseError("chaincode response 500, asset1 already exists");
+    expect(explained.detail).not.toContain("asset1");
+    expect(explained.raw).toContain("asset1");
+  });
+
+  it("explains a rejected enrolment secret", async () => {
+    const { FabricCaClient } = await import("./index.ts");
+    const ca = new FabricCaClient({
+      url: "https://ca.example.com",
+      fetch: async () =>
+        new Response(JSON.stringify({ success: false, errors: [{ code: 20, message: "Authentication failure" }] }), { status: 401 }),
+    });
+    const error = await ca.enroll("alice", "wrong", await generateKeyPair()).catch((e) => e);
+    expect(error.message).toMatch(/didn't accept that enrolment ID and secret/);
+    expect(error.detail).toBe("20: Authentication failure");
+  });
+
+  it("explains an invite server that can't be reached", async () => {
+    const { fetchInvite } = await import("./index.ts");
+    const error = await fetchInvite("https://org1.example.com/invite.json", () => Promise.reject(new TypeError("Failed to fetch"))).catch((e) => e);
+    expect(error).toBeInstanceOf(InviteError);
+    expect(error.message).toMatch(/Couldn't load the invite from org1.example.com/);
+    expect(error.detail).toContain("Failed to fetch");
+  });
+});

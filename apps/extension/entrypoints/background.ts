@@ -128,9 +128,14 @@ export default defineBackground(() => {
       if (!PASSIVE.includes(m.method as UiMethod)) void vault.touch();
       handler(m.payload)
         .then((value) => sendResponse({ ok: true, value } satisfies UiResponse<unknown>))
-        .catch((error: unknown) =>
-          sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) } satisfies UiResponse<unknown>),
-        );
+        .catch((error: unknown) => {
+          const detail = (error as { detail?: unknown } | null)?.detail;
+          sendResponse({
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+            ...(typeof detail === "string" && detail ? { detail } : {}),
+          } satisfies UiResponse<unknown>);
+        });
       return true;
     }
 

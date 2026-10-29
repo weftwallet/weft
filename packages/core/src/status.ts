@@ -13,6 +13,8 @@ export interface StatusExplanation {
   retryable: boolean;
   /** The raw Fabric code, kept for support tickets. */
   code: string;
+  /** The network's own words, when they're worth keeping; shown behind "Details". */
+  raw?: string;
 }
 
 const EXPLANATIONS: Record<string, Omit<StatusExplanation, "code">> = {
@@ -138,8 +140,39 @@ export function explainEndorseError(message: string): StatusExplanation {
   }
   return {
     title: "The contract returned an error",
-    detail: message,
+    detail: "The contract refused this request, so nothing was written. The details show what it said.",
     retryable: false,
     code: "ENDORSE_FAILED",
+    raw: message,
+  };
+}
+
+/**
+ * The relay itself didn't answer: it's down, the address is wrong, or this
+ * computer doesn't trust its HTTPS certificate. Nothing reached the peers.
+ */
+export function explainRelayUnreachable(host: string, timedOut: boolean): StatusExplanation {
+  return timedOut
+    ? {
+        title: "The relay didn't answer",
+        detail: `The relay at ${host} didn't answer in time. Try again shortly. If it keeps happening, check the relay address in the network's settings.`,
+        retryable: true,
+        code: "RELAY_TIMEOUT",
+      }
+    : {
+        title: "The relay couldn't be reached",
+        detail: `Weft couldn't connect to the relay at ${host}. Check it's running and that this computer trusts its HTTPS certificate, then try again.`,
+        retryable: true,
+        code: "RELAY_UNREACHABLE",
+      };
+}
+
+/** The relay answered, but with an error of its own rather than the network's. */
+export function explainRelayHttp(host: string, status: number): StatusExplanation {
+  return {
+    title: "The relay returned an error",
+    detail: `The relay at ${host} couldn't handle this request. Try again shortly. If it keeps happening, tell your network administrator.`,
+    retryable: true,
+    code: `RELAY_HTTP_${status}`,
   };
 }

@@ -154,7 +154,7 @@ Between pages of a site the same holds, as a view transition (`@view-transition 
 
 Focus follows the person:
 
-- Each screen and page has one `h1`. When a screen opens inside an app (the wallet, a step in a flow), focus moves to its `h1` (`tabindex="-1"`). A full page load leaves focus where the browser puts it.
+- Each screen and page has one `h1`. When a screen opens inside an app (the wallet, a step in a flow), focus moves to its `h1` (`tabindex="-1"`). A full page load leaves focus where the browser puts it. The exception is a screen whose one task is a single field, such as unlocking: focus goes straight into the field.
 - When the thing that had focus goes away (a busy button, a removed row, a closed panel), focus moves to what took its place: the next row, the list's heading, the control that opened the panel.
 - Content that updates itself (a refreshing table, a ticking count) is updated in place, never replaced wholesale, so focus, selection and a half-typed form survive. New rows don't push what someone is reading: if they arrive above it, the scroll position moves with them.
 - Each page has one polite live region (`role="status"`) for changes the person should hear: a result, a connection, "Block 35 arrived". It's written only when something changes for them, never on a timer.

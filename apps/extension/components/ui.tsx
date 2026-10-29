@@ -1,6 +1,16 @@
 import { certificateHealth } from "@weftwallet/core";
 import type { IdentitySummary } from "@weftwallet/protocol";
-import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type RefObject,
+  type SelectHTMLAttributes,
+} from "react";
 import LOADER from "@weftwallet/brand/logo/loaders/weft.svg?raw";
 import LOADER_SMALL from "@weftwallet/brand/logo/loaders/weft-small.svg?raw";
 
@@ -80,6 +90,12 @@ const paths = {
       <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
     </>
   ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5M12 7.5v.5" />
+    </>
+  ),
   globe: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -111,15 +127,22 @@ export function Icon({ name, size = 20, color = "currentColor" }: { name: IconNa
 
 /**
  * The Weft mark for 32px and below, drawn on a 16px pixel grid so threads and
- * gaps stay crisp. Use WovenMark for anything larger.
+ * gaps stay crisp. Use WeaveMark for anything larger.
  */
-export function Logo({ size = 24 }: { size?: number }) {
+export function Logo({ size = 24, label = "Weft" }: { size?: number; label?: string | null }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
   // The warps stay put; on hover the two weft rows pass through again.
   return (
-    <svg className="logo" width={size} height={size} viewBox="0 0 16 16" shapeRendering="crispEdges" role="img" aria-label="Weft">
+    <svg
+      className="logo"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      shapeRendering="crispEdges"
+      {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
+    >
       <defs>
         <clipPath id={`${id}a`}>
           <rect className="logo__reveal logo__reveal--1" x="2" y="2" width="12" height="6" />
@@ -149,23 +172,27 @@ export function Logo({ size = 24 }: { size?: number }) {
   );
 }
 
+/** The mark and the product's name, for the windows that have no other header. */
+export function Brand() {
+  return (
+    <div className="brand">
+      <Logo size={20} label={null} />
+      <span>Weft</span>
+    </div>
+  );
+}
+
 /**
- * The full mark with its weft threads drawn in, for motion:
- * - "loop": the threads weave in row by row and fade, while Weft waits on the network.
- * - "settle": they weave in once and the mark gives a small pulse, on success.
- * - "draw": the square, then the warps, then the wefts, once (first-run welcome).
+ * The mark, weaving. "draw" builds it from nothing (first run), "settle"
+ * weaves the weft in once (done), "still" is the finished mark with no motion
+ * (after work that didn't succeed). Working uses Spinner, Weft's loader.
  * prefers-reduced-motion shows the finished mark.
  */
-/**
- * The mark, weaving. "draw" builds it from nothing (first run), "settle" weaves
- * the weft in once and pulses (done), "loop" weaves while working, "still" is
- * the finished mark with no motion (after work that didn't succeed).
- */
-export function WeaveMark({ size = 72, mode }: { size?: number; mode: "loop" | "settle" | "draw" | "still" }) {
+export function WeaveMark({ size = 72, mode }: { size?: number; mode: "settle" | "draw" | "still" }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   // Hovering a resting mark weaves its weft in again. A new key restarts the animation.
   const [hovers, setHovers] = useState(0);
-  const shown = hovers > 0 && mode !== "loop" ? "weave" : mode;
+  const shown = hovers > 0 ? "weave" : mode;
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
   // Each row: [y, x of the warp it passes over, x of the warp it passes under].
@@ -186,9 +213,8 @@ export function WeaveMark({ size = 72, mode }: { size?: number; mode: "loop" | "
       width={size}
       height={size}
       viewBox="0 0 48 48"
-      role="img"
-      aria-label="Weft"
-      onMouseEnter={() => mode !== "loop" && setHovers((n) => n + 1)}
+      aria-hidden="true"
+      onMouseEnter={() => setHovers((n) => n + 1)}
     >
       <defs>
         {bands.map(([y, h], i) => (
@@ -213,21 +239,14 @@ export function WeaveMark({ size = 72, mode }: { size?: number; mode: "loop" | "
   );
 }
 
-/** The full woven mark, for larger sizes. */
-export function WovenMark({ size = 72 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label="Weft">
-      <rect x="2" y="2" width="44" height="44" rx="12" fill="var(--weft-thread)" />
-      <g fill="none" strokeLinecap="round">
-        <path d="M17 8V40M31 8V40" stroke="var(--weft-ink)" strokeWidth="3" />
-        <path d="M10 14H38M10 24H38M10 34H38" stroke="var(--weft-ink)" strokeWidth="6" />
-        <path d="M13 14H21M27 24H35M13 34H21" stroke="var(--weft-thread)" strokeWidth="10" strokeLinecap="butt" />
-        <path d="M12 14H22M26 24H36M12 34H22" stroke="var(--weft-ink)" strokeWidth="6" strokeLinecap="butt" />
-        <path d="M31 9V19M17 19V29M31 29V39" stroke="var(--weft-thread)" strokeWidth="7" strokeLinecap="butt" />
-        <path d="M31 9V19M17 19V29M31 29V39" stroke="var(--weft-ink)" strokeWidth="3" strokeLinecap="butt" />
-      </g>
-    </svg>
-  );
+/** Moves focus to a screen's h1 when it opens (SYSTEM.md, Navigation). */
+export function useFocusOnArrival(ref: RefObject<HTMLElement | null>, key: unknown = null) {
+  useEffect(() => {
+    const el = ref.current;
+    // A screen kept mounted under the lock isn't arriving.
+    if (!el || el.closest("[hidden]")) return;
+    el.focus({ preventScroll: true });
+  }, [key]);
 }
 
 export function BackHeader({
@@ -241,15 +260,25 @@ export function BackHeader({
   action?: { label: string; onClick: () => void; icon?: IconName };
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
-  // Move focus to the new screen's title so keyboard and screen reader users
-  // land at the top of what just opened.
-  useEffect(() => heading.current?.focus({ preventScroll: true }), [title]);
+  useFocusOnArrival(heading, title);
+  // Escape goes back, unless a sheet is open: it closes the sheet instead.
+  const back = useRef(onBack);
+  back.current = onBack;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || document.querySelector(".sheet-backdrop")) return;
+      if (heading.current?.closest("[hidden]")) return;
+      back.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   return (
     <header className="header header--back">
       <button type="button" className="icon-btn" aria-label="Back" onClick={onBack}>
         <Icon name="back" />
       </button>
-      <h1 ref={heading} tabIndex={-1} className="header__title" style={{ margin: 0, outline: "none" }}>
+      <h1 ref={heading} tabIndex={-1} className="header__title">
         {title}
       </h1>
       {action && (
@@ -281,64 +310,211 @@ export function SecretInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, "
   );
 }
 
-/**
- * Working: Weft's loader, the mark with its middle pick pulled through,
- * seated and drawn out (packages/brand/logo/loaders); small, its drawing on
- * the 16px pixel grid. It keeps turning with reduced motion, as a spinner
- * would.
- */
-export function Spinner({ small = false }: { small?: boolean }) {
-  return <span className={`loader ${small ? "loader--sm" : ""}`} role="status" aria-label="Working" dangerouslySetInnerHTML={{ __html: small ? LOADER_SMALL : LOADER }} />;
-}
-
-export function SuccessMark() {
+/** A select with the chevron drawn in, so it follows the theme. */
+export function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <span className="success-mark">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M5 12l5 5L20 7" />
-      </svg>
+    <span className="select">
+      <select {...props}>{children}</select>
+      <Icon name="chevron" size={16} />
     </span>
   );
 }
 
-export function Empty({ icon, children }: { icon: IconName; children: ReactNode }) {
+/**
+ * Working: Weft's loader, the mark with its middle pick pulled through,
+ * seated and drawn out (packages/brand/logo/loaders). It's decorative: the
+ * words beside it say what's happening. It keeps turning with reduced motion.
+ */
+export function Spinner({ small = false, size }: { small?: boolean; size?: number }) {
+  return (
+    <span
+      className={`loader ${small ? "loader--sm" : ""}`}
+      style={size ? { width: size, height: size } : undefined}
+      aria-hidden="true"
+      dangerouslySetInnerHTML={{ __html: LOADER }}
+    />
+  );
+}
+
+/** A screen still loading: the loader and what it's waiting for. Shown only if the wait is noticeable. */
+export function Splash({ label }: { label: string }) {
+  return (
+    <div className="splash" role="status">
+      <div className="splash__inner">
+        <Spinner />
+        <span className="muted">{label}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A button that can be busy. Busy, it keeps its label, the loader replaces
+ * its icon, and it ignores presses. It's marked aria-disabled, never
+ * disabled, so keyboard focus stays on it (SYSTEM.md, States).
+ */
+export function Button({
+  busy = false,
+  icon,
+  iconSize = 18,
+  className = "btn",
+  type = "button",
+  onClick,
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean; icon?: IconName; iconSize?: number }) {
+  const blocked = busy || rest["aria-disabled"] === true || rest["aria-disabled"] === "true";
+  return (
+    <button
+      {...rest}
+      type={type}
+      className={className}
+      aria-disabled={blocked || undefined}
+      data-busy={busy || undefined}
+      onClick={(e) => {
+        if (blocked) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
+    >
+      {busy ? <Spinner small /> : icon ? <Icon name={icon} size={iconSize} /> : null}
+      {children}
+    </button>
+  );
+}
+
+export function Empty({ icon, children, action }: { icon: IconName; children: ReactNode; action?: { label: string; onClick: () => void } }) {
   return (
     <div className="empty fade-in">
       <div className="empty__icon">
         <Icon name={icon} size={20} />
       </div>
       {children}
+      {action && (
+        <div>
+          <button type="button" className="link-btn link-btn--inline" onClick={action.onClick}>
+            {action.label}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-/** "3 min ago", "yesterday", or a date. */
+/** "3 min ago", "2 hours ago", "yesterday", or a date. */
 export function timeAgo(at: number, now = Date.now()): string {
   const s = Math.round((now - at) / 1000);
   if (s < 45) return "just now";
   const m = Math.round(s / 60);
   if (m < 60) return `${m} min ago`;
   const h = Math.round(m / 60);
-  if (h < 24) return `${h} h ago`;
+  if (h < 24) return h === 1 ? "1 hour ago" : `${h} hours ago`;
   const d = Math.round(h / 24);
   if (d === 1) return "yesterday";
   if (d < 7) return `${d} days ago`;
   return new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: d > 300 ? "numeric" : undefined });
 }
 
-export function Field(props: {
-  label: string;
+/** What a field's input needs to be linked to its label, hint and error. */
+export interface FieldInputProps {
+  id: string;
+  "aria-invalid"?: true;
+  "aria-describedby"?: string;
+}
+
+/**
+ * A labelled field. Its error, when there is one, sits right below the input
+ * and is linked with aria-describedby after the hint (SYSTEM.md, Errors).
+ * `onLeave` runs when focus leaves the field after the person has typed in
+ * it, which is when it's checked. Leaving an untouched field checks nothing:
+ * an error appearing on the way to another control would move that control
+ * under the pointer. Submitting checks everything.
+ */
+export function Field({
+  label,
+  hint,
+  error,
+  id: given,
+  onLeave,
+  children,
+}: {
+  label: ReactNode;
   hint?: ReactNode;
-  children: ReactNode;
+  error?: string | null;
+  id?: string;
+  onLeave?: () => void;
+  children: (input: FieldInputProps) => ReactNode;
 }) {
+  const fallback = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const id = given ?? `f${fallback}`;
+  const [edited, setEdited] = useState(false);
+  const described = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(" ");
   return (
-    <div className="field">
-      <label>
-        <span style={{ display: "block", marginBottom: 6 }}>{props.label}</span>
-        {props.children}
-      </label>
-      {props.hint ? <div className="field__hint">{props.hint}</div> : null}
+    <div
+      className="field"
+      onInput={() => setEdited(true)}
+      onBlur={(e) => {
+        if (onLeave && edited && !e.currentTarget.contains(e.relatedTarget as Node | null)) onLeave();
+      }}
+    >
+      <label htmlFor={id}>{label}</label>
+      {children({ id, ...(error ? { "aria-invalid": true as const } : {}), ...(described ? { "aria-describedby": described } : {}) })}
+      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
+      {hint ? (
+        <p className="field__hint" id={`${id}-hint`}>
+          {hint}
+        </p>
+      ) : null}
     </div>
+  );
+}
+
+export function FieldError({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p className="field-error" id={id}>
+      <Icon name="alert" size={14} />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+/** A failed action: the plain message, and anything technical behind "Details". */
+export interface ErrorInfo {
+  message: string;
+  detail?: string | undefined;
+}
+
+export function toErrorInfo(error: unknown): ErrorInfo {
+  if (error instanceof Error) {
+    const detail = (error as { detail?: unknown }).detail;
+    return { message: error.message, ...(typeof detail === "string" && detail ? { detail } : {}) };
+  }
+  return { message: String(error) };
+}
+
+/** Shown where the action was, until the person acts or tries again (SYSTEM.md, Errors). */
+export function ActionError({ error, children }: { error: ErrorInfo | null; children?: ReactNode }) {
+  if (!error) return null;
+  return (
+    <div className="action-error fade-in" role="alert">
+      <p className="action-error__message">
+        <Icon name="alert" size={16} />
+        <span>{error.message}</span>
+      </p>
+      {children}
+      {error.detail && <ErrorDetails>{error.detail}</ErrorDetails>}
+    </div>
+  );
+}
+
+export function ErrorDetails({ children }: { children: ReactNode }) {
+  return (
+    <details className="error-details">
+      <summary>Details</summary>
+      <div className="error-details__body">{children}</div>
+    </details>
   );
 }
 
@@ -364,13 +540,17 @@ export function healthView(identity: Pick<IdentitySummary, "notAfter">) {
   }
 }
 
-export function copy(text: string) {
-  void navigator.clipboard.writeText(text);
+/**
+ * Middle-truncates long identifiers, keeping 8 characters at each end
+ * (SYSTEM.md, Type): 9f3a1c07…e41b22d8. Copying always copies the full value.
+ */
+export function shorten(value: string, head = 8, tail = 8): string {
+  return value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`;
 }
 
-/** Middle-truncates long identifiers: 7c1e09b4…a94f */
-export function shorten(value: string, head = 8, tail = 4): string {
-  return value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`;
+/** A hex fingerprint as one run of lower-case hex, the form identifiers are shown and copied in. */
+export function compactHex(value: string): string {
+  return value.replace(/[^0-9a-fA-F]/g, "").toLowerCase();
 }
 
 export function initial(name: string): string {
@@ -380,20 +560,26 @@ export function initial(name: string): string {
 /**
  * A centred mark with a title and a line or two of detail. The text area has a
  * fixed height, so the mark stays put when the text changes (working, then
- * done); the text fades in place instead.
+ * done); the text fades in place. The title is the screen's h1, and focus
+ * moves to it each time it changes, which is how the change is heard.
  */
-export function StatusScreen({ mark, title, detail }: { mark: ReactNode; title: string; detail: ReactNode }) {
+export function StatusScreen({ mark, title, detail, children }: { mark: ReactNode; title: string; detail: ReactNode; children?: ReactNode }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useFocusOnArrival(heading, title);
   return (
-    <main className="status-screen" aria-live="polite">
+    <main className={`status-screen ${detail === null ? "status-screen--report" : ""}`}>
       <div className="status-screen__mark">{mark}</div>
       <div className="status-screen__text">
-        <div key={title} className="status-screen__title fade-in">
+        <h1 ref={heading} tabIndex={-1} key={title} className="status-screen__title fade-in">
           {title}
-        </div>
-        <div key={`${title}-detail`} className="status-screen__detail muted fade-in">
-          {detail}
-        </div>
+        </h1>
+        {detail !== null && (
+          <div key={`${title}-detail`} className="status-screen__detail muted fade-in">
+            {detail}
+          </div>
+        )}
       </div>
+      {children}
     </main>
   );
 }

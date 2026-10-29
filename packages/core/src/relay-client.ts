@@ -18,28 +18,58 @@ import {
 } from "@weftwallet/protocol";
 import { fromBase64, toBase64, tryUtf8 } from "./bytes.ts";
 import { decodePreparedTransaction, decodeProposedTransaction, decodeSignedCommitStatusRequest } from "./fabric-messages.ts";
-import { explainEndorseError, explainStatus, type StatusExplanation } from "./status.ts";
+import { explainEndorseError, explainRelayHttp, explainRelayUnreachable, explainStatus, type StatusExplanation } from "./status.ts";
 import { verifyCommitRequest, verifyProposal, verifyTransaction } from "./verify.ts";
 
 /** Signs Fabric message bytes (see signForFabric). Lets callers keep keys elsewhere. */
 export type Signer = (message: Uint8Array) => Promise<Uint8Array>;
 
+/**
+ * A relay request that failed. `kind` is the relay's own ("endorse",
+ * "submit", ...), or "unreachable", "timeout" or "http" when the relay
+ * itself didn't answer properly.
+ */
 export class RelayError extends Error {
   readonly kind: string;
   readonly status: number;
   readonly explanation: StatusExplanation;
   readonly details: RelayErrorResponse["error"]["details"];
+  /** The relay path that failed, e.g. RELAY_PATHS.submit. */
+  readonly path: string | null;
+  /** The raw message, for "Details". */
+  readonly detail: string;
 
-  constructor(status: number, body: RelayErrorResponse["error"]) {
+  constructor(status: number, body: RelayErrorResponse["error"], relayUrl?: string, path?: string) {
     super(body.message);
     this.name = "RelayError";
     this.kind = body.kind;
     this.status = status;
     this.details = body.details;
+    this.path = path ?? null;
     const detailText = body.details?.map((d) => d.message).join("; ") || body.message;
-    this.explanation = explainEndorseError(detailText);
+    this.detail = detailText;
+    const host = relayUrl ? hostOf(relayUrl) : "its address";
+    if (body.kind === "unreachable" || body.kind === "timeout") {
+      this.explanation = { ...explainRelayUnreachable(host, body.kind === "timeout"), raw: detailText };
+    } else if (body.kind === "http") {
+      this.explanation = { ...explainRelayHttp(host, status), raw: detailText };
+    } else {
+      this.explanation = { ...explainEndorseError(detailText), raw: detailText };
+    }
   }
 }
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/** How long Weft waits for the relay. Waiting for a commit takes a block, so it gets longer. */
+const RELAY_TIMEOUT_MS = 30_000;
+const COMMIT_TIMEOUT_MS = 60_000;
 
 /** A transaction that reached the orderer but did not commit as VALID. */
 export class CommitError extends Error {
@@ -70,7 +100,7 @@ export class RelayClient {
 
   async health(): Promise<boolean> {
     try {
-      const response = await this.fetch(`${this.baseUrl}${RELAY_PATHS.health}`);
+      const response = await this.fetch(`${this.baseUrl}${RELAY_PATHS.health}`, { signal: AbortSignal.timeout(6000) });
       return response.ok;
     } catch {
       return false;
@@ -78,23 +108,33 @@ export class RelayClient {
   }
 
   private async post<T>(path: string, body: unknown): Promise<T> {
+    const timeout = path === RELAY_PATHS.commitStatus ? COMMIT_TIMEOUT_MS : RELAY_TIMEOUT_MS;
     let response: Response;
     try {
       response = await this.fetch(`${this.baseUrl}${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeout),
       });
     } catch (cause) {
-      throw new RelayError(0, { kind: "unreachable", message: `Could not reach the relay: ${String(cause)}` });
+      const timedOut = cause instanceof Error && cause.name === "TimeoutError";
+      throw new RelayError(
+        0,
+        timedOut
+          ? { kind: "timeout", message: `No answer from ${this.baseUrl}${path} within ${timeout / 1000} seconds.` }
+          : { kind: "unreachable", message: `${this.baseUrl}${path}: ${String(cause)}` },
+        this.baseUrl,
+        path,
+      );
     }
     const json = (await response.json().catch(() => null)) as T | RelayErrorResponse | null;
     if (!response.ok) {
       const error = (json as RelayErrorResponse | null)?.error ?? {
         kind: "http",
-        message: `Relay returned HTTP ${response.status}`,
+        message: `${this.baseUrl}${path} returned HTTP ${response.status}.`,
       };
-      throw new RelayError(response.status, error);
+      throw new RelayError(response.status, error, this.baseUrl, path);
     }
     return json as T;
   }

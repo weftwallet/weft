@@ -27,7 +27,7 @@ test("a site can't stack approval windows (-32002)", async ({ wallet }) => {
   const approvalWindows = wallet.context.pages().filter((p) => p.url().includes("approve.html"));
   expect(approvalWindows).toHaveLength(1);
 
-  await win.getByRole("button", { name: "Cancel" }).click();
+  await win.getByRole("button", { name: "Reject" }).click();
   expect((await first).code).toBe(4001);
 });
 

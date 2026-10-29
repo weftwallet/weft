@@ -28,7 +28,7 @@ test.describe("a new wallet", () => {
         await win.getByLabel("Password", { exact: true }).fill("short");
         await win.getByLabel("Password again").fill("short");
         await win.getByRole("button", { name: "Set password" }).click();
-        await expect(win.getByRole("alert")).toHaveText("Use at least 8 characters.");
+        await expect(win.locator(".field-error")).toHaveText("Use at least 8 characters.");
         await win.getByLabel("Password", { exact: true }).fill(PASSWORD);
         await win.getByLabel("Password again").fill(PASSWORD);
         await win.getByRole("button", { name: "Set password" }).click();
@@ -51,10 +51,10 @@ test.describe("a new wallet", () => {
     await popup.getByLabel("Password", { exact: true }).fill(PASSWORD);
     await popup.getByLabel("Password again").fill(`${PASSWORD}!`);
     await popup.getByRole("button", { name: "Set password" }).click();
-    await expect(popup.getByRole("alert")).toHaveText("The passwords don't match.");
+    await expect(popup.locator(".field-error")).toHaveText("The passwords don't match.");
     await popup.getByLabel("Password again").fill(PASSWORD);
     await popup.getByRole("button", { name: "Set password" }).click();
-    await expect(popup.getByText("Enrollment ID")).toBeVisible();
+    await expect(popup.getByText("Enrolment ID")).toBeVisible();
   });
 });
 
@@ -85,11 +85,11 @@ test("a locked wallet asks to unlock before showing a signature request", async 
       await expect(win.getByText("is waiting. Unlock to review the request.")).toBeVisible();
       await win.getByLabel("Password").fill("not the password");
       await win.getByRole("button", { name: "Unlock" }).click();
-      await expect(win.getByRole("alert")).toHaveText("That password isn't right.");
+      await expect(win.locator(".field-error")).toHaveText("That password isn't right.");
       await win.getByLabel("Password").fill(PASSWORD);
       await win.getByRole("button", { name: "Unlock" }).click();
-      await expect(win.getByText("Signature request")).toBeVisible();
-      await win.getByRole("button", { name: "Sign & query" }).click();
+      await expect(win.getByRole("heading", { name: "Read from the ledger?" })).toBeVisible();
+      await win.getByRole("button", { name: "Sign and query" }).click();
     },
   );
   // It signed: without peers the relay reports a network failure, a later step than the lock.
@@ -104,7 +104,7 @@ test("cancelling the unlock rejects the request", async ({ wallet }) => {
   await wallet.lock();
   const result = await wallet.approve(
     () => dapp.request("weft_submit", { channel: "mychannel", chaincode: "basic", fn: "InitLedger" }),
-    (win) => win.getByRole("button", { name: "Cancel" }).click(),
+    (win) => win.getByRole("button", { name: "Reject request" }).click(),
   );
   expect(result.code).toBe(4001);
 });
@@ -117,7 +117,8 @@ test("the popup locks from Security and unlocks with the password", async ({ wal
   await expect(popup.getByRole("heading", { name: "Weft is locked" })).toBeVisible();
   await popup.getByLabel("Password").fill(PASSWORD);
   await popup.getByRole("button", { name: "Unlock" }).click();
-  await expect(popup.getByText("Active identity")).toBeVisible();
+  // It comes back to the screen it was locked from.
+  await expect(popup.getByRole("heading", { name: "Security" })).toBeVisible();
 });
 
 test("an open popup locks when Weft locks elsewhere", async ({ wallet }) => {
@@ -228,7 +229,7 @@ test("a forgotten password resets Weft after typing the phrase, keeping networks
   const popup = await wallet.popup();
   await popup.getByLabel("Password").fill("not it");
   await popup.getByRole("button", { name: "Unlock" }).click();
-  await expect(popup.getByRole("alert")).toHaveText("That password isn't right.");
+  await expect(popup.locator(".field-error")).toHaveText("That password isn't right.");
   // After a wrong password the mark stays still rather than weaving in again.
   await expect(popup.locator(".lock-screen__mark svg")).toHaveClass(/weave--still/);
 
@@ -236,9 +237,9 @@ test("a forgotten password resets Weft after typing the phrase, keeping networks
   await expect(popup.getByRole("heading", { name: "Reset Weft?" })).toBeVisible();
   const reset = popup.getByRole("button", { name: "Reset Weft" });
   await expect(reset).toBeDisabled();
-  await popup.getByLabel("Confirmation").fill("reset");
+  await popup.getByLabel(/to confirm/).fill("reset");
   await expect(reset).toBeDisabled();
-  await popup.getByLabel("Confirmation").fill("reset weft");
+  await popup.getByLabel(/to confirm/).fill("reset weft");
   await reset.click();
 
   await expect(popup.getByText("An identity wallet for Hyperledger Fabric")).toBeVisible();

@@ -1,8 +1,10 @@
 /**
  * Helpers that keep lists usable when a wallet holds many identities,
- * networks and sites: grouping, filtering and short summaries.
+ * networks and sites: grouping, filtering, short summaries, and rows that
+ * leave the way they came.
  */
 
+import { useState } from "react";
 import type { NetworkRecord } from "../../lib/db";
 import type { IdentityView } from "../../lib/messages";
 import { Icon } from "../ui";
@@ -63,14 +65,14 @@ export function GroupHeading({
   action,
 }: {
   title: string;
-  detail?: string;
-  action?: { label: string; onClick: () => void };
+  detail?: string | undefined;
+  action?: { label: string; onClick: () => void } | undefined;
 }) {
   return (
     <div className="group-head">
-      <span className="group-head__title" title={title}>
+      <h2 className="group-head__title" title={title} tabIndex={-1}>
         {title}
-      </span>
+      </h2>
       {detail && (
         <span className="group-head__detail mono" title={detail}>
           {detail}
@@ -83,4 +85,36 @@ export function GroupHeading({
       )}
     </div>
   );
+}
+
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Rows being removed: they leave (fade and shift, ease-in) before the list
+ * closes up (SYSTEM.md, Navigation).
+ */
+export function useLeaving() {
+  const [leaving, setLeaving] = useState<Set<string>>(() => new Set());
+  const leave = (id: string) =>
+    new Promise<void>((resolve) => {
+      setLeaving((s) => new Set(s).add(id));
+      setTimeout(resolve, reducedMotion() ? 0 : 160);
+    });
+  const stay = (id: string) =>
+    setLeaving((s) => {
+      const next = new Set(s);
+      next.delete(id);
+      return next;
+    });
+  return { isLeaving: (id: string) => leaving.has(id), leave, stay };
+}
+
+/**
+ * Where focus goes once a row is removed: the next row, else the one before,
+ * else `fallback` (the list's heading).
+ */
+export function focusTargetAfter(row: Element | null, fallback: () => HTMLElement | null): () => void {
+  const pick = (el: Element | null) => el?.querySelector<HTMLElement>("button, [href], input") ?? null;
+  const next = pick(row?.nextElementSibling ?? null) ?? pick(row?.previousElementSibling ?? null);
+  return () => (next?.isConnected ? next : fallback())?.focus({ preventScroll: false });
 }

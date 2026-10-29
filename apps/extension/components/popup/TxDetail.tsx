@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ActivityRecord } from "../../lib/db";
 import { ui, type WalletState } from "../../lib/messages";
-import { CopyButton, useFeedback } from "../feedback";
-import { BackHeader, Icon, Spinner, shorten, timeAgo } from "../ui";
+import { CopyButton, useCopy } from "../feedback";
+import { ActionError, BackHeader, Button, Empty, ErrorDetails, Icon, Splash, shorten, timeAgo, toErrorInfo, type ErrorInfo } from "../ui";
 import type { Navigate } from "./state";
 
 const HEADLINE = {
@@ -13,20 +13,35 @@ const HEADLINE = {
 } as const;
 
 export function TxDetail({ state, activityId, navigate }: { state: WalletState; activityId: string; navigate: Navigate }) {
-  const { toast } = useFeedback();
+  const copy = useCopy();
   const [item, setItem] = useState<ActivityRecord | null | undefined>(undefined);
-  useEffect(() => {
-    void ui("activityItem", { id: activityId }).then(setItem);
-  }, [activityId]);
+  const [error, setError] = useState<ErrorInfo | null>(null);
+  const load = () => {
+    setError(null);
+    ui("activityItem", { id: activityId }).then(setItem, (e: unknown) => setError(toErrorInfo(e)));
+  };
+  useEffect(load, [activityId]);
 
   const back = () => navigate({ name: "home" });
+  if (error) {
+    return (
+      <>
+        <BackHeader title="Transaction" onBack={back} />
+        <main className="page">
+          <ActionError error={{ ...error, message: "Weft couldn't load this transaction." }}>
+            <button type="button" className="link-btn link-btn--inline" onClick={load}>
+              Try again
+            </button>
+          </ActionError>
+        </main>
+      </>
+    );
+  }
   if (item === undefined) {
     return (
       <>
         <BackHeader title="Transaction" onBack={back} />
-        <div className="splash">
-          <Spinner />
-        </div>
+        <Splash label="Loading the transaction" />
       </>
     );
   }
@@ -34,7 +49,11 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
     return (
       <>
         <BackHeader title="Transaction" onBack={back} />
-        <div className="empty">This transaction is no longer in your activity.</div>
+        <main className="page">
+          <Empty icon="activity" action={{ label: "Back to activity", onClick: back }}>
+            This transaction is no longer in your activity.
+          </Empty>
+        </main>
       </>
     );
   }
@@ -47,6 +66,7 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
     explorer && item.transactionId && item.blockNumber
       ? `${explorer}/channels/${encodeURIComponent(item.call.channel)}/transactions/${encodeURIComponent(item.transactionId)}`
       : null;
+  const technical = item.status === "failed" && (item.code || item.raw || (item.endorsers && item.endorsers.length > 0));
 
   return (
     <>
@@ -54,41 +74,36 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
       <main className="page" style={{ gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="dot" style={{ width: 10, height: 10, borderRadius: 5, background: head.color }} />
-            <span style={{ fontSize: "var(--weft-type-md)", fontWeight: 500, color: head.color }}>{head.text}</span>
+            <span className="dot" style={{ background: head.color }} aria-hidden="true" />
+            <span style={{ fontWeight: 500, color: head.color }}>{head.text}</span>
           </div>
-          <div className="mono" style={{ fontSize: "var(--weft-type-xl)", fontWeight: 600, overflowWrap: "anywhere" }}>
+          <div className="mono" style={{ fontSize: "var(--weft-type-xl)", lineHeight: "var(--weft-leading-xl)", fontWeight: 600, overflowWrap: "anywhere" }}>
             {item.call.fn}
           </div>
         </div>
 
         {item.status === "failed" && (
           <section className="notice notice--signal" style={{ flexDirection: "column" }}>
-            <div style={{ fontSize: "var(--weft-type-md)", fontWeight: 600 }}>{item.title}</div>
+            <div style={{ fontWeight: 600 }}>{item.title}</div>
             <div style={{ color: "var(--weft-text)" }}>{item.detail}</div>
-            {item.endorsers && item.endorsers.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-                {item.endorsers.map((e, i) => (
-                  <div key={i} className="mono" style={{ fontSize: "var(--weft-type-xs)", display: "flex", gap: 8 }}>
-                    <span style={{ color: "var(--weft-danger-text)" }}>✕</span>
-                    <span>{e.mspId ?? e.address ?? "peer"}</span>
-                    <span className="muted" style={{ marginLeft: "auto", textAlign: "right" }}>
-                      {e.message}
-                    </span>
+            {technical && (
+              <ErrorDetails>
+                {item.code && <div>{item.code}</div>}
+                {item.raw && <div>{item.raw}</div>}
+                {item.endorsers?.map((e, i) => (
+                  <div key={i}>
+                    {e.mspId ?? e.address ?? "peer"}: {e.message}
                   </div>
                 ))}
-              </div>
+              </ErrorDetails>
             )}
-            <div className="mono" style={{ fontSize: "var(--weft-type-xs)", color: "var(--weft-text-muted)" }}>
-              {item.code}
-            </div>
           </section>
         )}
 
-        <dl className="details" style={{ gridTemplateColumns: "88px minmax(0,1fr)" }}>
+        <dl className="details">
           {item.transactionId && (
             <>
-              <dt>Tx ID</dt>
+              <dt>Transaction ID</dt>
               <dd className="mono" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: -6, marginBottom: -6 }}>
                 <span title={item.transactionId}>{shorten(item.transactionId)}</span>
                 <CopyButton text={item.transactionId} label="Copy transaction ID" size={14} />
@@ -107,21 +122,31 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           {(item.call.args ?? []).length > 0 && (
             <>
               <dt>Arguments</dt>
-              <dd className="mono">{(item.call.args ?? []).join(", ")}</dd>
+              <dd className="mono">
+                {(item.call.args ?? []).map((arg, i) => (
+                  <div key={i}>{arg}</div>
+                ))}
+              </dd>
             </>
           )}
           {item.privateInputs && item.privateInputs.length > 0 && (
             <>
               <dt>Private</dt>
               <dd>
-                <span className="mono">{item.privateInputs.join(", ")}</span>{" "}
-                <span className="subtle">· values not kept</span>
+                <span className="mono">{item.privateInputs.join(", ")}</span> <span className="subtle">· values not kept</span>
               </dd>
             </>
           )}
           <dt>Signed by</dt>
           <dd>
-            {identity?.name ?? "Removed identity"} <span className="mono muted">· {identity?.mspId}</span>
+            {identity ? (
+              <>
+                <span style={{ display: "block" }}>{identity.name}</span>
+                <span className="mono muted type-xs">{identity.mspId}</span>
+              </>
+            ) : (
+              <span className="muted">A removed identity</span>
+            )}
           </dd>
           <dt>Block</dt>
           <dd className={item.blockNumber ? "mono" : "muted"}>{item.blockNumber ?? "None"}</dd>
@@ -133,13 +158,9 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
       </main>
       {item.transactionId && (
         <footer className={explorerLink ? "footer" : "footer footer--single"}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => void navigator.clipboard.writeText(item.transactionId!).then(() => toast("Transaction ID copied"))}
-          >
-            <Icon name="copy" size={18} /> {explorerLink ? "Copy ID" : "Copy transaction ID"}
-          </button>
+          <Button icon="copy" onClick={() => void copy(item.transactionId!, "Transaction ID copied")}>
+            {explorerLink ? "Copy ID" : "Copy transaction ID"}
+          </Button>
           {explorerLink && (
             <a className="btn btn--primary" href={explorerLink} target="_blank" rel="noreferrer">
               <Icon name="external" size={18} /> Explorer
@@ -150,3 +171,4 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
     </>
   );
 }
+
