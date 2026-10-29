@@ -6,9 +6,12 @@ The Weft browser extension (Manifest V3), built with [WXT](https://wxt.dev) and 
 
 ```sh
 pnpm install
-pnpm --filter "./packages/**" build   # the extension imports the built packages
-pnpm --filter @weftwallet/extension dev     # opens Chrome with the extension loaded and hot reload
+pnpm dev:extension   # opens its own Chrome with Weft loaded, and reloads it as you edit
 ```
+
+That Chrome keeps its profile in `.wxt/chrome-data`, so the wallet you set up in it is still there next time. Delete the folder to start from a new wallet. `dev:firefox` does the same with its own Firefox, in `.wxt/firefox-data`. Before reusing that, web-ext reads Firefox's own `profiles.ini` to make sure it isn't your everyday profile. macOS can refuse your terminal that read; then the dev Firefox starts with a new profile each time and WXT says so. To keep the profile, give your terminal app access in **System Settings › Privacy & Security › Full Disk Access**, or allow it when macOS asks.
+
+To change how either browser starts (another browser, a page to open), add a `web-ext.config.ts` here, which git ignores; see [WXT's browser startup options](https://wxt.dev/guide/essentials/config/browser-startup).
 
 `pnpm --filter @weftwallet/extension build` writes an unpacked extension to `.output/chrome-mv3`. Load it from `chrome://extensions` with **Developer mode → Load unpacked**. `pnpm zip` produces the store upload.
 

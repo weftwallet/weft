@@ -3,6 +3,7 @@ dist/
 .output/
 .output-e2e/
 .wxt/
+web-ext.config.ts
 .astro/
 coverage/
 *.log

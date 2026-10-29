@@ -1,3 +1,6 @@
+import { accessSync, constants, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { defineConfig } from "wxt";
 import { source } from "../../vite.source.ts";
 
@@ -7,12 +10,51 @@ import { source } from "../../vite.source.ts";
 // folder so it's never mistaken for a release build.
 const e2e = process.env.WEFT_E2E === "1";
 
+// Before reusing a Firefox profile, web-ext reads Firefox's own profiles.ini
+// to make sure it isn't your everyday profile. macOS can refuse a terminal
+// that read, and web-ext then stops. Where it can't be read, the dev Firefox
+// starts with a new profile each time instead, as it used to.
+function firefoxProfileCheckable(): boolean {
+  const home = homedir();
+  const ini =
+    process.platform === "darwin"
+      ? join(home, "Library", "Application Support", "Firefox", "profiles.ini")
+      : process.platform === "win32"
+        ? join(process.env.APPDATA ?? join(home, "AppData", "Roaming"), "Mozilla", "Firefox", "profiles.ini")
+        : join(home, ".mozilla", "firefox", "profiles.ini");
+  try {
+    accessSync(ini, constants.R_OK);
+    return true;
+  } catch (error) {
+    // No Firefox profiles yet is fine: web-ext has nothing to check.
+    return (error as { code?: string }).code === "ENOENT";
+  }
+}
+const keepFirefoxProfile = firefoxProfileCheckable();
+
 // https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   // Reads the workspace packages from their source, so a stale build is never used.
   vite: () => source,
   outDir: e2e ? ".output-e2e" : ".output",
+  // pnpm dev:extension opens its own Chrome with Weft loaded, and dev:firefox
+  // its own Firefox. Each keeps its profile in .wxt (chrome-data and
+  // firefox-data), so the wallet you set up there is still there the next
+  // time. Delete the folder to start from a new wallet. Your own settings
+  // for them go in web-ext.config.ts next to this file, which git ignores.
+  webExt: {
+    chromiumArgs: ["--user-data-dir=./.wxt/chrome-data"],
+    ...(keepFirefoxProfile ? { firefoxProfile: "./.wxt/firefox-data", keepProfileChanges: true } : {}),
+  },
+  hooks: {
+    ready: (wxt) => {
+      if (wxt.config.command !== "serve" || wxt.config.browser !== "firefox") return;
+      // web-ext only reuses a Firefox profile folder that exists.
+      if (keepFirefoxProfile) mkdirSync(".wxt/firefox-data", { recursive: true });
+      else wxt.logger.warn("This Firefox starts with a new profile, because the terminal can't read Firefox's profiles.ini, which web-ext checks before reusing one. See the extension README.");
+    },
+  },
   manifest: {
     name: "Weft",
     description: "Identity wallet for Hyperledger Fabric. Sign transactions with your organisation's certificate.",
