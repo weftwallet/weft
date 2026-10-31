@@ -76,6 +76,7 @@ Config blocks hold the channel's whole configuration. The explorer compares each
 | `WEFT_EXPLORER_SESSION_SECRET` | No | Signs session cookies. Without it, a random secret is made at start, which signs everyone out when the explorer restarts. |
 | `WEFT_EXPLORER_PEERS` | No | Other organisations' explorers to cross-check with, comma-separated base URLs. HTTPS, except `localhost`. |
 | `WEFT_EXPLORER_NETWORK_PAGE` | No | The [network page](/operators/network/) that block pages link to, for checking a block without relying on this explorer. It's also the only page whose Weft sign-ins this explorer accepts, for members-only channels. Defaults to [Weft Network](weft:network/); set it to your own copy, or `off`. |
+| `WEFT_EXPLORER_PRODUCTS_DOMAIN` | No | Where the other Weft products are, for the products menu, the footer and the "Get Weft" link: the domain the Weft sites are under, such as `weft.example.org`, which puts the docs at `docs.weft.example.org`. `dev` links to the local sites instead; `pnpm dev:explorer` and the playground set it. Defaults to the domain in `packages/brand/products.json`. The default network page is under it too. |
 | `PORT` | No | Default `8790`. |
 
 Register a client identity for the explorer with your CA rather than reusing a person's. It needs to satisfy the channel's `Readers` policy, which a client of a member organisation does.

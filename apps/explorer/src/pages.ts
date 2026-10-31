@@ -6,7 +6,7 @@
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { productUrl, products } from "@weftwallet/brand/products";
+import { products } from "@weftwallet/brand/products";
 import { explainStatus } from "@weftwallet/core";
 import type { BlockRow, ChannelSummary, TransactionRow } from "./db.ts";
 import { html, raw, type Html } from "./html.ts";
@@ -15,6 +15,7 @@ import type { Viewer } from "./auth.ts";
 import { agreementFor, type PeerStatus } from "./checkpoints.ts";
 import { splitKey, type ElectionView, type ReceiptCheck } from "./elections.ts";
 import type { PublishedParty, ShownValue } from "./policy.ts";
+import { productAddress, type ProductAddresses } from "./config.ts";
 
 export interface Site {
   name: string;
@@ -29,6 +30,8 @@ export interface Site {
   elections: (channel: string) => boolean;
   /** The network page, which checks this explorer against the others from outside it. */
   networkPage?: string;
+  /** Where the other Weft products are (WEFT_EXPLORER_PRODUCTS_DOMAIN). */
+  products: ProductAddresses;
 }
 
 const require = createRequire(import.meta.url);
@@ -47,17 +50,32 @@ const MARK = markSvg(products.explorer.markSmall, 28);
 const SWITCHER_MARK = raw(markSvg(products.explorer.markSmall, 16).value.replace(/<svg /, '<svg class="weft-switcher__mark" '));
 
 /**
- * The other Weft products, as the sites' switcher lists them. They point at
- * the public sites, or the local ones when WEFT_PRODUCTS=dev (the tests).
+ * The other Weft products, as the sites' switcher lists them, at the
+ * addresses this explorer was started with (WEFT_EXPLORER_PRODUCTS_DOMAIN).
  */
-const local = process.env.WEFT_PRODUCTS === "dev";
-const SITES = (["site", "docs", "playground", "network"] as const).map((id) => ({
-  ...products[id],
-  href: productUrl(id, { dev: local, path: "/" })!,
-  mark: markSvg(products[id].markSmall, 24),
-  small: markSvg(products[id].markSmall, 16),
-}));
-const GET_WEFT = productUrl("site", { dev: local, path: "/" })!;
+const SITE_IDS = ["site", "docs", "playground", "network"] as const;
+const SITE_MARKS = Object.fromEntries(SITE_IDS.map((id) => [id, { mark: markSvg(products[id].markSmall, 24), small: markSvg(products[id].markSmall, 16) }]));
+const sites = (where: ProductAddresses) =>
+  SITE_IDS.map((id) => ({ ...products[id], ...SITE_MARKS[id]!, href: productAddress(id, where)! }));
+
+/**
+ * The repository, from the explorer's package.json (it ships in the image),
+ * as a web address: "git+https://github.com/o/r.git", "github:o/r" and "o/r"
+ * all give https://github.com/o/r. Null when there is none.
+ */
+export function repositoryUrl(pkg: { repository?: string | { url?: string } }): string | null {
+  const given = (typeof pkg.repository === "string" ? pkg.repository : pkg.repository?.url)?.trim();
+  if (!given) return null;
+  const short = /^(?:github:)?([\w.-]+\/[\w.-]+)$/.exec(given);
+  const url = short ? `https://github.com/${short[1]}` : given.replace(/^git\+/, "").replace(/^git:\/\//, "https://");
+  try {
+    const parsed = new URL(url.replace(/\.git$/, ""));
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString().replace(/\/$/, "") : null;
+  } catch {
+    return null;
+  }
+}
+const REPOSITORY = repositoryUrl(JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")));
 
 /**
  * The scripts every Weft page shares, inlined from @weftwallet/ui so there is
@@ -67,7 +85,7 @@ const GET_WEFT = productUrl("site", { dev: local, path: "/" })!;
  */
 const shared = (file: string) => readFileSync(require.resolve(`@weftwallet/ui/${file}`), "utf8");
 const EARLY_SHARED = shared("early.js");
-const HEADER_SCRIPTS = shared("theme-control.js") + "\n" + shared("product-switcher.js");
+const HEADER_SCRIPTS = shared("theme-control.js") + "\n" + shared("product-switcher.js") + "\n" + shared("header.js");
 
 /** The page ground in each theme, for the browser's own chrome (theme-color). */
 const TOKENS = readFileSync(require.resolve("@weftwallet/brand/tokens.css"), "utf8");
@@ -203,11 +221,11 @@ function themeControl(): Html {
 }
 
 /** The products switcher, as every Weft site renders it. The menu is a .reversible (motion.css). */
-function productSwitcher(): Html {
+function productSwitcher(where: ProductAddresses): Html {
   return html`<div class="weft-switcher" data-weft-switcher>
-        <button type="button" class="weft-switcher__button" aria-expanded="false" aria-haspopup="true" aria-controls="weft-products">${SWITCHER_MARK}<span class="weft-switcher__label">Products</span>${ICONS.chevron}</button>
+        <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls="weft-products">${SWITCHER_MARK}<span class="weft-switcher__label">Products</span>${ICONS.chevron}</button>
         <ul class="weft-switcher__menu reversible reversible--down" id="weft-products">
-          ${SITES.map((p) => html`<li><a href="${p.href}">${p.mark}<span><strong>${p.name}</strong><span>${p.summary}</span></span></a></li>`)}
+          ${sites(where).map((p) => html`<li><a href="${p.href}">${p.mark}<span><strong>${p.name}</strong><span>${p.summary}</span></span></a></li>`)}
         </ul>
       </div>`;
 }
@@ -360,8 +378,6 @@ ${HEADER_SCRIPTS}
   });
 })();`;
 
-const GITHUB = "https://github.com/ifeanyi-ugwu/weft";
-
 /** The sign-in button, with the note its errors appear in right after it. */
 function signInButton(where: "header" | "page"): Html {
   return html`<button type="button" class="signin"${where === "header" ? raw(' id="signin"') : ""} data-signin>${WALLET_MARK}<span>Sign in<span class="signin__more"> with Weft</span></span></button>
@@ -396,15 +412,13 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
     <a class="shell-lockup" href="/">${MARK}<span class="shell-word">weft<span class="shell-word__product"> explorer</span></span></a>
     <span class="org" title="Run by ${site.name}">${site.name}</span>
     <nav class="shell-nav" aria-label="Weft Explorer"></nav>
-    <div class="shell-tools">
-      <form class="shell-search" action="/search" role="search">
-        ${ICONS.search}
-        <input class="shell-search__input" name="q" type="search" value="${options.query ?? ""}" placeholder="Search the ledger" aria-label="Search by transaction ID, block number or contract" title="Transaction ID, block number or contract" spellcheck="false" autocomplete="off">
-      </form>
-      ${account(site, options.current === "me")}
-      ${productSwitcher()}
-      ${themeControl()}
-    </div>
+    <form class="shell-search" action="/search" role="search">
+      ${ICONS.search}
+      <input class="shell-search__input" name="q" type="search" value="${options.query ?? ""}" placeholder="Search the ledger" aria-label="Search by transaction ID, block number or contract" title="Transaction ID, block number or contract" spellcheck="false" autocomplete="off">
+    </form>
+    ${account(site, options.current === "me")}
+    ${productSwitcher(site.products)}
+    ${themeControl()}
   </div>
 </header>
 <main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page isn't updating. It keeps trying.</p>` : ""}${body}</main>
@@ -413,9 +427,9 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
     <p class="foot__run">Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish. <a href="/api/v1/status">Read this data as JSON</a></p>
     <div class="foot__row">
       <ul class="foot__products">
-        ${SITES.map((p) => html`<li><a href="${p.href}">${p.small}${p.name}</a></li>`)}
+        ${sites(site.products).map((p) => html`<li><a href="${p.href}">${p.small}${p.name}</a></li>`)}
       </ul>
-      <p>Weft is open source under the Apache 2.0 licence. <a href="${GITHUB}">Source on GitHub</a>.</p>
+      <p>Weft is open source under the Apache 2.0 licence.${REPOSITORY ? html` <a href="${REPOSITORY}">Source on GitHub</a>.` : ""}</p>
     </div>
   </div>
 </footer>
@@ -423,7 +437,7 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
 ${raw(RELATIVE)}
 ${raw(CHROME)}
 ${options.live ? raw(LIVE) : ""}
-${signIn ? raw(signInScript(site.name)) : ""}
+${signIn ? raw(signInScript(site.name, productAddress("site", site.products)!)) : ""}
 </script>
 </body>
 </html>`.value;
@@ -449,11 +463,11 @@ const WALLET_MARK = markSvg(products.wallet.markSmall, 16);
  * member organisation, then sets a session cookie. While it works the button
  * keeps its label and focus, shows Weft's loader after the wait and ignores presses.
  */
-function signInScript(name: string): string {
+function signInScript(name: string, getWeft: string): string {
   const statement = JSON.stringify(`Sign in to ${name}'s explorer`).replace(/</g, "\\u003c");
   return `
 (function () {
-  var getWeft = ${JSON.stringify(GET_WEFT)};
+  var getWeft = ${JSON.stringify(getWeft)};
   // Every request that may never answer has a time limit.
   function within(ms, promise, who) {
     return Promise.race([promise, new Promise(function (_, reject) { setTimeout(function () { reject({ timeout: who }); }, ms); })]);
@@ -714,8 +728,7 @@ function crossCheckSummary(peers: PeerStatus[], height: number): Html {
       (p) => html`<li class="peer peer--${p.state}">
         <div class="peer__row">
           <span class="peer__dot"></span>
-          <span class="mono">${p.mspId ?? new URL(p.url).host}</span>
-          <span class="subtle">${
+          <span class="peer__text"><span class="mono">${p.mspId ?? new URL(p.url).host}</span> <span class="subtle">${
             p.state === "agree" && p.agreedUpTo !== null
               ? p.agreedUpTo >= latest
                 ? "agrees on every block"
@@ -723,7 +736,7 @@ function crossCheckSummary(peers: PeerStatus[], height: number): Html {
               : p.state === "mismatch" && p.mismatchAt !== null
                 ? `disagrees at #${p.mismatchAt}`
                 : ORG_STATE[p.state]
-          }</span>
+          }</span></span>
         </div>
         ${p.state === "agree" || p.state === "pending" ? "" : errorDetails(p.detail)}
       </li>`,
@@ -731,35 +744,46 @@ function crossCheckSummary(peers: PeerStatus[], height: number): Html {
   </div>`;
 }
 
+/** A block's Agree cell. Empty, but present, when its channel isn't compared and others in the table are. */
 function agreementCell(site: Site, b: BlockRow): Html {
   const peers = site.peers(b.channel);
-  if (peers.length === 0) return html``;
+  if (peers.length === 0) return html`<td class="agree-none"></td>`;
   const a = agreementFor(b.number, peers);
   const cls = a.mismatched.length ? "pill--bad" : a.agree === a.total ? "pill--ok" : "pill--quiet";
   return html`<td data-label="Agree"><span class="pill ${cls}" title="${a.mismatched.length ? `Disagree: ${a.mismatched.join(", ")}` : `${a.agree} of ${a.total} organisations report this block`}">${a.agree}/${a.total}</span></td>`;
 }
 
-function blockRows(site: Site, blocks: BlockRow[], empty: Html | string): Html {
+/**
+ * The channel a row belongs to, in tables that mix channels: a column of its
+ * own on search's full-width tables, or a line under the row's first words
+ * in the overview's two tables side by side.
+ */
+type ChannelShown = "column" | "line" | undefined;
+const channelCell = (channel: string) => html`<td class="channel-cell" data-label="Channel"><a class="mono" href="${channelUrl(channel)}">${channel}</a></td>`;
+const channelLine = (channel: string) => html`<div class="channel-line small"><a class="mono" href="${channelUrl(channel)}">${channel}</a></div>`;
+
+function blockRows(site: Site, blocks: BlockRow[], empty: Html | string, options: { channel?: ChannelShown } = {}): Html {
   if (blocks.length === 0) return html`<p class="empty">${empty}</p>`;
   const compared = blocks.some((b) => site.peers(b.channel).length > 0);
   return html`<table class="table">
-  <thead><tr><th>Block</th><th>Time</th><th class="num">Transactions</th><th>Hash</th>${compared ? html`<th>Agree</th>` : ""}</tr></thead>
+  <thead><tr><th>Block</th>${options.channel === "column" ? html`<th>Channel</th>` : ""}<th>Time</th><th class="num">Transactions</th><th>Hash</th>${compared ? html`<th>Agree</th>` : ""}</tr></thead>
   <tbody>${blocks.map(
     (b) => html`<tr>
-    <td><a class="mono row-link" href="${blockUrl(b.channel, b.number)}">#${b.number}</a>${b.linked === false || !b.dataHashValid ? html` <span class="pill pill--bad">mismatch</span>` : ""}</td>
+    <td><a class="mono row-link" href="${blockUrl(b.channel, b.number)}">#${b.number}</a>${b.linked === false || !b.dataHashValid ? html` <span class="pill pill--bad">mismatch</span>` : ""}${options.channel === "line" ? channelLine(b.channel) : ""}</td>
+    ${options.channel === "column" ? channelCell(b.channel) : ""}
     <td>${time(b.timestamp)}</td>
-    <td class="num mono" data-label="Transactions">${b.txCount}${b.validCount < b.txCount ? html` <span class="subtle">(${b.txCount - b.validCount} invalid)</span>` : ""}</td>
+    <td class="num mono" data-label="Transactions">${b.txCount}${b.validCount < b.txCount ? html` <span class="subtle tx-invalid">(${b.txCount - b.validCount} invalid)</span>` : ""}</td>
     <td class="mono subtle" data-label="Hash">${short(b.hash)}</td>
-    ${agreementCell(site, b)}
+    ${compared ? agreementCell(site, b) : ""}
   </tr>`,
   )}</tbody>
 </table>`;
 }
 
-function txRows(txs: TransactionRow[], options: { showBlock?: boolean; empty?: string } = {}): Html {
+function txRows(txs: TransactionRow[], options: { showBlock?: boolean; empty?: string; channel?: ChannelShown } = {}): Html {
   if (txs.length === 0) return html`<p class="empty">${options.empty ?? "No transactions yet."}</p>`;
   return html`<table class="table">
-  <thead><tr><th>Transaction</th><th>Call</th><th>Submitted by</th>${options.showBlock !== false ? html`<th>Block</th>` : ""}<th>Status</th></tr></thead>
+  <thead><tr><th>Transaction</th>${options.channel === "column" ? html`<th>Channel</th>` : ""}<th>Call</th><th>Submitted by</th>${options.showBlock !== false ? html`<th>Block</th>` : ""}<th>Status</th></tr></thead>
   <tbody>${txs.map(
     (t) => html`<tr>
     <td>${
@@ -770,7 +794,8 @@ function txRows(txs: TransactionRow[], options: { showBlock?: boolean; empty?: s
             html`<a class="row-link" href="${blockUrl(t.channel, t.blockNumber)}">configuration</a>`
           : html`<span class="subtle">unreadable entry</span>`
     }<div class="subtle small">${time(t.timestamp)}</div></td>
-    <td>${call(t)}</td>
+    ${options.channel === "column" ? channelCell(t.channel) : ""}
+    <td class="call">${call(t)}${options.channel === "line" ? channelLine(t.channel) : ""}</td>
     <td data-label="By">${t.redacted ? html`<span class="subtle">not published</span>` : party(t.creator)}</td>
     ${options.showBlock !== false ? html`<td data-label="Block"><a class="mono" href="${blockUrl(t.channel, t.blockNumber)}">#${t.blockNumber}</a></td>` : ""}
     <td>${status(t.validation, t.redacted)}</td>
@@ -822,8 +847,8 @@ export function homePage(site: Site, channels: ChannelSummary[], statuses: Chann
 </section>
 <div class="grid${one ? " grid--one" : ""}">${channels.map((c) => channelCard(site, c, statuses.find((s) => s.channel === c.channel), { row: one, quietLive: one }))}</div>
 <div class="split">
-  <section><h2>Latest blocks</h2><div data-live="blocks">${blockRows(site, latest, "No blocks indexed yet.")}</div></section>
-  <section><h2>Latest transactions</h2><div data-live="transactions">${txRows(txs, { showBlock: false, empty: "No published transactions yet." })}</div></section>
+  <section><h2>Latest blocks</h2><div data-live="blocks">${blockRows(site, latest, "No blocks indexed yet.", { channel: one ? undefined : "line" })}</div></section>
+  <section><h2>Latest transactions</h2><div data-live="transactions">${txRows(txs, { showBlock: false, empty: "No published transactions yet.", channel: one ? undefined : "line" })}</div></section>
 </div>`,
     { live: true },
   );
@@ -1000,11 +1025,11 @@ ${tx.config ? configSection(tx.config) : ""}
 ${tx.type === "endorser"
   ? html`<section><h2>Arguments</h2>${tx.args.length === 0
       ? html`<p class="empty">None.</p>`
-      : html`<ol class="args">${tx.args.map((a) => html`<li>${value(a)}</li>`)}</ol>`}</section>
+      : html`<ol class="args" role="list">${tx.args.map((a) => html`<li>${value(a)}</li>`)}</ol>`}</section>
 <section><h2>Changes</h2>${tx.writes.length === 0
       ? html`<p class="empty">${tx.reads > 0 ? `Read ${tx.reads} ${tx.reads === 1 ? "key" : "keys"}, wrote nothing.` : "No reads or writes published."}</p>`
-      : html`<table class="table table--plain"><thead><tr><th>Key</th><th>New value</th></tr></thead><tbody>${tx.writes.map(
-          (w) => html`<tr><td class="mono">${w.namespace !== tx.chaincode ? html`<span class="subtle">${w.namespace}/</span>` : ""}${readableKey(w.key)}</td><td data-label="New value">${value(w.value)}</td></tr>`,
+      : html`<table class="table table--plain table--changes"><thead><tr><th>Key</th><th>New value</th></tr></thead><tbody>${tx.writes.map(
+          (w) => html`<tr><td class="mono key">${w.namespace !== tx.chaincode ? html`<span class="subtle">${w.namespace}/</span>` : ""}${readableKey(w.key)}</td><td data-label="New value">${value(w.value)}</td></tr>`,
         )}</tbody></table>${!ok ? html`<p class="subtle small table__note">Shown as proposed. The transaction was invalid, so none of these were applied.</p>` : ""}`}</section>
 ${privateDataSection(tx)}
 ${tx.response && tx.response.payload.text !== "" ? html`<section><h2>Returned</h2><div class="card">${value(tx.response.payload)}</div></section>` : ""}
@@ -1135,9 +1160,9 @@ ${query === ""
   : total === 0
     ? html`<p class="empty">Nothing published matches <span class="mono">${query}</span>.${results.hint ? html` ${results.hint}` : ""}</p>`
     : html`<p class="lead">${count(total, "result")} for <span class="mono">${query}</span>.</p>
-${results.blocks.length ? html`<section><h2>Blocks</h2>${blockRows(site, results.blocks, "")}</section>` : ""}
+${results.blocks.length ? html`<section><h2>Blocks</h2>${blockRows(site, results.blocks, "", { channel: site.channels.length > 1 ? "column" : undefined })}</section>` : ""}
 ${results.contracts.length ? html`<section><h2>Contracts</h2><ul class="contracts">${results.contracts.map((c) => html`<li><a class="mono" href="${contractUrl(c.channel, c.chaincode)}">${c.chaincode}</a><span class="subtle mono">${c.channel}</span></li>`)}</ul></section>` : ""}
-${results.txs.length ? html`<section><h2>Transactions</h2>${txRows(results.txs)}</section>` : ""}`}`,
+${results.txs.length ? html`<section><h2>Transactions</h2>${txRows(results.txs, { channel: site.channels.length > 1 ? "column" : undefined })}</section>` : ""}`}`,
     { query },
   );
 }

@@ -18,6 +18,7 @@ const app = buildServer({
   name: config.name,
   mspId: config.mspId,
   ...(config.networkPage ? { networkPage: config.networkPage } : {}),
+  products: config.products,
   channels,
   policy: config.policy,
   db,

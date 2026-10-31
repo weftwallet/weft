@@ -73,12 +73,16 @@ main { overflow-anchor: none; }
 /* Header: the shell's bar (header.css), with the organisation's name after
    the lockup and sign-in among the tools. The bar is the sign-in note's frame. */
 .shell-bar { position: relative; }
-.org {
+/* The name sits by the lockup (order 1, header.css) and takes the free room
+   after it in the lockup's place, so the tools stay at the end. */
+.shell-bar > .shell-lockup { margin-inline-end: calc(var(--weft-space-1) * -1); }
+.shell-bar > .org {
+  order: 1;
   padding: 2px var(--weft-space-3);
   border: 1px solid var(--weft-line-strong); border-radius: var(--weft-radius-pill);
   font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); color: var(--weft-text-muted);
   white-space: nowrap; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;
-  margin-left: calc(var(--weft-space-6) * -1 + var(--weft-space-3));
+  margin-inline-end: auto;
 }
 .shell-search__input { font-family: var(--weft-font-sans); }
 
@@ -140,7 +144,7 @@ main { overflow-anchor: none; }
 .live-note[hidden] { display: none; }
 
 /* Layout */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--weft-space-4); margin-top: var(--weft-space-6); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: var(--weft-space-4); margin-top: var(--weft-space-6); }
 /* One channel takes the width as a row rather than a lone card. */
 .grid--one { grid-template-columns: minmax(0, 1fr); }
 .channel--row { display: grid; grid-template-columns: minmax(10rem, max-content) minmax(0, 1fr); column-gap: var(--weft-space-8); align-items: center; padding-block: var(--weft-space-4); }
@@ -161,12 +165,13 @@ main { overflow-anchor: none; }
 .card__note { margin-top: var(--weft-space-5); }
 .card__intro { margin-bottom: var(--weft-space-4); }
 .card__details { margin-top: var(--weft-space-4); }
-.channel__head { display: flex; align-items: center; justify-content: space-between; gap: var(--weft-space-3); min-height: var(--weft-leading-lg); }
-.channel__name { font-size: var(--weft-type-lg); line-height: var(--weft-leading-lg); font-weight: 500; color: var(--weft-text-strong); }
+/* The pill sits on the name's first line, however many lines a long name takes. */
+.channel__head { display: flex; align-items: first baseline; justify-content: space-between; gap: var(--weft-space-3); min-height: var(--weft-leading-lg); }
+.channel__name { min-width: 0; overflow-wrap: anywhere; font-size: var(--weft-type-lg); line-height: var(--weft-leading-lg); font-weight: 500; color: var(--weft-text-strong); }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--weft-space-3); margin: var(--weft-space-4) 0 var(--weft-space-3); }
 .stats dt { font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); color: var(--weft-text-subtle); }
 .stats dd { margin: 2px 0 0; font-size: var(--weft-type-lg); line-height: var(--weft-leading-lg); color: var(--weft-text-strong); min-width: 0; }
-.stats dd time { display: block; font-size: var(--weft-type-md); line-height: var(--weft-leading-md); padding-top: 4px; }
+.stats dd time, .stats dd > .subtle { display: block; font-size: var(--weft-type-md); line-height: var(--weft-leading-md); padding-top: 4px; }
 .check { font-size: var(--weft-type-md); line-height: var(--weft-leading-md); color: var(--weft-accent-text); }
 .check--bad { color: var(--weft-danger-text); }
 .check--quiet { color: var(--weft-text-muted); }
@@ -188,12 +193,14 @@ main { overflow-anchor: none; }
 /* "live": a steady accent dot, beside the heading or a channel's name. */
 .pill--live { display: inline-flex; align-items: center; gap: 6px; background: var(--weft-accent-soft); color: var(--weft-accent-text); font-family: var(--weft-font-mono); }
 .pill__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--weft-accent); flex: none; }
-.title-row.title-row--chip { align-items: center; justify-content: flex-start; gap: var(--weft-space-3); }
-.title-row--chip h1 { margin-bottom: 0; }
+/* The chip centres on the heading's line: the heading's top margin moves to
+   the row, or the chip would centre on the margin too. */
+.title-row.title-row--chip { align-items: center; justify-content: flex-start; gap: var(--weft-space-3); margin-top: var(--weft-space-8); }
+.title-row--chip h1 { margin-block: 0; }
 .title-row--chip + .lead { margin-top: var(--weft-space-3); }
 .ok { color: var(--weft-accent-text); }
 .bad { color: var(--weft-danger-text); }
-.fn { color: var(--weft-text); }
+.fn { color: var(--weft-text); overflow-wrap: anywhere; }
 
 /* A banner opens with a plain sentence in its role's colour, then the rest in the body colour. */
 .banner {
@@ -226,6 +233,9 @@ main { overflow-anchor: none; }
 }
 .table td { padding: var(--weft-space-3); border-bottom: 1px solid var(--weft-line); vertical-align: top; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* How many of a block's transactions were invalid: under the count, so the
+   counts stay in one column; beside it on a phone. */
+.tx-invalid { display: block; font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); }
 .table tbody tr { position: relative; transition: background-color var(--weft-duration-fast) var(--weft-ease-out); }
 /* A row that arrived while you were looking comes in as a pick (motion.css
    .is-new, on the tr). The rule is the first cell's, as motion.css draws it.
@@ -249,7 +259,24 @@ main { overflow-anchor: none; }
   100% { background-size: 100% 2px; --explorer-pick: transparent; }
 }
 .table td a.mono, .table time, .table .pill, .table td.mono { white-space: nowrap; }
+.table .pill { font-variant-numeric: tabular-nums; }
+/* A contract's function or a channel can be one long word: it wraps where
+   it must (anywhere, on a phone, where the row is the width). */
+.table td.call, .table td.channel-cell a.mono, .table .channel-line a.mono { white-space: normal; overflow-wrap: break-word; }
+.channel-line { color: var(--weft-text-subtle); }
+.channel-line a.mono { color: var(--weft-text-muted); }
 .table td.mono .grouped { white-space: normal; }
+/* Plain tables (a transaction's changes, a configuration's members, private
+   data hashes) hold values of any length: the columns share the width, and a
+   key, a hash or a value wraps where it must rather than pushing the page
+   wider. */
+.table--plain { table-layout: fixed; }
+.table--plain td, .table--plain td.mono { white-space: normal; overflow-wrap: anywhere; }
+.table--changes th:first-child { width: 40%; }
+/* A key's first line sits level with its value's, when the value is framed. */
+@media (min-width: 641px) {
+  .table--changes tr:has(> td > pre.value) td.key { padding-top: calc(var(--weft-space-3) * 2 + 1px); }
+}
 .table__note { margin-top: var(--weft-space-2); }
 /* The whole row opens its first link; keyboard focus stays on that link,
    and the row's other links sit above the stretch. */
@@ -267,8 +294,8 @@ main { overflow-anchor: none; }
 [aria-disabled="true"].is-working { cursor: progress; }
 
 .details { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: var(--weft-space-3) var(--weft-space-4); margin: 0; }
-.details dt { color: var(--weft-text-subtle); font-size: var(--weft-type-md); line-height: var(--weft-leading-base); }
-.details dd { margin: 0; min-width: 0; }
+.details dt { min-width: 0; overflow-wrap: anywhere; color: var(--weft-text-subtle); font-size: var(--weft-type-md); line-height: var(--weft-leading-base); }
+.details dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .hash { overflow-wrap: anywhere; }
 /* Identifiers in full, in groups of four. The gaps are margins, so copying gives the plain value. */
 .grouped > span { display: inline-block; margin-right: 0.55ch; }
@@ -276,8 +303,19 @@ main { overflow-anchor: none; }
 .tx-id { margin-bottom: var(--weft-space-2); }
 .hash-check { min-height: var(--weft-leading-xs); }
 
-.args { margin: 0; padding-left: var(--weft-space-6); display: flex; flex-direction: column; gap: var(--weft-space-2); }
-.args li::marker { color: var(--weft-text-subtle); font-family: var(--weft-font-mono); font-size: var(--weft-type-xs); }
+/* Arguments, numbered in a column of their own that grows with the count,
+   so "10." never hangs into the page's margin. Interface size, like the
+   tables. */
+.args {
+  margin: 0; padding: 0; list-style: none; counter-reset: arg;
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--weft-space-2) var(--weft-space-3);
+  font-size: var(--weft-type-md); line-height: var(--weft-leading-md);
+}
+.args li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; counter-increment: arg; }
+.args li::before {
+  content: counter(arg) "."; text-align: right; font: var(--weft-type-xs) / var(--weft-leading-md) var(--weft-font-mono);
+  color: var(--weft-text-subtle); font-variant-numeric: tabular-nums;
+}
 .value { overflow-wrap: anywhere; }
 pre.value {
   margin: 0; padding: var(--weft-space-3); border-radius: var(--weft-radius-lg);
@@ -290,12 +328,15 @@ pre.value {
 
 .crumbs { margin-top: var(--weft-space-6); font-size: var(--weft-type-md); }
 .crumbs ol { display: flex; flex-wrap: wrap; gap: var(--weft-space-2); margin: 0; padding: 0; list-style: none; }
+.crumbs li { min-width: 0; overflow-wrap: anywhere; }
 .crumbs li + li::before { content: "/"; color: var(--weft-text-subtle); margin-right: var(--weft-space-2); }
 .crumbs [aria-current="page"] { color: var(--weft-text-muted); }
 .crumbs + h1, .crumbs + .title-row h1 { margin-top: var(--weft-space-2); }
 .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--weft-space-2) var(--weft-space-4); flex-wrap: wrap; }
 .pager { display: flex; gap: var(--weft-space-4); font-size: var(--weft-type-md); line-height: var(--weft-leading-md); }
 section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
+/* Standalone links: a taller target than their line, without moving it. */
+.pager > a { padding-block: var(--weft-space-1); margin-block: calc(var(--weft-space-1) * -1); border-radius: var(--weft-radius-sm); }
 .pager__none { color: var(--weft-text-subtle); opacity: var(--weft-disabled-opacity); cursor: not-allowed; }
 .empty { color: var(--weft-text-subtle); }
 
@@ -304,7 +345,11 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .orgs__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--weft-space-3); color: var(--weft-text-subtle); margin-bottom: var(--weft-space-2); }
 .orgs__head > :last-child { white-space: nowrap; }
 .orgs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--weft-space-2); }
-.peer__row { display: flex; align-items: center; flex-wrap: wrap; gap: 0 var(--weft-space-2); }
+/* The dot, then the name and its state as one run of text, so a long host
+   name wraps under itself and never leaves the dot alone on a line. */
+.peer__row { display: grid; grid-template-columns: 8px minmax(0, 1fr); align-items: baseline; gap: 0 var(--weft-space-2); }
+.peer__row .peer__dot { align-self: start; margin-top: calc((var(--weft-leading-md) - 8px) / 2); }
+.peer__text { min-width: 0; overflow-wrap: anywhere; }
 .peer .error-details { margin-left: calc(8px + var(--weft-space-2)); }
 /* Dots use the text roles: in light, thread and amber on linen are too faint as marks. */
 .peer__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--weft-text-subtle); flex: none; }
@@ -347,7 +392,7 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   content: ""; flex: none; width: 14px; height: 14px; margin-top: 1px; background: currentColor;
   -webkit-mask: var(--weft-alert-icon) center / contain no-repeat; mask: var(--weft-alert-icon) center / contain no-repeat;
 }
-:root { --weft-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.01'/%3E%3C/svg%3E"); }
+:root { --weft-alert-icon: url("/assets/alert.svg"); }
 .button {
   height: 44px; padding: 0 var(--weft-space-4);
   border-radius: var(--weft-radius-lg); border: 1px solid transparent;
@@ -365,6 +410,9 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .receipt--local p.result.bad { color: var(--weft-danger-text); }
 .result.is-shown { animation: weft-drop-in var(--weft-duration-fast) var(--weft-ease-out) both; }
 #private .table, #private .receipt { margin-top: var(--weft-space-4); }
+/* Collection names keep their own width, up to half the card, rather than
+   breaking inside the labels' 160px. */
+#private .details { grid-template-columns: fit-content(50%) minmax(0, 1fr); }
 
 /* Channel configuration */
 .changes { margin: 0; padding-left: var(--weft-space-5); display: flex; flex-direction: column; gap: var(--weft-space-2); }
@@ -418,15 +466,36 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   transition-duration: var(--weft-duration-instant);
 }
 
-@media (max-width: 960px) {
+/* The overview's two tables side by side need about 1280px: below that the
+   blocks table, with its Agree column, ran into the transactions beside it. */
+@media (max-width: 1279px) {
   .split { grid-template-columns: minmax(0, 1fr); }
+}
+/* Side by side, the cells close up a little so the blocks table, with its
+   Agree column, fits its half. */
+@media (min-width: 1280px) {
+  .split .table th, .split .table td { padding-inline: var(--weft-space-2); }
+}
+@media (max-width: 960px) {
   .channel--row { grid-template-columns: minmax(0, 1fr); row-gap: var(--weft-space-3); }
   .channel--row .stats { gap: var(--weft-space-6); }
 }
+/* On a phone the counts share a row and the last block's time takes the
+   next, whole, so the date is never broken at its hyphens. */
+@media (max-width: 480px) {
+  .channel--row .stats { grid-template-columns: repeat(2, max-content); gap: var(--weft-space-4) var(--weft-space-8); }
+  .channel--row .stats > :last-child { grid-column: 1 / -1; }
+}
 @media (max-width: 900px) {
-  /* The search takes the row under the bar (header.css); the organisation's name stays by the lockup. */
-  .org { order: 1; margin-left: 0; }
-  .shell-tools .shell-search { order: 4; }
+  /* The organisation's name shrinks into the room the bar has rather than
+     wrapping to a line of its own, and is cut with an ellipsis (its title
+     has the whole name). */
+  .shell-bar > .org { flex: 1 1 0; max-width: max-content; }
+}
+@media (max-width: 420px) {
+  /* On a narrow phone, with sign-in or the account beside it the search
+     takes its row alone, and they share the next with the theme control. */
+  .shell-bar:has(> .signin, > .account) > .shell-search { flex-basis: 100%; }
 }
 @media (min-width: 641px) {
   .config-more .details { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
@@ -435,14 +504,19 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 }
 @media (max-width: 640px) {
   /* Sign-in and the account go to the search's row, where there is room for them. */
-  .shell-tools .signin, .shell-tools .account { order: 4; }
+  .shell-bar > .signin, .shell-bar > .account { order: 5; margin-bottom: var(--weft-space-2); }
+  .account { min-width: 0; }
+  .account a { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .table thead { display: none; }
   /* Each row's cells flow as a line or two, not one cell to a line; the
      cells that need it say what they are, as the hidden headings did. */
   .table tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--weft-space-1) var(--weft-space-3); padding: var(--weft-space-3) 0; border-bottom: 1px solid var(--weft-line); }
-  .table td { display: block; border: 0; padding: 0; text-align: left !important; }
+  .table td { display: block; min-width: 0; border: 0; padding: 0; text-align: left !important; }
+  .table td.call, .table td.channel-cell a.mono, .table .channel-line a.mono { overflow-wrap: anywhere; }
   .table td:first-child { flex-basis: 100%; }
   .table td + td { font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); }
+  .tx-invalid { display: inline; font-size: inherit; line-height: inherit; }
+  .table td.agree-none { display: none; }
   .table td[data-label]::before { content: attr(data-label) " "; color: var(--weft-text-subtle); font-family: var(--weft-font-sans); }
   .table--plain td + td { flex-basis: 100%; }
   .signin__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: pre; }

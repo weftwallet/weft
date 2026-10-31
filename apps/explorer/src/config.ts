@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { productUrl } from "@weftwallet/brand/products";
+import { domain as REGISTRY_DOMAIN, productUrl, type ProductId } from "@weftwallet/brand/products";
 import { loadPolicy, type Policy } from "./policy.ts";
 
 export interface ExplorerConfig {
@@ -26,10 +26,42 @@ export interface ExplorerConfig {
   peers: string[];
   /** The network page block pages link to, or none when set to "off". */
   networkPage: string | undefined;
+  /** Where the other Weft products are, for the switcher, the footer and "Get Weft". */
+  products: ProductAddresses;
 }
 
-/** Weft Network's network page. Another copy can be named with WEFT_EXPLORER_NETWORK_PAGE. */
-const DEFAULT_NETWORK_PAGE = productUrl("network", { path: "/" })!;
+/**
+ * Where the other Weft products live: their public addresses under a domain
+ * (products.json's, unless WEFT_EXPLORER_PRODUCTS_DOMAIN names another), or
+ * the local dev servers (`dev`).
+ */
+export type ProductAddresses = { local: true } | { local: false; domain: string };
+
+/** The products' public addresses, as products.json gives them. */
+export const PUBLIC_PRODUCTS: ProductAddresses = { local: false, domain: REGISTRY_DOMAIN };
+
+/** One label of a domain name: letters, digits and inner hyphens, at most 63 characters. */
+const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/** WEFT_EXPLORER_PRODUCTS_DOMAIN: a domain such as weft.example.org, or dev for the local sites. */
+export function parseProductAddresses(value: string | undefined): ProductAddresses {
+  const given = value?.trim() ?? "";
+  if (given === "") return PUBLIC_PRODUCTS;
+  if (given.toLowerCase() === "dev") return { local: true };
+  const name = given.toLowerCase().replace(/\.$/, "");
+  const labels = name.split(".");
+  if (name.length > 253 || labels.length < 2 || !labels.every((l) => LABEL.test(l))) {
+    throw new Error(
+      `WEFT_EXPLORER_PRODUCTS_DOMAIN: ${given} isn't a domain. Give the domain the Weft sites are under, such as weft.example.org, or dev for the local sites.`,
+    );
+  }
+  return { local: false, domain: name };
+}
+
+/** A product's address, wherever the products are. Null for one with no site (the explorer, the wallet). */
+export function productAddress(id: ProductId, where: ProductAddresses, path = "/"): string | null {
+  return where.local ? productUrl(id, { dev: true, path }) : productUrl(id, { domain: where.domain, path });
+}
 
 function required(env: NodeJS.ProcessEnv, name: string, example: string): string {
   const value = env[name];
@@ -55,6 +87,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
   const policyPath = required(env, "WEFT_EXPLORER_POLICY", "explorer.yaml");
   const tls = env.WEFT_PEER_TLS_CA_CERT;
   const policy = loadPolicy(policyPath);
+  const products = parseProductAddresses(env.WEFT_EXPLORER_PRODUCTS_DOMAIN);
   return {
     port: Number(env.PORT ?? env.WEFT_EXPLORER_PORT ?? 8790),
     host: env.WEFT_HOST ?? "0.0.0.0",
@@ -69,8 +102,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
     name: env.WEFT_EXPLORER_NAME || policy.organisation || mspId,
     publicUrl: env.WEFT_EXPLORER_PUBLIC_URL ? new URL(env.WEFT_EXPLORER_PUBLIC_URL).origin : undefined,
     sessionSecret: env.WEFT_EXPLORER_SESSION_SECRET || undefined,
+    // Weft Network's network page, where the products are, unless another copy is named.
     networkPage:
-      env.WEFT_EXPLORER_NETWORK_PAGE === "off" ? undefined : new URL(env.WEFT_EXPLORER_NETWORK_PAGE || DEFAULT_NETWORK_PAGE).toString(),
+      env.WEFT_EXPLORER_NETWORK_PAGE === "off"
+        ? undefined
+        : new URL(env.WEFT_EXPLORER_NETWORK_PAGE || productAddress("network", products)!).toString(),
+    products,
     peers: (env.WEFT_EXPLORER_PEERS ?? "")
       .split(",")
       .map((u) => u.trim().replace(/\/+$/, ""))

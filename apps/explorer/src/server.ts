@@ -12,6 +12,7 @@ import { channelLevel, contractLevel, viewTransaction, type Policy } from "./pol
 import type { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
 import { requesterIsMember, verifyExplorerRequest } from "./checkpoints.ts";
 import { checkReceipt, elections } from "./elections.ts";
+import { PUBLIC_PRODUCTS, type ProductAddresses } from "./config.ts";
 
 export interface ServerOptions {
   name: string;
@@ -31,6 +32,8 @@ export interface ServerOptions {
   crossCheck?: CrossCheck;
   /** The network page that block pages link to. */
   networkPage?: string;
+  /** Where the other Weft products are. Defaults to products.json's public addresses. */
+  products?: ProductAddresses;
   logger?: boolean;
 }
 
@@ -51,6 +54,8 @@ const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
   "motion.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/motion.css")) },
   "header.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/header.css")) },
   "explorer.css": { type: "text/css; charset=utf-8", body: () => asset("explorer.css") },
+  // The field error's icon, a mask: a file, since the CSP refuses data: images.
+  "alert.svg": { type: "image/svg+xml", body: () => asset("alert.svg") },
   "mark.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/products/explorer-small.svg")) },
   // The explorer's loader, and Weft's, for signing in: it's Weft that signs.
   "loader.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/loaders/explorer-small.svg")) },
@@ -113,6 +118,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       signIn: membersLevelExists,
       peers: (channel) => options.crossCheck?.peersFor(channel) ?? [],
       ...(options.networkPage ? { networkPage: options.networkPage } : {}),
+      products: options.products ?? PUBLIC_PRODUCTS,
       elections: (channel) => {
         const contract = policy.channels[channel]?.elections;
         return !!contract && visible.includes(channel) && canSeeContract(channel, contract);
@@ -504,7 +510,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     try {
       site = scope(request).site;
     } catch {
-      site = { name: options.name, channels: [], viewer: null, signIn: false, peers: () => [], elections: () => false };
+      site = { name: options.name, channels: [], viewer: null, signIn: false, peers: () => [], elections: () => false, products: options.products ?? PUBLIC_PRODUCTS };
     }
     return send(reply, pages.errorPage(site, code, message), code);
   };

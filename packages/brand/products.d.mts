@@ -16,4 +16,5 @@ export declare const domain: string;
 export declare const products: Record<ProductId, Product>;
 /** The public demo network: null and [] until one is hosted (products.json "demo"). */
 export declare const demo: { invite: string | null; explorers: string[] };
-export declare function productUrl(id: ProductId, options?: { dev?: boolean; path?: string }): string | null;
+/** Where a product lives. `domain` replaces products.json's domain; `dev` gives the local address instead. */
+export declare function productUrl(id: ProductId, options?: { dev?: boolean; path?: string; domain?: string }): string | null;

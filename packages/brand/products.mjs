@@ -4,6 +4,7 @@
 //   productUrl("docs")                 // https://docs.weft.ifeanyiugwu.dev
 //   productUrl("docs", { dev: true })  // http://localhost:4322
 //   productUrl("docs", { path: "/operators/explorer/" })
+//   productUrl("docs", { domain: "weft.example.org" })  // https://docs.weft.example.org
 import registry from "./products.json" with { type: "json" };
 
 export const domain = registry.domain;
@@ -22,11 +23,14 @@ export const demo = {
 
 /**
  * Where a product lives, or null if it has no site (the explorer and the
- * wallet). `dev` gives the local address that `pnpm dev:<id>` serves.
+ * wallet). `dev` gives the local address that `pnpm dev:<id>` serves;
+ * `domain` puts the products under another domain than products.json's, for
+ * a copy of the sites hosted elsewhere (the explorer's
+ * WEFT_EXPLORER_PRODUCTS_DOMAIN).
  */
-export function productUrl(id, { dev = false, path = "" } = {}) {
+export function productUrl(id, { dev = false, path = "", domain: under = domain } = {}) {
   const p = products[id];
   if (!p) throw new Error(`Unknown product ${id}`);
-  const base = dev ? p.dev : p.subdomain === null ? null : `https://${p.subdomain ? `${p.subdomain}.` : ""}${domain}`;
+  const base = dev ? p.dev : p.subdomain === null ? null : `https://${p.subdomain ? `${p.subdomain}.` : ""}${under}`;
   return base === null ? null : base + path;
 }

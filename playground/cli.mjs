@@ -419,6 +419,8 @@ async function startExplorer(stepNumber = 8) {
       WEFT_EXPLORER_PEERS: `http://localhost:${o.other}`,
       // Block pages link to the network page; the local one can reach local explorers.
       WEFT_EXPLORER_NETWORK_PAGE: local("network"),
+      // The switcher, the footer and "Get Weft" link to the local sites too.
+      WEFT_EXPLORER_PRODUCTS_DOMAIN: "dev",
       NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
     });
   }

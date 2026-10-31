@@ -1,4 +1,5 @@
-// Serves sample blocks for looking at the pages: node src/test/serve-sample.ts
+// Serves sample blocks for looking at the pages: node src/test/serve-sample.ts (PORT to move it off 8799)
+import { parseProductAddresses } from "../config.ts";
 import { ExplorerDb } from "../db.ts";
 import { decodeBlock } from "../decode.ts";
 import { parsePolicy, publishBlock, publishedChannels } from "../policy.ts";
@@ -19,6 +20,10 @@ for (let i = 1; i < 30; i++) {
   });
 }
 for (const b of chain("mychannel", specs)) db.addBlock(publishBlock(policy, decodeBlock(b)));
-const app = buildServer({ name: "Org1", channels: publishedChannels(policy), policy, db, status: () => [{ channel: "mychannel", state: "following", peerHeight: 30, lastError: null, lastBlockAt: Date.now() }] });
-await app.listen({ port: 8799, host: "127.0.0.1" });
-console.log("http://localhost:8799");
+const app = buildServer({ name: "Org1", channels: publishedChannels(policy), policy, db, status: () => [{ channel: "mychannel", state: "following", peerHeight: 30, lastError: null, lastBlockAt: Date.now() }],
+  // Links to the local sites, as under pnpm dev:explorer, unless told otherwise.
+  products: parseProductAddresses(process.env.WEFT_EXPLORER_PRODUCTS_DOMAIN ?? "dev"),
+});
+const port = Number(process.env.PORT ?? 8799);
+await app.listen({ port, host: "127.0.0.1" });
+console.log(`http://localhost:${port}`);
