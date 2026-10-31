@@ -551,11 +551,6 @@ textarea {
   transition-duration: var(--weft-duration-instant);
 }
 
-/* The eye button keeps its centring while pressed. */
-.secret .icon-btn:active {
-  transform: translateY(-50%) scale(var(--weft-press-scale));
-}
-
 .btn:disabled,
 .icon-btn:disabled,
 .small-btn:disabled,
@@ -1495,11 +1490,14 @@ details.error-details[open] summary::before {
   padding-right: 48px;
 }
 
+/* Centred with margins rather than a transform, so the shared press (a
+   transform of its own) can never undo the centring while it is held. */
 .secret .icon-btn {
   position: absolute;
   right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  margin-block: auto;
   width: 36px;
   height: 36px;
 }
