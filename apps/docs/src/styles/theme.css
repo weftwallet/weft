@@ -114,23 +114,45 @@ mobile-starlight-toc nav {
 .expressive-code {
   font-size: var(--weft-type-md);
 }
+/* On a phone a long identifier in a table (ENDORSEMENT_POLICY_FAILURE) may
+   wrap, so the column beside it keeps room to be read rather than being
+   squeezed to a word a line. */
+@media (max-width: 49.99rem) {
+  .sl-markdown-content :is(td, th) code {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Keyboard focus as on every Weft site (base.css): the focus ring, 2px off
+   the control. Starlight leaves it to the browser. */
+:focus-visible {
+  outline: var(--weft-focus-ring) solid var(--weft-focus);
+  outline-offset: var(--weft-focus-offset);
+}
+::selection {
+  background: var(--weft-accent-soft);
+  color: var(--weft-text-strong);
+}
 
 /* The header: every Weft product's (packages/ui/src/header.css; the markup
    is in src/components/Header.astro). Starlight's bar is a fixed box of
-   --sl-nav-height, so the height is set here: 60px, and 96px under 900px
-   where the links take a second row. */
+   --sl-nav-height, border included, so the height is set here: the 60px bar
+   and its 1px border, and 44px more under 900px where the links take a
+   second row (36px, and 8px under it), as on every other product. */
 :root {
-  --sl-nav-height: 60px;
+  --sl-nav-height: 61px;
   --sl-nav-pad-x: 0px;
   --sl-nav-pad-y: 0px;
   --sl-menu-button-size: 36px;
 }
 @media (max-width: 900px) {
   :root {
-    --sl-nav-height: 96px;
+    --sl-nav-height: 105px;
   }
 }
 .page > header.header {
+  /* It stays put while the page under it moves (motion.css). */
+  view-transition-name: weft-head;
   padding: 0;
   border-bottom-color: var(--weft-line);
   background: color-mix(in srgb, var(--weft-bg) 88%, transparent);
@@ -147,10 +169,16 @@ mobile-starlight-toc nav {
   }
 }
 /* On a phone the menu button that opens the page list sits at the end of
-   the links' row, which leaves it room. */
+   the links' row (after the theme control, when that moves there). It is
+   Starlight's, outside the header, so the row keeps its place empty. */
 @media (max-width: 49.99rem) {
-  [data-has-sidebar] .shell-nav {
-    margin-inline-end: calc(var(--sl-menu-button-size) + var(--weft-space-2));
+  [data-has-sidebar] .shell-bar::before {
+    content: "";
+    order: 9;
+    flex: none;
+    width: var(--sl-menu-button-size);
+    height: var(--sl-menu-button-size);
+    margin-bottom: var(--weft-space-2);
   }
 }
 .shell-menu-toggle {
@@ -189,6 +217,11 @@ mobile-starlight-toc nav {
   .shell-menu-toggle {
     display: none;
   }
+}
+/* The button is outside the header, so while the products menu is open the
+   header rises over it, or the button would show through the menu. */
+.page > header.header:has(.weft-switcher__menu.is-open) {
+  z-index: calc(var(--sl-z-index-navbar) + 1);
 }
 @media (hover: hover) {
   .shell-menu-toggle:hover {
@@ -248,10 +281,16 @@ site-search > button[data-open-modal] > kbd {
   }
 }
 site-search dialog {
-  border: 1px solid var(--weft-line-strong);
-  border-radius: var(--weft-radius-xl);
   background: var(--weft-bg-overlay);
-  box-shadow: var(--weft-shadow-3);
+}
+/* A panel over the page where there is room; on a phone it is the whole
+   screen, so no frame. */
+@media (min-width: 50rem) {
+  site-search dialog {
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-xl);
+    box-shadow: var(--weft-shadow-3);
+  }
 }
 
 /* Asides in Weft's roles: accent for notes and tips, warn for cautions,
@@ -291,6 +330,41 @@ site-search dialog {
   .card:hover {
     border-color: var(--sl-color-gray-4);
   }
+}
+
+/* Link cards: the cards' radius and the sites' states. Hover only where
+   there's a pointer that hovers (Starlight's would stay on after a tap), the
+   press, and the focus ring round the whole card rather than its title. */
+.sl-link-card {
+  border-radius: var(--weft-radius-xl);
+  box-shadow: none;
+  transition:
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+.sl-link-card .icon {
+  transition: color var(--weft-duration-fast) var(--weft-ease-out);
+}
+@media (hover: none) {
+  .sl-link-card:hover {
+    background: transparent;
+    border-color: var(--sl-color-gray-5);
+  }
+  .sl-link-card:hover .icon {
+    color: var(--sl-color-gray-3);
+  }
+}
+.sl-link-card:active {
+  transform: scale(var(--weft-press-scale));
+  transition-duration: var(--weft-duration-fast), var(--weft-duration-fast), var(--weft-duration-instant);
+}
+.sl-link-card:has(a:focus-visible) {
+  outline: var(--weft-focus-ring) solid var(--weft-focus);
+  outline-offset: var(--weft-focus-offset);
+}
+.sl-link-card a:focus-visible {
+  outline: none;
 }
 
 /* Links ease instead of snapping. */

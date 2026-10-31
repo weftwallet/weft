@@ -936,7 +936,14 @@ const code = [
     text-decoration: none;
     font-size: var(--weft-type-md);
     line-height: var(--weft-leading-md);
-    transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      transform var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  /* The press, as motion.css writes it: down in instant, back in fast. */
+  .rows a:active {
+    transform: scale(var(--weft-press-scale));
+    transition-duration: var(--weft-duration-fast), var(--weft-duration-instant);
   }
   .rows strong {
     font-size: var(--weft-type-base);

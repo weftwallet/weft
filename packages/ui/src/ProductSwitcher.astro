@@ -32,7 +32,7 @@ const menuId = `weft-products-${Math.random().toString(36).slice(2, 7)}`;
 ---
 
 <div class="weft-switcher" data-weft-switcher>
-  <button type="button" class="weft-switcher__button" aria-expanded="false" aria-haspopup="true" aria-controls={menuId}>
+  <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls={menuId}>
     <Fragment set:html={markOf(product, "weft-switcher__mark")} />
     <span class="weft-switcher__label">Products</span>
     <svg class="weft-switcher__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>

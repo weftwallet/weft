@@ -67,11 +67,9 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
           <span class="shell-word">weft{word && <span class="shell-word__product"> {word}</span>}</span>
         </a>
         <nav class="shell-nav" aria-label={me.name}><slot name="nav" /></nav>
-        <div class="shell-tools">
-          <slot name="search" />
-          <ProductSwitcher product={product} />
-          <ThemeControl />
-        </div>
+        <slot name="search" />
+        <ProductSwitcher product={product} />
+        <ThemeControl />
       </div>
     </header>
 
@@ -100,6 +98,10 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
     </footer>
 
 
+    <script>
+      import "./header.js";
+    </script>
+
     <style>
       .shell-skip {
         position: absolute;
@@ -113,6 +115,10 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
       }
       .shell-skip:focus-visible {
         transform: none;
+      }
+      /* The header stays put while the page under it moves (motion.css). */
+      .shell-head {
+        view-transition-name: weft-head;
       }
       #main:focus {
         outline: none;

@@ -13,7 +13,7 @@ import { productHref } from "@weftwallet/ui/links";
   <div id="join-main" class="weft-join" hidden>
     <div class="weft-card" id="join-preview">
       <span class="eyebrow">You've been invited to</span>
-      <div class="weft-title is-working" id="join-network">Reading the invite…</div>
+      <div class="weft-title" id="join-network">Reading the invite…</div>
       <dl class="weft-details" id="join-details" hidden>
         <dt>Organisation</dt><dd id="join-org"></dd>
         <dt>MSP ID</dt><dd class="mono" id="join-msp"></dd>
@@ -41,7 +41,7 @@ import { productHref } from "@weftwallet/ui/links";
 </div>
 
 <script>
-  import { announce, clearError, isBusy, reveal, setBusy, showError, technical } from "@weftwallet/ui/ui";
+  import { announce, clearError, isBusy, reveal, setBusy, showError, technical, tokenMs } from "@weftwallet/ui/ui";
 
   const $ = (id: string) => document.getElementById(id)!;
   const raw = new URLSearchParams(window.location.search).get("weft-invite");
@@ -62,7 +62,10 @@ import { productHref } from "@weftwallet/ui/links";
     $("join-source").textContent = `Invite from ${host}`;
     $("join-weft-link").textContent = `weft://invite?u=${encodeURIComponent(url)}`;
 
-    // Preview only. Weft fetches and validates the invite again itself.
+    // Preview only. Weft fetches and validates the invite again itself. The
+    // loader joins the words only if the answer takes longer than
+    // wait-before-loader, so a quick one never flashes it.
+    const loader = setTimeout(() => $("join-network").classList.add("is-working"), tokenMs("--weft-wait-before-loader", 300));
     fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((invite) => {
@@ -78,7 +81,10 @@ import { productHref } from "@weftwallet/ui/links";
         note.textContent = `This page couldn't read the invite from ${host} to show its details. Weft reads it again when you open it, and tells you if it can't.`;
         note.hidden = false;
       })
-      .finally(() => $("join-network").classList.remove("is-working"));
+      .finally(() => {
+        clearTimeout(loader);
+        $("join-network").classList.remove("is-working");
+      });
 
     const waitForWeft = () =>
       new Promise<any>((resolve) => {
@@ -164,11 +170,12 @@ import { productHref } from "@weftwallet/ui/links";
     line-height: var(--weft-leading-2xl);
     letter-spacing: -0.02em;
     font-weight: 600;
+    overflow-wrap: anywhere;
   }
   .weft-details {
     display: grid;
-    grid-template-columns: 8rem minmax(0, 1fr);
-    gap: 6px var(--weft-space-4);
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--weft-space-2) var(--weft-space-4);
     margin: var(--weft-space-2) 0 0;
     font-size: var(--weft-type-md);
     line-height: var(--weft-leading-md);
@@ -178,8 +185,10 @@ import { productHref } from "@weftwallet/ui/links";
   }
   .weft-details dd {
     margin: 0;
+    overflow-wrap: anywhere;
   }
   .weft-muted {
+    overflow-wrap: anywhere;
     color: var(--weft-text-subtle);
     font-size: var(--weft-type-md);
     line-height: var(--weft-leading-md);

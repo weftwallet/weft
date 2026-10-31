@@ -28,7 +28,7 @@ export function announce(text: string) {
  * A motion token's value in milliseconds, with a fallback for a page without
  * tokens. A minifier may have written 1400ms as 1.4s, so the unit is read.
  */
-function tokenMs(name: string, fallback: number): number {
+export function tokenMs(name: string, fallback: number): number {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const v = parseFloat(raw);
   if (!Number.isFinite(v)) return fallback;

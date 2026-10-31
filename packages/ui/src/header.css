@@ -6,7 +6,8 @@
    it. base.css imports it for the sites; the docs load it beside their
    Starlight overrides; the explorer serves it as a static file. Shell.astro
    renders this markup; the docs and the explorer render the same from their
-   own templates:
+   own templates, and header.js (a plain script the explorer inlines) keeps
+   the markup in the order the items are drawn:
 
    <header class="shell-head">
      <div class="shell-bar">
@@ -18,25 +19,25 @@
          <a href="/guides/" aria-current="page">Guides</a>
          <a href="/reference/">Reference</a>
        </nav>
-       <div class="shell-tools">
-         <form class="shell-search" role="search" action="/search">          (optional)
-           <svg class="shell-search__icon" aria-hidden="true" …>…</svg>
-           <input class="shell-search__input" type="search" name="q" placeholder="Search" aria-label="Search" />
-         </form>
-         …the products switcher (below)…
-         …the theme control (below)…
-       </div>
+       <form class="shell-search" role="search" action="/search">          (optional)
+         <svg class="shell-search__icon" aria-hidden="true" …>…</svg>
+         <input class="shell-search__input" type="search" name="q" placeholder="Search" aria-label="Search" />
+       </form>
+       …the products switcher (below)…
+       …the theme control (below)…
      </div>
    </header>
 
-   The site's word after "weft" is the product's name without "Weft " in
-   lower case, and is left out on Weft itself. The nav may be empty.
+   Everything is a child of the bar, with no wrapper round the tools, so
+   each can take its own row on a phone. The site's word after "weft" is the
+   product's name without "Weft " in lower case, and is left out on Weft
+   itself. The nav may be empty.
 
    The products switcher (ProductSwitcher.astro renders this; its behaviour
    is product-switcher.js, a plain script the explorer inlines):
 
    <div class="weft-switcher" data-weft-switcher>
-     <button type="button" class="weft-switcher__button" aria-expanded="false" aria-haspopup="true" aria-controls="weft-products">
+     <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls="weft-products">
        <svg class="weft-switcher__mark" aria-hidden="true" …>the current product's small mark</svg>
        <span class="weft-switcher__label">Products</span>
        <svg class="weft-switcher__chevron" aria-hidden="true" …>…</svg>
@@ -80,6 +81,18 @@
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--weft-line);
 }
+/* An anchor scrolled to stops below the header, whatever its height
+   (header.js keeps --weft-head-height). */
+html:has(.shell-head) {
+  scroll-padding-top: calc(var(--weft-head-height, 61px) + var(--weft-space-4));
+}
+
+/* Every item is a child of the bar, placed by its order rather than where
+   it is in the markup, so the rows below can rearrange them; header.js then
+   puts the markup in the order they are drawn, which is the order focus and
+   a screen reader take. Orders: 1 the lockup and anything a product sets by
+   it, 2 the links, 3 the tools (the default). The lockup's end margin takes
+   the free room, so the tools sit at the end even with no links. */
 .shell-bar {
   max-width: 1200px;
   min-height: 60px;
@@ -88,20 +101,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 var(--weft-space-6);
+  gap: 0 var(--weft-space-3);
 }
-.shell-lockup,
-.shell-tools {
+.shell-bar > * {
+  order: 3;
+  flex: none;
+}
+.shell-bar > .shell-lockup {
+  order: 1;
   min-height: 60px;
   display: flex;
   align-items: center;
-  flex: none;
-}
-.shell-lockup {
   gap: var(--weft-space-2);
   min-width: 0;
   padding-inline: var(--weft-space-1);
-  margin-inline: calc(var(--weft-space-1) * -1);
+  margin-inline: calc(var(--weft-space-1) * -1) auto;
   border-radius: var(--weft-radius-sm);
   color: var(--weft-text-strong);
   text-decoration: none;
@@ -124,16 +138,19 @@
   color: var(--weft-text-subtle);
 }
 
-/* The links, centred in the room between the lockup and the tools. */
-.shell-nav {
+/* The links, centred in the room between the lockup and the tools, 24px
+   from each. */
+.shell-bar > .shell-nav {
+  order: 2;
   flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--weft-space-1);
   min-width: 0;
+  margin-inline: var(--weft-space-3);
 }
-.shell-nav:empty {
+.shell-bar > .shell-nav:empty {
   display: none;
 }
 .shell-nav a {
@@ -152,13 +169,22 @@
   color: var(--weft-text-strong);
   background: var(--weft-bg-raised);
 }
-
-/* The tools: search, the switcher, the theme control, all 36px tall. */
-.shell-tools {
-  margin-left: auto;
-  gap: var(--weft-space-3);
+/* Touch: the header's controls show their own press, not the browser's grey
+   flash; a link takes the current link's ground while it is held. */
+.shell-bar a,
+.shell-bar button,
+.shell-bar input {
+  -webkit-tap-highlight-color: transparent;
 }
-.shell-search {
+.shell-nav a:active {
+  color: var(--weft-text-strong);
+  background: var(--weft-bg-raised);
+  transition-duration: var(--weft-duration-instant);
+}
+
+/* The tools: search, the switcher, then the theme control, all 36px tall
+   and 12px apart. */
+.shell-bar > .shell-search {
   position: relative;
   flex: 0 1 240px;
   min-width: 0;
@@ -206,55 +232,76 @@
   .shell-nav a:hover {
     color: var(--weft-text);
   }
-  .shell-search__input:hover {
+  .shell-search__input:hover:not(:focus) {
     border-color: var(--weft-line-strong);
   }
 }
 
-/* Under 900px the links, and the search, take a row of their own under the
-   bar. The links scroll sideways if they must; their padding keeps focus
-   rings inside the scrolling box. */
+/* Under 900px the bar is the lockup and the tools, and the links take a row
+   of their own under it, then a search field (a search that is a button,
+   like the docs', stays a tool). Each lower row is 36px with 8px under it,
+   so with links the header is 104px in every product. Orders here: 1 the
+   lockup and what sits by it, 2 the tools in the bar (the default), 3 the
+   break, 4 the links, 5 the search field and a product's tools beside it
+   (the explorer's sign-in), 6 the theme control under 420px, 9 anything a
+   product keeps at the end of the links' row (the docs' page list button,
+   which is outside the header). */
 @media (max-width: 900px) {
   .shell-bar {
-    gap: 0 var(--weft-space-3);
+    gap: 0 var(--weft-space-2);
   }
-  .shell-lockup {
-    order: 1;
-  }
-  .shell-tools {
+  .shell-bar > * {
     order: 2;
-    gap: var(--weft-space-2);
   }
-  .shell-nav {
+  /* Everything after this starts the second row. */
+  .shell-bar::after {
+    content: "";
     order: 3;
-    flex: 1 1 auto;
+    flex-basis: 100%;
+  }
+  .shell-bar > .shell-nav {
+    order: 4;
+    flex: 1 1 0;
+    min-height: 36px;
+    margin: 0 calc(var(--weft-space-1) * -1) var(--weft-space-2);
     justify-content: flex-start;
     overflow-x: auto;
     scrollbar-width: none;
-    padding: 0 var(--weft-space-6) var(--weft-space-2) var(--weft-space-1);
-    margin-inline: calc(var(--weft-space-1) * -1);
+    padding: 0 var(--weft-space-6) 0 var(--weft-space-1);
     /* When the links run past the edge, they fade out there, so a cut word
        reads as more to scroll to; the end padding lets the last link clear
        the fade once scrolled to. */
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--weft-space-6)), transparent);
     mask-image: linear-gradient(to right, #000 calc(100% - var(--weft-space-6)), transparent);
   }
+  .shell-nav::-webkit-scrollbar {
+    display: none;
+  }
   .shell-nav a {
     padding: var(--weft-space-1) var(--weft-space-3);
   }
-  .shell-search {
-    order: 4;
+  .shell-bar > .shell-search {
+    order: 5;
     flex: 1 1 160px;
-    padding-bottom: var(--weft-space-2);
+    margin-bottom: var(--weft-space-2);
   }
-  /* Search on its own row keeps the links' row a full width. */
-  .shell-bar:has(.shell-nav:not(:empty)) .shell-search {
+  /* With links, the search field has a row of its own, so the links keep a
+     full row. */
+  .shell-bar:has(> .shell-nav:not(:empty)) > .shell-search {
     flex-basis: 100%;
   }
 }
+/* On a narrow phone the theme control leaves the bar for the end of the
+   second row, so a long product name and the switcher still fit beside
+   each other at 320px. */
 @media (max-width: 420px) {
   .shell-word {
     font-size: var(--weft-type-base);
+  }
+  .shell-bar > .weft-theme {
+    order: 6;
+    margin-inline-start: auto;
+    margin-bottom: var(--weft-space-2);
   }
 }
 
@@ -311,6 +358,11 @@
   border: 1px solid var(--weft-line-strong);
   border-radius: var(--weft-radius-xl);
   box-shadow: var(--weft-shadow-3);
+  /* On a short screen (a phone on its side) the list scrolls rather than
+     running off the bottom. */
+  max-height: calc(100dvh - 60px - var(--weft-space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   /* --weft-switcher-from is the older name a page may still set to open the
      menu upwards (the docs' mobile menu does). */
   --weft-reversible-from: var(--weft-switcher-from, calc(var(--weft-shift-md) * -1));
@@ -473,5 +525,14 @@
 @media (hover: hover) {
   .weft-theme__option:hover {
     color: var(--weft-text);
+  }
+}
+
+/* Reduced motion: the thumb and the switcher's chevron change at once, as
+   every reversible thing does (motion.css). */
+@media (prefers-reduced-motion: reduce) {
+  .weft-theme.is-ready .weft-theme__thumb,
+  .weft-switcher__chevron {
+    transition-duration: 0s;
   }
 }

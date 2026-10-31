@@ -15,6 +15,7 @@
     "./early.js": "./src/early.js",
     "./theme-control.js": "./src/theme-control.js",
     "./product-switcher.js": "./src/product-switcher.js",
+    "./header.js": "./src/header.js",
     "./links": "./src/links.ts",
     "./ui": "./src/ui.ts"
   },

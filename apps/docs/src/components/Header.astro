@@ -28,9 +28,11 @@ const path = Astro.url.pathname;
   <nav class="shell-nav" aria-label="Weft Docs">
     {sections.map(([label, href, prefix]) => <a href={href} aria-current={path.startsWith(prefix) ? "page" : undefined}>{label}</a>)}
   </nav>
-  <div class="shell-tools">
-    <Search class="shell-search-tool" />
-    <ProductSwitcher product="docs" />
-    <ThemeControl storageKey="starlight-theme" alwaysSet />
-  </div>
+  <Search class="shell-search-tool" />
+  <ProductSwitcher product="docs" />
+  <ThemeControl storageKey="starlight-theme" alwaysSet />
 </div>
+
+<script>
+  import "@weftwallet/ui/header.js";
+</script>

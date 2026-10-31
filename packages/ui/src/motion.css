@@ -78,9 +78,12 @@
 
 /* 1. Pages ------------------------------------------------------------ */
 
-/* The theme changes as one crossfade over base, never colour by colour. */
-::view-transition-old(root),
-::view-transition-new(root) {
+/* The theme changes as one crossfade over base, never colour by colour.
+   A part of the page given its own name (the header, which stays put while
+   the page under it moves) crossfades over the same time. */
+::view-transition-old(*),
+::view-transition-new(*),
+::view-transition-group(*) {
   animation-duration: var(--weft-duration-base);
 }
 
@@ -335,8 +338,9 @@ details.disclosure.is-closing > :not(summary) {
   @view-transition {
     navigation: none;
   }
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
     animation-duration: 0s;
   }
   .is-new > * {
