@@ -1,13 +1,16 @@
-/* Base styles for Weft's sites: the fonts, the tokens, and the few rules
-   every page shares: controls, field errors, error details, arriving and
-   leaving, and the page transition. Everything else belongs to the page or
-   the component. See packages/brand/SYSTEM.md. */
+/* Base styles for Weft's sites: the fonts, the tokens, the header
+   (header.css), the motion (motion.css), and the few rules every page
+   shares: controls, fields and their reserved error line, error details.
+   Everything else belongs to the page or the component. See
+   packages/brand/SYSTEM.md. */
 @import "@fontsource/atkinson-hyperlegible-next/latin-400.css";
 @import "@fontsource/atkinson-hyperlegible-next/latin-500.css";
 @import "@fontsource/atkinson-hyperlegible-next/latin-600.css";
 @import "@fontsource/atkinson-hyperlegible-mono/latin-400.css";
 @import "@fontsource/atkinson-hyperlegible-mono/latin-500.css";
 @import "@weftwallet/brand/tokens.css";
+@import "./motion.css";
+@import "./header.css";
 
 *,
 *::before,
@@ -26,53 +29,6 @@ body {
   color: var(--weft-text);
   font: var(--weft-type-base) / var(--weft-leading-base) var(--weft-font-sans);
   -webkit-font-smoothing: antialiased;
-}
-
-/* The theme changes as one crossfade, never colour by colour. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--weft-duration-base);
-}
-
-/* Between pages, the new page fades in from the right, or from the left when
-   going back through history. The shell's early script picks the direction;
-   forward is the default. With reduced motion pages change at once. */
-@view-transition {
-  navigation: auto;
-  types: forward;
-}
-@media (prefers-reduced-motion: reduce) {
-  @view-transition {
-    navigation: none;
-  }
-}
-html:active-view-transition-type(forward)::view-transition-old(root) {
-  animation: weft-page-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
-  --weft-page-to: calc(var(--weft-shift-md) * -1);
-}
-html:active-view-transition-type(forward)::view-transition-new(root) {
-  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
-  --weft-page-from: var(--weft-shift-md);
-}
-html:active-view-transition-type(back)::view-transition-old(root) {
-  animation: weft-page-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
-  --weft-page-to: var(--weft-shift-md);
-}
-html:active-view-transition-type(back)::view-transition-new(root) {
-  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
-  --weft-page-from: calc(var(--weft-shift-md) * -1);
-}
-@keyframes weft-page-in {
-  from {
-    opacity: 0;
-    transform: translateX(var(--weft-page-from, 0));
-  }
-}
-@keyframes weft-page-out {
-  to {
-    opacity: 0;
-    transform: translateX(var(--weft-page-to, 0));
-  }
 }
 
 h1,
@@ -197,10 +153,21 @@ code {
     border-color var(--weft-duration-fast) var(--weft-ease-out),
     background-color var(--weft-duration-fast) var(--weft-ease-out),
     color var(--weft-duration-fast) var(--weft-ease-out),
-    transform var(--weft-duration-instant) var(--weft-ease-out);
+    transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+/* Busy (ui.ts setBusy): a 16px loader joins the label after
+   wait-before-loader. It takes 24px with the gap, and the padding gives up
+   exactly that, so the button's width never changes. */
+.btn.is-working {
+  padding-inline: var(--weft-space-1);
 }
 .btn.is-working::before {
+  width: 16px;
+  height: 16px;
   margin-inline-end: 0;
+}
+.btn--small.is-working {
+  padding-inline: 0;
 }
 .btn--small {
   min-height: 36px;
@@ -243,9 +210,6 @@ code {
     border-color: transparent;
     text-decoration: underline;
   }
-}
-.btn:active:not(:disabled, [aria-disabled="true"]) {
-  transform: scale(var(--weft-press-scale));
 }
 .btn:disabled {
   opacity: var(--weft-disabled-opacity);
@@ -316,7 +280,10 @@ textarea.input {
 
 /* Errors -------------------------------------------------------------- */
 
-/* Below the field: an alert icon, then the sentence. */
+/* Below the field: an alert icon, then the sentence. The line is reserved
+   (p.field__status, always present, 20px; motion.css) so nothing below the
+   field moves when the error appears; ui.ts setFieldError() fills it and
+   adds .field-error while there is a message. */
 .field-error {
   display: flex;
   gap: var(--weft-space-1);
@@ -324,6 +291,9 @@ textarea.input {
   margin-top: var(--weft-space-1);
   color: var(--weft-danger-text);
   font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-sans);
+}
+.field__status.field-error {
+  margin-top: 0;
 }
 .field-error::before {
   content: "";
@@ -384,50 +354,9 @@ textarea.input {
   font: inherit;
 }
 
-/* Arriving and leaving ------------------------------------------------- */
+/* Disclosures ----------------------------------------------------------- */
 
-/* Something shown while the person is looking fades in from shift-md below
-   its place; leaving is the reverse, in 70% of the time. ui.ts adds these. */
-.arrive {
-  animation: weft-enter var(--weft-duration-base) var(--weft-ease-out) both;
-}
-.is-leaving {
-  animation: weft-exit calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
-  pointer-events: none;
-}
-@keyframes weft-enter {
-  from {
-    opacity: 0;
-    transform: translateY(var(--weft-shift-md));
-  }
-}
-@keyframes weft-exit {
-  to {
-    opacity: 0;
-    transform: translateY(var(--weft-shift-md));
-  }
-}
-
-/* A disclosure's content comes down from its summary, and goes back up the
-   same way when it closes (ui.ts holds it open for the closing). */
-details.disclosure[open] > :not(summary) {
-  animation: weft-drop-in var(--weft-duration-base) var(--weft-ease-out) both;
-}
-details.disclosure.is-closing > :not(summary) {
-  animation: weft-drop-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
-}
-@keyframes weft-drop-in {
-  from {
-    opacity: 0;
-    transform: translateY(calc(var(--weft-shift-sm) * -1));
-  }
-}
-@keyframes weft-drop-out {
-  to {
-    opacity: 0;
-    transform: translateY(calc(var(--weft-shift-sm) * -1));
-  }
-}
+/* The content's motion is in motion.css (details.disclosure). */
 details.disclosure > summary {
   width: fit-content;
   color: var(--weft-accent-text);

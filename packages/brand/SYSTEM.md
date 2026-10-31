@@ -12,7 +12,7 @@ Weft is six products. They share the tokens, the type, the motion and the rules 
 | Weft Wallet | The main mark | The browser extension | Compact and calm. Nothing moves without a reason |
 | Weft Docs | The main mark, with a "weft docs" wordmark | Guides and reference | Quiet and typographic. Reading comes first |
 | Weft Playground | The cloth with a pick still to pass | Try a dApp against a network | A workbench. What's live is visibly live |
-| Weft Network | The warp alone, in the loom's frame | Every organisation's explorer on one page, and tools for running a network | Dense and precise. Status first |
+| Weft Network | The warp alone, in the loom's frame | Every organisation's explorer on one page, and whether their ledgers agree | Dense and precise. Status first |
 | Weft Explorer | The finished cloth, in the loom's frame | One organisation's view of its ledger, run by that organisation | A record. Everything can be checked |
 
 Every product header shows its mark and its name. Links between products go through `productUrl()` in `products.mjs`, never a written-out address.
@@ -62,7 +62,7 @@ The two themes are ink and linen: ink for dark, linen, the colour of undyed clot
 
 Dark is the default. A page follows the system (`prefers-color-scheme`) unless it sets `data-theme="light"` or `data-theme="dark"` on `<html>`. The wallet is dark only for now.
 
-Changing the theme crossfades the whole page over `duration-base` (a view transition). Nothing slides, and colours don't animate one by one. With reduced motion it changes at once.
+Changing the theme crossfades the whole page over `duration-base` (a view transition). Nothing slides, and colours don't animate one by one. With reduced motion it changes at once. The control is described under Navigation.
 
 ## Type
 
@@ -87,79 +87,97 @@ On dark grounds, layers are separated by borders first and shadows second (`shad
 
 ## Motion
 
-Things arrive quickly and settle. Nothing bounces or overshoots.
+One model for all six products: a damped settle. Things arrive quickly on `ease-out`, which has a long tail and no overshoot, and nothing bounces. Leaving takes 70% of the time, on `ease-in`, because what is going does not need to be watched. A thread drawn across (the pick, the weave) uses `ease-tension`: it accelerates through the shed and slows as it seats. These three curves are enough; `ease-in-out` is for the rare thing that moves from one place to another. There is no spring token: the brand forbids overshoot, so a spring would only be another way to write `ease-out`.
+
+The rules are written once, in `packages/ui/src/motion.css`, and every product loads that file after `tokens.css`: the sites through `base.css`, the wallet through its Vite CSS, the explorer as a static file. No product copies a rule out of it or writes a duration of its own.
 
 | Token | Use |
 |---|---|
-| `duration-instant` (90ms) | Press feedback |
-| `duration-fast` (140ms) | Hover, colour and small state changes |
-| `duration-base` (220ms) | Panels, screens and menus arriving; the theme change |
-| `duration-slow` (360ms) | Sheets, dialogs, layout that moves far |
-| `duration-deliberate` (600ms) | Lines being drawn, progress, the weave |
-| `ease-out` | Anything arriving |
-| `ease-in` | Anything leaving |
-| `ease-in-out` | Something moving from one place to another |
-| `ease-tension` | The weave and threads being drawn |
-| `shift-sm`, `shift-md`, `shift-lg` (4, 8, 16px) | How far something travels as it arrives |
-| `stagger` (60ms) | Between items arriving together, up to 5 items; the rest arrive with the fifth |
+| `duration-instant` (90ms) | Press feedback down |
+| `duration-fast` (140ms) | Hover, colour, a field border, an error appearing, press release |
+| `duration-base` (220ms) | Panels, menus, screens, a page, the theme change |
+| `duration-slow` (360ms) | Sheets and dialogs, layout that moves far |
+| `duration-deliberate` (600ms) | A line being drawn, the pick, a progress bar. Never text or panels |
+| `duration-pass` (1600ms) | A loader's period |
+| `duration-fast-out`, `base-out`, `slow-out` (100, 154, 252ms) | Leaving, at 70% of the arrival. Use these rather than `calc()` or a literal |
+| `ease-out`, `ease-in`, `ease-tension`, `ease-in-out` | Arriving; leaving; a thread drawn; moving between two places |
+| `shift-sm`, `shift-md`, `shift-lg`, `shift-xl` (4, 8, 16, 32px) | How far something travels: tooltips and hints; panels, menus and pages; screens inside an app; sheets |
+| `stagger` (60ms) | Between items arriving together, five at most; the rest arrive with the fifth |
+| `press-scale` (0.98) | Down in `duration-instant`, back in `duration-fast` |
+| `wait-before-loader` (300ms) | A loader is shown only after this long, so a quick answer never flashes one |
+| `hold-after-done` (1400ms) | A success state stays at least this long before a window closes or a screen moves on |
+| `rule-life` (4000ms) | How long the "new since you looked" rule stays before it fades |
 
-Entering: fade from 0 and move `shift-*` toward its place, with `ease-out`. Leaving: the reverse, in about 70% of the time, with `ease-in`. Small things (a tooltip, a hint) use `shift-sm`; panels and menus `shift-md`; screens `shift-lg`, in the direction of travel.
+What may move:
 
-With `prefers-reduced-motion`, the shift tokens are 0 and the press scale is 1, so the same animations become short fades. Loaders still turn; nothing else loops.
+- Motion that answers an action shows what changed and where it came from: a panel from its button, a screen from the direction of travel, a row from the left.
+- Motion on a timer is allowed in two places only: a loader, and a row that arrived while the person was looking.
+- The landing is the one page that performs. Elsewhere the grounds are plain and nothing moves to look alive. The landing's hero alone has faint warps behind it, on the layout's columns.
 
-Only the front page tells a story with motion. Elsewhere motion explains what changed: where something came from, where it went, what's now selected. Nothing moves on a timer to look alive, and the grounds are plain. The landing's hero alone has faint warps behind it, on the layout's columns, gone before the words: the loom its word is woven into.
+Entering and leaving: fade from 0 and move `shift-*` to the place, with `ease-out`; leave the same way in reverse, in the `-out` duration, with `ease-in`.
+
+Interruption: anything a person can reverse (a menu, a disclosure, a panel, a sheet, a tab indicator, a hover, the theme control's thumb) is built with CSS transitions, never keyframes, so a reversal continues from where the element is. `motion.css` has `.reversible` for this: closed by default, `.is-open` brings it in, taking the class away sends it back from wherever it is, with `visibility` hidden at the end, `@starting-style` for the first frame and `transition-behavior: allow-discrete` where `display` changes. Keyframes are for one-way arrivals only: a row, a toast, a page, the pick. The native `<details>` element hides its content at once, so a disclosure keeps keyframes and `closesInReverse()` holds it open; menus do not use `<details>`.
+
+Reduced motion: `motion.css` has one block for everything above. The shift tokens become 0 and `press-scale` 1 and `stagger` 0 (in `tokens.css`), so movement becomes a fade; pages change at once; the pick is not drawn and the words and the rule are simply there; reversible things change at once. Loaders keep turning, as a spinner would; nothing else loops. The hero and the cloth open finished.
 
 ### Loading
 
-Weft has no generic spinner. A product shows it's working with its own mark, one pick pulled through its warps, seated, then drawn out the other side, every 1600ms (`logo/loaders/`, drawn by `scripts/loaders.mjs`). At 24px and below use the small drawing (`<id>-small.svg`): like the small marks it's on the 16px pixel grid, and its pick moves a whole pixel at a time. Each product passes its own thing through: Weft, the wallet and the docs their middle pick; the playground its unfinished last pick, which rests halfway, as in its mark; the network a pick that never stays; the explorer its middle row. A loader is decorative: the words beside it say what's happening.
+Weft has no generic spinner. A product shows it's working with its own mark, one pick pulled through its warps, seated, then drawn out the other side, every `duration-pass` (`logo/loaders/`, drawn by `scripts/loaders.mjs`, which reads the token; the SVGs carry the number as a literal because they are used as images). At 24px and below use the small drawing (`<id>-small.svg`), on the 16px pixel grid, its pick moving a whole pixel at a time. Each product passes its own thing through: Weft, the wallet and the docs their middle pick; the playground its unfinished last pick, which rests halfway, as in its mark; the network a pick that never stays; the explorer its middle row. A loader is decorative: the words beside it say what's happening.
+
+A busy control is set with `setBusy(button, true)` from `packages/ui/src/ui.ts`, in every product, including the wallet's Button: `aria-disabled="true"` at once (never `disabled`, which would throw keyboard focus off it) and presses ignored (`isBusy()`); the loader (`.is-working`) joins the label only after `wait-before-loader`; `setBusy(button, false)` removes it at once, so a loader never finishes its pass. The label stays and the width never changes: the loader is 16px and takes exactly the padding `.btn` gives up (`base.css`). A loader that stands for a whole screen (a splash) follows the same wait.
 
 ### Arriving
 
-When something new arrives while a person is looking (a block, a transaction), it comes in as a pick: a thread runs across its place over `duration-deliberate` with `ease-tension` and is gone before the words follow it in, then a 3px `accent` rule seats on its left. The rule stays four seconds and fades, so what's new since you looked is plain at a glance. With reduced motion the row fades in and its rule is simply there.
+When something new arrives while a person is looking (a block, a transaction, an identity), it comes in as a pick. One implementation, `.is-new` in `motion.css`, for the wallet's list items, the explorer's table rows and the network page's rows: put the class on the row as it is inserted. The thread (2px, `accent`) crosses the row's middle with `ease-tension` to 420ms and is gone by 600ms (`duration-deliberate`); the words, the row's direct children, follow it in from the left (`shift-md`) at 420ms over `duration-base`, so the eye is never on an empty row; a 3px `accent` rule seats on the left at 480ms, stays `rule-life` and fades over `duration-slow`. With reduced motion the row is simply there and its rule fades after `rule-life`.
 
 ## States
 
-Every control has the same states, in this order of precedence: disabled, loading, pressed, focus, hover, rest.
+Every control has the same states, in this order of precedence: disabled, loading, pressed, focus, hover, rest. Two heights: 44px for anything primary or typed into, 36px for anything secondary or in a header.
 
 | State | Looks like |
 |---|---|
 | Hover | Borders step to `line-strong` or `text-subtle`; fills step to `accent-hover`. `duration-fast`. Only on devices that hover: hover rules sit inside `@media (hover: hover)`. |
-| Pressed | Scales to `press-scale` (0.98) for `duration-instant`. |
+| Pressed | Scales to `press-scale` in `duration-instant`, back in `duration-fast`. Written once in `motion.css` for `.btn`, `.press`, `[data-press]`, the switcher's button and the theme control's options; a control in that list transitions `transform` over `duration-fast` itself. |
 | Focus | A `focus-ring` (2px) outline in `focus`, `focus-offset` (2px) away, on keyboard focus only (`:focus-visible`). Never removed without a replacement. |
-| Loading | The label stays, the product's loader replaces the icon, and the control can't be pressed twice. The width doesn't change. It keeps its full strength and `cursor: progress`. A busy control is marked `aria-disabled="true"` and ignores presses; it's never given `disabled`, which would throw keyboard focus off it. |
+| Loading | `setBusy()`, above: the label stays, the loader joins it after `wait-before-loader`, the width does not change, full strength, `cursor: progress`, `aria-disabled="true"`. |
 | Disabled | `disabled-opacity` (0.5), no hover or press, `cursor: not-allowed`. Say why nearby if it isn't obvious. |
-| Selected | `accent-soft` ground and `accent-line` border, or a moving indicator for tabs. |
+| Selected | `accent-soft` ground and `accent-line` border, or a sliding indicator (a transition, so it is reversible) for tabs and segmented controls. |
 
 ## Errors
 
 Say what happened and what to do next, in plain words. Fabric codes and raw messages are secondary detail, behind "Details".
 
-- Field errors appear below the field, in `danger-text` with an icon, linked with `aria-describedby`. The field's border turns `danger`. Check a field when it loses focus, not while someone is still typing it. Once an error is showing, check again on every change, so it clears as soon as it's fixed.
+- Field errors appear below the field, in `danger-text` with an icon, linked with `aria-describedby`. The field's border turns `danger` in `duration-fast`. Check a field when it loses focus, not while someone is still typing it. Once an error is showing, check again on every change, so it clears as soon as it's fixed.
 - On submit, check everything, move focus to the first field with an error, and keep everything the person typed.
 - Errors from the network or a peer go where the action was, not in a toast. Keep them until the person acts or retries.
 - Warnings (`warn-*`) are for something that will need attention: a certificate expiring, a write to the ledger. They aren't errors and don't block.
 - Empty states say what would be here and how to get it there.
 
-The pieces, the same in every product:
+Layout never moves under an error. The pieces, the same in every product:
 
-- A field error is a `<p class="field-error" id="<field>-error">` right below the field: a 14px alert icon, then the sentence, in `type-xs`, weight 500, `danger-text`, `space-1` above. The field gets `aria-invalid="true"` and the error's id in its `aria-describedby`, after any hint's. Forms carry `novalidate`, so the browser's own bubbles never show.
-- An error from an action (a request that failed) sits where the action was, starts with a sentence in `danger-text`, and has `role="alert"`. Anything technical (a code, a raw message, a URL that failed) goes in `<details class="error-details"><summary>Details</summary>…</details>` below it, in Mono `type-xs`, `text-muted`.
+- Every field that can fail reserves its error line: a `<p class="field__status" id="<field>-error">` right below the field (or below the row the field shares with a button), always present, 20px tall (`motion.css`). `setFieldError(field, message)` in `ui.ts` writes the message into it and adds `.field-error` (a 14px alert icon, then the sentence, in `type-xs`, weight 500, `danger-text`; `base.css`); the message fades in over `duration-fast` from `shift-sm` above, and nothing below the field moves. The field gets `aria-invalid="true"` and the line's id in its `aria-describedby`, after any hint's. Forms carry `novalidate`, so the browser's own bubbles never show.
+- An error from an action (a request that failed) sits where the action was, starts with a sentence in `danger-text`, and has `role="alert"`. Anything technical (a code, a raw message, a URL that failed) goes in `<details class="error-details"><summary>Details</summary>…</details>` below it, in Mono `type-xs`, `text-muted`. `showError(box, sentence, details)` builds it.
 - A request that may never answer has a timeout, and timing out is an error like any other: say which service didn't answer and what to check.
+- A success state that ends a task (a transaction committed) stays `hold-after-done` before the window closes or the screen moves on, and names what was done (the block, the call).
 
 ## Navigation
 
-The current place is always marked: the selected tab, the current page in a sidebar, the product in the header (`aria-current="page"`). Going deeper moves the new screen in from the right (`shift-lg`); going back, from the left. Changing between sibling tabs crossfades. A page that loads in parts keeps its layout stable: content arrives into reserved space rather than pushing things down.
+The current place is always marked: the selected tab, the current page in a sidebar, the product in the header (`aria-current="page"`). Going deeper moves the new screen in from the right (`shift-lg`, `duration-base`) while the old leaves to the left in `duration-base-out`; going back, the reverse. Changing between sibling tabs crossfades. A page that loads in parts keeps its layout stable: content arrives into reserved space rather than pushing things down.
 
-Between pages of a site the same holds, as a view transition (`@view-transition { navigation: auto }`): the new page fades in from `shift-md` to the right over `duration-base`, or from the left when going back through history. With reduced motion pages change at once.
+Between pages of a site the same holds, as a view transition (`motion.css`): the old page leaves `shift-md` against the direction of travel in `duration-base-out`, the new arrives from `shift-md` with it over `duration-base`. The direction is a view-transition type, `forward` or `back`, set by `packages/ui/src/early.js`, which also applies the stored theme before the first paint; the Shell, the docs and the explorer inline that one file in `<head>`. With reduced motion pages change at once.
+
+The header is one grammar in every product (`packages/ui/src/header.css`, which documents the markup; `Shell.astro` renders it, the docs and the explorer render the same from their templates): 60px tall, the product's 28px mark and name on the left, its own links in the centre, and on the right the tools at 36px: search, where the product has one, then the products switcher, then the theme control. Under 900px the links (and the search) take a second row under the bar. Under 720px the switcher's button shows the current product's mark, with "Products" as its accessible name.
+
+The theme control is a segmented control with one thumb that slides to the choice (a transition, so it turns back if the choice changes mid-slide): system, light, dark, as a radio group with roving tabindex, arrow keys moving the choice. The page crossfades once over `duration-base`; nothing slides and colours do not animate one by one. The explorer stores the choice per product, like the sites.
 
 Focus follows the person:
 
 - Each screen and page has one `h1`. When a screen opens inside an app (the wallet, a step in a flow), focus moves to its `h1` (`tabindex="-1"`). A full page load leaves focus where the browser puts it. The exception is a screen whose one task is a single field, such as unlocking: focus goes straight into the field.
 - When the thing that had focus goes away (a busy button, a removed row, a closed panel), focus moves to what took its place: the next row, the list's heading, the control that opened the panel.
 - Content that updates itself (a refreshing table, a ticking count) is updated in place, never replaced wholesale, so focus, selection and a half-typed form survive. New rows don't push what someone is reading: if they arrive above it, the scroll position moves with them.
-- Each page has one polite live region (`role="status"`) for changes the person should hear: a result, a connection, "Block 35 arrived". It's written only when something changes for them, never on a timer.
+- Each page has one polite live region (`role="status"`, the Shell's `#weft-status`; `announce()` in `ui.ts`) for changes the person should hear: a result, a connection, "Block 35 arrived". It's written only when something changes for them, never on a timer.
 
-A menu or a disclosure closes the way it opened, in reverse, with `ease-in` in about 70% of the time. A list item being removed leaves the same way before the list closes up.
+A menu or a panel closes the way it opened, from wherever it is (`.reversible`). A list item being removed leaves the same way before the list closes up.
 
 ## Writing
 

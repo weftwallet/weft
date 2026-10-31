@@ -3,7 +3,10 @@
  * The menu of Weft's products, as every site's header shows it: a button
  * that opens a list of the products with their marks and what each is for.
  * The docs use it too, so moving between products works the same from all
- * of them.
+ * of them. The styles are in header.css and the behaviour in
+ * product-switcher.js, so the explorer can render the same control from its
+ * own template; both files document the markup. The menu is a .reversible
+ * (motion.css): it closes from wherever it is, however quickly it is closed.
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -17,21 +20,24 @@ interface Props {
 
 const { product } = Astro.props;
 const require = createRequire(import.meta.url);
-const markOf = (id: ProductId) =>
+const markOf = (id: ProductId, className?: string) =>
   readFileSync(require.resolve(`@weftwallet/brand/${products[id].markSmall}`), "utf8")
     .replace(/<!--[\s\S]*?-->\s*/g, "")
-    .replace(/<svg /, '<svg aria-hidden="true" focusable="false" ')
+    .replace(/<svg /, `<svg aria-hidden="true" focusable="false" ${className ? `class="${className}" ` : ""}`)
     .replace(/\s+role="img"/, "")
     .replace(/\s+aria-label="[^"]*"/, "");
+// One switcher per page is the rule; the id keeps aria-controls valid if a
+// page (the docs' mobile menu) renders a second.
+const menuId = `weft-products-${Math.random().toString(36).slice(2, 7)}`;
 ---
 
-<details class="weft-switcher" data-weft-switcher>
-  <summary>
-    <svg class="weft-switcher__grid" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>
+<div class="weft-switcher" data-weft-switcher>
+  <button type="button" class="weft-switcher__button" aria-expanded="false" aria-haspopup="true" aria-controls={menuId}>
+    <Fragment set:html={markOf(product, "weft-switcher__mark")} />
     <span class="weft-switcher__label">Products</span>
-    <svg class="weft-switcher__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
-  </summary>
-  <ul class="weft-switcher__menu">
+    <svg class="weft-switcher__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+  </button>
+  <ul class="weft-switcher__menu reversible reversible--down" id={menuId}>
     {
       siteProducts.map((p) => (
         <li>
@@ -46,158 +52,8 @@ const markOf = (id: ProductId) =>
       ))
     }
   </ul>
-</details>
+</div>
 
 <script>
-  import { closesInReverse } from "./ui";
-
-  // The menu closes the way it opened, on its button, on Escape and on a
-  // click outside it.
-  document.querySelectorAll<HTMLDetailsElement>("[data-weft-switcher]").forEach((switcher) => {
-    const close = closesInReverse(switcher);
-    document.addEventListener("click", (e) => {
-      if (switcher.open && !switcher.contains(e.target as Node)) close();
-    });
-    switcher.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && switcher.open) {
-        close();
-        switcher.querySelector("summary")?.focus();
-      }
-    });
-  });
+  import "./product-switcher.js";
 </script>
-
-<style>
-  .weft-switcher {
-    position: relative;
-  }
-  .weft-switcher summary {
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: var(--weft-space-1);
-    height: 36px;
-    padding: 0 var(--weft-space-3);
-    border: 1px solid var(--weft-line);
-    border-radius: var(--weft-radius-lg);
-    color: var(--weft-text-muted);
-    font: var(--weft-type-md) / 1 var(--weft-font-sans);
-    cursor: pointer;
-    transition:
-      border-color var(--weft-duration-fast) var(--weft-ease-out),
-      color var(--weft-duration-fast) var(--weft-ease-out),
-      transform var(--weft-duration-instant) var(--weft-ease-out);
-  }
-  .weft-switcher summary:active {
-    transform: scale(var(--weft-press-scale));
-  }
-  .weft-switcher summary::-webkit-details-marker {
-    display: none;
-  }
-  @media (hover: hover) {
-    .weft-switcher summary:hover {
-      border-color: var(--weft-line-strong);
-      color: var(--weft-text);
-    }
-    .weft-switcher__menu a:hover {
-      background: var(--weft-bg-raised);
-    }
-  }
-  .weft-switcher[open] summary {
-    border-color: var(--weft-line-strong);
-    color: var(--weft-text);
-  }
-  .weft-switcher__chevron {
-    transition: transform var(--weft-duration-base) var(--weft-ease-out);
-  }
-  .weft-switcher[open]:not(.is-closing) .weft-switcher__chevron {
-    transform: rotate(180deg);
-  }
-  .weft-switcher__grid {
-    display: none;
-  }
-  .weft-switcher__menu {
-    position: absolute;
-    z-index: 30;
-    right: 0;
-    top: calc(100% + var(--weft-space-2));
-    width: min(340px, calc(100vw - 2 * var(--weft-space-4)));
-    margin: 0;
-    padding: var(--weft-space-2);
-    list-style: none;
-    background: var(--weft-bg-overlay);
-    border: 1px solid var(--weft-line-strong);
-    border-radius: var(--weft-radius-xl);
-    box-shadow: var(--weft-shadow-3);
-    animation: weft-switcher-arrive var(--weft-duration-base) var(--weft-ease-out) both;
-  }
-  /* Closing is the reverse, in 70% of the time (ui.ts holds it open). */
-  .weft-switcher.is-closing .weft-switcher__menu {
-    animation: weft-switcher-leave calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
-  }
-  @keyframes weft-switcher-arrive {
-    from {
-      opacity: 0;
-      transform: translateY(var(--weft-switcher-from, calc(var(--weft-shift-md) * -1)));
-    }
-  }
-  @keyframes weft-switcher-leave {
-    to {
-      opacity: 0;
-      transform: translateY(var(--weft-switcher-from, calc(var(--weft-shift-md) * -1)));
-    }
-  }
-  .weft-switcher__menu li {
-    margin: 0;
-  }
-  .weft-switcher__menu a {
-    display: flex;
-    gap: var(--weft-space-3);
-    align-items: flex-start;
-    padding: var(--weft-space-3);
-    border-radius: var(--weft-radius-lg);
-    color: var(--weft-text);
-    text-decoration: none;
-    transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
-  }
-  .weft-switcher__menu a[aria-current="page"] {
-    background: var(--weft-accent-soft);
-  }
-  .weft-switcher__menu :global(svg) {
-    width: 24px;
-    height: 24px;
-    flex: none;
-    display: block;
-  }
-  .weft-switcher__menu a > span {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: var(--weft-type-md);
-    line-height: var(--weft-leading-md);
-  }
-  .weft-switcher__menu strong {
-    font-weight: 600;
-    color: var(--weft-text-strong);
-  }
-  .weft-switcher__menu a > span > span {
-    color: var(--weft-text-muted);
-    font-size: var(--weft-type-xs);
-    line-height: var(--weft-leading-xs);
-  }
-  @media (max-width: 720px) {
-    .weft-switcher__label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-    }
-    .weft-switcher__chevron {
-      display: none;
-    }
-    .weft-switcher__grid {
-      display: block;
-    }
-  }
-</style>

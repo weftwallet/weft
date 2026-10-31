@@ -1,9 +1,10 @@
 ---
 /**
- * The page every Weft site except the docs is built in: the product's mark and
- * name, its own navigation, a switcher to the other products, the theme
- * control, and the footer. The docs keep Starlight's frame, with the same
- * mark and links.
+ * The page every Weft site except the docs is built in: the header
+ * (header.css: the product's mark and name, its own navigation, a switcher
+ * to the other products, the theme control), the content and the footer.
+ * The docs render the same header from Starlight's overrides, and the
+ * explorer from its templates; header.css documents the markup.
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -23,6 +24,13 @@ interface Props {
   wide?: boolean;
 }
 
+/**
+ * Slots: the default is the page; "nav" is the product's own links (plain
+ * <a> elements, the current one with aria-current="page"); "search" is a
+ * search form for the tools, where the product has one (header.css has its
+ * markup, form.shell-search).
+ */
+
 const { product, title, description, wide = false } = Astro.props;
 const require = createRequire(import.meta.url);
 const svg = (file: string) => readFileSync(require.resolve(`@weftwallet/brand/${file}`), "utf8");
@@ -34,6 +42,9 @@ const icon = `data:image/svg+xml;base64,${Buffer.from(svg(me.markSmall)).toStrin
 // The product's loader, for anything marked .is-working (base.css).
 const loader = `--weft-loader: url("data:image/svg+xml;base64,${Buffer.from(svg(me.loaderSmall)).toString("base64")}")`;
 const github = "https://github.com/ifeanyi-ugwu/weft";
+// Before the first paint: the stored theme, and the page transition's
+// direction. One file, shared with the docs and the explorer.
+const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
 ---
 
 <!doctype html>
@@ -44,28 +55,7 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
     <link rel="icon" type="image/svg+xml" href={icon} />
-    <script is:inline>
-      // Before the first paint, so a chosen theme never flashes the other one.
-      try {
-        const t = localStorage.getItem("weft-theme");
-        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-      } catch {}
-      // The page transition's direction (base.css): back when going back
-      // through history, forward otherwise.
-      const isBack = (type, from, to) => type === "traverse" && !(from != null && to != null && to > from);
-      const goBack = (t) => {
-        t.types.delete("forward");
-        t.types.add("back");
-      };
-      addEventListener("pagereveal", (e) => {
-        const a = window.navigation?.activation;
-        if (e.viewTransition && a && isBack(a.navigationType, a.from?.index, a.entry?.index)) goBack(e.viewTransition);
-      });
-      addEventListener("pageswap", (e) => {
-        const a = e.activation;
-        if (e.viewTransition && a && isBack(a.navigationType, window.navigation?.currentEntry?.index, a.entry?.index)) goBack(e.viewTransition);
-      });
-    </script>
+    <script is:inline data-theme-key="weft-theme" set:html={early}></script>
   </head>
   <body style={loader}>
     <a class="shell-skip" href="#main">Skip to the content</a>
@@ -78,6 +68,7 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         </a>
         <nav class="shell-nav" aria-label={me.name}><slot name="nav" /></nav>
         <div class="shell-tools">
+          <slot name="search" />
           <ProductSwitcher product={product} />
           <ThemeControl />
         </div>
@@ -126,89 +117,6 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
       #main:focus {
         outline: none;
       }
-      .shell-head {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: color-mix(in srgb, var(--weft-bg) 88%, transparent);
-        backdrop-filter: blur(12px);
-        border-bottom: 1px solid var(--weft-line);
-      }
-      .shell-bar,
-      .shell-foot__inner {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding-inline: max(var(--weft-space-4), env(safe-area-inset-left, 0px)) max(var(--weft-space-4), env(safe-area-inset-right, 0px));
-      }
-      .shell-bar {
-        min-height: 60px;
-        display: flex;
-        align-items: center;
-        gap: var(--weft-space-6);
-      }
-      .shell-lockup {
-        display: flex;
-        align-items: center;
-        gap: var(--weft-space-2);
-        min-width: 0;
-        padding: var(--weft-space-1);
-        margin: calc(var(--weft-space-1) * -1);
-        border-radius: var(--weft-radius-sm);
-        color: var(--weft-text-strong);
-        text-decoration: none;
-        flex: none;
-      }
-      .shell-lockup :global(svg) {
-        width: 28px;
-        height: 28px;
-        display: block;
-        flex: none;
-      }
-      .shell-word {
-        font: 500 var(--weft-type-lg) / 1 var(--weft-font-mono);
-        letter-spacing: -0.03em;
-        white-space: nowrap;
-      }
-      .shell-word__product {
-        color: var(--weft-text-subtle);
-      }
-      .shell-nav {
-        display: flex;
-        align-items: center;
-        gap: var(--weft-space-1);
-        min-width: 0;
-      }
-      .shell-nav :global(a) {
-        padding: var(--weft-space-2) var(--weft-space-3);
-        border-radius: var(--weft-radius-sm);
-        color: var(--weft-text-muted);
-        font-size: var(--weft-type-md);
-        line-height: var(--weft-leading-md);
-        text-decoration: none;
-        white-space: nowrap;
-        transition:
-          color var(--weft-duration-fast) var(--weft-ease-out),
-          background-color var(--weft-duration-fast) var(--weft-ease-out);
-      }
-      @media (hover: hover) {
-        .shell-nav :global(a:hover) {
-          color: var(--weft-text);
-        }
-        .shell-foot__products a:hover {
-          color: var(--weft-text);
-        }
-      }
-      .shell-nav :global(a[aria-current="page"]) {
-        color: var(--weft-text-strong);
-        background: var(--weft-bg-raised);
-      }
-      .shell-tools {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: var(--weft-space-3);
-        flex: none;
-      }
       .shell-main {
         max-width: 1200px;
         margin: 0 auto;
@@ -229,6 +137,9 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         color: var(--weft-text-subtle);
       }
       .shell-foot__inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding-inline: max(var(--weft-space-4), env(safe-area-inset-left, 0px)) max(var(--weft-space-4), env(safe-area-inset-right, 0px));
         display: flex;
         flex-wrap: wrap;
         justify-content: space-between;
@@ -255,39 +166,9 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
         height: 16px;
         display: block;
       }
-      /* Narrower than the bar needs: the nav moves to a row of its own under
-         the mark and the tools, and scrolls sideways if it must. Its padding
-         keeps focus rings inside the scrolling box, so none is cut off. */
-      @media (max-width: 900px) {
-        .shell-bar {
-          flex-wrap: wrap;
-          gap: 0 var(--weft-space-3);
-          padding-top: var(--weft-space-3);
-        }
-        .shell-tools {
-          gap: var(--weft-space-2);
-        }
-        .shell-nav {
-          order: 3;
-          flex: 1 0 100%;
-          overflow-x: auto;
-          scrollbar-width: none;
-          padding: var(--weft-space-1);
-          margin: var(--weft-space-1) calc(var(--weft-space-1) * -1) 0;
-        }
-        .shell-nav:empty {
-          display: none;
-        }
-        .shell-bar:has(.shell-nav:empty) {
-          padding-bottom: var(--weft-space-3);
-        }
-        .shell-nav :global(a) {
-          padding: var(--weft-space-1) var(--weft-space-3);
-        }
-      }
-      @media (max-width: 420px) {
-        .shell-word {
-          font-size: var(--weft-type-base);
+      @media (hover: hover) {
+        .shell-foot__products a:hover {
+          color: var(--weft-text);
         }
       }
     </style>

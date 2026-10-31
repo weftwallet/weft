@@ -1,0 +1,367 @@
+/* Weft's motion, in one file for all six products. Plain CSS with no imports:
+   it needs @weftwallet/brand/tokens.css loaded before it and nothing else.
+   base.css imports it for the sites; the wallet imports it into its Vite CSS
+   (@import "@weftwallet/ui/motion.css"); the explorer serves it as a static
+   file after tokens.css. Do not copy rules out of it into a product: change
+   them here. The model is in packages/brand/SYSTEM.md, "Motion".
+
+   What is in here, and the markup each piece expects:
+
+   1. Pages. The view transition between pages of a site: the old page out
+      in base-out against the direction of travel, the new in over base with
+      it, 8px (shift-md). Direction is a view-transition type, "forward" or
+      "back", set before the transition by packages/ui/src/early.js (the
+      Shell inlines it; the docs and the explorer inline the same file).
+
+   2. The press. Down to press-scale in duration-instant, back in
+      duration-fast. Applies to .btn, .press, [data-press], the switcher's
+      button and the theme control's options. A control in the list must
+      transition transform over duration-fast itself (base.css .btn does;
+      .press and [data-press] get it here), so the release settles.
+
+   3. The arriving row, .is-new. One implementation of SYSTEM.md "Arriving".
+      Put the class on the row the moment it is inserted and remove it after
+      rule-life + 1s, or leave it: every animation in it runs once. Markup:
+
+        <li class="list-item is-new"><span>…</span><span>…</span></li>
+        <tr class="is-new"><td>…</td><td>…</td></tr>
+
+      The row's direct children are its words: they come in from the left
+      at 420ms. The pick (::after) crosses the row with ease-tension to 420ms
+      and is gone by 600ms. The rule (::before, 3px accent) seats at 480ms,
+      stays rule-life, then fades over slow. On a <tr> the pick and the rule
+      attach to the first cell, since table rows cannot hold them. The row
+      needs no position of its own; this file sets it relative.
+
+   4. Reversible things, .reversible. A menu, panel or sheet a person can
+      close again. Transitions, never keyframes, so closing it mid-flight
+      turns back from where it is. Markup:
+
+        <ul class="reversible reversible--down is-open">…</ul>
+
+      Closed by default (opacity 0, visibility hidden, moved by shift-md);
+      .is-open brings it in over base with ease-out; removing .is-open takes
+      it out over base-out with ease-in, with visibility hidden at the end so
+      it leaves the tab order and the accessibility tree. Modifiers:
+      --down (from above: a menu under its button), --up (the default: from
+      below, a panel), --far (a sheet rising shift-xl over slow). An element
+      that is also shown with the hidden attribute, or display: none, gets
+      its first frame from @starting-style and keeps display until the leave
+      ends (transition-behavior: allow-discrete). Set --weft-reversible-from
+      to move it another way.
+
+      The native <details> element hides its content at once when it closes,
+      so a disclosure keeps keyframes and ui.ts closesInReverse() holds it
+      open while the content leaves (details.disclosure, below). Menus do not
+      use <details> any more; ProductSwitcher.astro is the pattern.
+
+   5. One-way arrivals, .arrive and .is-leaving. Content shown after an
+      action (a result, a card) fades in from shift-md below over base;
+      ui.ts reveal() and conceal() add the classes.
+
+   6. The reserved error line, .field__status. Always present under a field
+      that can fail, 20px tall, so nothing below it moves when an error
+      appears. ui.ts setFieldError() writes into it. Markup:
+
+        <div class="field">
+          <label for="pw">Password</label>
+          <input id="pw" class="input" />
+          <p class="field__status" id="pw-error"></p>
+        </div>
+
+      With a message the element also carries .field-error (the icon and the
+      colour are in base.css) and fades in over fast from shift-sm above.
+
+   7. Reduced motion, one block at the end for all of the above. Loaders are
+      not in this file and keep turning.
+*/
+
+/* 1. Pages ------------------------------------------------------------ */
+
+/* The theme changes as one crossfade over base, never colour by colour. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--weft-duration-base);
+}
+
+@view-transition {
+  navigation: auto;
+  types: forward;
+}
+html:active-view-transition-type(forward)::view-transition-old(root) {
+  animation: weft-page-out var(--weft-duration-base-out) var(--weft-ease-in) both;
+  --weft-page-to: calc(var(--weft-shift-md) * -1);
+}
+html:active-view-transition-type(forward)::view-transition-new(root) {
+  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
+  --weft-page-from: var(--weft-shift-md);
+}
+html:active-view-transition-type(back)::view-transition-old(root) {
+  animation: weft-page-out var(--weft-duration-base-out) var(--weft-ease-in) both;
+  --weft-page-to: var(--weft-shift-md);
+}
+html:active-view-transition-type(back)::view-transition-new(root) {
+  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
+  --weft-page-from: calc(var(--weft-shift-md) * -1);
+}
+@keyframes weft-page-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--weft-page-from, 0));
+  }
+}
+@keyframes weft-page-out {
+  to {
+    opacity: 0;
+    transform: translateX(var(--weft-page-to, 0));
+  }
+}
+
+/* 2. The press --------------------------------------------------------- */
+
+.press,
+[data-press] {
+  transition: transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+.btn:active:not(:disabled, [aria-disabled="true"]),
+.press:active:not(:disabled, [aria-disabled="true"]),
+[data-press]:active:not(:disabled, [aria-disabled="true"]),
+.weft-switcher__button:active,
+.weft-theme__option:active {
+  transform: scale(var(--weft-press-scale));
+  transition-duration: var(--weft-duration-instant);
+}
+
+/* 3. The arriving row -------------------------------------------------- */
+
+.is-new {
+  position: relative;
+}
+tr.is-new > td:first-child {
+  position: relative;
+}
+.is-new > * {
+  animation: weft-row-words var(--weft-duration-base) var(--weft-ease-out) 420ms both;
+}
+/* The pick: 2px of thread across the row's middle. */
+.is-new:not(tr)::after,
+tr.is-new > td:first-child::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 1px);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--weft-accent);
+  transform-origin: left;
+  pointer-events: none;
+  animation: weft-pick var(--weft-duration-deliberate) linear both;
+}
+/* The rule: 3px of thread on the row's left, for rule-life. */
+.is-new:not(tr)::before,
+tr.is-new > td:first-child::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--weft-space-2);
+  bottom: var(--weft-space-2);
+  width: 3px;
+  border-radius: 2px;
+  background: var(--weft-accent);
+  transform-origin: top;
+  pointer-events: none;
+  animation:
+    weft-rule-in var(--weft-duration-base) var(--weft-ease-out) 480ms both,
+    weft-rule-out var(--weft-duration-slow) var(--weft-ease-in) calc(480ms + var(--weft-rule-life)) forwards;
+}
+/* Across by 70% of deliberate (420ms) on ease-tension, then gone by 100%
+   (600ms) on ease-in. The curves are the tokens' values, written out because
+   a timing function inside a keyframe cannot be a var(). */
+@keyframes weft-pick {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1);
+  }
+  70% {
+    transform: scaleX(1);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+@keyframes weft-row-words {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--weft-shift-md) * -1));
+  }
+}
+@keyframes weft-rule-in {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+}
+@keyframes weft-rule-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* 4. Reversible things ------------------------------------------------- */
+
+.reversible {
+  --weft-reversible-from: var(--weft-shift-md);
+  --weft-reversible-in: var(--weft-duration-base);
+  --weft-reversible-out: var(--weft-duration-base-out);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(var(--weft-reversible-from));
+  transition-property: opacity, transform, visibility, display;
+  transition-duration: var(--weft-reversible-out), var(--weft-reversible-out), 0s, 0s;
+  transition-delay: 0s, 0s, var(--weft-reversible-out), var(--weft-reversible-out);
+  transition-timing-function: var(--weft-ease-in);
+  transition-behavior: allow-discrete;
+}
+.reversible.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-duration: var(--weft-reversible-in), var(--weft-reversible-in), 0s, 0s;
+  transition-delay: 0s;
+  transition-timing-function: var(--weft-ease-out);
+}
+@starting-style {
+  .reversible.is-open {
+    opacity: 0;
+    transform: translateY(var(--weft-reversible-from));
+  }
+}
+.reversible--down {
+  --weft-reversible-from: calc(var(--weft-shift-md) * -1);
+}
+.reversible--up {
+  --weft-reversible-from: var(--weft-shift-md);
+}
+.reversible--far {
+  --weft-reversible-from: var(--weft-shift-xl);
+  --weft-reversible-in: var(--weft-duration-slow);
+  --weft-reversible-out: var(--weft-duration-slow-out);
+}
+
+/* A disclosure's content comes down from its summary, and goes back up the
+   same way when it closes. The native element would hide it at once, so
+   ui.ts closesInReverse() holds it open with .is-closing until the leave
+   ends. */
+details.disclosure[open] > :not(summary) {
+  animation: weft-drop-in var(--weft-duration-base) var(--weft-ease-out) both;
+}
+details.disclosure.is-closing > :not(summary) {
+  animation: weft-drop-out var(--weft-duration-base-out) var(--weft-ease-in) both;
+}
+@keyframes weft-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--weft-shift-sm) * -1));
+  }
+}
+@keyframes weft-drop-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--weft-shift-sm) * -1));
+  }
+}
+
+/* 5. One-way arrivals -------------------------------------------------- */
+
+.arrive {
+  animation: weft-enter var(--weft-duration-base) var(--weft-ease-out) both;
+}
+.is-leaving {
+  animation: weft-exit var(--weft-duration-base-out) var(--weft-ease-in) both;
+  pointer-events: none;
+}
+@keyframes weft-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--weft-shift-md));
+  }
+}
+@keyframes weft-exit {
+  to {
+    opacity: 0;
+    transform: translateY(var(--weft-shift-md));
+  }
+}
+
+/* 6. The reserved error line ------------------------------------------- */
+
+.field__status {
+  display: flex;
+  min-height: 20px;
+  margin: 0;
+  padding-top: var(--weft-space-1);
+  opacity: 0;
+  transform: translateY(calc(var(--weft-shift-sm) * -1));
+  transition:
+    opacity var(--weft-duration-fast-out) var(--weft-ease-in),
+    transform var(--weft-duration-fast-out) var(--weft-ease-in);
+}
+.field__status.field-error {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+@starting-style {
+  .field__status.field-error {
+    opacity: 0;
+    transform: translateY(calc(var(--weft-shift-sm) * -1));
+  }
+}
+
+/* 7. Reduced motion ---------------------------------------------------- */
+
+/* The shift tokens are already 0 and press-scale 1 (tokens.css), so what is
+   left here is what a fade would still do wrong: pages change at once, the
+   pick is not drawn, the words and the rule are simply there, reversible
+   things and the error line change at once. Loaders keep turning. */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0s;
+  }
+  .is-new > * {
+    animation: none;
+  }
+  .is-new:not(tr)::after,
+  tr.is-new > td:first-child::after {
+    animation: none;
+    opacity: 0;
+  }
+  .is-new:not(tr)::before,
+  tr.is-new > td:first-child::before {
+    animation: weft-rule-out var(--weft-duration-slow) var(--weft-ease-in) var(--weft-rule-life) forwards;
+  }
+  .reversible,
+  .reversible.is-open,
+  .field__status,
+  .field__status.field-error {
+    transition-duration: 0s;
+    transition-delay: 0s;
+  }
+  .arrive,
+  .is-leaving,
+  details.disclosure[open] > :not(summary),
+  details.disclosure.is-closing > :not(summary) {
+    animation-duration: 0s;
+  }
+}

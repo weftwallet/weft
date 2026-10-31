@@ -60,6 +60,10 @@
   --weft-duration-base: 220ms;
   --weft-duration-slow: 360ms;
   --weft-duration-deliberate: 600ms;
+  --weft-duration-pass: 1600ms;
+  --weft-duration-fast-out: 100ms;
+  --weft-duration-base-out: 154ms;
+  --weft-duration-slow-out: 252ms;
   --weft-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --weft-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --weft-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -67,7 +71,11 @@
   --weft-shift-sm: 4px;
   --weft-shift-md: 8px;
   --weft-shift-lg: 16px;
+  --weft-shift-xl: 32px;
   --weft-stagger: 60ms;
+  --weft-wait-before-loader: 300ms;
+  --weft-hold-after-done: 1400ms;
+  --weft-rule-life: 4000ms;
 
   /* States */
   --weft-focus-ring: 2px;
@@ -187,6 +195,7 @@
     --weft-shift-sm: 0px;
     --weft-shift-md: 0px;
     --weft-shift-lg: 0px;
+    --weft-shift-xl: 0px;
     --weft-stagger: 0ms;
     --weft-press-scale: 1;
   }

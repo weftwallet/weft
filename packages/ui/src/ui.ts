@@ -1,7 +1,8 @@
 /**
- * The behaviour every Weft site shares, to go with base.css: field errors,
- * failed actions, busy buttons, the page's live region, and things arriving
- * and leaving. See packages/brand/SYSTEM.md (States, Errors, Navigation).
+ * The behaviour every Weft site shares, to go with base.css and motion.css:
+ * field errors, failed actions, busy buttons, the page's live region, and
+ * things arriving and leaving. See packages/brand/SYSTEM.md (States,
+ * Errors, Navigation).
  */
 
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -24,14 +25,47 @@ export function announce(text: string) {
 /* ---------------- busy buttons ---------------- */
 
 /**
- * Marks a button as working: the product's loader before its label,
- * aria-disabled so it keeps keyboard focus, and presses ignored (check
- * isBusy in the handler).
+ * A motion token's value in milliseconds, with a fallback for a page without
+ * tokens. A minifier may have written 1400ms as 1.4s, so the unit is read.
+ */
+function tokenMs(name: string, fallback: number): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const v = parseFloat(raw);
+  if (!Number.isFinite(v)) return fallback;
+  return /ms$/.test(raw) ? v : v * 1000;
+}
+
+const loaderTimers = new WeakMap<HTMLElement, number>();
+
+/**
+ * Marks a control as working, the one way every product does it (SYSTEM.md,
+ * "Loading"): aria-disabled at once, so it keeps keyboard focus and presses
+ * are ignored (check isBusy in the handler); the product's loader joins the
+ * label (.is-working) only after wait-before-loader, so a quick answer never
+ * flashes one; and when the work ends the loader is removed at once rather
+ * than finishing its pass. The label stays and the width never changes
+ * (base.css .btn.is-working).
  */
 export function setBusy(button: HTMLElement, busy: boolean) {
-  button.classList.toggle("is-working", busy);
-  if (busy) button.setAttribute("aria-disabled", "true");
-  else button.removeAttribute("aria-disabled");
+  const pending = loaderTimers.get(button);
+  if (pending) {
+    clearTimeout(pending);
+    loaderTimers.delete(button);
+  }
+  if (busy) {
+    button.setAttribute("aria-disabled", "true");
+    const wait = tokenMs("--weft-wait-before-loader", 300);
+    loaderTimers.set(
+      button,
+      window.setTimeout(() => {
+        loaderTimers.delete(button);
+        if (isBusy(button)) button.classList.add("is-working");
+      }, wait),
+    );
+  } else {
+    button.removeAttribute("aria-disabled");
+    button.classList.remove("is-working");
+  }
 }
 
 export const isBusy = (button: HTMLElement) => button.getAttribute("aria-disabled") === "true";
@@ -48,26 +82,47 @@ function describedBy(field: Field, id: string, on: boolean) {
 }
 
 /**
- * Shows or clears a field's error: a p.field-error right below the field (or
- * below `after`, when the field sits in a row with a button), aria-invalid,
- * and the error's id in aria-describedby after any hint's.
+ * Shows or clears a field's error in the field's reserved line: the
+ * p.field__status right below the field (or below `after`, when the field
+ * sits in a row with a button). The line is always there, 20px tall, so
+ * nothing below the field moves; the message fades into it (motion.css).
+ * Sets aria-invalid, and the line's id in aria-describedby after any hint's.
+ * A field with no .field__status in its markup gets one the first time,
+ * which reserves the line from then on; put it in the markup to reserve it
+ * from the start.
  */
 export function setFieldError(field: Field, message: string | null, after: Element = field) {
   const id = `${field.id}-error`;
-  let p = document.getElementById(id);
+  const status = statusLine(field, id, after, !!message);
   if (!message) {
     field.removeAttribute("aria-invalid");
     describedBy(field, id, false);
-    p?.remove();
+    if (status) {
+      status.textContent = "";
+      status.classList.remove("field-error");
+    }
     return;
   }
-  if (!p) {
-    p = Object.assign(document.createElement("p"), { id, className: "field-error" });
-    after.after(p);
-  }
-  p.textContent = message;
+  status!.textContent = message;
+  status!.classList.add("field-error");
   field.setAttribute("aria-invalid", "true");
   describedBy(field, id, true);
+}
+
+/** The field's reserved error line: by id, then by markup, then made. */
+function statusLine(field: Field, id: string, after: Element, make: boolean): HTMLElement | null {
+  const byId = document.getElementById(id);
+  if (byId) return byId;
+  const next = after.nextElementSibling;
+  const inMarkup = next?.classList.contains("field__status") ? next : after.closest(".field")?.querySelector<HTMLElement>(".field__status");
+  if (inMarkup) {
+    if (!inMarkup.id) inMarkup.id = id;
+    return inMarkup as HTMLElement;
+  }
+  if (!make) return null;
+  const p = Object.assign(document.createElement("p"), { id, className: "field__status" });
+  after.after(p);
+  return p;
 }
 
 export interface FieldCheck {
@@ -217,8 +272,11 @@ export function showIf(el: HTMLElement, show: boolean) {
 
 /**
  * Makes a <details> close the way it opened, in reverse: the summary's
- * click holds it open while its content leaves (base.css,
- * details.disclosure). Returns close(), for Escape and clicks outside.
+ * click holds it open while its content leaves (motion.css,
+ * details.disclosure). Only for the native details element, which would hide
+ * its content at once; a menu or panel is a .reversible instead (motion.css)
+ * and needs no script beyond toggling .is-open. Returns close(), for Escape
+ * and clicks outside.
  */
 export function closesInReverse(details: HTMLDetailsElement, onClosed?: () => void) {
   const summary = details.querySelector("summary");

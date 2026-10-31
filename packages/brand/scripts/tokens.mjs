@@ -114,21 +114,35 @@ const shadow = {
  */
 const motion = {
   duration: {
-    instant: "90ms", // press feedback
-    fast: "140ms", // hover, colour, small state changes
-    base: "220ms", // panels, screens, menus arriving
+    instant: "90ms", // press feedback down
+    fast: "140ms", // hover, colour, a field border, an error appearing, press release
+    base: "220ms", // panels, screens, menus arriving; a page; the theme change
     slow: "360ms", // sheets, dialogs, layout that moves far
-    deliberate: "600ms", // drawn lines, progress, the weave
+    deliberate: "600ms", // drawn lines, the pick, progress; never text or panels
+    pass: "1600ms", // a loader's period: one pick in, held, and out
+    // Leaving takes 70% of arriving, on ease-in. Derived, so no product
+    // writes calc() or a literal near 154ms again.
+    "fast-out": "100ms",
+    "base-out": "154ms",
+    "slow-out": "252ms",
   },
   ease: {
-    out: "cubic-bezier(0.2, 0.8, 0.2, 1)", // arriving
+    out: "cubic-bezier(0.2, 0.8, 0.2, 1)", // arriving: close to a critically damped spring
     in: "cubic-bezier(0.4, 0, 1, 1)", // leaving
     "in-out": "cubic-bezier(0.65, 0, 0.35, 1)", // moving between two places
-    tension: "cubic-bezier(0.3, 0.7, 0.2, 1)", // a thread pulled taut: the weave
+    tension: "cubic-bezier(0.3, 0.7, 0.2, 1)", // a thread pulled taut: the weave, the pick
   },
   // How far things travel. Zero with reduced motion, so movement becomes a fade.
-  shift: { sm: "4px", md: "8px", lg: "16px" },
+  // sm: tooltips and hints. md: panels, menus and pages. lg: screens inside
+  // an app. xl: sheets rising.
+  shift: { sm: "4px", md: "8px", lg: "16px", xl: "32px" },
   stagger: "60ms",
+  // Waits that are not animations. A loader shows only after
+  // wait-before-loader, so a quick answer never flashes one. A success
+  // state stays hold-after-done before the window closes or the screen
+  // moves on. The "new since you looked" rule stays rule-life, then fades.
+  wait: { "before-loader": "300ms", "after-done": "1400ms" },
+  "rule-life": "4000ms",
 };
 
 const state = {
@@ -196,6 +210,9 @@ lines.push(
   ...Object.entries(motion.ease).map(([k, v]) => decl(`ease-${k}`, v)),
   ...Object.entries(motion.shift).map(([k, v]) => decl(`shift-${k}`, v)),
   decl("stagger", motion.stagger),
+  decl("wait-before-loader", motion.wait["before-loader"]),
+  decl("hold-after-done", motion.wait["after-done"]),
+  decl("rule-life", motion["rule-life"]),
   "",
   "  /* States */",
   ...Object.entries(state).map(([k, v]) => decl(k, v)),
