@@ -3,9 +3,19 @@ title: Install and add an identity
 description: Install the extension, then join your organisation's network with an invite, your CA, or an existing certificate.
 ---
 
-## Install
+Weft is not in the Chrome Web Store or any other browser store yet. Until it is, the extension is installed from a build. There are two ways to get one, depending on who you are.
 
-Weft is not in the Chrome Web Store yet. Build it and load it unpacked:
+## If your organisation gave you an invite
+
+Your network administrator sets Weft up for your organisation and sends you an invite link. They also provide the build of the extension to load, or they install it for you through your browser's managed policies. If you have an invite but no extension, ask your administrator for the build; do not install one from anywhere else.
+
+Once the extension is loaded, open the invite link, or paste it into Weft, and follow [Join from an org invite](#join-from-an-org-invite-recommended) below. You will need the enrolment ID and secret your administrator gave you.
+
+When Weft is listed in the browser stores, this page will link to the listing and the steps above will shorten to one.
+
+## If you are a developer
+
+Build the extension from the source and load it unpacked:
 
 ```sh
 git clone https://github.com/ifeanyi-ugwu/weft
@@ -14,7 +24,9 @@ pnpm install
 pnpm build
 ```
 
-Then open `chrome://extensions`, turn on **Developer mode**, choose **Load unpacked** and pick `apps/extension/.output/chrome-mv3`.
+Then open `chrome://extensions`, turn on **Developer mode**, choose **Load unpacked** and pick `apps/extension/.output/chrome-mv3`. Weft runs in Chrome, Edge, Brave and other Chromium browsers.
+
+For a network to try it against, see [Local test network](/dapps/test-network/) or the [playground](weft:playground/).
 
 ## Add an identity
 

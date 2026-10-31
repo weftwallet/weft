@@ -57,14 +57,201 @@
   --sl-color-text-invert: var(--weft-bg);
 }
 
-.site-title img {
-  height: 2rem;
-  width: auto;
+/* Type: Weft's scale in place of Starlight's, so a heading here is the
+   size it is on every other product (SYSTEM.md, Type). */
+:root {
+  --sl-text-2xs: var(--weft-type-xs);
+  --sl-text-xs: var(--weft-type-xs);
+  --sl-text-sm: var(--weft-type-md);
+  --sl-text-base: var(--weft-type-base);
+  --sl-text-lg: var(--weft-type-lg);
+  --sl-text-xl: var(--weft-type-xl);
+  --sl-text-2xl: var(--weft-type-2xl);
+  --sl-text-3xl: var(--weft-type-3xl);
+  --sl-text-body: var(--weft-type-base);
+  --sl-text-body-sm: var(--weft-type-md);
+  --sl-text-code: var(--weft-type-md);
+  --sl-text-code-sm: var(--weft-type-xs);
+  --sl-text-h1: var(--weft-type-3xl);
+  --sl-text-h2: var(--weft-type-2xl);
+  --sl-text-h3: var(--weft-type-xl);
+  --sl-text-h4: var(--weft-type-lg);
+  --sl-text-h5: var(--weft-type-base);
+  --sl-text-h6: var(--weft-type-base);
+  /* 16px on 26px, the reading leading. */
+  --sl-line-height: 1.625;
+  --sl-line-height-headings: 1.2;
+}
+/* Each heading on its paired leading, and the tracking headings have
+   everywhere at 2xl and above. */
+.sl-markdown-content h1,
+.content-panel h1 {
+  line-height: var(--weft-leading-3xl);
+  letter-spacing: -0.02em;
+}
+.sl-markdown-content h2 {
+  line-height: var(--weft-leading-2xl);
+  letter-spacing: -0.02em;
+}
+.sl-markdown-content h3 {
+  line-height: var(--weft-leading-xl);
+}
+.sl-markdown-content h4 {
+  line-height: var(--weft-leading-lg);
+}
+/* The sidebar and the table of contents at the interface size. */
+.sidebar-content a,
+.sidebar-content .large,
+starlight-toc a,
+mobile-starlight-toc nav {
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+}
+/* Identifiers read as identifiers, at the ratio base.css uses. */
+.sl-markdown-content code {
+  font-size: 0.92em;
+}
+.expressive-code {
+  font-size: var(--weft-type-md);
 }
 
-/* Identifiers read as identifiers. */
-.sl-markdown-content code {
-  font-size: 0.875em;
+/* The header: every Weft product's (packages/ui/src/header.css; the markup
+   is in src/components/Header.astro). Starlight's bar is a fixed box of
+   --sl-nav-height, so the height is set here: 60px, and 96px under 900px
+   where the links take a second row. */
+:root {
+  --sl-nav-height: 60px;
+  --sl-nav-pad-x: 0px;
+  --sl-nav-pad-y: 0px;
+  --sl-menu-button-size: 36px;
+}
+@media (max-width: 900px) {
+  :root {
+    --sl-nav-height: 96px;
+  }
+}
+.page > header.header {
+  padding: 0;
+  border-bottom-color: var(--weft-line);
+  background: color-mix(in srgb, var(--weft-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+/* The bar runs the full width here, over the sidebar and the page, with
+   the sidebar's own inset. */
+.page > header.header > .shell-bar {
+  max-width: none;
+}
+@media (min-width: 50rem) {
+  .page > header.header > .shell-bar {
+    padding-inline: max(var(--weft-space-6), env(safe-area-inset-left, 0px)) max(var(--weft-space-6), env(safe-area-inset-right, 0px));
+  }
+}
+/* On a phone the menu button that opens the page list sits at the end of
+   the links' row, which leaves it room. */
+@media (max-width: 49.99rem) {
+  [data-has-sidebar] .shell-nav {
+    margin-inline-end: calc(var(--sl-menu-button-size) + var(--weft-space-2));
+  }
+}
+.shell-menu-toggle {
+  position: fixed;
+  top: 60px;
+  inset-inline-end: max(var(--weft-space-4), env(safe-area-inset-right, 0px));
+  z-index: var(--sl-z-index-navbar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sl-menu-button-size);
+  height: var(--sl-menu-button-size);
+  padding: 0;
+  border: 1px solid var(--weft-line);
+  border-radius: var(--weft-radius-lg);
+  background: transparent;
+  color: var(--weft-text-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.shell-menu-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+.shell-menu-toggle:has(~ :popover-open) {
+  border-color: var(--weft-line-strong);
+  color: var(--weft-text);
+}
+.shell-menu-toggle:has(~ :popover-open) .shell-menu-toggle__open,
+.shell-menu-toggle:not(:has(~ :popover-open)) .shell-menu-toggle__close {
+  display: none;
+}
+@media (min-width: 50rem) {
+  .shell-menu-toggle {
+    display: none;
+  }
+}
+@media (hover: hover) {
+  .shell-menu-toggle:hover {
+    border-color: var(--weft-line-strong);
+    color: var(--weft-text);
+  }
+}
+/* The page list opens under the taller bar. */
+.sidebar-pane {
+  inset-block-start: var(--sl-nav-height);
+}
+
+/* Search as a tool: a 36px control like the Shell's search field, opening
+   Starlight's dialog. The word shows where there is room for it. */
+site-search {
+  display: flex;
+}
+site-search > button[data-open-modal] {
+  display: flex;
+  align-items: center;
+  gap: var(--weft-space-2);
+  height: 36px;
+  min-width: 36px;
+  padding: 0 var(--weft-space-3);
+  border: 1px solid var(--weft-line);
+  border-radius: var(--weft-radius-lg);
+  background: var(--weft-bg-sunken);
+  color: var(--weft-text-subtle);
+  font: var(--weft-type-md) / var(--weft-leading-md) var(--weft-font-sans);
+  cursor: pointer;
+  transition:
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out);
+}
+site-search > button[data-open-modal] > svg {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+site-search > button[data-open-modal] > kbd {
+  display: none;
+}
+@media (hover: hover) {
+  site-search > button[data-open-modal]:hover {
+    border-color: var(--weft-line-strong);
+    color: var(--weft-text);
+  }
+}
+@media (max-width: 1100px) {
+  site-search > button[data-open-modal] {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  site-search > button[data-open-modal] > span {
+    display: none;
+  }
+}
+site-search dialog {
+  border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-xl);
+  background: var(--weft-bg-overlay);
+  box-shadow: var(--weft-shadow-3);
 }
 
 /* Asides in Weft's roles: accent for notes and tips, warn for cautions,
@@ -112,59 +299,6 @@
   transition: color var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-/* Landing page ------------------------------------------------------ */
-
-.hero {
-  padding-block: clamp(2.5rem, 6vw, 5rem);
-}
-
-.hero > .hero-html.hero-html {
-  width: min(100%, 34rem);
-}
-
-.hero-html img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-/* Give the product shot room next to the headline. */
-@media (min-width: 50rem) {
-  .hero.hero {
-    grid-template-columns: 6fr 5fr;
-  }
-}
-
-.hero .tagline {
-  max-width: 34rem;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .hero > * {
-    animation: weft-rise var(--weft-duration-deliberate) var(--weft-ease-out) both;
-  }
-  .hero > :nth-child(2) {
-    animation-delay: calc(var(--weft-stagger) * 1.5);
-  }
-}
-
-@keyframes weft-rise {
-  from {
-    opacity: 0;
-    transform: translateY(var(--weft-shift-md));
-  }
-}
-
-/* In the mobile menu the products switcher sits at the bottom of the
-   screen, so its list opens upwards. */
-.mobile-preferences .weft-switcher__menu {
-  --weft-switcher-from: var(--weft-shift-md);
-  top: auto;
-  bottom: calc(100% + var(--weft-space-2));
-  left: 0;
-  right: auto;
-}
-
 /* Previous and next: cards like the landing's, with the sites' states. */
 .pagination-links a {
   border-color: var(--weft-line-strong);
@@ -172,18 +306,17 @@
   box-shadow: none;
   transition:
     border-color var(--weft-duration-fast) var(--weft-ease-out),
-    transform var(--weft-duration-instant) var(--weft-ease-out);
-}
-.pagination-links a:hover {
-  border-color: var(--weft-line-strong);
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 @media (hover: hover) {
   .pagination-links a:hover {
     border-color: var(--weft-text-subtle);
   }
 }
+/* The press, as motion.css writes it: down in instant, back in fast. */
 .pagination-links a:active {
   transform: scale(var(--weft-press-scale));
+  transition-duration: var(--weft-duration-fast), var(--weft-duration-instant);
 }
 .pagination-links .link-title {
   font-size: var(--weft-type-lg);
@@ -203,49 +336,4 @@
   background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M9 7h8v8'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M9 7h8v8'/%3E%3C/svg%3E") center / contain no-repeat;
-}
-
-/* Between pages, as on the sites (packages/ui/src/base.css): the new page
-   fades in from the right, or from the left when going back through
-   history. The head script in astro.config.mjs picks the direction. */
-@view-transition {
-  navigation: auto;
-  types: forward;
-}
-@media (prefers-reduced-motion: reduce) {
-  @view-transition {
-    navigation: none;
-  }
-}
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--weft-duration-base);
-}
-html:active-view-transition-type(forward)::view-transition-old(root) {
-  animation: weft-page-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
-  --weft-page-to: calc(var(--weft-shift-md) * -1);
-}
-html:active-view-transition-type(forward)::view-transition-new(root) {
-  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
-  --weft-page-from: var(--weft-shift-md);
-}
-html:active-view-transition-type(back)::view-transition-old(root) {
-  animation: weft-page-out calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both;
-  --weft-page-to: var(--weft-shift-md);
-}
-html:active-view-transition-type(back)::view-transition-new(root) {
-  animation: weft-page-in var(--weft-duration-base) var(--weft-ease-out) both;
-  --weft-page-from: calc(var(--weft-shift-md) * -1);
-}
-@keyframes weft-page-in {
-  from {
-    opacity: 0;
-    transform: translateX(var(--weft-page-from, 0));
-  }
-}
-@keyframes weft-page-out {
-  to {
-    opacity: 0;
-    transform: translateX(var(--weft-page-to, 0));
-  }
 }

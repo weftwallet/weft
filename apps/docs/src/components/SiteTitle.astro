@@ -1,78 +1,19 @@
 ---
-// Replaces Starlight's site title so the mark can weave once on hover or
-// keyboard focus. Same 16px-grid small mark as packages/brand/logo/mark-small.svg.
+// The docs' lockup, as every Weft header draws it (packages/ui/src/header.css):
+// the 28px small mark and "weft docs". Still, like every other product's.
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { products } from "@weftwallet/brand/products";
+
+const require = createRequire(import.meta.url);
+const mark = readFileSync(require.resolve(`@weftwallet/brand/${products.docs.markSmall}`), "utf8")
+  .replace(/<!--[\s\S]*?-->\s*/g, "")
+  .replace(/<svg /, '<svg aria-hidden="true" focusable="false" ')
+  .replace(/\s+role="img"/, "")
+  .replace(/\s+aria-label="[^"]*"/, "");
 ---
 
-<a href="/" class="site-title weft-title" aria-label="Weft Docs, home">
-  <svg class="weft-title__mark" width="32" height="32" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
-    <defs>
-      <clipPath id="weft-title-r1"><rect class="weft-title__reveal weft-title__reveal--1" x="2" y="2" width="12" height="6"></rect></clipPath>
-      <clipPath id="weft-title-r2"><rect class="weft-title__reveal weft-title__reveal--2" x="2" y="8" width="12" height="6"></rect></clipPath>
-    </defs>
-    <rect width="16" height="16" rx="4" fill="#3FC1B0"></rect>
-    <rect x="4" y="2" width="2" height="12" fill="#0B1218"></rect>
-    <rect x="10" y="2" width="2" height="12" fill="#0B1218"></rect>
-    <g clip-path="url(#weft-title-r1)">
-      <rect x="2" y="4" width="12" height="2" fill="#0B1218"></rect>
-      <rect x="9" y="3" width="4" height="4" fill="#3FC1B0"></rect><rect x="10" y="3" width="2" height="4" fill="#0B1218"></rect>
-      <rect x="3" y="3" width="4" height="4" fill="#3FC1B0"></rect><rect x="3" y="4" width="4" height="2" fill="#0B1218"></rect>
-    </g>
-    <g clip-path="url(#weft-title-r2)">
-      <rect x="2" y="10" width="12" height="2" fill="#0B1218"></rect>
-      <rect x="3" y="9" width="4" height="4" fill="#3FC1B0"></rect><rect x="4" y="9" width="2" height="4" fill="#0B1218"></rect>
-      <rect x="9" y="9" width="4" height="4" fill="#3FC1B0"></rect><rect x="9" y="10" width="4" height="2" fill="#0B1218"></rect>
-    </g>
-  </svg>
-  <span class="weft-title__word">weft <span class="weft-title__product">docs</span></span>
+<a class="shell-lockup" href="/" aria-label="Weft Docs, home">
+  <Fragment set:html={mark} />
+  <span class="shell-word">weft<span class="shell-word__product"> docs</span></span>
 </a>
-
-<style>
-  .weft-title {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--sl-color-white);
-    text-decoration: none;
-  }
-  .weft-title__word {
-    font-family: var(--sl-font-mono);
-    font-size: 1.35rem;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-  }
-  .weft-title__product {
-    color: var(--sl-color-gray-3);
-  }
-  .weft-title__reveal {
-    transform-box: fill-box;
-    transform-origin: left center;
-  }
-  /* One weave per hover or focus. */
-  @media (hover: hover) {
-    .weft-title:hover .weft-title__reveal--1 {
-      animation: weft-title-weave var(--weft-duration-base) var(--weft-ease-out) both;
-    }
-    .weft-title:hover .weft-title__reveal--2 {
-      animation: weft-title-weave var(--weft-duration-base) calc(var(--weft-duration-base) * 0.3) var(--weft-ease-out) both;
-    }
-  }
-  .weft-title:focus-visible .weft-title__reveal--1 {
-    animation: weft-title-weave var(--weft-duration-base) var(--weft-ease-out) both;
-  }
-  .weft-title:focus-visible .weft-title__reveal--2 {
-    animation: weft-title-weave var(--weft-duration-base) calc(var(--weft-duration-base) * 0.3) var(--weft-ease-out) both;
-  }
-  @keyframes weft-title-weave {
-    from {
-      transform: scaleX(0);
-    }
-    to {
-      transform: scaleX(1);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .weft-title__reveal {
-      animation: none !important;
-    }
-  }
-</style>

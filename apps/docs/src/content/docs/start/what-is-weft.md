@@ -3,6 +3,8 @@ title: What is Weft?
 description: How Weft differs from an Ethereum wallet, and the three pieces that make it work.
 ---
 
+On most Hyperledger Fabric applications today, a server signs for everyone. A portal holds the users' identities, people log in to it with a password, and it submits each transaction under an identity the person never touches, so the ledger records the server, not the person. Weft moves the identity into the person's own browser: the application asks for a signature, the person reads the transaction and approves it, and the ledger records who decided.
+
 Weft is a browser extension that lets you use web apps built on [Hyperledger Fabric](https://hyperledger-fabric.readthedocs.io/) the way MetaMask lets you use Ethereum apps: the app asks, you see exactly what it wants, and you approve or reject.
 
 ## How it differs from a crypto wallet

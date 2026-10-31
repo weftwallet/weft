@@ -1,8 +1,15 @@
 // @ts-check
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import starlight from "@astrojs/starlight";
 import { productUrl } from "@weftwallet/brand/products";
 import { defineConfig } from "astro/config";
 import { source } from "../../vite.source.ts";
+
+const require = createRequire(import.meta.url);
+// Before the first paint: the stored theme (under Starlight's key) and the
+// page transition's direction. The one file every Weft page inlines.
+const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
 
 // Built pages link to the other products' public addresses; `astro dev`, and
 // any build with WEFT_PRODUCTS=dev (the end-to-end tests), to the local ones.
@@ -47,33 +54,28 @@ export default defineConfig({
       title: "weft docs",
       description: "Guides for people using Weft, building dApps and running Hyperledger Fabric networks.",
       favicon: "/favicon.svg",
-      // The page transition's direction (theme.css): back when going back
-      // through history, forward otherwise. As in packages/ui/src/Shell.astro.
-      head: [
-        {
-          tag: "script",
-          content: `const isBack = (type, from, to) => type === "traverse" && !(from != null && to != null && to > from);
-const goBack = (t) => { t.types.delete("forward"); t.types.add("back"); };
-addEventListener("pagereveal", (e) => { const a = window.navigation?.activation; if (e.viewTransition && a && isBack(a.navigationType, a.from?.index, a.entry?.index)) goBack(e.viewTransition); });
-addEventListener("pageswap", (e) => { const a = e.activation; if (e.viewTransition && a && isBack(a.navigationType, window.navigation?.currentEntry?.index, a.entry?.index)) goBack(e.viewTransition); });`,
-        },
-      ],
-      // The mark weaves on hover; see src/components/SiteTitle.astro. The
-      // products switcher and the theme control are the sites' own, from
-      // @weftwallet/ui, in SocialIcons.astro and ThemeSelect.astro.
+      head: [{ tag: "script", attrs: { "data-theme-key": "starlight-theme" }, content: early }],
+      // The header every Weft product renders, from @weftwallet/ui: the
+      // lockup, the docs' links, search, the products switcher and the
+      // theme control; the phone's menu button as one of its tools.
       components: {
+        Header: "./src/components/Header.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
-        SocialIcons: "./src/components/SocialIcons.astro",
-        ThemeSelect: "./src/components/ThemeSelect.astro",
+        MobileMenuToggle: "./src/components/MobileMenuToggle.astro",
+        MobileMenuFooter: "./src/components/MobileMenuFooter.astro",
       },
-      social: [{ icon: "github", label: "GitHub", href: "https://github.com/ifeanyi-ugwu/weft" }],
       editLink: { baseUrl: "https://github.com/ifeanyi-ugwu/weft/edit/main/apps/docs/" },
       customCss: [
-        "@fontsource/atkinson-hyperlegible-next/400.css",
-        "@fontsource/atkinson-hyperlegible-next/600.css",
-        "@fontsource/atkinson-hyperlegible-mono/400.css",
-        "@fontsource/atkinson-hyperlegible-mono/500.css",
+        "@fontsource/atkinson-hyperlegible-next/latin-400.css",
+        "@fontsource/atkinson-hyperlegible-next/latin-500.css",
+        "@fontsource/atkinson-hyperlegible-next/latin-600.css",
+        "@fontsource/atkinson-hyperlegible-mono/latin-400.css",
+        "@fontsource/atkinson-hyperlegible-mono/latin-500.css",
         "@weftwallet/brand/tokens.css",
+        // The shared motion and header (the switcher and theme control's
+        // styles live in header.css), as on every Weft site.
+        "@weftwallet/ui/motion.css",
+        "@weftwallet/ui/header.css",
         "./src/styles/theme.css",
       ],
       sidebar: [
