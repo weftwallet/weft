@@ -3,7 +3,7 @@ import type { ActivityRecord } from "../../lib/db";
 import { ui, type IdentityView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import { CopyButton, useFeedback } from "../feedback";
-import { ActionError, Button, Empty, Icon, Logo, compactHex, healthView, shorten, timeAgo, toErrorInfo, tokenMs, useFocusOnArrival, type ErrorInfo } from "../ui";
+import { ActionError, Button, Empty, Icon, Logo, Select, compactHex, healthView, shorten, timeAgo, toErrorInfo, tokenMs, useFocusOnArrival, type ErrorInfo } from "../ui";
 import { FILTER_FROM, FilterInput, GroupHeading, focusTargetAfter, groupByNetwork, matches, namesSummary, useLeaving } from "./lists";
 import { useAction, useActivityEvents, type Navigate } from "./state";
 
@@ -106,16 +106,13 @@ export function Home({
             ·
           </span>
           {channels.length > 1 ? (
-            <>
-              <select aria-label="Channel" title={channel} value={channel ?? ""} onChange={(e) => void changeChannel(e.target.value)}>
-                {channels.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <Icon name="chevron" size={14} color="var(--weft-text-subtle)" />
-            </>
+            <Select bare aria-label="Channel" title={channel} value={channel ?? ""} onChange={(e) => void changeChannel(e.target.value)}>
+              {channels.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
           ) : (
             <span className="channel-picker__channel" title={channel}>
               {channel}

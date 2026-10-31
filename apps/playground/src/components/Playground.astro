@@ -79,7 +79,7 @@ const { demoInvite = null } = Astro.props;
     <div class="pg-grid">
       <div class="field">
         <label for="pg-channel">Channel</label>
-        <select id="pg-channel" class="input"><option value="mychannel">mychannel</option></select>
+        <span class="select"><select id="pg-channel" class="input"><button><selectedcontent></selectedcontent></button><option value="mychannel">mychannel</option></select></span>
         <p class="field__status" aria-hidden="true"></p>
       </div>
       <div class="field">
@@ -179,7 +179,7 @@ const { demoInvite = null } = Astro.props;
           </div>
           <div class="field">
             <label for="pg-new-minutes">Voting closes in</label>
-            <select id="pg-new-minutes" class="input"><option value="2">2 minutes</option><option value="10">10 minutes</option><option value="60">1 hour</option><option value="1440">1 day</option></select>
+            <span class="select"><select id="pg-new-minutes" class="input"><button><selectedcontent></selectedcontent></button><option value="2">2 minutes</option><option value="10">10 minutes</option><option value="60">1 hour</option><option value="1440">1 day</option></select></span>
             <p class="field__status" aria-hidden="true"></p>
           </div>
         </div>
@@ -539,7 +539,9 @@ const { demoInvite = null } = Astro.props;
       reveal($("pg-invite-details"));
       $("pg-invite-status").textContent = `Loaded from ${new URL(url).host}.`;
       const select = $<HTMLSelectElement>("pg-channel");
-      select.replaceChildren(...invite.channels.map((c: string) => Object.assign(document.createElement("option"), { value: c, textContent: c })));
+      // Options only: the button shows the chosen one (select.css).
+      select.querySelectorAll("option").forEach((o) => o.remove());
+      select.append(...invite.channels.map((c: string) => Object.assign(document.createElement("option"), { value: c, textContent: c })));
       explorerBase = typeof invite.explorerUrl === "string" ? invite.explorerUrl.replace(/\/+$/, "") : null;
       if (!quiet) announce(`Invite loaded: ${invite.network}.`);
       void loadExplorers();

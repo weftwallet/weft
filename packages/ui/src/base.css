@@ -1,6 +1,7 @@
 /* Base styles for Weft's sites: the fonts, the tokens, the header
    (header.css), the motion (motion.css), and the few rules every page
    shares: controls, fields and their reserved error line, error details.
+   Selects (select.css) add their chevron and open list to .input.
    Everything else belongs to the page or the component. See
    packages/brand/SYSTEM.md. */
 @import "@fontsource/atkinson-hyperlegible-next/latin-400.css";
@@ -10,6 +11,7 @@
 @import "@fontsource/atkinson-hyperlegible-mono/latin-500.css";
 @import "@weftwallet/brand/tokens.css";
 @import "./motion.css";
+@import "./select.css";
 @import "./header.css";
 
 *,
@@ -252,6 +254,10 @@ textarea.input {
 .input[aria-invalid="true"],
 .input[aria-invalid="true"]:hover {
   border-color: var(--weft-danger);
+}
+.input:disabled {
+  opacity: var(--weft-disabled-opacity);
+  cursor: not-allowed;
 }
 
 /* A labelled field: the label, an optional hint beside it, the control, and

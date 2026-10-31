@@ -8,6 +8,9 @@
    panels and sheets, .arrive, the reserved error line and reduced motion. The
    wallet writes no duration of its own; see packages/brand/SYSTEM.md, Motion. */
 @import "@weftwallet/ui/motion.css";
+/* Every Weft select's chevron and open list (select.css); the fields below
+   give a select its border, ground and states, as they do an input. */
+@import "@weftwallet/ui/select.css";
 
 *,
 *::before,
@@ -666,31 +669,29 @@ textarea {
   outline-offset: var(--weft-focus-offset);
 }
 
-.channel-picker select {
-  appearance: none;
-  border: 0;
-  background: transparent;
+/* The select (a bare .select, select.css) runs to the pill's right edge, so
+   its chevron sits 12px in from it and the whole right of the pill opens
+   it. Its list opens under the whole pill. */
+.channel-picker--choice {
+  padding-right: 0;
+  anchor-name: --weft-channel-picker;
+}
+
+.channel-picker .select {
   flex: 1 1 0;
-  min-width: 0;
-  cursor: pointer;
-  padding-right: 16px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  align-self: stretch;
 }
 
-.channel-picker select:focus-visible {
-  outline: none;
+@media (hover: hover) {
+  .channel-picker--choice:hover .select::after {
+    color: var(--weft-text);
+  }
 }
 
-.channel-picker select option {
-  background: var(--weft-bg-raised);
-}
-
-.channel-picker svg {
-  position: absolute;
-  right: 12px;
-  pointer-events: none;
+@supports (appearance: base-select) {
+  .channel-picker .select > select::picker(select) {
+    position-anchor: --weft-channel-picker;
+  }
 }
 
 .dot {
@@ -722,9 +723,16 @@ textarea {
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line-strong);
   background: var(--weft-bg-surface);
-  padding: 8px 12px;
+  /* Not the right: a select keeps room for its chevron (select.css). */
+  padding-block: 8px;
+  padding-left: 12px;
   min-height: 44px;
   transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+.field input,
+.field textarea {
+  padding-right: 12px;
 }
 
 @media (hover: hover) {
@@ -850,28 +858,6 @@ details.error-details[open] summary::before {
   scrollbar-width: thin;
   scrollbar-color: var(--weft-line-strong) transparent;
   animation: crossfade var(--weft-duration-fast) var(--weft-ease-out);
-}
-
-/* A select with its chevron drawn in currentColor, so it follows the theme. */
-.select {
-  position: relative;
-  display: block;
-}
-
-.field .select select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 40px;
-  cursor: pointer;
-}
-
-.select > svg {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--weft-text-subtle);
-  pointer-events: none;
 }
 
 /* Surfaces -------------------------------------------------------- */

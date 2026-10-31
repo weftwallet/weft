@@ -143,6 +143,8 @@ Every control has the same states, in this order of precedence: disabled, loadin
 | Disabled | `disabled-opacity` (0.5), no hover or press, `cursor: not-allowed`. Say why nearby if it isn't obvious. |
 | Selected | `accent-soft` ground and `accent-line` border, or a sliding indicator (a transition, so it is reversible) for tabs and segmented controls. |
 
+Every `<select>` stays a native select, in a `.select` wrapper, styled once in `packages/ui/src/select.css` (the sites through `base.css`, the wallet through its Vite CSS, the explorer as a static file). Closed, it is the text input beside it with a 16px chevron, 12px from the right, in `text-subtle` and `text` on hover, turning over while the list is open. Where the browser lets a page draw the open list (`appearance: base-select`), the list is a menu like the products grid's: `bg-overlay`, a `line-strong` border, `radius-xl`, `shadow-3`, 36px options with `radius-lg`, the chosen one on `accent-soft` with a check, arriving as a reversible menu does. Elsewhere the browser's own list opens under the same closed control.
+
 ## Errors
 
 Say what happened and what to do next, in plain words. Fabric codes and raw messages are secondary detail, behind "Details".

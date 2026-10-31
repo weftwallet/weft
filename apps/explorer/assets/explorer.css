@@ -401,13 +401,16 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .receipt[hidden] { display: none; }
 .field { display: flex; flex-direction: column; gap: var(--weft-space-2); min-width: 0; }
 .field label { font-size: var(--weft-type-md); line-height: var(--weft-leading-md); color: var(--weft-text-muted); }
+/* A select's chevron, its room on the right and its open list are in
+   select.css, as in every Weft product. */
 .receipt input, .receipt select {
-  height: 44px; padding: 0 var(--weft-space-3); min-width: 0;
+  height: 44px; padding-block: 0; padding-left: var(--weft-space-3); min-width: 0;
   border-radius: var(--weft-radius-lg); border: 1px solid var(--weft-line-strong);
   background: var(--weft-bg-sunken); color: var(--weft-text);
   font: var(--weft-type-md) var(--weft-font-mono);
   transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
 }
+.receipt input { padding-right: var(--weft-space-3); }
 .receipt input:focus, .receipt select:focus { border-color: var(--weft-accent-line); }
 .receipt input[aria-invalid="true"] { border-color: var(--weft-danger); }
 /* The button lines up with the inputs, below the labels, whatever errors show. */

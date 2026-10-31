@@ -466,6 +466,7 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
 <script>${raw(EARLY)}</script>
 <link rel="stylesheet" href="/assets/tokens.css">
 <link rel="stylesheet" href="/assets/motion.css">
+<link rel="stylesheet" href="/assets/select.css">
 <link rel="stylesheet" href="/assets/header.css">
 <link rel="stylesheet" href="/assets/explorer.css">
 <link rel="icon" type="image/svg+xml" href="/assets/mark.svg">
@@ -1383,7 +1384,7 @@ ${e.tally
   ${lookedUp ? receiptResult(lookedUp) : ""}
   <form class="card receipt receipt--local" id="local" novalidate ${lookedUp?.result.commitment ? "" : "hidden"}>
     <p class="small">To confirm the commitment is your vote, enter the choice and the salt from your receipt. They stay in this browser.</p>
-    <div class="field"><label for="local-option">Your choice</label><select id="local-option">${e.options.map((o) => html`<option>${o}</option>`)}</select></div>
+    <div class="field"><label for="local-option">Your choice</label><span class="select"><select id="local-option"><button><selectedcontent></selectedcontent></button>${e.options.map((o) => html`<option>${o}</option>`)}</select></span></div>
     <div class="field"><label for="local-salt">Salt</label><input id="local-salt" class="mono" spellcheck="false" autocomplete="off">${fieldError("local-salt-error")}</div>
     <button type="submit" class="button" id="local-check">Check here</button>
     <p id="local-result" class="small result"></p>

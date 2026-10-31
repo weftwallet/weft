@@ -1,0 +1,234 @@
+/* Selects: one design for every <select> in Weft. Plain CSS with no imports:
+   it needs @weftwallet/brand/tokens.css loaded before it. base.css imports it
+   for the sites; the wallet imports it into its Vite CSS
+   (@import "@weftwallet/ui/select.css"); the explorer serves it as a static
+   file after motion.css, with the two icons beside it. The select stays a
+   native <select>, so the keyboard, screen readers and forms behave as the
+   browser makes them. Markup:
+
+     <span class="select">
+       <select id="channel" class="input">
+         <button><selectedcontent></selectedcontent></button>
+         <option>…</option>
+       </select>
+     </span>
+
+   The button and selectedcontent are for browsers with customisable
+   selects: they show the chosen option's words in a box this file can
+   ellipsize, as the browser does for a native select. Browsers without them
+   leave them out and draw the options' words themselves. A script that
+   replaces the options keeps the button (replace the options, not all the
+   children).
+
+   The product's own field rules give the select its height, border, radius,
+   ground, font and states, the same as the text inputs beside it (base.css
+   .input for the sites, .field select in the wallet, .receipt select in the
+   explorer). This file adds what a select has and an input doesn't:
+
+   - Closed: no native arrow; a 16px chevron (icons/chevron.svg, a mask in
+     currentColor, so it follows the theme), 12px from the right, in
+     text-subtle and text on hover; room on the right so a long value
+     ellipsizes before the chevron. While the list is open (:open, where the
+     browser has it) the chevron turns over.
+   - Open, where the browser has customisable selects (appearance:
+     base-select, Chromium): the list is a menu like the products grid's,
+     on bg-overlay with a line-strong border, radius-xl and shadow-3; options
+     36px tall with radius-lg, bg-raised on hover, the chosen one on
+     accent-soft with a check. It arrives as a .reversible does
+     (motion.css, 4). Elsewhere the browser's own list opens under the same
+     closed control.
+
+   .select--bare is for a select inside a control that draws its own border
+   and ground (the wallet's channel picker): no border, no ground, no left
+   padding. */
+
+.select {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.select > select {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  /* 12px gap, the 16px chevron, 12px to the edge. */
+  padding-right: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.select > select:disabled {
+  cursor: not-allowed;
+}
+
+.select--bare > select {
+  height: 100%;
+  min-height: 0;
+  padding-block: 0;
+  padding-left: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.select--bare > select:focus-visible {
+  outline: none;
+}
+
+/* The chevron. */
+.select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  color: var(--weft-text-subtle);
+  background: currentColor;
+  -webkit-mask: url("./icons/chevron.svg") center / 16px 16px no-repeat;
+  mask: url("./icons/chevron.svg") center / 16px 16px no-repeat;
+  pointer-events: none;
+  /* Turning back over on base-out with ease-in, as everything leaving does. */
+  transition:
+    rotate var(--weft-duration-base-out) var(--weft-ease-in),
+    color var(--weft-duration-fast) var(--weft-ease-out);
+}
+@media (hover: hover) {
+  .select:hover:not(:has(> select:disabled))::after {
+    color: var(--weft-text);
+  }
+}
+.select:has(> select:disabled)::after {
+  opacity: var(--weft-disabled-opacity);
+}
+/* Its own rule: a browser without :open drops only this. */
+.select:has(> select:open)::after {
+  color: var(--weft-text);
+  rotate: 180deg;
+  transition:
+    rotate var(--weft-duration-base) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+/* The open list, where the browser lets a page draw it. */
+@supports (appearance: base-select) {
+  .select > select,
+  .select > select::picker(select) {
+    appearance: base-select;
+  }
+
+  /* The closed control is the same as without base-select: one line, the
+     value centred in the field's height, the chevron above drawn instead of
+     the browser's. */
+  .select > select {
+    display: flex;
+    align-items: center;
+  }
+  .select > select::picker-icon {
+    display: none;
+  }
+  .select > select > button {
+    display: contents;
+  }
+  .select > select selectedcontent {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .select > select::picker(select) {
+    box-sizing: border-box;
+    /* Under the control where it fits (above only where it doesn't). As
+       wide as the control, or up to 320px under a narrow one, and never
+       wider than the screen (on a phone, no wider than the control); a
+       longer option wraps. */
+    position-try-order: normal;
+    inline-size: max-content;
+    min-inline-size: anchor-size(self-inline);
+    max-inline-size: max(anchor-size(self-inline), min(320px, 100vw - 2 * var(--weft-space-4)));
+    max-block-size: min(320px, calc(100dvh - 2 * var(--weft-space-4)));
+    margin-block: var(--weft-space-1);
+    padding: var(--weft-space-1);
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-xl);
+    background: var(--weft-bg-overlay);
+    color: var(--weft-text);
+    box-shadow: var(--weft-shadow-3);
+    font: inherit;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--weft-line-strong) transparent;
+  }
+  /* On a phone the list keeps to the control's edges. */
+  @media (max-width: 719px) {
+    .select > select::picker(select) {
+      max-inline-size: anchor-size(self-inline);
+    }
+  }
+
+  /* Options: 36px, radius-lg, so their corners sit inside the list's
+     radius-xl over its 4px padding. */
+  .select > select option {
+    display: flex;
+    align-items: center;
+    gap: var(--weft-space-2);
+    min-block-size: 36px;
+    padding: var(--weft-space-2) var(--weft-space-3);
+    border-radius: var(--weft-radius-lg);
+    background: transparent;
+    color: var(--weft-text);
+    line-height: var(--weft-leading-md);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  .select > select option:focus-visible {
+    outline: var(--weft-focus-ring) solid var(--weft-focus);
+    outline-offset: calc(var(--weft-focus-ring) * -1);
+  }
+  .select > select option:checked {
+    background: var(--weft-accent-soft);
+    color: var(--weft-text-strong);
+  }
+  .select > select option:disabled {
+    opacity: var(--weft-disabled-opacity);
+    cursor: not-allowed;
+  }
+  /* The check, after the words, on the chosen option only. */
+  .select > select option::checkmark {
+    order: 1;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-inline-start: auto;
+    content: "";
+    background: var(--weft-accent-text);
+    -webkit-mask: url("./icons/check.svg") center / 16px 16px no-repeat;
+    mask: url("./icons/check.svg") center / 16px 16px no-repeat;
+  }
+  .select > select option:not(:checked)::checkmark {
+    visibility: hidden;
+  }
+  @media (hover: hover) {
+    .select > select option:not(:checked, :disabled):hover {
+      background: var(--weft-bg-raised);
+    }
+  }
+}
+
+/* Reduced motion: the chevron turns at once, as every reversible thing
+   changes (motion.css, 7, which also covers the list). */
+@media (prefers-reduced-motion: reduce) {
+  .select::after,
+  .select:has(> select:open)::after {
+    transition-duration: 0s;
+  }
+}

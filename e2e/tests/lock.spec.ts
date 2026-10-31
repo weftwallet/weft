@@ -123,6 +123,22 @@ test("the popup locks from Security and unlocks with the password", async ({ wal
   await expect(popup.getByRole("heading", { name: "Security" })).toBeVisible();
 });
 
+test("Escape closes the auto-lock list without leaving Security", async ({ wallet }) => {
+  await wallet.enroll("alice", stack().users.alice!);
+  const popup = await wallet.popup();
+  await popup.getByRole("button", { name: "Security" }).click();
+  const select = popup.getByLabel("Lock automatically");
+  const before = await select.inputValue();
+  await select.click();
+  await popup.keyboard.press("Escape");
+  await expect(popup.getByRole("heading", { name: "Security" })).toBeVisible();
+  await popup.waitForTimeout(300);
+  await expect(popup.getByRole("heading", { name: "Security" })).toBeVisible();
+  // Chosen from the list, the setting changes as before.
+  await select.selectOption({ index: 0 });
+  await expect(select).not.toHaveValue(before);
+});
+
 test("an open popup locks when Weft locks elsewhere", async ({ wallet }) => {
   await wallet.enroll("alice", stack().users.alice!);
   const popup = await wallet.popup();

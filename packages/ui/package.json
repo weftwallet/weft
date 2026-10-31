@@ -11,13 +11,16 @@
     "./ThemeControl.astro": "./src/ThemeControl.astro",
     "./base.css": "./src/base.css",
     "./motion.css": "./src/motion.css",
+    "./select.css": "./src/select.css",
     "./header.css": "./src/header.css",
     "./early.js": "./src/early.js",
     "./theme-control.js": "./src/theme-control.js",
     "./product-switcher.js": "./src/product-switcher.js",
     "./header.js": "./src/header.js",
     "./links": "./src/links.ts",
-    "./ui": "./src/ui.ts"
+    "./ui": "./src/ui.ts",
+    "./icons/chevron.svg": "./src/icons/chevron.svg",
+    "./icons/check.svg": "./src/icons/check.svg"
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible-mono": "^5.3.0",

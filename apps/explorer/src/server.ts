@@ -53,6 +53,10 @@ const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
   // The motion and the header every Weft product shares, served after the tokens.
   "motion.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/motion.css")) },
   "header.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/header.css")) },
+  // Every Weft select's chevron and open list, with the two icons it masks.
+  "select.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/select.css")) },
+  "icons/chevron.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/ui/icons/chevron.svg")) },
+  "icons/check.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/ui/icons/check.svg")) },
   "explorer.css": { type: "text/css; charset=utf-8", body: () => asset("explorer.css") },
   // The field error's icon, a mask: a file, since the CSP refuses data: images.
   "alert.svg": { type: "image/svg+xml", body: () => asset("alert.svg") },

@@ -58,6 +58,10 @@
       open while the content leaves (details.disclosure, below). Menus do not
       use <details> any more; ProductSwitcher.astro is the pattern.
 
+      A select's open list, ::picker(select), comes down the same way where
+      the browser lets a page draw it (appearance: base-select; its look is
+      in select.css).
+
    5. One-way arrivals, .arrive and .is-leaving. Content shown after an
       action (a result, a card) fades in from shift-md below over base;
       ui.ts reveal() and conceal() add the classes.
@@ -275,6 +279,34 @@ tr.is-new > td:first-child::before {
   --weft-reversible-out: var(--weft-duration-slow-out);
 }
 
+/* A select's list (::picker(select), where the browser has appearance:
+   base-select; select.css draws it) is a menu under its control: it comes
+   down as a .reversible--down, and closes the same way from wherever it is.
+   A pseudo-element can't take the class, so the same transition is written
+   for it here. */
+::picker(select) {
+  opacity: 0;
+  translate: 0 calc(var(--weft-shift-md) * -1);
+  transition-property: opacity, translate, display, overlay;
+  transition-duration: var(--weft-duration-base-out), var(--weft-duration-base-out), 0s, 0s;
+  transition-delay: 0s, 0s, var(--weft-duration-base-out), var(--weft-duration-base-out);
+  transition-timing-function: var(--weft-ease-in);
+  transition-behavior: allow-discrete;
+}
+:open::picker(select) {
+  opacity: 1;
+  translate: none;
+  transition-duration: var(--weft-duration-base), var(--weft-duration-base), 0s, 0s;
+  transition-delay: 0s;
+  transition-timing-function: var(--weft-ease-out);
+}
+@starting-style {
+  :open::picker(select) {
+    opacity: 0;
+    translate: 0 calc(var(--weft-shift-md) * -1);
+  }
+}
+
 /* A disclosure's content comes down from its summary, and goes back up the
    same way when it closes. The native element would hide it at once, so
    ui.ts closesInReverse() holds it open with .is-closing until the leave
@@ -379,6 +411,12 @@ details.disclosure.is-closing > :not(summary) {
   .reversible:popover-open,
   .field__status,
   .field__status.field-error {
+    transition-duration: 0s;
+    transition-delay: 0s;
+  }
+  /* Its own rule: a browser without ::picker drops only this. */
+  ::picker(select),
+  :open::picker(select) {
     transition-duration: 0s;
     transition-delay: 0s;
   }

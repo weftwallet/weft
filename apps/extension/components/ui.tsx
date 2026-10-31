@@ -1,6 +1,7 @@
 import { certificateHealth } from "@weftwallet/core";
 import type { IdentitySummary } from "@weftwallet/protocol";
 import {
+  createElement,
   useEffect,
   useId,
   useRef,
@@ -252,11 +253,15 @@ export function BackHeader({
   const heading = useRef<HTMLHeadingElement>(null);
   useFocusOnArrival(heading, title);
   // Escape goes back, unless a sheet is open: it closes the sheet instead.
+  // Nor when it closes a select's open list: where the browser draws that
+  // list in the page (select.css), focus is on an option and the key still
+  // reaches the window.
   const back = useRef(onBack);
   back.current = onBack;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || document.querySelector(".sheet-backdrop")) return;
+      if (e.target instanceof Element && e.target.closest("option")) return;
       if (heading.current?.closest("[hidden], .is-leaving")) return;
       back.current();
     };
@@ -300,12 +305,21 @@ export function SecretInput({ ref, ...props }: Omit<InputHTMLAttributes<HTMLInpu
   );
 }
 
-/** A select with the chevron drawn in, so it follows the theme. */
-export function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+/**
+ * A native select in Weft's one design (@weftwallet/ui select.css): the
+ * chevron, and where the browser allows it the open list drawn as a menu.
+ * The button and selectedcontent show the chosen option where the browser
+ * has customisable selects; elsewhere the browser leaves them out. `bare` is
+ * for a select inside a control that draws its own border and ground.
+ */
+export function Select({ children, bare = false, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { bare?: boolean }) {
   return (
-    <span className="select">
-      <select {...props}>{children}</select>
-      <Icon name="chevron" size={16} />
+    <span className={bare ? "select select--bare" : "select"}>
+      <select {...props}>
+        {/* React has no type for selectedcontent yet. */}
+        <button type="button">{createElement("selectedcontent")}</button>
+        {children}
+      </select>
     </span>
   );
 }
