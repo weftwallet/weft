@@ -70,19 +70,34 @@ main { overflow-anchor: none; }
 }
 .skip:focus-visible { transform: none; }
 
-/* Header: the shell's bar (header.css), with the organisation's name after
-   the lockup and sign-in among the tools. The bar is the sign-in note's frame. */
-.shell-bar { position: relative; }
+/* Header: the shell's bar (header.css), with no links, the organisation's
+   name after the lockup and sign-in among the tools. The bar (position:
+   relative in header.css) is the sign-in note's frame. */
 /* The name sits by the lockup (order 1, header.css) and takes the free room
-   after it in the lockup's place, so the tools stay at the end. */
-.shell-bar > .shell-lockup { margin-inline-end: calc(var(--weft-space-1) * -1); }
+   after it in the lockup's place, so the tools stay at the end. It shrinks
+   with an ellipsis (its title has the whole name), and under 360px leaves
+   the bar: the products menu's Weft Explorer entry names it. */
+.shell-bar > .shell-lockup { margin-inline-end: 0; }
 .shell-bar > .org {
   order: 1;
-  padding: 2px var(--weft-space-3);
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 16ch;
+  margin-inline-end: auto;
+  padding: 2px var(--weft-space-2);
   border: 1px solid var(--weft-line-strong); border-radius: var(--weft-radius-pill);
   font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); color: var(--weft-text-muted);
-  white-space: nowrap; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;
-  margin-inline-end: auto;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Under 720px search is the 36px button (header.css), and sign-in and the
+   account leave the header: the pages that need sign-in offer it, and the
+   footer has the account. */
+@media (max-width: 719px) {
+  .shell-bar > .signin, .shell-bar > .account { display: none; }
+}
+@media (max-width: 359px) {
+  .shell-bar > .org { display: none; }
+  .shell-bar > .shell-lockup { margin-inline-end: auto; }
 }
 .shell-search__input { font-family: var(--weft-font-sans); }
 
@@ -275,7 +290,7 @@ main { overflow-anchor: none; }
 .table--changes th:first-child { width: 40%; }
 /* A key's first line sits level with its value's, when the value is framed. */
 @media (min-width: 641px) {
-  .table--changes tr:has(> td > pre.value) td.key { padding-top: calc(var(--weft-space-3) * 2 + 1px); }
+  .table--changes tr:has(> td > pre.value, > td > .value-cap) td.key { padding-top: calc(var(--weft-space-3) * 2 + 1px); }
 }
 .table__note { margin-top: var(--weft-space-2); }
 /* The whole row opens its first link; keyboard focus stays on that link,
@@ -322,6 +337,21 @@ pre.value {
   background: var(--weft-bg-sunken); border: 1px solid var(--weft-line);
   font: var(--weft-type-xs) / var(--weft-leading-md) var(--weft-font-mono); white-space: pre-wrap;
 }
+/* A long value is cut at 24 lines (pages.ts VALUE_LINES), its last lines
+   fading, with Show all under it. Its height is a transition, so Show less
+   pressed mid-way turns it back from where it is (SYSTEM.md, Motion): in
+   over slow on ease-out, back over slow-out on ease-in. */
+.value-cap { display: flex; flex-direction: column; align-items: flex-start; gap: var(--weft-space-2); min-width: 0; }
+.value-cap > pre.value {
+  align-self: stretch; overflow: hidden;
+  max-height: calc(24 * var(--weft-leading-md) + 2 * var(--weft-space-3) + 2px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--weft-space-12)), transparent calc(100% - var(--weft-space-3)));
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--weft-space-12)), transparent calc(100% - var(--weft-space-3)));
+  transition: max-height var(--weft-duration-slow-out) var(--weft-ease-in);
+}
+.value-cap > pre.value.is-open { -webkit-mask-image: none; mask-image: none; transition: max-height var(--weft-duration-slow) var(--weft-ease-out); }
+/* A taller target than its line, without moving it. */
+.value-cap__toggle { font-size: var(--weft-type-md); line-height: var(--weft-leading-md); padding-block: var(--weft-space-1); margin-block: calc(var(--weft-space-1) * -1); border-radius: var(--weft-radius-sm); }
 
 .contracts { list-style: none; margin: var(--weft-space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--weft-space-2); }
 .contracts li { display: flex; justify-content: space-between; gap: var(--weft-space-3); }
@@ -438,10 +468,20 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .foot__row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--weft-space-6); }
 .foot__products { display: flex; flex-wrap: wrap; gap: var(--weft-space-2) var(--weft-space-6); margin: 0; padding: 0; list-style: none; }
 .foot__products a { display: flex; align-items: center; gap: var(--weft-space-2); color: var(--weft-text-muted); }
+/* The current product on the products menu's ground; the padding is taken
+   back by the margin, so the names stay where they were. */
+.foot__products a { padding: var(--weft-space-1) var(--weft-space-2); margin: calc(var(--weft-space-1) * -1) calc(var(--weft-space-2) * -1); border-radius: var(--weft-radius-sm); transition: color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out); }
+.foot__products a[aria-current="page"] { background: var(--weft-accent-soft); color: var(--weft-text-strong); }
+/* The account, where the header has no room for it (under 720px). */
+.foot__account { display: none; flex-wrap: wrap; align-items: baseline; gap: var(--weft-space-1) var(--weft-space-4); color: var(--weft-text-muted); }
+.foot__account a { color: var(--weft-text); }
+.foot__account a[aria-current="page"] { text-decoration: underline; text-decoration-color: var(--weft-accent); text-decoration-thickness: 2px; text-underline-offset: 0.3em; }
+.foot__account form { margin: 0; }
+@media (max-width: 719px) { .foot__account { display: flex; } }
 .foot__products svg { width: 16px; height: 16px; display: block; }
 
 /* A value that is a card's only content takes the card as its frame. */
-.card > pre.value:only-child { padding: 0; background: none; border: 0; border-radius: 0; }
+.card > pre.value:only-child, .card > .value-cap:only-child > pre.value { padding: 0; background: none; border: 0; border-radius: 0; }
 .lead + .table, .lead + .tally, .lead + .card, .lead + [data-live] { margin-top: var(--weft-space-6); }
 
 /* Hover, only where there's a pointer that hovers. */
@@ -451,7 +491,7 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   .signin:hover:not([aria-disabled="true"]) { border-color: var(--weft-text-subtle); background: var(--weft-bg-raised); }
   .link-button:hover { text-decoration: underline; }
   .signin-note__close:hover, .error-details summary:hover { color: var(--weft-text); }
-  .foot__products a:hover { color: var(--weft-text); }
+  .foot__products a:not([aria-current]):hover { color: var(--weft-text); }
   .table tbody tr:has(.row-link):hover { background: var(--weft-bg-surface); }
   .table tbody tr:has(.row-link):hover .row-link { text-decoration: underline; }
   .receipt input:hover:not(:focus):not([aria-invalid="true"]), .receipt select:hover:not(:focus) { border-color: var(--weft-text-subtle); }
@@ -466,14 +506,15 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   transition-duration: var(--weft-duration-instant);
 }
 
-/* The overview's two tables side by side need about 1280px: below that the
-   blocks table, with its Agree column, ran into the transactions beside it. */
-@media (max-width: 1279px) {
+/* The overview's two tables sit side by side from about 1100px. The blocks
+   table there has no Hash column (the block's page has it), so with its
+   Agree column it fits its half; below 1100px they stack. */
+@media (max-width: 1099px) {
   .split { grid-template-columns: minmax(0, 1fr); }
 }
 /* Side by side, the cells close up a little so the blocks table, with its
    Agree column, fits its half. */
-@media (min-width: 1280px) {
+@media (min-width: 1100px) {
   .split .table th, .split .table td { padding-inline: var(--weft-space-2); }
 }
 @media (max-width: 960px) {
@@ -486,27 +527,12 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   .channel--row .stats { grid-template-columns: repeat(2, max-content); gap: var(--weft-space-4) var(--weft-space-8); }
   .channel--row .stats > :last-child { grid-column: 1 / -1; }
 }
-@media (max-width: 900px) {
-  /* The organisation's name shrinks into the room the bar has rather than
-     wrapping to a line of its own, and is cut with an ellipsis (its title
-     has the whole name). */
-  .shell-bar > .org { flex: 1 1 0; max-width: max-content; }
-}
-@media (max-width: 420px) {
-  /* On a narrow phone, with sign-in or the account beside it the search
-     takes its row alone, and they share the next with the theme control. */
-  .shell-bar:has(> .signin, > .account) > .shell-search { flex-basis: 100%; }
-}
 @media (min-width: 641px) {
   .config-more .details { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
   /* The header stays put while the page under it changes. */
   .shell-head { view-transition-name: top; }
 }
 @media (max-width: 640px) {
-  /* Sign-in and the account go to the search's row, where there is room for them. */
-  .shell-bar > .signin, .shell-bar > .account { order: 5; margin-bottom: var(--weft-space-2); }
-  .account { min-width: 0; }
-  .account a { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .table thead { display: none; }
   /* Each row's cells flow as a line or two, not one cell to a line; the
      cells that need it say what they are, as the hidden headings did. */
@@ -528,6 +554,8 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 @media (prefers-reduced-motion: reduce) {
   /* motion.css covers pages, rows, disclosures and the error line; these are the explorer's own arrivals. */
   .signin-note, .signin-note.is-leaving, .banner, .result.is-shown { animation-duration: 0s; }
+  /* A long value is cut and shown whole at once. */
+  .value-cap > pre.value, .value-cap > pre.value.is-open { transition-duration: 0s; }
   /* The pick is not drawn. */
   .table tr.is-new { animation: none; }
 }

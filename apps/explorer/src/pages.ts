@@ -46,8 +46,8 @@ const markSvg = (file: string, size: number) =>
 
 /** Weft Explorer's mark: the finished cloth, on ink in the loom's frame. */
 const MARK = markSvg(products.explorer.markSmall, 28);
-/** The same mark at 16px, in the switcher's button: it says where you are. */
-const SWITCHER_MARK = raw(markSvg(products.explorer.markSmall, 16).value.replace(/<svg /, '<svg class="weft-switcher__mark" '));
+/** The same mark at 24px and 16px, for its own entry in the products menu and the footer. */
+const EXPLORER_MARKS = { mark: markSvg(products.explorer.markSmall, 24), small: markSvg(products.explorer.markSmall, 16) };
 
 /**
  * The other Weft products, as the sites' switcher lists them, at the
@@ -80,8 +80,10 @@ const REPOSITORY = repositoryUrl(JSON.parse(readFileSync(new URL("../package.jso
 /**
  * The scripts every Weft page shares, inlined from @weftwallet/ui so there is
  * one copy: early.js (the stored theme before the first paint, the page
- * transition's direction), theme-control.js and product-switcher.js (the
- * header's controls; header.css documents their markup).
+ * transition's direction), theme-control.js, product-switcher.js and
+ * header.js (the header's controls and layout, inlined right after the
+ * header so they are in place before the first paint; header.css documents
+ * their markup).
  */
 const shared = (file: string) => readFileSync(require.resolve(`@weftwallet/ui/${file}`), "utf8");
 const EARLY_SHARED = shared("early.js");
@@ -165,6 +167,24 @@ function readableKey(key: string): Html {
   return html`<span class="subtle">${parts.type}</span>${parts.attrs.map((a) => html`<span class="subtle"> / </span>${a}`)}`;
 }
 
+/** A JSON value up to this long, with nothing nested in it, stays on one line. */
+export const ONE_LINE_JSON = 48;
+/** A pretty-printed value longer than this many lines is cut there, with Show all. */
+export const VALUE_LINES = 24;
+
+/**
+ * How a JSON value is shown: on one line when it is short and flat
+ * ({"n":0}), pretty-printed when it is long or nested. Exported for the tests.
+ */
+export function jsonText(parsed: object): { text: string; oneLine: boolean } {
+  const compact = JSON.stringify(parsed);
+  const nested = Object.values(parsed).some((v) => typeof v === "object" && v !== null);
+  if (!nested && compact.length <= ONE_LINE_JSON) return { text: compact, oneLine: true };
+  return { text: JSON.stringify(parsed, null, 2), oneLine: false };
+}
+
+let valueIds = 0;
+
 function value(v: ShownValue | null): Html {
   if (!v) return html`<span class="subtle">deleted</span>`;
   if (v.sha256 !== undefined) return html`<span class="mono subtle" title="Published as a hash only">sha256 ${short(v.sha256)}</span>`;
@@ -173,12 +193,51 @@ function value(v: ShownValue | null): Html {
   if (text === "") return html`<span class="subtle">empty</span>`;
   try {
     const parsed: unknown = JSON.parse(text);
-    if (typeof parsed === "object" && parsed !== null) return html`<pre class="value">${JSON.stringify(parsed, null, 2)}</pre>`;
+    if (typeof parsed === "object" && parsed !== null) {
+      const shown = jsonText(parsed);
+      if (shown.oneLine) return html`<span class="mono value">${shown.text}</span>`;
+      const lines = shown.text.split("\n").length;
+      if (lines <= VALUE_LINES) return html`<pre class="value">${shown.text}</pre>`;
+      // Cut at VALUE_LINES, with a control to show the rest and to cut it
+      // again (VALUE_SCRIPT, explorer.css .value-cap).
+      const id = `value-${++valueIds}`;
+      return html`<div class="value-cap"><pre class="value" id="${id}" data-lines="${lines}">${shown.text}</pre><button type="button" class="link-button value-cap__toggle" aria-expanded="false" aria-controls="${id}">Show all</button></div>`;
+    }
   } catch {
     /* plain text */
   }
   return html`<span class="mono value">${text}</span>`;
 }
+
+/**
+ * Show all and Show less for long values. The value's height moves between
+ * its cut and its whole as a transition, so a second press turns it back
+ * from wherever it is (SYSTEM.md, Motion: reversible things).
+ */
+const VALUE_SCRIPT = `
+(function () {
+  var still = matchMedia("(prefers-reduced-motion: reduce)");
+  document.querySelectorAll(".value-cap__toggle").forEach(function (button) {
+    var pre = document.getElementById(button.getAttribute("aria-controls"));
+    function settled() {
+      if (button.getAttribute("aria-expanded") === "true") pre.style.maxHeight = "none";
+      // Cut again: the control stays in view, where the value now ends.
+      else if (button.getBoundingClientRect().top < 0) button.scrollIntoView({ block: "nearest" });
+    }
+    button.addEventListener("click", function () {
+      var open = button.getAttribute("aria-expanded") !== "true";
+      // From the height it has now, so a second press turns it back from there.
+      pre.style.maxHeight = pre.getBoundingClientRect().height + "px";
+      pre.offsetHeight;
+      button.setAttribute("aria-expanded", String(open));
+      button.textContent = open ? "Show less" : "Show all";
+      pre.classList.toggle("is-open", open);
+      pre.style.maxHeight = open ? pre.scrollHeight + (pre.offsetHeight - pre.clientHeight) + "px" : "";
+      if (still.matches) settled();
+    });
+    pre.addEventListener("transitionend", function (e) { if (e.propertyName === "max-height") settled(); });
+  });
+})();`;
 
 function call(tx: TransactionRow): Html {
   if (tx.membersOnly) return html`<span class="subtle">members only</span>`;
@@ -192,42 +251,49 @@ function call(tx: TransactionRow): Html {
   return html`<a class="mono" href="${contractUrl(tx.channel, tx.chaincode)}">${tx.chaincode}</a><span class="mono subtle">.</span><span class="mono">${tx.fn ?? ""}</span>`;
 }
 
+/** Icons on the 16px grid, one 1.5px stroke with round ends, as the header draws them. */
 const ICONS = {
-  chevron: raw(`<svg class="weft-switcher__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>`),
-  search: raw(`<svg class="shell-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>`),
+  grid: raw(`<svg class="weft-switcher__grid" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><rect x="2" y="2" width="5" height="5" rx="1.25"></rect><rect x="9" y="2" width="5" height="5" rx="1.25"></rect><rect x="2" y="9" width="5" height="5" rx="1.25"></rect><rect x="9" y="9" width="5" height="5" rx="1.25"></rect></svg>`),
+  check: raw(`<svg class="weft-switcher__check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 8.5l3 3 6-7"></path></svg>`),
+  search: raw(`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.75"></circle><path d="M10.5 10.5L14 14"></path></svg>`),
+  searchField: raw(`<svg class="shell-search__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.75"></circle><path d="M10.5 10.5L14 14"></path></svg>`),
+  shut: raw(`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4l8 8M12 4l-8 8"></path></svg>`),
   close: raw(`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`),
 };
 
-/** The theme control's icons, on the 16px grid, as ThemeControl.astro draws them. */
-const THEME_ICONS = {
-  system: '<rect x="1.75" y="2.75" width="12.5" height="8.5" rx="1.75"></rect><path d="M5.5 13.25h5M8 11.25v2"></path>',
-  light: '<circle cx="8" cy="8" r="2.75"></circle><path d="M8 1.5v1.75M8 12.75v1.75M1.5 8h1.75M12.75 8h1.75M3.4 3.4l1.24 1.24M11.36 11.36l1.24 1.24M3.4 12.6l1.24-1.24M11.36 4.64l1.24-1.24"></path>',
-  dark: '<path d="M13.6 9.9A5.6 5.6 0 0 1 6.1 2.4a5.6 5.6 0 1 0 7.5 7.5z"></path>',
-};
-const THEME_CHOICES = [
-  { id: "system", label: "System", title: "Match the system" },
-  { id: "light", label: "Light", title: "Light" },
-  { id: "dark", label: "Dark", title: "Dark" },
-] as const;
-
-/** The theme control, as every Weft site renders it (header.css has the markup). */
+/** The theme toggle, as every Weft site renders it (header.css has the markup). */
 function themeControl(): Html {
-  return html`<div class="weft-theme" role="radiogroup" aria-label="Theme" data-weft-theme="weft-theme" data-choice="system">
-        <span class="weft-theme__thumb" aria-hidden="true"></span>
-        ${THEME_CHOICES.map(
-          (c) => html`<button type="button" class="weft-theme__option" role="radio" aria-checked="${c.id === "system" ? "true" : "false"}" tabindex="${c.id === "system" ? "0" : "-1"}" data-theme-choice="${c.id}" title="${c.title}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${raw(THEME_ICONS[c.id])}</svg><span class="weft-theme__sr">${c.label}</span></button>`,
-        )}
-      </div>`;
+  return html`<button type="button" class="weft-theme shell-tool" aria-pressed="false" aria-label="Dark theme" aria-describedby="weft-theme-desc" data-weft-theme="weft-theme">
+      <svg class="weft-theme__icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><mask id="weft-theme-mask"><rect x="-4" y="-4" width="24" height="24" fill="#fff"></rect><circle class="weft-theme__cut" cx="12.5" cy="3.5" r="4.6" fill="#000"></circle></mask><circle class="weft-theme__core" cx="8" cy="8" r="6" fill="currentColor" mask="url(#weft-theme-mask)"></circle><g class="weft-theme__rays" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06"></path></g></svg>
+      <span class="weft-theme__desc" id="weft-theme-desc">Following your device</span>
+    </button>`;
 }
 
-/** The products switcher, as every Weft site renders it. The menu is a .reversible (motion.css). */
-function productSwitcher(where: ProductAddresses): Html {
+/**
+ * The products grid, as every Weft site renders it, with Weft Explorer last,
+ * marked as current and run by this organisation (the header drops the
+ * organisation's chip under 360px; this entry still names it). The menu is
+ * a .reversible (motion.css).
+ */
+function productSwitcher(site: Site): Html {
   return html`<div class="weft-switcher" data-weft-switcher>
-        <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls="weft-products">${SWITCHER_MARK}<span class="weft-switcher__label">Products</span>${ICONS.chevron}</button>
-        <ul class="weft-switcher__menu reversible reversible--down" id="weft-products">
-          ${sites(where).map((p) => html`<li><a href="${p.href}">${p.mark}<dl><dt>${p.name}</dt><dd>${p.summary}</dd></dl></a></li>`)}
-        </ul>
-      </div>`;
+      <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls="weft-products" aria-label="Weft products" title="Weft products">${ICONS.grid}</button>
+      <ul class="weft-switcher__menu reversible reversible--down" id="weft-products">
+        ${sites(site.products).map((p) => html`<li><a href="${p.href}">${p.mark}<span class="weft-switcher__text"><span class="weft-switcher__name">${p.name}</span><span class="weft-switcher__summary">${p.summary}</span></span></a></li>`)}
+        <li><a href="/" aria-current="page">${EXPLORER_MARKS.mark}<span class="weft-switcher__text"><span class="weft-switcher__name">${products.explorer.name}</span><span class="weft-switcher__summary">${products.explorer.summary}</span><span class="weft-switcher__here">Run by ${site.name}</span></span>${ICONS.check}</a></li>
+      </ul>
+    </div>`;
+}
+
+/** Search: the field in the bar, and on a phone a 36px button that opens the same field across it (header.css). */
+function search(query: string): Html {
+  const field = html`<form class="shell-search" action="/search" role="search">
+      ${ICONS.searchField}
+      <input class="shell-search__input" name="q" type="search" value="${query}" placeholder="Search the ledger" aria-label="Search by transaction ID, block number or contract" title="Transaction ID, block number or contract" spellcheck="false" autocomplete="off">
+    </form>`;
+  return html`${field}
+    <button type="button" class="shell-tool shell-search-open" aria-expanded="false" aria-controls="search-pop" aria-label="Search" title="Search" data-shell-search-open>${ICONS.search}</button>
+    <div class="shell-search-pop reversible reversible--down" id="search-pop">${field}<button type="button" class="shell-tool" aria-label="Close search" title="Close search" data-shell-search-close>${ICONS.shut}</button></div>`;
 }
 
 /**
@@ -348,12 +414,12 @@ document.addEventListener("copy", function (e) {
 });`;
 
 /**
- * The header's controls are the shared scripts; what is left here is the
- * disclosure that closes the way it opened (motion.css details.disclosure:
- * the content leaves before the native element shuts).
+ * The header's controls are the shared scripts, inlined after the header
+ * (HEADER_SCRIPTS); what is left here is the disclosure that closes the way
+ * it opened (motion.css details.disclosure: the content leaves before the
+ * native element shuts).
  */
 const CHROME = `
-${HEADER_SCRIPTS}
 (function () {
   var still = matchMedia("(prefers-reduced-motion: reduce)");
   function close(details, done) {
@@ -409,25 +475,24 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
 <p class="sr" id="live" role="status"></p>
 <header class="shell-head">
   <div class="shell-bar">
-    <a class="shell-lockup" href="/">${MARK}<span class="shell-word">weft<span class="shell-word__product"> explorer</span></span></a>
+    ${productSwitcher(site)}
+    <a class="shell-lockup" href="/" aria-label="Weft Explorer, home">${MARK}<span class="shell-word">weft<span class="shell-word__product"> explorer</span></span></a>
     <span class="org" title="Run by ${site.name}">${site.name}</span>
-    <nav class="shell-nav" aria-label="Weft Explorer"></nav>
-    <form class="shell-search" action="/search" role="search">
-      ${ICONS.search}
-      <input class="shell-search__input" name="q" type="search" value="${options.query ?? ""}" placeholder="Search the ledger" aria-label="Search by transaction ID, block number or contract" title="Transaction ID, block number or contract" spellcheck="false" autocomplete="off">
-    </form>
+    ${search(options.query ?? "")}
     ${account(site, options.current === "me")}
-    ${productSwitcher(site.products)}
     ${themeControl()}
   </div>
 </header>
+<script>${raw(HEADER_SCRIPTS)}</script>
 <main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page has stopped updating. It retries in the background.</p>` : ""}${body}</main>
 <footer class="foot">
   <div class="wrap foot__inner">
     <p class="foot__run">Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish. <a href="/api/v1/status">Read this data as JSON</a></p>
+    ${site.viewer ? footAccount(site, options.current === "me") : ""}
     <div class="foot__row">
       <ul class="foot__products">
         ${sites(site.products).map((p) => html`<li><a href="${p.href}">${p.small}${p.name}</a></li>`)}
+        <li><a href="/" aria-current="page">${EXPLORER_MARKS.small}${products.explorer.name}</a></li>
       </ul>
       <p>Weft is open source under the Apache 2.0 licence.${REPOSITORY ? html` <a href="${REPOSITORY}">Source on GitHub</a>.` : ""}</p>
     </div>
@@ -441,6 +506,19 @@ ${signIn ? raw(signInScript(site.name, productAddress("site", site.products)!)) 
 </script>
 </body>
 </html>`.value;
+}
+
+/**
+ * Under 720px the header has no room for the account, so it is here: who is
+ * signed in, their transactions, and signing out (explorer.css shows it
+ * only there).
+ */
+function footAccount(site: Site, current: boolean): Html {
+  const viewer = site.viewer!;
+  return html`<div class="foot__account">
+      <p>Signed in with Weft as <a href="/me"${current ? raw(' aria-current="page"') : ""}>${viewer.name ?? "an unnamed identity"} <span class="mono subtle">${viewer.mspId}</span></a>.</p>
+      <form method="post" action="/auth/sign-out"><button type="submit" class="link-button">Sign out</button></form>
+    </div>`;
 }
 
 function account(site: Site, current: boolean): Html {
@@ -762,18 +840,23 @@ type ChannelShown = "column" | "line" | undefined;
 const channelCell = (channel: string) => html`<td class="channel-cell" data-label="Channel"><a class="mono" href="${channelUrl(channel)}">${channel}</a></td>`;
 const channelLine = (channel: string) => html`<div class="channel-line small"><a class="mono" href="${channelUrl(channel)}">${channel}</a></div>`;
 
-function blockRows(site: Site, blocks: BlockRow[], empty: Html | string, options: { channel?: ChannelShown } = {}): Html {
+/**
+ * A table of blocks. `hash: false` leaves the hash out, for the overview's
+ * two tables side by side; the block's page has it in full, with its check.
+ */
+function blockRows(site: Site, blocks: BlockRow[], empty: Html | string, options: { channel?: ChannelShown; hash?: boolean } = {}): Html {
   if (blocks.length === 0) return html`<p class="empty">${empty}</p>`;
   const compared = blocks.some((b) => site.peers(b.channel).length > 0);
+  const hash = options.hash !== false;
   return html`<table class="table">
-  <thead><tr><th>Block</th>${options.channel === "column" ? html`<th>Channel</th>` : ""}<th>Time</th><th class="num">Transactions</th><th>Hash</th>${compared ? html`<th>Agree</th>` : ""}</tr></thead>
+  <thead><tr><th>Block</th>${options.channel === "column" ? html`<th>Channel</th>` : ""}<th>Time</th><th class="num">Transactions</th>${hash ? html`<th>Hash</th>` : ""}${compared ? html`<th>Agree</th>` : ""}</tr></thead>
   <tbody>${blocks.map(
     (b) => html`<tr>
     <td><a class="mono row-link" href="${blockUrl(b.channel, b.number)}">#${b.number}</a>${b.linked === false || !b.dataHashValid ? html` <span class="pill pill--bad">mismatch</span>` : ""}${options.channel === "line" ? channelLine(b.channel) : ""}</td>
     ${options.channel === "column" ? channelCell(b.channel) : ""}
     <td>${time(b.timestamp)}</td>
     <td class="num mono" data-label="Transactions">${b.txCount}${b.validCount < b.txCount ? html` <span class="subtle tx-invalid">(${b.txCount - b.validCount} invalid)</span>` : ""}</td>
-    <td class="mono subtle" data-label="Hash">${short(b.hash)}</td>
+    ${hash ? html`<td class="mono subtle" data-label="Hash">${short(b.hash)}</td>` : ""}
     ${compared ? agreementCell(site, b) : ""}
   </tr>`,
   )}</tbody>
@@ -847,7 +930,7 @@ export function homePage(site: Site, channels: ChannelSummary[], statuses: Chann
 </section>
 <div class="grid${one ? " grid--one" : ""}">${channels.map((c) => channelCard(site, c, statuses.find((s) => s.channel === c.channel), { row: one, quietLive: one }))}</div>
 <div class="split">
-  <section><h2>Latest blocks</h2><div data-live="blocks">${blockRows(site, latest, "No blocks indexed yet.", { channel: one ? undefined : "line" })}</div></section>
+  <section><h2>Latest blocks</h2><div data-live="blocks">${blockRows(site, latest, "No blocks indexed yet.", { channel: one ? undefined : "line", hash: false })}</div></section>
   <section><h2>Latest transactions</h2><div data-live="transactions">${txRows(txs, { showBlock: false, empty: "No published transactions yet.", channel: one ? undefined : "line" })}</div></section>
 </div>`,
     { live: true },
@@ -1035,7 +1118,8 @@ ${privateDataSection(tx)}
 ${tx.response && tx.response.payload.text !== "" ? html`<section><h2>Returned</h2><div class="card">${value(tx.response.payload)}</div></section>` : ""}
 ${tx.event ? html`<section><h2>Event</h2><div class="card"><div class="mono fn">${tx.event.name}</div>${value(tx.event.payload)}</div></section>` : ""}`
   : ""}`}`;
-  return layout(site, `Transaction ${cut(tx.txId)} on ${tx.channel}`, body);
+  const capped = body.value.includes("value-cap__toggle") ? html`<script>${raw(VALUE_SCRIPT)}</script>` : "";
+  return layout(site, `Transaction ${cut(tx.txId)} on ${tx.channel}`, html`${body}${capped}`);
 }
 
 /** A config transaction: what changed, who signed the update, and the configuration it leaves. */
