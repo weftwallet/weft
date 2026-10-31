@@ -122,9 +122,14 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           {(item.call.args ?? []).length > 0 && (
             <>
               <dt>Arguments</dt>
-              <dd className="mono">
+              <dd className="mono tx-args">
                 {(item.call.args ?? []).map((arg, i) => (
-                  <div key={i}>{arg}</div>
+                  <div key={i} className="tx-arg">
+                    <span className="subtle" aria-hidden="true">
+                      {i}
+                    </span>
+                    <span className="tx-arg__value">{arg}</span>
+                  </div>
                 ))}
               </dd>
             </>

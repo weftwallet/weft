@@ -448,6 +448,13 @@ textarea {
   padding-inline: var(--weft-space-1);
 }
 
+.btn__icon-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
 /* A long label (an enrolment ID) wraps rather than overflowing. */
 .btn--wrap {
   height: auto;
@@ -836,6 +843,12 @@ details.error-details[open] summary::before {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   padding: 4px 0 2px;
+  /* A raw network message can run to pages: it scrolls in place, so a
+     footer that holds it never pushes the request off the window. */
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--weft-line-strong) transparent;
   animation: crossfade var(--weft-duration-fast) var(--weft-ease-out);
 }
 
@@ -926,6 +939,24 @@ details.error-details[open] summary::before {
   background: var(--weft-bg-surface);
 }
 
+/* Home's sections stay at the top of the page once it scrolls past the
+   identity card. The bar is the page's ground, 8px above and below the tabs,
+   so rows passing under it are hidden rather than seen through the gaps; its
+   negative margins keep the page's 12px rhythm. */
+.tabs-bar {
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  margin: -8px 0;
+  padding: 8px 0;
+  background: var(--weft-bg);
+}
+
+/* Keyboard focus and scrollIntoView stop below the held tabs, not under them. */
+.page:has(> .tabs-bar) {
+  scroll-padding-top: 60px;
+}
+
 .tabs {
   position: relative;
   display: grid;
@@ -981,7 +1012,12 @@ details.error-details[open] summary::before {
   min-height: 160px;
 }
 
+/* The divider is drawn as a 1px background line rather than a border: a
+   border on a rounded row curves up at both ends. It starts under the row's
+   words (4px padding, 32px icon, 12px gap) and stops short of the rounded
+   corner, so the hover ground can keep radius-lg. */
 .list-item {
+  --list-divider: var(--weft-line);
   border-radius: var(--weft-radius-lg);
   transition:
     background-color var(--weft-duration-fast) var(--weft-ease-out),
@@ -991,8 +1027,11 @@ details.error-details[open] summary::before {
   gap: 12px;
   padding: 8px 4px;
   border: 0;
-  border-bottom: 1px solid var(--weft-line);
-  background: transparent;
+  background-color: transparent;
+  background-image: linear-gradient(var(--list-divider), var(--list-divider));
+  background-size: calc(100% - 48px - 12px) 1px;
+  background-position: 48px 100%;
+  background-repeat: no-repeat;
   text-align: left;
   cursor: pointer;
   width: 100%;
@@ -1000,11 +1039,23 @@ details.error-details[open] summary::before {
 
 @media (hover: hover) {
   .list-item:hover {
-    background: var(--weft-bg-surface);
+    background-color: var(--weft-bg-surface);
   }
 }
 
-.list-item:last-child,
+/* No divider on the last row, nor on either side of the row under the
+   pointer, where the hover ground already separates it. */
+.list-item:last-child {
+  --list-divider: transparent;
+}
+
+@media (hover: hover) {
+  .list-item:hover,
+  .list-item:has(+ .list-item:hover) {
+    --list-divider: transparent;
+  }
+}
+
 .list-row:last-child {
   border-bottom: 0;
 }
@@ -1211,6 +1262,30 @@ details.error-details[open] summary::before {
   overflow-wrap: anywhere;
 }
 
+/* A transaction's arguments in its detail: numbered as in the approval
+   window, each long value held to six lines and scrolled in place, so one
+   long value doesn't push the rest of the details off the screen. */
+.tx-args {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tx-arg {
+  display: grid;
+  grid-template-columns: 2ch minmax(0, 1fr);
+  gap: 8px;
+}
+
+.tx-arg__value {
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  scrollbar-width: thin;
+  scrollbar-color: var(--weft-line-strong) transparent;
+}
+
 .args {
   border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-raised);
@@ -1258,6 +1333,13 @@ details.error-details[open] summary::before {
     transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
+/* .args clips its corners, so a ring drawn outside these would be cut off. */
+.args .link-btn:focus-visible,
+.args__reveal:focus-visible,
+.args__value:focus-visible {
+  outline-offset: calc(var(--weft-focus-ring) * -1);
+}
+
 @media (hover: hover) {
   .args__reveal:hover {
     background: var(--weft-accent-soft);
@@ -1269,13 +1351,18 @@ details.error-details[open] summary::before {
   max-width: 40%;
 }
 
-/* A long value scrolls in its row rather than pushing the buttons away. */
+/* A long value scrolls in its row rather than pushing the buttons away. A
+   short value sits at the right of its row; one that wraps reads from the
+   left, line under line, rather than ragged against the right edge. */
 .args__value {
   min-width: 0;
-  text-align: right;
+  margin-left: auto;
+  text-align: left;
   white-space: pre-wrap;
   max-height: 160px;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--weft-line-strong) transparent;
 }
 
 .raw {
@@ -1303,10 +1390,13 @@ details.error-details[open] summary::before {
   transition: transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
-/* Sized to its words, for a link inside a line or centred on its own. */
+/* Sized to its words, for a link inside a line or centred on its own. The
+   4px of padding either side widens what can be pressed; the negative margin
+   keeps the words in line with the text above them. */
 .link-btn--inline {
   width: auto;
   padding: 0 4px;
+  margin-inline: -4px;
   align-self: flex-start;
   text-align: center;
 }
@@ -1553,6 +1643,10 @@ details.error-details[open] summary::before {
 
 .sheet {
   width: 100%;
+  /* A long title or body scrolls inside the sheet rather than off the top. */
+  max-height: calc(100% - var(--weft-space-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 20px 16px 16px;
   border-radius: var(--weft-radius-2xl) var(--weft-radius-2xl) 0 0;
   background: var(--weft-bg-overlay);
@@ -1645,6 +1739,12 @@ details.error-details[open] summary::before {
   font-weight: 500;
   box-shadow: var(--weft-shadow-2);
   pointer-events: none;
+}
+
+/* Above a screen's footer or pinned button (72px: 12px above a 44px button,
+   16px below), so a toast never sits over the button that was just pressed. */
+#root:has(.screen:not(.is-leaving, [hidden]) :is(.footer, .page > .page__actions)) > .toast {
+  bottom: calc(72px + var(--weft-space-3));
 }
 
 .toast > svg {
@@ -1847,6 +1947,12 @@ details.error-details[open] summary::before {
     border-color var(--weft-duration-fast) var(--weft-ease-out),
     background-color var(--weft-duration-fast) var(--weft-ease-out),
     transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+/* The header keeps 8px on the right for its 44px icon buttons, whose glyphs
+   sit inside them; a bordered pill lines up with the page's 16px edge. */
+.header > .header-action {
+  margin-right: var(--weft-space-2);
 }
 
 @media (hover: hover) {

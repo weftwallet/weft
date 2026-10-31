@@ -45,7 +45,7 @@ interface Leaving {
 
 function Screens() {
   const { state, setState, error, refresh } = useWallet();
-  const { toast } = useFeedback();
+  const { toast, dismiss } = useFeedback();
   const [route, setRoute] = useState<Route>({ name: "home" });
   const direction = useRef<"forward" | "back" | "none">("none");
   const visits = useRef(0);
@@ -74,6 +74,14 @@ function Screens() {
   // An approval window finishing (a join, a connection) can change what the
   // popup shows, so its state is read again.
   useUiEvents("approvals", () => void refresh());
+
+  // A confirmation open when Weft locks (auto-lock, or locked in another
+  // window) is cancelled: the lock screen is in front now, and what it asked
+  // about shouldn't go ahead behind it.
+  const isLocked = state?.vault.state === "locked";
+  useEffect(() => {
+    if (isLocked) dismiss();
+  }, [isLocked, dismiss]);
 
   // Identities that arrive while the popup is open (from a join here, or in
   // an approval window) come in as new rows on the identities tab.

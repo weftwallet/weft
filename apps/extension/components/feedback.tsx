@@ -22,12 +22,15 @@ interface Feedback {
   toast: (message: string, tone?: "done" | "error") => void;
   /** Read out through the page's one polite live region, without showing anything. */
   announce: (message: string) => void;
+  /** Closes an open confirmation as cancelled: for when what it asked about is no longer in front of the person (Weft locked). */
+  dismiss: () => void;
 }
 
 const FeedbackContext = createContext<Feedback>({
   confirm: async () => false,
   toast: () => {},
   announce: () => {},
+  dismiss: () => {},
 });
 
 export const useFeedback = () => useContext(FeedbackContext);
@@ -91,9 +94,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     setPending(null);
     setClosing(false);
   }, []);
+  const dismiss = useCallback(() => {
+    if (pendingRef.current) close(false);
+  }, [close]);
 
   return (
-    <FeedbackContext.Provider value={{ confirm, toast, announce }}>
+    <FeedbackContext.Provider value={{ confirm, toast, announce, dismiss }}>
       {children}
       {pending && <ConfirmSheet options={pending} onClose={close} closing={closing} onClosed={closed} />}
       {toastState && (
@@ -247,7 +253,7 @@ export function CopyButton({ text, label, size = 16 }: { text: string; label: st
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1400);
+    const t = setTimeout(() => setCopied(false), tokenMs("--weft-hold-after-done", 1400));
     return () => clearTimeout(t);
   }, [copied]);
   return (

@@ -31,7 +31,9 @@ export function NetworkSettings({
     return (
       <>
         <BackHeader title="Network" onBack={back} />
-        <Empty icon="globe">This network no longer exists.</Empty>
+        <main className="page">
+          <Empty icon="globe">This network no longer exists.</Empty>
+        </main>
       </>
     );
   }
@@ -75,7 +77,8 @@ function Settings({
   const checks = useChecks({
     channels: () => (editableChannels ? check.channels(channels) : null),
     relayUrl: () => check.url(relayUrl, "Enter the relay's address."),
-    caUrl: () => check.url(caUrl, "Enter the CA's address."),
+    // A network added without a CA (Import PEM, Generate CSR) can stay without one.
+    caUrl: () => check.url(caUrl, network.caUrl ? "Enter the CA's address." : undefined),
     explorerUrl: () => check.url(explorerUrl),
   });
 
@@ -94,7 +97,7 @@ function Settings({
       toast(explorerChanged && !channelsChanged ? "Explorer saved" : "Network saved");
       return;
     }
-    await requestHostAccess([relayUrl.trim(), caUrl.trim()], "the relay and CA");
+    await requestHostAccess([relayUrl.trim(), caUrl.trim()], caUrl.trim() ? "the relay and CA" : "the relay");
     if (!force) {
       const found = await ui("checkEndpoints", { relayUrl: relayUrl.trim(), caUrl: caUrl.trim(), caName: caName.trim() || undefined });
       if (found.relay || found.ca) {
@@ -253,6 +256,9 @@ function Settings({
             <Field label="Explorer URL" hint="Optional. Your organisation's explorer, linked from each transaction." {...checks.field("explorerUrl")}>
               {(a) => <input {...a} type="url" value={explorerUrl} onChange={(e) => setExplorerUrl(e.target.value)} />}
             </Field>
+            {!dirty && <p className="subtle type-xs flat centre">Change an address or channel to save it.</p>}
+            {/* Only a change has a button to ride along the bottom of the page. */}
+            {dirty && (
             <div className="page__actions">
               {problems && (
                 <div className="notice notice--amber notice--column arrive" role="alert">
@@ -265,14 +271,11 @@ function Settings({
                 </div>
               )}
               <ActionError error={save.error} />
-              {dirty ? (
-                <Button type="submit" className="btn btn--primary" busy={save.busy}>
-                  {endpointsChanged ? "Test and save" : "Save"}
-                </Button>
-              ) : (
-                <p className="subtle type-xs flat centre">Change an address or channel to save it.</p>
-              )}
+              <Button type="submit" className="btn btn--primary" busy={save.busy}>
+                {endpointsChanged ? "Test and save" : "Save"}
+              </Button>
             </div>
+            )}
           </div>
       </form>
     </>

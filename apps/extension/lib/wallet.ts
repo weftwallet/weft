@@ -252,7 +252,10 @@ export async function updateNetwork(
   if (patch.name?.trim()) next.name = patch.name.trim();
   if (patch.organization?.trim()) next.organization = patch.organization.trim();
   if (patch.relayUrl !== undefined) next.relayUrl = checkUrl("Relay URL", patch.relayUrl);
-  if (patch.caUrl !== undefined) next.caUrl = checkUrl("CA URL", patch.caUrl);
+  if (patch.caUrl !== undefined) {
+    // Empty only for a network that never had a CA (Import PEM, Generate CSR).
+    next.caUrl = !patch.caUrl.trim() && !network.caUrl ? "" : checkUrl("CA URL", patch.caUrl);
+  }
   if (patch.caName !== undefined) {
     if (patch.caName.trim()) next.caName = patch.caName.trim();
     else delete next.caName;
@@ -283,13 +286,16 @@ async function probe(url: string, expect: (response: Response) => Promise<boolea
 
 export async function checkEndpoints(relayUrl: string, caUrl: string, caName?: string) {
   const relay = checkUrl("Relay URL", relayUrl);
-  const ca = checkUrl("CA URL", caUrl);
+  // A network added without a CA has none to check.
+  const ca = caUrl.trim() ? checkUrl("CA URL", caUrl) : null;
   const [relayProblem, caProblem] = await Promise.all([
     probe(`${relay}/v1/health`, async () => true),
-    probe(`${ca}/cainfo${caName ? `?ca=${encodeURIComponent(caName)}` : ""}`, async (r) => {
-      const body = (await r.json().catch(() => null)) as { success?: boolean } | null;
-      return body?.success === true;
-    }),
+    ca
+      ? probe(`${ca}/cainfo${caName ? `?ca=${encodeURIComponent(caName)}` : ""}`, async (r) => {
+          const body = (await r.json().catch(() => null)) as { success?: boolean } | null;
+          return body?.success === true;
+        })
+      : null,
   ]);
   return { relay: relayProblem, ca: caProblem };
 }

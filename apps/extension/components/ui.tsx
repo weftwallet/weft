@@ -404,7 +404,18 @@ export function Button({
         onClick?.(e);
       }}
     >
-      {loader ? <Spinner small /> : icon ? <Icon name={icon} size={iconSize} /> : null}
+      {loader ? (
+        icon ? (
+          // In the icon's place and the icon's size, so the label doesn't move.
+          <span className="btn__icon-slot" style={{ width: iconSize, height: iconSize }}>
+            <Spinner small />
+          </span>
+        ) : (
+          <Spinner small />
+        )
+      ) : icon ? (
+        <Icon name={icon} size={iconSize} />
+      ) : null}
       {children}
     </button>
   );
@@ -524,11 +535,22 @@ export function toErrorInfo(error: unknown): ErrorInfo {
   return { message: String(error) };
 }
 
-/** Shown where the action was, until the person acts or tries again (SYSTEM.md, Errors). */
+/**
+ * Shown where the action was, until the person acts or tries again (SYSTEM.md,
+ * Errors). If that place is scrolled out of view (a form longer than its
+ * window), the page brings it into view, so a press never seems to do nothing.
+ */
 export function ActionError({ error, children }: { error: ErrorInfo | null; children?: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  const message = error?.message;
+  useEffect(() => {
+    if (!message) return;
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    box.current?.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
+  }, [message]);
   if (!error) return null;
   return (
-    <div className="action-error arrive" role="alert">
+    <div ref={box} className="action-error arrive" role="alert">
       <p className="action-error__message">
         <Icon name="alert" size={16} />
         <span>{error.message}</span>

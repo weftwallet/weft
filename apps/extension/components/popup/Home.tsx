@@ -38,19 +38,32 @@ export function Home({
   const [picked, setPicked] = useState<string | null>(null);
   const channel = picked ?? saved;
   const [tab, setTabState] = useState<Tab>(memory.tab);
+  const tabsBar = useRef<HTMLDivElement>(null);
   const setTab = (t: Tab) => {
     memory.tab = t;
     setTabState(t);
+    // With the tabs held at the top of a long list, the next section starts
+    // at its beginning, under the tabs, not part way down.
+    const el = page.current;
+    const card = tabsBar.current?.previousElementSibling;
+    if (!el || !card) return;
+    // Where the bar sits when it isn't held: the card's bottom, plus the
+    // page's 12px gap, less the bar's own 8px margin.
+    const rest = card.getBoundingClientRect().bottom - el.getBoundingClientRect().top + el.scrollTop + 4;
+    if (el.scrollTop > rest) el.scrollTop = rest;
   };
 
   const heading = useRef<HTMLHeadingElement>(null);
   useFocusOnArrival(heading);
   const page = useRef<HTMLElement>(null);
-  // Back to where the page was scrolled, and remember it on the way out.
+  // Back to where the page was scrolled, and remember it on the way out. The
+  // copy of Home drawn while it leaves (App.tsx) is a fresh mount: it takes
+  // the position but doesn't save it, or it would overwrite it with its own.
   useLayoutEffect(() => {
     const el = page.current;
     if (!el) return;
     el.scrollTop = memory.scrollTop;
+    if (el.closest(".is-leaving")) return;
     return () => {
       memory.scrollTop = el.scrollTop;
     };
@@ -134,27 +147,30 @@ export function Home({
           onAdd={() => navigate({ name: "add" })}
         />
 
-        <div className="tabs" role="tablist" aria-label="Wallet sections">
-          <span className="tabs__indicator" aria-hidden="true" style={{ transform: `translateX(calc(${TABS.indexOf(tab)} * (100% + 4px)))` }} />
-          {TABS.map((t) => (
-            <button
-              key={t}
-              id={`tab-${t}`}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              aria-controls="tab-panel"
-              tabIndex={tab === t ? 0 : -1}
-              onClick={() => setTab(t)}
-              onKeyDown={onTabKey}
-            >
-              {t === "activity"
-                ? "Activity"
-                : t === "identities"
-                  ? `Identities${state.identities.length > 1 ? ` · ${state.identities.length}` : ""}`
-                  : `Sites${state.sites.length ? ` · ${state.sites.length}` : ""}`}
-            </button>
-          ))}
+        {/* Sticky, so the sections stay in reach down a long list. */}
+        <div ref={tabsBar} className="tabs-bar">
+          <div className="tabs" role="tablist" aria-label="Wallet sections">
+            <span className="tabs__indicator" aria-hidden="true" style={{ transform: `translateX(calc(${TABS.indexOf(tab)} * (100% + 4px)))` }} />
+            {TABS.map((t) => (
+              <button
+                key={t}
+                id={`tab-${t}`}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                aria-controls="tab-panel"
+                tabIndex={tab === t ? 0 : -1}
+                onClick={() => setTab(t)}
+                onKeyDown={onTabKey}
+              >
+                {t === "activity"
+                  ? "Activity"
+                  : t === "identities"
+                    ? `Identities${state.identities.length > 1 ? ` · ${state.identities.length}` : ""}`
+                    : `Sites${state.sites.length ? ` · ${state.sites.length}` : ""}`}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div key={tab} id="tab-panel" className="crossfade" role="tabpanel" aria-labelledby={`tab-${tab}`}>
@@ -275,11 +291,18 @@ const STATUS_STYLE = {
   rejected: { icon: "alert", bg: "var(--weft-bg-overlay)", fg: "var(--weft-text-subtle)", label: "Rejected" },
 } as const;
 
+/**
+ * The list as last loaded while the popup is open. Coming back to Home (or
+ * the copy of Home drawn while it leaves) shows it at once, so the page has
+ * its height before the scroll position is put back, and then refreshes it.
+ */
+let lastActivity: ActivityRecord[] | null = null;
+
 function ActivityList({ navigate }: { navigate: Navigate }) {
-  const [items, setItems] = useState<ActivityRecord[] | null>(null);
+  const [items, setItems] = useState<ActivityRecord[] | null>(lastActivity);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(() => new Set());
-  const known = useRef<Set<string> | null>(null);
+  const known = useRef<Set<string> | null>(lastActivity && new Set(lastActivity.map((i) => i.id)));
   const { announce } = useFeedback();
 
   const load = async () => {
@@ -295,6 +318,7 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
         }
       }
       known.current = new Set(loaded.map((i) => i.id));
+      lastActivity = loaded;
       setItems(loaded);
       setError(null);
     } catch (e) {
@@ -446,7 +470,7 @@ function IdentityList({
           No identity matches “{query}”.
         </Empty>
       )}
-      <button type="button" className="link-btn" onClick={onManage}>
+      <button type="button" className="link-btn link-btn--inline" onClick={onManage}>
         Add or remove identities
       </button>
     </div>

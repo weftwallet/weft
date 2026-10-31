@@ -411,7 +411,9 @@ export function CompleteCsr({ state, navigate, onDone, pendingId }: FormProps & 
       >
         {pending ? (
           <div className="row">
-            Request for <span className="mono">{pending.commonName}</span> on {pending.networkName}
+            <span className="wrap-anywhere">
+              Request for <span className="mono">{pending.commonName}</span> on {pending.networkName}
+            </span>
           </div>
         ) : (
           <p className="action-error__message flat" role="alert">
