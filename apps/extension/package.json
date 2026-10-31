@@ -19,6 +19,7 @@
     "@weftwallet/brand": "workspace:*",
     "@weftwallet/core": "workspace:*",
     "@weftwallet/protocol": "workspace:*",
+    "@weftwallet/ui": "workspace:*",
     "jsqr": "^1.4.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
