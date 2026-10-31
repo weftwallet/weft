@@ -184,8 +184,12 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
   const api = L.run(canvas, draw, { total: T.total, frozen, autoplay });
   /** Where the rows are, in CSS pixels, with each one's call: for the buttons laid over them. */
   api.rows = () => (c ? { narrow: c.narrow, right: c.x1 + c.pickW, rows: c.rows.map((row) => ({ y: row.y - c.rowGap / 2, h: c.rowGap, call: row.tx.str })) } : null);
+  // Each choice eases in over a few frames; a reset ends the one under way,
+  // so its frames cannot stop a replay that has just begun.
+  let choosing = 0;
   /** Clears any chosen row at once, without drawing: before a replay. */
   api.reset = () => {
+    choosing += 1;
     dim = [];
     emph = [];
   };
@@ -197,7 +201,9 @@ export function create(canvas, glyphs, { frozen, autoplay } = {}) {
     dimTo = Array.from({ length: n }, (_, i) => (r >= 0 && i !== r ? dimmed : 0));
     emphTo = Array.from({ length: n }, (_, i) => (i === r ? 1 : 0));
     let last = performance.now();
+    const mine = ++choosing;
     const step = (now) => {
+      if (mine !== choosing) return;
       const a = 1 - Math.exp(-(now - last) / 50);
       last = now;
       let moving = false;

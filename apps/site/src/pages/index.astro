@@ -99,7 +99,7 @@ const code = [
   <section class="cloth stage-section" id="how" aria-labelledby="cloth-title">
     <div class="col">
       <span class="eyebrow">How it works</span>
-      <h2 id="cloth-title">Every transaction, shown first</h2>
+      <h2 id="cloth-title" tabindex="-1">Every transaction, shown first</h2>
       <p class="muted">A web app asks Weft to sign. Weft decodes the request, shows you what it calls, and signs only if you approve. The organisations it needs endorse it, and it is committed to the ledger each of them keeps.</p>
       <dl class="pieces">
         {
@@ -112,9 +112,18 @@ const code = [
         }
       </dl>
     </div>
-    <div class="cloth__stage">
-      <canvas id="cloth-loom" aria-hidden="true"></canvas>
-      <ol class="ledger" id="ledger" aria-label="Transactions in the animation, one per row" hidden></ol>
+    <div class="cloth__loom">
+      <div class="cloth__stage">
+        <canvas id="cloth-loom" aria-hidden="true"></canvas>
+        <ol class="ledger" id="ledger" aria-label="Transactions in the animation, one per row" hidden></ol>
+      </div>
+      <!-- Space kept for "Play again", so nothing moves when it appears. -->
+      <div class="cloth__after">
+        <button type="button" class="cloth__again" id="cloth-again" aria-label="Play again, the transactions animation" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"></path></svg>
+          Play again
+        </button>
+      </div>
     </div>
   </section>
 
@@ -252,6 +261,8 @@ const code = [
   const clothCanvas = document.getElementById("cloth-loom") as HTMLCanvasElement;
   const replay = document.getElementById("hero-replay") as HTMLButtonElement;
   const ledger = document.getElementById("ledger") as HTMLOListElement;
+  const again = document.getElementById("cloth-again") as HTMLButtonElement;
+  const clothTitle = document.getElementById("cloth-title") as HTMLHeadingElement;
 
   function startHero() {
     // The loom is drawn on a clear canvas, so the page shows round it; the
@@ -315,8 +326,36 @@ const code = [
       );
       ledger.hidden = false;
     };
-    ledger.addEventListener("pointerleave", () => b.select(pinned));
+    ledger.addEventListener("pointerleave", () => done && b.select(pinned));
     new ResizeObserver(() => done && requestAnimationFrame(build)).observe(clothCanvas);
+
+    // Finished, the cloth is a ledger again and "Play again" appears in the
+    // space kept for it. With reduced motion the cloth opens finished and
+    // there is nothing to play again, so the button stays hidden.
+    const finished = () => {
+      done = true;
+      build();
+      if (!still) again.hidden = false;
+    };
+    // Weaves the cloth once more, from an empty loom. The button goes while
+    // it plays, so focus moves to the section's heading, the nearest thing
+    // that stays (SYSTEM.md, Navigation).
+    let playing = 0;
+    const play = () => {
+      clearTimeout(playing);
+      done = false;
+      pinned = -1;
+      b.reset();
+      ledger.hidden = true;
+      again.hidden = true;
+      b.play();
+      playing = window.setTimeout(finished, cloth.T.total);
+    };
+    again.addEventListener("click", () => {
+      if (still) return;
+      clothTitle.focus({ preventScroll: true });
+      play();
+    });
 
     // Woven once, when the top third of the loom is in view, whatever the
     // loom's height, so it plays on a phone too. A reader who has scrolled
@@ -325,22 +364,17 @@ const code = [
     else {
       let started = false;
       const header = () => document.querySelector(".shell-head")?.getBoundingClientRect().bottom ?? 0;
-      const begin = (finished: boolean) => {
+      const begin = (past: boolean) => {
         if (started) return;
         started = true;
         seen.disconnect();
         removeEventListener("scroll", look);
-        if (finished) {
+        if (past) {
           b.show(cloth.T.total);
-          done = true;
-          build();
+          finished();
           return;
         }
-        b.play();
-        setTimeout(() => {
-          done = true;
-          build();
-        }, cloth.T.total);
+        play();
       };
       function look() {
         const r = clothCanvas.getBoundingClientRect();
@@ -587,9 +621,59 @@ const code = [
     gap: var(--weft-space-8);
     align-items: center;
   }
+  .cloth__loom {
+    min-width: 0;
+  }
   .cloth__stage {
     position: relative;
     height: clamp(300px, 42vw, 440px);
+  }
+  /* The replay's place under the cloth, kept whether or not it is showing. */
+  .cloth__after {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  /* "Play again": words only, sized to themselves, in the subtle text. It
+     arrives over fast from shift-sm below, once the cloth has finished. */
+  .cloth__again {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: var(--weft-space-3) var(--weft-space-1);
+    margin-inline: calc(var(--weft-space-1) * -1);
+    border: 0;
+    border-radius: var(--weft-radius-sm);
+    background: transparent;
+    color: var(--weft-text-subtle);
+    font: inherit;
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    cursor: pointer;
+    animation: cloth-again-in var(--weft-duration-fast) var(--weft-ease-out) both;
+  }
+  .cloth__again[hidden] {
+    display: none;
+  }
+  .cloth__again svg {
+    flex: none;
+  }
+  @media (hover: hover) {
+    .cloth__again:hover {
+      color: var(--weft-text);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  }
+  @keyframes cloth-again-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--weft-shift-sm));
+    }
+  }
+  /* Focus moves here when "Play again" goes; the ring only for the keyboard. */
+  #cloth-title:focus:not(:focus-visible) {
+    outline: none;
   }
   .pieces {
     margin: var(--weft-space-2) 0 0;
@@ -1062,6 +1146,10 @@ const code = [
   @media (prefers-reduced-motion: reduce) {
     .hero__text > * {
       animation: none;
+    }
+    /* The cloth opens finished: there is nothing to play again. */
+    .cloth__again {
+      display: none;
     }
   }
 </style>
