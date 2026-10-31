@@ -336,20 +336,29 @@ const { demoExplorers = [] } = Astro.props;
     }
 
     // Notes under the channels: what couldn't be reached, or why there's nothing.
-    const notes: string[] = [];
+    // The sentence first; each explorer's own error behind Details.
+    const notes: { text: string; details?: string }[] = [];
     if (unreachable.length) {
-      notes.push(
-        `Couldn't reach ${unreachable.map((e) => `${new URL(e.base).host} (${e.error})`).join(", ")}. ${unreachable.length === 1 ? "It may be down, or not allow" : "They may be down, or not allow"} other sites to read the API.`,
-      );
+      notes.push({
+        text: `Couldn't reach ${unreachable.map((e) => new URL(e.base).host).join(", ")}. ${unreachable.length === 1 ? "It may be down, or not allow" : "They may be down, or not allow"} other sites to read the API.`,
+        details: unreachable.map((e) => `${e.base}: ${e.error}`).join("\n"),
+      });
     }
     if (channels.length === 0 && reachable.length > 0) {
-      notes.push(signedIn ? "None of these explorers publishes a channel you can see." : "These explorers publish no public channels. Members can sign in to see the members-only ones.");
+      notes.push({ text: signedIn ? "None of these explorers publishes a channel you can see." : "These explorers publish no public channels. Members can sign in to see the members-only ones." });
     }
     const box = $("nw-notes");
-    const key = notes.join("\n");
+    const key = JSON.stringify(notes);
     if (box.dataset.key !== key) {
       box.dataset.key = key;
-      box.replaceChildren(...notes.map((n) => el("p", { className: "nw-hint", textContent: n })));
+      box.replaceChildren(
+        ...notes.map((n) => {
+          const p = el("p", { className: "nw-hint", textContent: n.text });
+          if (!n.details) return p;
+          const more = el("details", { className: "error-details" }, el("summary", { textContent: "Details" }), el("pre", { textContent: n.details }));
+          return el("div", { className: "nw-note" }, p, more);
+        }),
+      );
     }
     if (changes.length) announce(changes.join(" "));
   }
@@ -776,11 +785,18 @@ const { demoExplorers = [] } = Astro.props;
     line-height: var(--weft-leading-lg);
     margin: 0;
   }
+  /* A long channel name wraps, and the pill goes under it when the two
+     don't fit side by side; otherwise the pill sits on the name's first line. */
   .nw-head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    align-items: center;
-    gap: var(--weft-space-4);
+    align-items: first baseline;
+    gap: var(--weft-space-2) var(--weft-space-4);
+  }
+  .nw-head h2 {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .nw-row {
     display: flex;
@@ -827,7 +843,7 @@ const { demoExplorers = [] } = Astro.props;
     flex: 1 0 100%;
   }
   .nw-tag {
-    margin-left: 10px;
+    margin-left: var(--weft-space-2);
     font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-sans);
     color: var(--weft-text-subtle);
     vertical-align: middle;
@@ -835,7 +851,7 @@ const { demoExplorers = [] } = Astro.props;
   .nw-pill {
     flex: none;
     font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
-    padding: var(--weft-space-1) 10px;
+    padding: var(--weft-space-1) var(--weft-space-3);
     border-radius: var(--weft-radius-pill);
     border: 1px solid var(--weft-line-strong);
     color: var(--weft-text-muted);
@@ -977,7 +993,7 @@ const { demoExplorers = [] } = Astro.props;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--weft-space-2);
   }
   .nw-hashes:empty {
     display: none;

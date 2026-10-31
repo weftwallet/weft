@@ -1217,7 +1217,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
   .pg-pill {
     font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
-    padding: var(--weft-space-1) 10px;
+    padding: var(--weft-space-1) var(--weft-space-3);
     border-radius: var(--weft-radius-pill);
     border: 1px solid var(--weft-line-strong);
     color: var(--weft-text-muted);
@@ -1303,7 +1303,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-details {
     display: grid;
     grid-template-columns: 7.5rem minmax(0, 1fr);
-    gap: 6px var(--weft-space-4);
+    gap: var(--weft-space-2) var(--weft-space-4);
     margin: 0;
     font-size: var(--weft-type-md);
     line-height: var(--weft-leading-md);
@@ -1365,7 +1365,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     color: var(--weft-text-muted);
   }
   .pg-log pre {
-    margin: 6px 0 0;
+    margin: var(--weft-space-1) 0 0;
     font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -1382,7 +1382,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-options legend {
     width: 100%;
     padding: 0;
-    margin-bottom: 6px;
+    margin-bottom: var(--weft-space-2);
   }
   .pg-stack {
     display: flex;
@@ -1397,7 +1397,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     align-items: center;
     gap: var(--weft-space-2);
     min-height: 44px;
-    padding: 0 14px;
+    padding: 0 var(--weft-space-4);
     border: 1px solid var(--weft-line-strong);
     border-radius: var(--weft-radius-lg);
     font-size: var(--weft-type-md);
@@ -1452,14 +1452,14 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     padding: var(--weft-space-3) var(--weft-space-4);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--weft-space-2);
   }
   .pg-explorer a {
     font-weight: 600;
   }
   .pg-try {
-    padding-left: 1.2rem;
-    gap: 6px;
+    padding-left: var(--weft-space-5);
+    gap: var(--weft-space-2);
     font-size: var(--weft-type-md);
     line-height: var(--weft-leading-md);
   }
