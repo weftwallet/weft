@@ -1,0 +1,228 @@
+---
+/**
+ * The three pieces of Weft, drawn in HTML so its labels are real text in
+ * both themes at every width (what-is-weft.mdx). Under 560px of its own
+ * width it stands on end. It reads one aria-label, as the Weft site's
+ * before-and-after diagram does. .not-content keeps Starlight's spacing
+ * between Markdown blocks out of the grid.
+ */
+---
+
+<figure class="pieces not-content" role="img" aria-label="Your browser holds the web app and the Weft extension. The web app calls the extension through window.weft. The extension holds the keys and shows each request. It connects over HTTPS to the relay, and over HTTPS to the Fabric CA for enrolment, both run by your organisation. The relay talks gRPC to the peer.">
+  <div class="pieces__grid">
+    <div class="pieces__group pieces__group--browser"></div>
+    <div class="pieces__group pieces__group--org"></div>
+    <span class="pieces__label pieces__label--browser">Your browser</span>
+    <span class="pieces__label pieces__label--org">Your organisation</span>
+    <div class="pieces__box pieces__box--web"><span>Web app</span><small>asks for a signature</small></div>
+    <div class="pieces__link pieces__link--v pieces__link--api"><span><code>window.weft</code></span></div>
+    <div class="pieces__box pieces__box--accent pieces__box--ext"><span>Weft extension</span><small>holds the keys, shows each request</small></div>
+    <div class="pieces__link pieces__link--h pieces__link--relay"><span>HTTPS</span></div>
+    <div class="pieces__link pieces__link--h pieces__link--ca"><span>HTTPS, enrolment</span></div>
+    <div class="pieces__box pieces__box--relay"><span>Relay</span><small>builds messages, forwards signed bytes</small></div>
+    <div class="pieces__link pieces__link--h pieces__link--grpc"><span>gRPC</span></div>
+    <div class="pieces__box pieces__box--peer"><span>Peer</span><small>endorses, keeps the ledger</small></div>
+    <div class="pieces__box pieces__box--ca"><span>Fabric CA</span><small>issues certificates</small></div>
+  </div>
+</figure>
+
+<style>
+  /* Two groups and the connections between them, drawn in HTML so every
+     label is real text and stays readable at every width. The groups'
+     frames sit behind the boxes in the same grid, so a connection that
+     leaves one group and enters the other lines up with both ends. Under
+     560px of its own width it stands on end: each group's boxes in a
+     column, the connections pointing down. */
+  .pieces {
+    container-type: inline-size;
+    margin: 0;
+  }
+  .pieces__grid {
+    --inset: var(--weft-space-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(7.5rem, 0.8fr) minmax(0, 1fr) minmax(3.5rem, 0.45fr) minmax(0, 0.9fr);
+    grid-template-rows: auto auto minmax(var(--weft-space-3), auto) auto auto auto;
+    grid-template-areas:
+      "lb   .   .     .    .   "
+      "web  .   .     .    .   "
+      "api  .   .     .    .   "
+      "api  .   lo    lo   lo  "
+      "ext  x1  relay grpc peer"
+      "ext  x2  ca    .    .   ";
+    row-gap: var(--weft-space-3);
+    padding: var(--inset);
+  }
+  .pieces__group {
+    margin: calc(var(--inset) * -1);
+    border: 1px solid var(--weft-line);
+    border-radius: var(--weft-radius-xl);
+    background: var(--weft-bg-surface);
+  }
+  .pieces__group--browser { grid-column: 1; grid-row: 1 / 7; }
+  .pieces__group--org { grid-column: 3 / 6; grid-row: 4 / 7; }
+  .pieces__label {
+    align-self: end;
+    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--weft-text-subtle);
+  }
+  .pieces__label--browser { grid-area: lb; }
+  .pieces__label--org { grid-area: lo; }
+  .pieces__box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 64px;
+    padding: var(--weft-space-2) var(--weft-space-3);
+    border: 1.5px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-lg);
+    background: var(--weft-bg-raised);
+    text-align: center;
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    color: var(--weft-text);
+    overflow-wrap: anywhere;
+  }
+  .pieces__box small {
+    font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
+    color: var(--weft-text-muted);
+  }
+  .pieces__box--accent {
+    border-color: var(--weft-accent-line);
+    color: var(--weft-text-strong);
+  }
+  .pieces__box--accent small {
+    color: var(--weft-accent-text);
+  }
+  .pieces__box--web { grid-area: web; }
+  .pieces__box--ext { grid-area: ext; }
+  .pieces__box--relay { grid-area: relay; }
+  .pieces__box--peer { grid-area: peer; }
+  .pieces__box--ca { grid-area: ca; }
+  .pieces__link--api { grid-area: api; }
+  .pieces__link--relay { grid-area: x1; }
+  .pieces__link--ca { grid-area: x2; }
+  .pieces__link--grpc { grid-area: grpc; }
+
+  /* A connection: a 1.5px line in the subtle text colour, with a head, and
+     its label in Mono. Across: the label above the line. Down: the line
+     24px in from the left, the label after it. */
+  .pieces__link {
+    position: relative;
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    color: var(--weft-text-muted);
+  }
+  .pieces__link code {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+  }
+  .pieces__link::before,
+  .pieces__link::after {
+    content: "";
+    position: absolute;
+  }
+  .pieces__link::after {
+    width: 6px;
+    height: 6px;
+    border: solid var(--weft-text-subtle);
+    border-width: 1.5px 1.5px 0 0;
+  }
+  .pieces__link--h {
+    align-self: center;
+    height: 0;
+  }
+  .pieces__link--h::before {
+    left: 0;
+    right: 0;
+    top: -0.75px;
+    height: 1.5px;
+    background: var(--weft-text-subtle);
+  }
+  .pieces__link--h::after {
+    right: 1px;
+    top: 0;
+    transform: translateY(-50%) rotate(45deg);
+  }
+  .pieces__link--h span {
+    position: absolute;
+    left: var(--weft-space-2);
+    right: var(--weft-space-2);
+    bottom: var(--weft-space-1);
+    text-align: center;
+  }
+  .pieces__link--v {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    margin-block: calc(var(--weft-space-3) * -1);
+    padding-left: 36px;
+  }
+  .pieces__link--v::before {
+    left: 24px;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    background: var(--weft-text-subtle);
+  }
+  .pieces__link--v::after {
+    left: 24.75px;
+    bottom: 1px;
+    transform: translateX(-50%) rotate(135deg);
+  }
+
+  @container (max-width: 559px) {
+    .pieces__grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: none;
+      grid-template-areas:
+        "lb    lb"
+        "web   web"
+        "api   api"
+        "ext   ext"
+        "x1    x2"
+        "relay ca"
+        "grpc  ."
+        "peer  ."
+        "lo    lo";
+      column-gap: var(--weft-space-3);
+    }
+    .pieces__group--browser { grid-column: 1 / 3; grid-row: 1 / 5; }
+    .pieces__group--org { grid-column: 1 / 3; grid-row: 6 / 10; }
+    .pieces__box { min-height: 56px; }
+    .pieces__link--h {
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      height: auto;
+      min-height: 40px;
+      margin-block: calc(var(--weft-space-3) * -1);
+      padding-left: 36px;
+    }
+    .pieces__link--h::before {
+      left: 24px;
+      right: auto;
+      top: 0;
+      bottom: 0;
+      width: 1.5px;
+      height: auto;
+    }
+    .pieces__link--h::after {
+      left: 24.75px;
+      right: auto;
+      top: auto;
+      bottom: 1px;
+      transform: translateX(-50%) rotate(135deg);
+    }
+    .pieces__link--h span {
+      position: static;
+      text-align: left;
+    }
+  }
+</style>
