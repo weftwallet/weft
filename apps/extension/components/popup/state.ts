@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { browser } from "wxt/browser";
-import { ui, type UiEvent, type WalletState } from "../../lib/messages";
+import { ui, type UiApi, type UiEvent, type WalletState } from "../../lib/messages";
 import { toErrorInfo, type ErrorInfo } from "../ui";
 
 /** Where an add-identity form goes back to: the screen it was opened from. */
@@ -75,15 +75,36 @@ export function useAction<A extends unknown[], R>(action: (...args: A) => Promis
   return { run, busy, error, setError };
 }
 
-/** Runs `onChange` when the worker says activity has changed. */
-export function useActivityEvents(onChange: () => void) {
+/** Runs `onChange` when the worker says something of `kind` has changed. */
+export function useUiEvents(kind: UiEvent["event"], onChange: () => void) {
   const latest = useRef(onChange);
   latest.current = onChange;
   useEffect(() => {
     const listener = (message: unknown) => {
-      if ((message as UiEvent | null)?.channel === "weft-ui-event") latest.current();
+      const m = message as UiEvent | null;
+      if (m?.channel === "weft-ui-event" && m.event === kind) latest.current();
     };
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);
-  }, []);
+  }, [kind]);
+}
+
+/** Runs `onChange` when the worker says activity has changed. */
+export const useActivityEvents = (onChange: () => void) => useUiEvents("activity", onChange);
+
+/**
+ * Whether an approval window is open for a request of `method`, kept current
+ * as windows open and finish. Null until the worker has answered.
+ */
+export function usePendingApproval(method: UiApi["approvalsPending"][1][number]): boolean | null {
+  const [pending, setPending] = useState<boolean | null>(null);
+  const load = useCallback(() => {
+    ui("approvalsPending").then(
+      (methods) => setPending(methods.includes(method)),
+      () => setPending(false),
+    );
+  }, [method]);
+  useEffect(load, [load]);
+  useUiEvents("approvals", load);
+  return pending;
 }

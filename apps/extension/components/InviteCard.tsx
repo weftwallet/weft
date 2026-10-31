@@ -5,7 +5,7 @@ export function InviteCard({ invite }: { invite: OrgInvite }) {
   return (
     <section className="card" aria-label="Invite">
       <span className="eyebrow">You're joining</span>
-      <div style={{ fontSize: "var(--weft-type-xl)", fontWeight: 600 }}>{invite.network}</div>
+      <div className="card__title">{invite.network}</div>
       <dl className="details">
         <dt>Organisation</dt>
         <dd>{invite.organization}</dd>

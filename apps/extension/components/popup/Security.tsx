@@ -5,7 +5,7 @@ import { AUTO_LOCK_CHOICES } from "../../lib/vault";
 import { useFeedback } from "../feedback";
 import { useChecks } from "../form";
 import { openPasskeyWindow } from "../lock";
-import { ActionError, BackHeader, Button, Field, Icon, SecretInput, Select, timeAgo, toErrorInfo } from "../ui";
+import { ActionError, BackHeader, Button, Field, Icon, SecretInput, Select, timeAgo, toErrorInfo, tokenMs } from "../ui";
 import { focusTargetAfter, useLeaving } from "./lists";
 import { useAction, type Navigate } from "./state";
 
@@ -66,14 +66,14 @@ export function Security({
   return (
     <>
       <BackHeader title="Security" onBack={() => navigate({ name: "home" })} />
-      <main className="page" style={{ gap: 20 }}>
-        <section className="card" style={{ gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <main className="page stack--loose">
+        <section className="card">
+          <div className="inline">
             <span className="lock-badge">
               <Icon name="lock" size={18} />
             </span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontWeight: 500 }}>Unlocked</span>
+            <div className="stack stack--tight">
+              <span className="strong">Unlocked</span>
               <span className="muted">Signing needs your password or a passkey after Weft locks.</span>
             </div>
           </div>
@@ -101,8 +101,8 @@ export function Security({
         </Field>
         <ActionError error={autoLock.error} />
 
-        <section style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-labelledby="passkeys-heading">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <section className="stack" aria-labelledby="passkeys-heading">
+          <div className="row-between">
             <h2 id="passkeys-heading" className="eyebrow" tabIndex={-1}>
               Passkeys
             </h2>
@@ -112,7 +112,7 @@ export function Security({
           </div>
           <ActionError error={addPasskey.error} />
           {vault.passkeys.length === 0 ? (
-            <p className="subtle" style={{ margin: 0 }}>
+            <p className="subtle flat">
               Unlock with a fingerprint, face or security key instead of typing your password. The passkey needs to support
               the PRF extension. Weft checks when you add it.
             </p>
@@ -159,7 +159,8 @@ export function Security({
 
 function ChangePassword({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState(false);
-  const [closing, setClosing] = useState(false);
+  // Mounted from opening until its leave has ended.
+  const [mounted, setMounted] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
@@ -172,23 +173,30 @@ function ChangePassword({ onDone }: { onDone: () => void }) {
   // The worker's answer about the current password belongs to that field.
   const [wrong, setWrong] = useState<{ current: string; message: string } | null>(null);
 
-  // Closes the way it opened, then gives focus back to the button that opened it.
+  // The panel is a .reversible (motion.css): it leaves from wherever it is.
+  // Once it has gone, the fields are cleared and focus goes back to the button
+  // that opened it.
   const close = () => {
-    setClosing(true);
+    setOpen(false);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     setTimeout(
       () => {
-        setOpen(false);
-        setClosing(false);
+        setMounted(false);
         setCurrent("");
         setNext("");
         setAgain("");
         setWrong(null);
         change.setError(null);
-        requestAnimationFrame(() => opener.current?.focus());
+        opener.current?.focus();
       },
-      reduced ? 0 : 160,
+      reduced ? 0 : tokenMs("--weft-duration-base-out", 154),
     );
+  };
+  const first = useRef<HTMLInputElement>(null);
+  const openPanel = () => {
+    setMounted(true);
+    setOpen(true);
+    requestAnimationFrame(() => first.current?.focus());
   };
 
   const change = useAction(async () => {
@@ -207,25 +215,25 @@ function ChangePassword({ onDone }: { onDone: () => void }) {
     close();
   });
 
-  if (!open) {
-    return (
-      <button ref={opener} type="button" className="btn" aria-expanded={false} onClick={() => setOpen(true)}>
-        Change password
-      </button>
-    );
-  }
   const currentField = checks.field("current");
   return (
-    <form
-      className={`card panel ${closing ? "is-leaving" : ""}`}
-      style={{ gap: 12 }}
-      noValidate
-      aria-labelledby="change-password-heading"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (checks.submit()) void change.run();
-      }}
-    >
+    <>
+      {!mounted && (
+        <button ref={opener} type="button" className="btn" aria-expanded={false} aria-controls="change-password" onClick={openPanel}>
+          Change password
+        </button>
+      )}
+      {mounted && (
+      <form
+        id="change-password"
+        className={`card panel reversible reversible--down ${open ? "is-open" : ""}`}
+        noValidate
+        aria-labelledby="change-password-heading"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (checks.submit()) void change.run();
+        }}
+      >
       <h2 id="change-password-heading" className="eyebrow">
         Change password
       </h2>
@@ -234,7 +242,7 @@ function ChangePassword({ onDone }: { onDone: () => void }) {
         {...currentField}
         error={currentField.error ?? (wrong && wrong.current === current ? wrong.message : null)}
       >
-        {(a) => <SecretInput {...a} autoFocus value={current} onChange={(e) => setCurrent(e.target.value)} />}
+        {(a) => <SecretInput {...a} ref={first} value={current} onChange={(e) => setCurrent(e.target.value)} />}
       </Field>
       <Field label="New password" {...checks.field("next")}>
         {(a) => <SecretInput {...a} value={next} onChange={(e) => setNext(e.target.value)} />}
@@ -243,14 +251,16 @@ function ChangePassword({ onDone }: { onDone: () => void }) {
         {(a) => <SecretInput {...a} value={again} onChange={(e) => setAgain(e.target.value)} />}
       </Field>
       <ActionError error={change.error} />
-      <div style={{ display: "flex", gap: 8 }}>
-        <button type="button" className="btn" style={{ flex: 1 }} onClick={close}>
+      <div className="sheet__actions">
+        <button type="button" className="btn" onClick={close}>
           Cancel
         </button>
-        <Button type="submit" className="btn btn--primary" style={{ flex: 1 }} busy={change.busy}>
+        <Button type="submit" className="btn btn--primary" busy={change.busy}>
           Change
         </Button>
       </div>
-    </form>
+      </form>
+      )}
+    </>
   );
 }

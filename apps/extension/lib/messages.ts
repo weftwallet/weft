@@ -52,7 +52,15 @@ export interface ApprovalView {
 }
 
 export type ApprovalOutcome =
-  | { status: "approved"; activityId: string | null }
+  | {
+      status: "approved";
+      activityId: string | null;
+      /** A committed transaction: its block and ID, for the status line and the explorer link. */
+      blockNumber?: string;
+      transactionId?: string;
+      /** The network's explorer, from the invite, when it has one. */
+      explorerUrl?: string;
+    }
   | {
       status: "failed";
       activityId: string | null;
@@ -87,6 +95,8 @@ export interface UiApi {
   disconnectSite: [{ origin: string }, WalletState];
   approvalGet: [{ id: string }, ApprovalView | null];
   approvalDecide: [{ id: string; approved: boolean }, ApprovalOutcome];
+  /** The requests waiting in open approval windows, so the popup can say so. */
+  approvalsPending: [undefined, ApprovalView["method"][]];
   /** Changes where Weft reaches a network, or its channels. */
   updateNetwork: [
     { networkId: string; patch: Partial<Pick<NetworkRecord, "name" | "organization" | "relayUrl" | "caUrl" | "caName" | "explorerUrl" | "channels">> },
@@ -139,7 +149,8 @@ export class UiError extends Error {
 /** Sent by the worker to open extension pages when something they show has changed. */
 export interface UiEvent {
   channel: "weft-ui-event";
-  event: "activity";
+  /** activity: a record was saved; approvals: an approval window opened or finished. */
+  event: "activity" | "approvals";
 }
 
 /** Calls the background worker from an extension page. */

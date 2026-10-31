@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { browser } from "wxt/browser";
 import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../components/popup/AddForms";
 import { Home, type HomeMemory } from "../../components/popup/Home";
 import { AddIdentity, AddIdentityOptions, Identities } from "../../components/popup/Identities";
@@ -6,9 +7,9 @@ import { NetworkSettings } from "../../components/popup/NetworkSettings";
 import { Security } from "../../components/popup/Security";
 import { CreatePassword, Unlock } from "../../components/lock";
 import { TxDetail } from "../../components/popup/TxDetail";
-import { useWallet, type Route } from "../../components/popup/state";
+import { usePendingApproval, useUiEvents, useWallet, type Route } from "../../components/popup/state";
 import { FeedbackProvider, useFeedback } from "../../components/feedback";
-import { Button, ErrorDetails, Splash, StatusScreen, WeaveMark, useFocusOnArrival } from "../../components/ui";
+import { Button, ErrorDetails, Spinner, Splash, StatusScreen, WeaveMark, tokenMs, useFocusOnArrival } from "../../components/ui";
 
 /** How deep each screen sits, so moving deeper slides one way and back the other. */
 const DEPTH: Record<Route["name"], number> = {
@@ -25,12 +26,21 @@ const DEPTH: Record<Route["name"], number> = {
   csr: 3,
 };
 
+const still = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export function App() {
   return (
     <FeedbackProvider>
       <Screens />
     </FeedbackProvider>
   );
+}
+
+/** A screen on its way out: kept over the new one until its leave has ended. */
+interface Leaving {
+  key: number;
+  node: ReactNode;
+  dir: "forward" | "back";
 }
 
 function Screens() {
@@ -40,14 +50,50 @@ function Screens() {
   const direction = useRef<"forward" | "back" | "none">("none");
   const visits = useRef(0);
   // Home's tab and scroll position, kept while a deeper screen is open.
-  const homeMemory = useRef<HomeMemory>({ tab: "activity", scrollTop: 0 });
+  const homeMemory = useRef<HomeMemory>({ tab: "activity", scrollTop: 0, fresh: [] });
   const [retrying, setRetrying] = useState(false);
+  // The screen being left, drawn over the new one while it goes (SYSTEM.md,
+  // Navigation: the old screen leaves in base-out against the direction of
+  // travel, then unmounts).
+  const [leaving, setLeaving] = useState<Leaving | null>(null);
+  const current = useRef<{ key: number; node: ReactNode } | null>(null);
 
   const navigate = (next: Route) => {
-    direction.current = DEPTH[next.name] >= DEPTH[route.name] ? "forward" : "back";
+    const dir = DEPTH[next.name] >= DEPTH[route.name] ? "forward" : "back";
+    direction.current = dir;
+    if (current.current && !still()) setLeaving({ ...current.current, dir });
     visits.current += 1;
     setRoute(next);
   };
+  useEffect(() => {
+    if (!leaving) return;
+    const t = setTimeout(() => setLeaving(null), tokenMs("--weft-duration-base-out", 154) + 30);
+    return () => clearTimeout(t);
+  }, [leaving]);
+
+  // An approval window finishing (a join, a connection) can change what the
+  // popup shows, so its state is read again.
+  useUiEvents("approvals", () => void refresh());
+
+  // Identities that arrive while the popup is open (from a join here, or in
+  // an approval window) come in as new rows on the identities tab.
+  // Checked as the screen is built, so Home opens on the identities tab when
+  // the identity that brought it there has just arrived.
+  const knownIds = useRef<Set<string> | null>(null);
+  if (state) {
+    const ids = state.identities.map((i) => i.id);
+    if (knownIds.current) {
+      const added = ids.filter((id) => !knownIds.current!.has(id));
+      if (added.length) {
+        homeMemory.current.fresh = [...homeMemory.current.fresh, ...added];
+        homeMemory.current.tab = "identities";
+        setTimeout(() => {
+          homeMemory.current.fresh = homeMemory.current.fresh.filter((id) => !added.includes(id));
+        }, tokenMs("--weft-rule-life", 4000) + 1000);
+      }
+    }
+    knownIds.current = new Set(ids);
+  }
 
   if (error) {
     return (
@@ -151,6 +197,7 @@ function Screens() {
   // open when Weft locked stays mounted underneath, hidden, so whatever was
   // typed into it is still there after unlocking.
   const locked = state.vault.state === "locked";
+  if (!locked) current.current = { key: visits.current, node: screen };
   return (
     <>
       {locked && (
@@ -178,28 +225,68 @@ function Screens() {
           {screen}
         </div>
       )}
+      {leaving && !locked && (
+        <div key={`leaving-${leaving.key}`} className="screen is-leaving" data-dir={leaving.dir} aria-hidden="true" inert>
+          {leaving.node}
+        </div>
+      )}
     </>
   );
 }
 
+/** Where the welcome remembers that its mark has been drawn: once per installation. */
+const DRAWN_KEY = "welcomeDrawn";
+
+/**
+ * The first screen: the mark, the words, and the invite as the one way in.
+ * The mark draws itself the first time Weft opens and is still after that;
+ * everything arrives top to bottom, a stagger apart. While a site's approval
+ * window is finishing a join, the welcome says so and waits.
+ */
 function Welcome({ navigate }: { navigate: (r: Route) => void }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useFocusOnArrival(heading);
+  const [mode, setMode] = useState<"draw" | "still" | null>(null);
+  useEffect(() => {
+    let live = true;
+    browser.storage.local
+      .get(DRAWN_KEY)
+      .then((stored) => {
+        if (!live) return;
+        if (stored[DRAWN_KEY]) return setMode("still");
+        setMode("draw");
+        void browser.storage.local.set({ [DRAWN_KEY]: true });
+      })
+      .catch(() => live && setMode("still"));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const joining = usePendingApproval("weft_addNetwork");
+
   return (
-    <main className="page" style={{ gap: 24, paddingTop: 40 }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 16 }}>
-        <WeaveMark size={72} mode="draw" />
-        {/* The words follow once the mark has drawn itself. */}
-        <div className="fade-in" style={{ animationDelay: "420ms", animationFillMode: "both" }}>
-          <h1 ref={heading} tabIndex={-1} className="wordmark">
-            weft
-          </h1>
-          <p className="muted" style={{ margin: "10px 0 0" }}>
-            An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the transactions you approve.
-          </p>
-        </div>
+    <main className="page welcome stagger">
+      <div className="welcome__mark">{mode && <WeaveMark size={72} mode={mode} />}</div>
+      <div className="welcome__words">
+        <h1 ref={heading} tabIndex={-1} className="wordmark">
+          weft
+        </h1>
+        <p className="muted">
+          An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the
+          transactions you approve.
+        </p>
       </div>
-      <AddIdentityOptions navigate={navigate} from="home" />
+      {joining ? (
+        <div className="waiting" role="status">
+          <Spinner size={32} />
+          <div className="waiting__text">
+            <span className="strong">Finishing in the other window</span>
+            <span className="muted type-xs">Your new identity appears here when it closes.</span>
+          </div>
+        </div>
+      ) : (
+        <AddIdentityOptions navigate={navigate} showHeading={false} from="home" />
+      )}
     </main>
   );
 }

@@ -51,7 +51,6 @@ function Settings({
 }) {
   const { confirm, toast } = useFeedback();
   const [advanced, setAdvanced] = useState(false);
-  const [closingAdvanced, setClosingAdvanced] = useState(false);
   const [relayUrl, setRelayUrl] = useState(network.relayUrl);
   const [caUrl, setCaUrl] = useState(network.caUrl);
   const [caName, setCaName] = useState(network.caName ?? "");
@@ -80,19 +79,6 @@ function Settings({
     explorerUrl: () => check.url(explorerUrl),
   });
 
-  // Advanced closes the way it opened, in reverse.
-  const toggleAdvanced = () => {
-    if (!advanced) return setAdvanced(true);
-    setClosingAdvanced(true);
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setTimeout(
-      () => {
-        setAdvanced(false);
-        setClosingAdvanced(false);
-      },
-      reduced ? 0 : 160,
-    );
-  };
 
   const save = useAction(async (force: boolean) => {
     setProblems(null);
@@ -120,11 +106,11 @@ function Settings({
       title: "Change where Weft connects?",
       body: (
         <>
-          <p style={{ margin: "0 0 8px" }}>
+          <p className="sheet__para">
             Weft will send {network.name}'s transactions through this relay and renew certificates with this CA. Only use
             addresses your organisation gave you.
           </p>
-          <p style={{ margin: 0 }}>
+          <p className="flat">
             Your keys stay in this browser either way, and Weft still checks every transaction before signing it.
           </p>
         </>
@@ -198,7 +184,7 @@ function Settings({
       >
         <section className="card" aria-label="Network">
           <span className="eyebrow">{network.organization}</span>
-          <div style={{ fontSize: "var(--weft-type-xl)", fontWeight: 600 }}>{network.name}</div>
+          <div className="card__title">{network.name}</div>
           <dl className="details">
             <dt>MSP ID</dt>
             <dd className="mono">{network.mspId}</dd>
@@ -224,7 +210,7 @@ function Settings({
             </Button>
           )
         ) : (
-          <p className="subtle type-xs" style={{ margin: 0 }}>
+          <p className="subtle type-xs flat">
             Added without an invite. Change its channels and addresses under Advanced.
           </p>
         )}
@@ -233,19 +219,19 @@ function Settings({
         <button
           type="button"
           className="disclosure"
-          aria-expanded={advanced && !closingAdvanced}
+          aria-expanded={advanced}
           aria-controls="network-advanced"
-          onClick={toggleAdvanced}
+          onClick={() => setAdvanced(!advanced)}
         >
           <span>Advanced</span>
-          <span className="subtle type-xs" style={{ marginLeft: "auto" }}>
+          <span className="subtle type-xs push-right">
             {editableChannels ? "Channels and addresses" : "Addresses"}
           </span>
           <Icon name="chevron" size={16} />
         </button>
 
-        {advanced && (
-          <div id="network-advanced" className={`panel ${closingAdvanced ? "is-leaving" : ""}`} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* A .reversible (motion.css): it leaves from wherever it is when closed early. */}
+        <div id="network-advanced" className={`panel reversible reversible--down ${advanced ? "is-open" : ""}`} hidden={!advanced}>
             {editableChannels && (
               <Field
                 label="Channels"
@@ -269,8 +255,8 @@ function Settings({
             </Field>
             <div className="page__actions">
               {problems && (
-                <div className="notice notice--amber fade-in" style={{ flexDirection: "column", gap: 4 }} role="alert">
-                  <div style={{ fontWeight: 600 }}>Weft couldn't confirm these addresses</div>
+                <div className="notice notice--amber notice--column arrive" role="alert">
+                  <div className="strong">Weft couldn't confirm these addresses</div>
                   {problems.relay && <div>The relay {problems.relay}.</div>}
                   {problems.ca && <div>The CA {problems.ca}.</div>}
                   <button type="button" className="link-btn link-btn--inline" onClick={() => void save.run(true)}>
@@ -284,13 +270,10 @@ function Settings({
                   {endpointsChanged ? "Test and save" : "Save"}
                 </Button>
               ) : (
-                <p className="subtle type-xs" style={{ margin: 0, textAlign: "center" }}>
-                  Change an address or channel to save it.
-                </p>
+                <p className="subtle type-xs flat centre">Change an address or channel to save it.</p>
               )}
             </div>
           </div>
-        )}
       </form>
     </>
   );
@@ -324,9 +307,9 @@ function InviteChanges({
 
   if (nothing) {
     return (
-      <div className="notice notice--thread fade-in">
+      <div className="notice notice--thread arrive">
         <Icon name="check" size={18} color="var(--weft-accent-text)" />
-        <span style={{ flex: 1 }}>Up to date with your organisation's invite.</span>
+        <span className="grow">Up to date with your organisation's invite.</span>
         <button type="button" className="link-btn link-btn--inline" onClick={onCancel}>
           OK
         </button>
@@ -334,13 +317,13 @@ function InviteChanges({
     );
   }
   return (
-    <section className="card fade-in" aria-label="Changes from the invite">
+    <section className="card arrive" aria-label="Changes from the invite">
       <span className="eyebrow">The invite has changed</span>
       <dl className="details">
         {added.length > 0 && (
           <>
             <dt>New channels</dt>
-            <dd className="mono" style={{ color: "var(--weft-accent-text)" }}>
+            <dd className="mono accent-text">
               {added.join(", ")}
             </dd>
           </>
@@ -348,16 +331,16 @@ function InviteChanges({
         {removed.length > 0 && (
           <>
             <dt>Removed</dt>
-            <dd className="mono" style={{ color: "var(--weft-warn-text)" }}>
+            <dd className="mono warn-text">
               {removed.join(", ")}
             </dd>
           </>
         )}
         {changes.map((c) => (
-          <div key={c.label} style={{ display: "contents" }}>
+          <div key={c.label} className="contents">
             <dt>{c.label}</dt>
             <dd className="mono type-xs">
-              <span className="subtle" style={{ textDecoration: "line-through" }}>
+              <span className="subtle struck">
                 <span className="visually-hidden">Was </span>
                 {c.from}
               </span>
@@ -368,7 +351,7 @@ function InviteChanges({
           </div>
         ))}
       </dl>
-      <div className="sheet__actions" style={{ paddingTop: 0 }}>
+      <div className="sheet__actions sheet__actions--flush">
         <button type="button" className="btn" onClick={onCancel}>
           Not now
         </button>

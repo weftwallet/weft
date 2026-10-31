@@ -14,6 +14,8 @@ const TABS = ["activity", "identities", "sites"] as const;
 export interface HomeMemory {
   tab: Tab;
   scrollTop: number;
+  /** Identities added since the popup opened: they arrive as new rows (SYSTEM.md, Arriving). */
+  fresh: string[];
 }
 
 export function Home({
@@ -157,7 +159,7 @@ export function Home({
 
         <div key={tab} id="tab-panel" className="crossfade" role="tabpanel" aria-labelledby={`tab-${tab}`}>
           {tab === "activity" && <ActivityList navigate={navigate} />}
-          {tab === "identities" && <IdentityList state={state} onState={onState} onManage={() => navigate({ name: "identities" })} />}
+          {tab === "identities" && <IdentityList state={state} onState={onState} fresh={memory.fresh} onManage={() => navigate({ name: "identities" })} />}
           {tab === "sites" && <SiteList state={state} onState={onState} />}
         </div>
       </main>
@@ -190,11 +192,11 @@ function IdentityCard({
 
   return (
     <section className="card crossfade" aria-label="Active identity">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div className="row-between">
         <span className="eyebrow">Active identity</span>
         {identity.role ? <span className="chip chip--solid">{identity.role}</span> : null}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div className="identity-card__names">
         <div className="identity-name" title={identity.name}>
           {identity.name}
         </div>
@@ -205,12 +207,12 @@ function IdentityCard({
           {identity.networkName}
         </div>
       </div>
-      <div className="mono subtle type-xs" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="mono subtle type-xs inline">
         <span>SHA-256</span>
-        <span style={{ color: "var(--weft-text)" }} title={fingerprint}>
+        <span className="text" title={fingerprint}>
           {shorten(fingerprint)}
         </span>
-        <span style={{ marginLeft: "auto" }}>
+        <span className="push-right">
           <CopyButton text={fingerprint} label="Copy fingerprint" />
         </span>
       </div>
@@ -223,9 +225,9 @@ function IdentityCard({
           ))}
         </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 4 }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ color: health.color, fontWeight: 500 }}>{health.label}</span>
+      <div className="stack identity-card__health">
+        <div className="row-between">
+          <span className="strong" style={{ color: health.color }}>{health.label}</span>
           <span className="subtle">{health.detail}</span>
         </div>
         <div className="bar" aria-hidden="true">
@@ -250,7 +252,7 @@ function IdentityCard({
           </Button>
         )}
         {(health.state === "expiring" || health.state === "expired") && !canRenew && (
-          <div className={`notice ${health.state === "expired" ? "notice--signal" : "notice--amber"}`} style={{ flexDirection: "column" }}>
+          <div className={`notice notice--column ${health.state === "expired" ? "notice--signal" : "notice--amber"}`}>
             <span>
               Weft can't renew this certificate itself, because it wasn't enrolled with a CA here. Ask your CA administrator
               for a new certificate, then add it with Import PEM.
@@ -322,12 +324,10 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
   }
   const days = groupByDay(items);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className="stack stack--day">
       {days.map((day) => (
         <section key={day.label} aria-label={day.label}>
-          <div className="eyebrow" style={{ padding: "10px 4px 4px" }}>
-            {day.label}
-          </div>
+          <div className="eyebrow day-label">{day.label}</div>
           <div className="list stagger">
             {day.items.map((item) => (
               <ActivityRow key={item.id} item={item} isNew={fresh.has(item.id)} navigate={navigate} />
@@ -336,9 +336,7 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
         </section>
       ))}
       {items.length >= 50 && (
-        <p className="subtle type-xs" style={{ textAlign: "center", margin: "8px 0 0" }}>
-          Showing the 50 most recent.
-        </p>
+        <p className="subtle type-xs centre list-note">Showing the 50 most recent.</p>
       )}
     </div>
   );
@@ -377,9 +375,7 @@ function ActivityRow({ item, isNew, navigate }: { item: ActivityRecord; isNew: b
           {item.call.fn}
         </span>
         {item.status === "failed" ? (
-          <span className="one-line type-xs" style={{ color: "var(--weft-danger-text)" }}>
-            {item.title}
-          </span>
+          <span className="one-line type-xs danger-text">{item.title}</span>
         ) : (
           <span className="mono subtle one-line type-xs">
             {item.call.chaincode}
@@ -387,7 +383,7 @@ function ActivityRow({ item, isNew, navigate }: { item: ActivityRecord; isNew: b
           </span>
         )}
       </span>
-      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flex: "none" }}>
+      <span className="list-item__end">
         <span className="status-label" style={{ color: s.fg }}>
           {s.label}
         </span>
@@ -400,10 +396,13 @@ function ActivityRow({ item, isNew, navigate }: { item: ActivityRecord; isNew: b
 function IdentityList({
   state,
   onState,
+  fresh,
   onManage,
 }: {
   state: WalletState;
   onState: (s: WalletState) => void;
+  /** Identities that arrived since the popup opened, which come in as new rows. */
+  fresh: string[];
   onManage: () => void;
 }) {
   const { toast } = useFeedback();
@@ -425,10 +424,10 @@ function IdentityList({
     }
   });
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className="stack">
       {state.identities.length >= FILTER_FROM && <FilterInput value={query} onChange={setQuery} label="Filter identities" />}
       {groups.map((group) => (
-        <div key={group.networkId} className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div key={group.networkId} className="stagger stack">
           {grouped && <GroupHeading title={group.network?.name ?? "Unknown network"} detail={group.network?.mspId} />}
           {group.identities.map((identity) => (
             <IdentityOption
@@ -436,6 +435,7 @@ function IdentityList({
               identity={identity}
               active={identity.id === activeId}
               showMsp={!grouped}
+              isNew={fresh.includes(identity.id)}
               onSelect={() => void select.run(identity)}
             />
           ))}
@@ -458,16 +458,19 @@ export function IdentityOption({
   active,
   onSelect,
   showMsp = true,
+  isNew = false,
 }: {
   identity: IdentityView;
   active: boolean;
   onSelect: () => void;
   /** Off inside a network group, whose heading already names the MSP. */
   showMsp?: boolean;
+  /** Arrived while the person was looking: comes in as a pick (motion.css .is-new). */
+  isNew?: boolean;
 }) {
   const health = healthView(identity);
   return (
-    <button type="button" className="identity-option" aria-pressed={active} onClick={onSelect}>
+    <button type="button" className={`identity-option${isNew ? " is-new" : ""}`} aria-pressed={active} onClick={onSelect}>
       <span className={`avatar ${active ? "avatar--active" : ""}`} aria-hidden="true">
         {identity.name.trim().charAt(0) || "?"}
       </span>
@@ -516,7 +519,7 @@ function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletS
   };
   const shown = state.sites.filter((site) => matches(query, new URL(site.origin).host));
   return (
-    <div ref={list} className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div ref={list} className="stagger stack">
       {state.sites.length >= FILTER_FROM && <FilterInput value={query} onChange={setQuery} label="Filter sites" />}
       {shown.length === 0 && (
         <Empty icon="search" action={{ label: "Clear filter", onClick: () => setQuery("") }}>

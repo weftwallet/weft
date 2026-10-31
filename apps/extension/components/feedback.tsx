@@ -5,7 +5,7 @@
  * happen, with Cancel focused so Enter never deletes anything by accident.
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { Icon, type IconName } from "./ui";
+import { Icon, tokenMs, type IconName } from "./ui";
 
 export interface ConfirmOptions {
   title: string;
@@ -40,6 +40,8 @@ const toastTime = (text: string) => Math.min(6000, Math.max(2400, text.length * 
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<(ConfirmOptions & { resolve: (ok: boolean) => void }) | null>(null);
   const [toastState, setToastState] = useState<{ text: string; tone: "done" | "error"; key: number; leaving: boolean } | null>(null);
+  // A toast is a .reversible: its first frame comes from @starting-style, and
+  // it is unmounted once its leave has ended.
   const [live, setLive] = useState("");
 
   const announce = useCallback((text: string) => {
@@ -65,6 +67,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     const t = setTimeout(() => setToastState((s) => (s && s.key === toastState.key ? { ...s, leaving: true } : s)), toastTime(toastState.text));
     return () => clearTimeout(t);
   }, [toastState]);
+  // Gone once the leave has had its time, whether or not a transition ran.
+  useEffect(() => {
+    if (!toastState?.leaving) return;
+    const t = setTimeout(() => setToastState((s) => (s && s.key === toastState.key ? null : s)), tokenMs("--weft-duration-base-out", 154) + 50);
+    return () => clearTimeout(t);
+  }, [toastState]);
 
   const [closing, setClosing] = useState(false);
   const closingRef = useRef(false);
@@ -76,7 +84,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     pendingRef.current?.resolve(ok);
     setClosing(true);
   }, []);
-  // The sheet leaves the way it came, then unmounts (on its animationend).
+  // The sheet leaves the way it came (a .reversible, so from wherever it is),
+  // then unmounts.
   const closed = useCallback(() => {
     closingRef.current = false;
     setPending(null);
@@ -90,11 +99,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       {toastState && (
         <div
           key={toastState.key}
-          className={`toast ${toastState.tone === "error" ? "toast--error" : ""} ${toastState.leaving ? "is-leaving" : ""}`}
+          className={`toast reversible ${toastState.tone === "error" ? "toast--error" : ""} ${toastState.leaving ? "" : "is-open"}`}
           aria-hidden="true"
-          onAnimationEnd={(e) => {
-            if (e.target === e.currentTarget && toastState.leaving) setToastState(null);
-          }}
         >
           <Icon name={toastState.tone === "error" ? "alert" : "check"} size={16} />
           {toastState.text}
@@ -154,19 +160,24 @@ function ConfirmSheet({
     };
   }, [onClose]);
 
+  // Unmounted once the leave has had its time (slow-out), or at once with reduced motion.
   useEffect(() => {
-    if (closing && reducedMotion()) onClosed();
+    if (!closing) return;
+    const t = setTimeout(onClosed, reducedMotion() ? 0 : tokenMs("--weft-duration-slow-out", 252) + 50);
+    return () => clearTimeout(t);
   }, [closing, onClosed]);
 
+  const shown = !closing;
   return (
-    <div
-      className={`sheet-backdrop ${closing ? "is-closing" : ""}`}
-      onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}
-      onAnimationEnd={(e) => {
-        if (closing && e.target === sheet.current) onClosed();
-      }}
-    >
-      <div ref={sheet} className="sheet" role="alertdialog" aria-modal="true" aria-labelledby="sheet-title" aria-describedby="sheet-body">
+    <div className={`sheet-backdrop ${shown ? "is-open" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}>
+      <div
+        ref={sheet}
+        className={`sheet reversible reversible--far ${shown ? "is-open" : ""}`}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="sheet-title"
+        aria-describedby="sheet-body"
+      >
         <span className={`sheet__icon ${options.tone === "caution" ? "sheet__icon--caution" : ""}`}>
           <Icon name={options.icon ?? "alert"} size={20} />
         </span>

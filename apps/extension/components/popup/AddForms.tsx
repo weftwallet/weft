@@ -188,7 +188,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
             if (linkChecks.submit()) void load.run(link.trim());
           }}
         >
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted flat">
             Your network administrator shares a link that tells Weft where your organisation's CA and relay are.
           </p>
           <Field label="Invite link" hint="Paste the link, or paste a screenshot of the QR code." {...linkChecks.field("link")}>
@@ -344,12 +344,12 @@ export function CsrForm({ navigate, onDone, from }: FormProps) {
           onBack={() => void onDone(undefined, "identities")}
         />
         <main className="page step" data-dir="forward">
-          <p className="muted" style={{ margin: 0 }}>
+          <p className="muted flat">
             Send this request to your CA administrator. When they send back a certificate, open Identities and paste it
             under “Waiting for a certificate”.
           </p>
           <div className="args">
-            <pre className="raw" style={{ borderTop: 0 }}>
+            <pre className="raw raw--flush">
               {result.csr}
             </pre>
           </div>
@@ -374,7 +374,7 @@ export function CsrForm({ navigate, onDone, from }: FormProps) {
           if (checks.submit()) void action.run();
         }}
       >
-        <p className="muted" style={{ margin: 0 }}>
+        <p className="muted flat">
           For CAs that issue certificates by hand. Weft creates the key here; only the request leaves the browser.
         </p>
         <Field label="Common name" hint="Usually your enrolment ID" {...checks.field("commonName")}>
@@ -414,7 +414,7 @@ export function CompleteCsr({ state, navigate, onDone, pendingId }: FormProps & 
             Request for <span className="mono">{pending.commonName}</span> on {pending.networkName}
           </div>
         ) : (
-          <p className="action-error__message" role="alert" style={{ margin: 0 }}>
+          <p className="action-error__message flat" role="alert">
             This request no longer exists. Go back to Identities to see the ones still waiting.
           </p>
         )}

@@ -74,6 +74,16 @@ export function getApproval(id: string): ApprovalView | null {
   return approvals.get(id)?.view ?? null;
 }
 
+/** The requests waiting in open approval windows. */
+export function pendingApprovals(): ApprovalView["method"][] {
+  return [...approvals.values()].map((a) => a.view.method);
+}
+
+/** Tells any open popup that an approval window opened or finished. */
+function announceApprovals(): void {
+  void browser.runtime.sendMessage({ channel: "weft-ui-event", event: "approvals" } satisfies UiEvent).catch(() => {});
+}
+
 /** Called by the approval window. Resolves once the request has finished running. */
 export async function decideApproval(id: string, approved: boolean): Promise<ApprovalOutcome> {
   const approval = approvals.get(id);
@@ -111,12 +121,14 @@ async function openApproval(view: ApprovalView): Promise<PendingApproval> {
     focused: true,
   });
   approval.windowId = created?.id;
+  announceApprovals();
   return approval;
 }
 
 function finish(approval: PendingApproval, outcome: ApprovalOutcome) {
   approval.outcome.resolve(outcome);
   approvals.delete(approval.view.id);
+  announceApprovals();
 }
 
 /* ------------------------------------------------------------------ */
@@ -244,7 +256,13 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
       blockNumber: result.blockNumber,
       code: result.status,
     });
-    finish(approval, { status: "approved", activityId: base.id });
+    finish(approval, {
+      status: "approved",
+      activityId: base.id,
+      blockNumber: result.blockNumber,
+      transactionId: result.transactionId,
+      ...(active.network.explorerUrl ? { explorerUrl: active.network.explorerUrl } : {}),
+    });
     return result;
   } catch (error) {
     let failure = describeFailure(error);

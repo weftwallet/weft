@@ -7,7 +7,7 @@
 import { useState } from "react";
 import type { NetworkRecord } from "../../lib/db";
 import type { IdentityView } from "../../lib/messages";
-import { Icon } from "../ui";
+import { Icon, tokenMs } from "../ui";
 
 /** Lists longer than this get a filter box. */
 export const FILTER_FROM = 6;
@@ -98,7 +98,7 @@ export function useLeaving() {
   const leave = (id: string) =>
     new Promise<void>((resolve) => {
       setLeaving((s) => new Set(s).add(id));
-      setTimeout(resolve, reducedMotion() ? 0 : 160);
+      setTimeout(resolve, reducedMotion() ? 0 : tokenMs("--weft-duration-base-out", 154));
     });
   const stay = (id: string) =>
     setLeaving((s) => {

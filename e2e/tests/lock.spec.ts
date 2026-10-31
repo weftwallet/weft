@@ -46,6 +46,8 @@ test.describe("a new wallet", () => {
 
   test("the popup asks for a password when adding an identity", async ({ wallet }) => {
     const popup = await wallet.popup();
+    // The expert paths sit behind a disclosure; the invite is the one tile.
+    await popup.getByRole("button", { name: "More ways to add an identity" }).click();
     await popup.getByRole("button", { name: /Enrol with CA/ }).click();
     await expect(popup.getByRole("heading", { name: "Set a password" })).toBeVisible();
     await popup.getByLabel("Password", { exact: true }).fill(PASSWORD);

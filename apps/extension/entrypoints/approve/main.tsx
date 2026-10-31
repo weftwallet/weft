@@ -19,12 +19,12 @@ import {
   Field,
   Icon,
   SecretInput,
-  Spinner,
   Splash,
   StatusScreen,
   WeaveMark,
   healthView,
   toErrorInfo,
+  tokenMs,
   useFocusOnArrival,
   type ErrorInfo,
 } from "../../components/ui";
@@ -35,9 +35,21 @@ import type { VaultStatus } from "../../lib/vault";
 
 const id = new URLSearchParams(location.search).get("id") ?? "";
 
+type Phase = "review" | "working" | "done";
+
+/** Where a request is: being reviewed, running, or finished, with how it went. */
+interface Progress {
+  phase: Phase;
+  outcome: ApprovalOutcome | null;
+  /** A commit has taken more than ten seconds. */
+  slow: boolean;
+}
+
+const REVIEWING: Progress = { phase: "review", outcome: null, slow: false };
+
 function Approve() {
   const [view, setView] = useState<ApprovalView | null | undefined>(undefined);
-  const [phase, setPhase] = useState<"review" | "working" | "done">("review");
+  const [phase, setPhase] = useState<Phase>("review");
   const [outcome, setOutcome] = useState<ApprovalOutcome | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [vault, setVault] = useState<VaultStatus | null>(null);
@@ -85,7 +97,6 @@ function Approve() {
       const result = await ui("approvalDecide", { id, approved: true });
       setOutcome(result);
       setPhase("done");
-      if (result.status === "approved") setTimeout(() => window.close(), 1400);
     } catch (error) {
       setOutcome({
         status: "failed",
@@ -99,6 +110,21 @@ function Approve() {
       setPhase("done");
     }
   };
+
+  // A success state stays hold-after-done, then the window closes (SYSTEM.md, Errors).
+  useEffect(() => {
+    if (phase !== "done" || outcome?.status !== "approved") return;
+    const t = setTimeout(() => window.close(), tokenMs("--weft-hold-after-done", 1400));
+    return () => clearTimeout(t);
+  }, [phase, outcome]);
+
+  // A commit can take a while; after ten seconds, say so.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (phase !== "working") return;
+    const t = setTimeout(() => setSlow(true), 10_000);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   // Escape rejects a request still being reviewed.
   useEffect(() => {
@@ -151,6 +177,7 @@ function Approve() {
   }
 
   const host = new URL(view.origin).host;
+  const progress: Progress = { phase, outcome, slow };
   let screen;
   const reloadVault = () => void ui("vaultStatus").then(setVault, (error: unknown) => setLoadError(toErrorInfo(error)));
   if (phase === "review" && vault?.state === "none") {
@@ -177,59 +204,139 @@ function Approve() {
         cancelLabel="Reject request"
       />
     );
-  } else if (phase !== "review") screen = <Progress view={view} phase={phase} outcome={outcome} />;
-  else if (view.method === "weft_addNetwork") screen = <AddNetworkRequest view={view} onDecide={decide} deciding={deciding} />;
-  else if (view.method === "weft_connect") screen = <ConnectRequest view={view} onDecide={decide} deciding={deciding} />;
-  else if (view.method === "weft_signIn") screen = <SignInRequest view={view} onDecide={decide} deciding={deciding} />;
-  else screen = <SignRequest view={view} onDecide={decide} deciding={deciding} />;
+  } else if (view.method === "weft_addNetwork") screen = <AddNetworkRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />;
+  else if (view.method === "weft_connect") screen = <ConnectRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />;
+  else if (view.method === "weft_signIn") screen = <SignInRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />;
+  else screen = <SignRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />;
   return (
-    // Working and done share one screen, so the mark settles in place rather than reloading.
-    <div key={`${phase === "review" ? "review" : outcome?.status === "failed" ? "failed" : "progress"}-${vault?.state}`} className="screen fade-in">
+    // The request stays on screen from review to done: working and finished
+    // are changes to its title and footer, not screens of their own.
+    <div key={phase === "review" && vault?.state !== "unlocked" ? vault?.state : "request"} className="screen fade-in">
       {screen}
     </div>
   );
 }
 
-/** The window's header: Weft's mark and name, what's being asked, and who's asking. */
-function RequestHeader({ title, origin, subtitle }: { title: string; origin: string; subtitle: string }) {
+/**
+ * The window's header: Weft's mark and name, what's being asked, and who's
+ * asking. While the request runs the title says so ("Signing and submitting")
+ * and the origin's line says what is being waited for; when it has finished
+ * the title says what happened. Focus moves to the title each time it changes,
+ * which is how the change is heard.
+ */
+function RequestHeader({
+  title,
+  origin,
+  subtitle,
+  progress,
+  working,
+  done,
+}: {
+  title: string;
+  origin: string;
+  subtitle: string;
+  progress: Progress;
+  /** The title while the request runs. */
+  working: string;
+  /** The title once it has succeeded. */
+  done: string;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
-  useFocusOnArrival(heading, title);
+  const shown =
+    progress.phase === "working"
+      ? working
+      : progress.phase === "done"
+        ? progress.outcome?.status === "failed"
+          ? progress.outcome.title
+          : done
+        : title;
+  useFocusOnArrival(heading, shown);
   return (
     <header className="request-header">
       <Brand />
       <h1 ref={heading} tabIndex={-1} className="request-header__title">
-        {title}
+        {shown}
       </h1>
-      <Origin origin={origin} subtitle={subtitle} />
+      <Origin origin={origin} subtitle={progress.phase === "working" ? waitingFor(progress) : subtitle} />
     </header>
   );
 }
 
+function waitingFor(progress: Progress): string {
+  return progress.slow ? "Still waiting for the block. Weft stops waiting after a minute and tells you what happened." : "Waiting for the network to answer.";
+}
+
 function Origin({ origin, subtitle }: { origin: string; subtitle: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="origin">
       <span className="origin-icon" aria-hidden="true">
         <Icon name={origin.startsWith("https:") ? "lock" : "globe"} size={16} />
       </span>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        <span style={{ fontWeight: 500, overflowWrap: "anywhere" }}>{new URL(origin).host}</span>
-        <span className="muted type-xs">{subtitle}</span>
+      <div className="origin__text">
+        <span className="origin__host">{new URL(origin).host}</span>
+        <span key={subtitle} className="muted type-xs arrive">
+          {subtitle}
+        </span>
       </div>
     </div>
   );
 }
 
+/** What was done, for the status line once a request has succeeded. */
+interface Done {
+  headline: string;
+  detail: string;
+  link?: { href: string; label: string };
+}
+
+/**
+ * The footer: Reject and the action while the request is reviewed, the
+ * action busy where it is while the request runs, and one status line in
+ * their place once it has finished: what was done, where and as whom, with a
+ * link to the explorer where the network has one. A failure takes the same
+ * place, the sentence first and Details behind it, with Close.
+ */
 function Footer({
   onDecide,
   cta,
   ctaClass,
   deciding,
+  progress,
+  done,
+  view,
 }: {
   onDecide: (approved: boolean) => void;
   cta: string;
   ctaClass: string;
   deciding: boolean;
+  progress: Progress;
+  done: Done;
+  view: ApprovalView;
 }) {
+  if (progress.phase === "done" && progress.outcome?.status === "failed") return <FailureFooter outcome={progress.outcome} view={view} />;
+  if (progress.phase === "done") {
+    return (
+      <footer className="footer footer--status">
+        <div className="status-line arrive" role="status">
+          <Icon name="check" size={20} color="var(--weft-accent-text)" />
+          <div className="status-line__text">
+            <span>{done.headline}</span>
+            <span className="status-line__detail">
+              {done.detail}
+              {done.link && (
+                <>
+                  {" "}
+                  <a href={done.link.href} target="_blank" rel="noreferrer">
+                    {done.link.label}
+                  </a>
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+      </footer>
+    );
+  }
   return (
     <footer className="footer">
       <Button aria-disabled={deciding || undefined} onClick={() => onDecide(false)}>
@@ -242,30 +349,79 @@ function Footer({
   );
 }
 
+function FailureFooter({ outcome, view }: { outcome: Extract<ApprovalOutcome, { status: "failed" }>; view: ApprovalView }) {
+  const host = new URL(view.origin).host;
+  const submit = view.method === "weft_submit";
+  // What happened to the ledger, then what to do next.
+  const ledger = outcome.uncertain
+    ? null
+    : submit || view.method === "weft_evaluate"
+      ? "Nothing was written to the ledger."
+      : "Nothing was signed.";
+  const next = outcome.uncertain
+    ? `Check ${host} or your organisation's explorer before sending it again.`
+    : outcome.retryable
+      ? `You can try again from ${host}.`
+      : null;
+  const technical = [outcome.code, outcome.raw].filter(Boolean).join(" ");
+  return (
+    <footer className="footer footer--status">
+      <div className="status-line status-line--failed arrive" role="alert">
+        <Icon name="alert" size={20} />
+        <div className="status-line__text">
+          <span>{outcome.detail}</span>
+          {(ledger || next) && <span className="status-line__detail">{[ledger, next].filter(Boolean).join(" ")}</span>}
+          {outcome.activityId && <span className="status-line__detail">The details are saved in your Weft activity.</span>}
+          {technical && <ErrorDetails>{technical}</ErrorDetails>}
+        </div>
+      </div>
+      <button type="button" className="btn" onClick={() => window.close()}>
+        Close
+      </button>
+    </footer>
+  );
+}
+
+/** The call as one line: TransferAsset(asset7, Org2MSP). */
+function callLine(view: ApprovalView): string {
+  const call = view.call!;
+  return `${call.fn}(${(call.args ?? []).join(", ")})`;
+}
+
+/** The body dims to 55% while the request runs, but stays readable. */
+const bodyClass = (progress: Progress) => `page${progress.phase === "working" ? " page--dim" : ""}`;
+
 function IdentityLine({ identity }: { identity: IdentityView | null }) {
   if (!identity) return <span className="muted">No identity</span>;
   return (
     <>
-      <span style={{ fontWeight: 500, display: "block" }}>{identity.name}</span>
+      <span className="strong block">{identity.name}</span>
       <span className="mono muted type-xs">{identity.mspId}</span>
     </>
   );
 }
 
-function ConnectRequest({
-  view,
-  onDecide,
-  deciding,
-}: {
+interface RequestProps {
   view: ApprovalView;
   onDecide: (approved: boolean) => void;
   deciding: boolean;
-}) {
+  progress: Progress;
+}
+
+function ConnectRequest({ view, onDecide, deciding, progress }: RequestProps) {
   const identity = view.identity;
+  const host = new URL(view.origin).host;
   return (
     <>
-      <RequestHeader title="Connect this site?" origin={view.origin} subtitle="wants to use your Weft identity" />
-      <main className="page">
+      <RequestHeader
+        title="Connect this site?"
+        origin={view.origin}
+        subtitle="wants to use your Weft identity"
+        progress={progress}
+        working="Connecting"
+        done="Connected"
+      />
+      <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
         <h2 className="eyebrow">The site will see</h2>
         <dl className="details">
           <dt>Identity</dt>
@@ -294,7 +450,15 @@ function ConnectRequest({
           </span>
         </div>
       </main>
-      <Footer onDecide={onDecide} cta="Connect" ctaClass="btn--primary" deciding={deciding} />
+      <Footer
+        onDecide={onDecide}
+        cta="Connect"
+        ctaClass="btn--primary"
+        deciding={deciding}
+        progress={progress}
+        view={view}
+        done={{ headline: `Connected to ${host}.`, detail: identity ? `It sees ${identity.name} in ${identity.mspId}. Closing.` : "Closing." }}
+      />
     </>
   );
 }
@@ -303,24 +467,23 @@ function ConnectRequest({
  * weft_signIn: proves who the user is to the site. It signs a message Weft
  * writes, never a transaction, and the window says so plainly.
  */
-function SignInRequest({
-  view,
-  onDecide,
-  deciding,
-}: {
-  view: ApprovalView;
-  onDecide: (approved: boolean) => void;
-  deciding: boolean;
-}) {
+function SignInRequest({ view, onDecide, deciding, progress }: RequestProps) {
   const host = new URL(view.origin).host;
   return (
     <>
-      <RequestHeader title={`Sign in to ${host}?`} origin={view.origin} subtitle="wants to know it's you" />
-      <main className="page">
+      <RequestHeader
+        title={`Sign in to ${host}?`}
+        origin={view.origin}
+        subtitle="wants to know it's you"
+        progress={progress}
+        working="Signing in"
+        done="Signed in"
+      />
+      <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
         {view.statement && (
           <div className="card">
             <h2 className="eyebrow">The site says</h2>
-            <div style={{ overflowWrap: "anywhere" }}>{view.statement}</div>
+            <div className="wrap-anywhere">{view.statement}</div>
           </div>
         )}
         <dl className="details">
@@ -339,20 +502,20 @@ function SignInRequest({
           </span>
         </div>
       </main>
-      <Footer onDecide={onDecide} cta="Sign in" ctaClass="btn--primary" deciding={deciding} />
+      <Footer
+        onDecide={onDecide}
+        cta="Sign in"
+        ctaClass="btn--primary"
+        deciding={deciding}
+        progress={progress}
+        view={view}
+        done={{ headline: `Signed in to ${host}.`, detail: view.identity ? `As ${view.identity.name} in ${view.identity.mspId}. Closing.` : "Closing." }}
+      />
     </>
   );
 }
 
-function SignRequest({
-  view,
-  onDecide,
-  deciding,
-}: {
-  view: ApprovalView;
-  onDecide: (approved: boolean) => void;
-  deciding: boolean;
-}) {
+function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
   const call = view.call!;
   const submit = view.method === "weft_submit";
   const [showRaw, setShowRaw] = useState(false);
@@ -370,8 +533,11 @@ function SignRequest({
         title={submit ? "Sign this transaction?" : "Read from the ledger?"}
         origin={view.origin}
         subtitle={submit ? "wants you to sign a transaction" : "wants to read from the ledger"}
+        progress={progress}
+        working={submit ? "Signing and submitting" : "Signing and querying"}
+        done={submit ? "Committed" : "Read from the ledger"}
       />
-      <main className="page">
+      <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
         <div className={`notice ${submit ? "notice--amber" : "notice--thread"}`}>
           <span className="tag" style={{ background: submit ? "var(--weft-warn)" : "var(--weft-accent)" }}>
             {submit ? "Submit" : "Evaluate"}
@@ -411,13 +577,11 @@ function SignRequest({
             {call.contract ? ` / ${call.contract}` : ""}
           </dd>
           <dt>Function</dt>
-          <dd className="mono" style={{ color: "var(--weft-accent-text)", fontWeight: 500 }}>
-            {call.fn}
-          </dd>
+          <dd className="mono accent-text strong">{call.fn}</dd>
         </dl>
 
         <section className="args" aria-labelledby="args-heading">
-          <h2 id="args-heading" className="eyebrow" style={{ padding: "10px 12px" }}>
+          <h2 id="args-heading" className="eyebrow args__heading">
             Arguments
           </h2>
           {args.length === 0 && (
@@ -458,24 +622,23 @@ function SignRequest({
           <button type="button" className="link-btn" aria-expanded={showRaw} aria-controls="raw-request" onClick={() => setShowRaw(!showRaw)}>
             {showRaw ? "Hide raw request" : "View raw request"}
           </button>
-          {showRaw && (
-            <pre id="raw-request" className="raw panel">
-              {JSON.stringify(
-                {
-                  ...call,
-                  fn: qualifiedFunctionName(call),
-                  transient: transient.length ? (showPrivate ? call.transient : transientKeys) : undefined,
-                },
-                null,
-                2,
-              )}
-            </pre>
-          )}
+          {/* A .reversible (motion.css): hidden early, it turns back from where it is. */}
+          <pre id="raw-request" className={`raw reversible reversible--down${showRaw ? " is-open" : ""}`} hidden={!showRaw}>
+            {JSON.stringify(
+              {
+                ...call,
+                fn: qualifiedFunctionName(call),
+                transient: transient.length ? (showPrivate ? call.transient : transientKeys) : undefined,
+              },
+              null,
+              2,
+            )}
+          </pre>
         </section>
 
         {submit &&
           (call.endorsingOrganizations?.length ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="stack">
               <div className="subtle">Will be sent for approval to</div>
               <div className="chips">
                 {call.endorsingOrganizations.map((msp) => (
@@ -486,19 +649,18 @@ function SignRequest({
               </div>
             </div>
           ) : (
-            <p className="subtle" style={{ margin: 0 }}>
-              The network asks the organisations the contract's endorsement policy requires.
-            </p>
+            <p className="subtle flat">The network asks the organisations the contract's endorsement policy requires.</p>
           ))}
-        <p className="subtle type-xs" style={{ margin: 0 }}>
-          Weft checks that the network's request matches exactly what is shown here before signing.
-        </p>
+        <p className="subtle type-xs flat">Weft checks that the network's request matches exactly what is shown here before signing.</p>
       </main>
       <Footer
         onDecide={onDecide}
         cta={submit ? "Sign and submit" : "Sign and query"}
         ctaClass={submit ? "btn--amber" : "btn--primary"}
         deciding={deciding}
+        progress={progress}
+        view={view}
+        done={signDone(view, progress.outcome)}
       />
     </>
   );
@@ -509,7 +671,27 @@ function SignRequest({
  * The invite is fetched only after the user agrees, from the organisation's
  * own server, so the site can't put words in the invite.
  */
-function AddNetworkRequest({ view, onDecide, deciding }: { view: ApprovalView; onDecide: (approved: boolean) => void; deciding: boolean }) {
+/**
+ * The status line for a signed call: the block it reached (for a submit), the
+ * call, who signed, and the explorer where the network names one.
+ */
+function signDone(view: ApprovalView, outcome: ApprovalOutcome | null): Done {
+  const approved = outcome?.status === "approved" ? outcome : null;
+  const signer = view.identity ? `, signed as ${view.identity.name}` : "";
+  const detail = `${callLine(view)}${signer}.`;
+  if (view.method !== "weft_submit") return { headline: "Read from the ledger.", detail: `${detail} Closing.` };
+  const block = approved?.blockNumber ? ` in block ${Number(approved.blockNumber).toLocaleString()}` : "";
+  const link =
+    approved?.explorerUrl && approved.transactionId
+      ? {
+          href: `${approved.explorerUrl}/channels/${encodeURIComponent(view.call!.channel)}/transactions/${encodeURIComponent(approved.transactionId)}`,
+          label: "View in the explorer",
+        }
+      : undefined;
+  return { headline: `Committed${block}.`, detail, ...(link ? { link } : {}) };
+}
+
+function AddNetworkRequest({ view, onDecide, deciding, progress }: RequestProps) {
   const inviteUrl = view.inviteUrl!;
   const [invite, setInvite] = useState<OrgInvite | null>(null);
   const [enrollmentId, setEnrollmentId] = useState("");
@@ -532,6 +714,9 @@ function AddNetworkRequest({ view, onDecide, deciding }: { view: ApprovalView; o
     onDecide(true);
   });
   const busy = review.busy || enroll.busy || deciding;
+  // Enrolling is the work here; the decision that follows it is a formality.
+  const shown: Progress = enroll.busy ? { ...progress, phase: "working" } : progress;
+  const done = progress.phase === "done" && progress.outcome?.status === "approved";
 
   return (
     <>
@@ -539,6 +724,9 @@ function AddNetworkRequest({ view, onDecide, deciding }: { view: ApprovalView; o
         title={invite ? `Join ${invite.network}?` : "Add a network?"}
         origin={view.origin}
         subtitle="wants you to join a network"
+        progress={shown}
+        working={invite ? `Joining ${invite.network}` : "Joining"}
+        done={invite ? `Joined ${invite.network}` : "Network added"}
       />
       {!invite ? (
         <>
@@ -567,14 +755,14 @@ function AddNetworkRequest({ view, onDecide, deciding }: { view: ApprovalView; o
         </>
       ) : (
         <form
-          style={{ display: "contents" }}
+          className="contents"
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
             if (checks.submit()) void enroll.run(invite);
           }}
         >
-          <main key="enrol" className="page step" data-dir="forward">
+          <main key="enrol" className={`${bodyClass(shown)} step`} data-dir="forward" aria-busy={shown.phase === "working" || undefined}>
             <InviteCard invite={invite} />
             <Field label="Enrolment ID" {...checks.field("enrollmentId")}>
               {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
@@ -584,102 +772,32 @@ function AddNetworkRequest({ view, onDecide, deciding }: { view: ApprovalView; o
             </Field>
             <ActionError error={enroll.error} />
           </main>
-          <footer className="footer">
-            <Button aria-disabled={busy || undefined} onClick={() => onDecide(false)}>
-              Reject
-            </Button>
-            <Button type="submit" className="btn btn--primary" busy={enroll.busy || deciding}>
-              Enrol
-            </Button>
-          </footer>
+          {done ? (
+            <footer className="footer footer--status">
+              <div className="status-line arrive" role="status">
+                <Icon name="check" size={20} color="var(--weft-accent-text)" />
+                <div className="status-line__text">
+                  <span>Joined {invite.network}.</span>
+                  <span className="status-line__detail">
+                    Enrolled as {enrollmentId.trim()} in {invite.mspId}. Closing.
+                  </span>
+                </div>
+              </div>
+            </footer>
+          ) : (
+            <footer className="footer">
+              <Button aria-disabled={busy || undefined} onClick={() => onDecide(false)}>
+                Reject
+              </Button>
+              <Button type="submit" className="btn btn--primary" busy={enroll.busy || deciding}>
+                Enrol
+              </Button>
+            </footer>
+          )}
         </form>
       )}
     </>
   );
-}
-
-const WORKING_TITLE: Record<ApprovalView["method"], string> = {
-  weft_connect: "Connecting",
-  weft_signIn: "Signing in",
-  weft_addNetwork: "Finishing",
-  weft_submit: "Signing and submitting",
-  weft_evaluate: "Signing and querying",
-};
-
-const DONE_TITLE: Record<ApprovalView["method"], string> = {
-  weft_connect: "Connected",
-  weft_signIn: "Signed in",
-  weft_addNetwork: "Network added",
-  weft_submit: "Committed",
-  weft_evaluate: "Done",
-};
-
-function Progress({
-  view,
-  phase,
-  outcome,
-}: {
-  view: ApprovalView;
-  phase: "working" | "done";
-  outcome: ApprovalOutcome | null;
-}) {
-  const submit = view.method === "weft_submit";
-  const host = new URL(view.origin).host;
-  // A commit can take a while; after ten seconds, say so.
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    if (phase !== "working") return;
-    const t = setTimeout(() => setSlow(true), 10_000);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  if (phase === "working") {
-    return (
-      <StatusScreen
-        mark={<Spinner size={72} />}
-        title={WORKING_TITLE[view.method]}
-        detail={
-          submit
-            ? slow
-              ? "Still waiting for the block. Weft stops waiting after a minute and tells you what happened."
-              : "Waiting for organisations to approve and the block to commit."
-            : "This only takes a moment."
-        }
-      />
-    );
-  }
-  if (outcome?.status === "failed") {
-    // What happened to the ledger, then what to do next.
-    const ledger = outcome.uncertain
-      ? null
-      : submit || view.method === "weft_evaluate"
-        ? "Nothing was written to the ledger."
-        : "Nothing was signed.";
-    const next = outcome.uncertain
-      ? `Check ${host} or your organisation's explorer before sending it again.`
-      : outcome.retryable
-        ? `You can try again from ${host}.`
-        : null;
-    const technical = [outcome.code, outcome.raw].filter(Boolean).join(" ");
-    return (
-      <>
-        <StatusScreen mark={<WeaveMark size={64} mode="still" />} title={outcome.title} detail={null}>
-          <div className="status-screen__body" role="alert">
-            <p style={{ margin: 0 }}>{outcome.detail}</p>
-            {(ledger || next) && <p className="muted" style={{ margin: 0 }}>{[ledger, next].filter(Boolean).join(" ")}</p>}
-            {outcome.activityId && <p className="muted" style={{ margin: 0 }}>The details are saved in your Weft activity.</p>}
-            {technical && <ErrorDetails>{technical}</ErrorDetails>}
-          </div>
-        </StatusScreen>
-        <footer className="footer footer--single">
-          <button type="button" className="btn" onClick={() => window.close()}>
-            Close
-          </button>
-        </footer>
-      </>
-    );
-  }
-  return <StatusScreen mark={<WeaveMark size={72} mode="settle" />} title={DONE_TITLE[view.method]} detail="This window closes on its own." />;
 }
 
 document.body.classList.add("window");

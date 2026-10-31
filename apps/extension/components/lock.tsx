@@ -6,7 +6,7 @@ import * as check from "../lib/validate";
 import type { VaultStatus } from "../lib/vault";
 import { useChecks } from "./form";
 import { useAction } from "./popup/state";
-import { ActionError, Button, Field, Icon, SecretInput, Spinner, WeaveMark, useFocusOnArrival } from "./ui";
+import { ActionError, Button, Field, Icon, SecretInput, Spinner, WeaveMark, useFocusOnArrival, useLoader } from "./ui";
 
 /**
  * Sets the wallet password. Shown before the first key is saved, and to
@@ -40,7 +40,7 @@ export function CreatePassword({
 
   return (
     <form
-      style={{ display: "contents" }}
+      className="contents"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -63,7 +63,7 @@ export function CreatePassword({
         <Field label="Password again" {...checks.field("again")}>
           {(a) => <SecretInput {...a} value={again} onChange={(e) => setAgain(e.target.value)} />}
         </Field>
-        <p className="subtle" style={{ margin: 0 }}>
+        <p className="subtle flat">
           Weft can't reset this password. If you forget it, you enrol your identities again with your CA. You can add a
           passkey later to unlock without typing it.
         </p>
@@ -109,7 +109,6 @@ export function Unlock({
   const [password, setPassword] = useState("");
   // A wrong password is the password field's error; it clears once it's changed.
   const [wrong, setWrong] = useState<{ password: string; message: string } | null>(null);
-  const [attempted, setAttempted] = useState(false);
   const [resetting, setResetting] = useState(false);
   const checks = useChecks({ password: () => check.required(password, "Enter your password.") });
   const passwordId = checks.field("password").id;
@@ -135,7 +134,8 @@ export function Unlock({
     onUnlocked();
   });
   const hasPasskey = status.passkeys.length > 0;
-  const busy = unlock.busy || withPasskey.busy;
+  // The loader takes the mark's place only once the wait is noticeable.
+  const busy = useLoader(unlock.busy || withPasskey.busy);
   // The one thing to do here is type the password, so focus goes straight to
   // it rather than to the heading (SYSTEM.md, Navigation).
   useEffect(() => {
@@ -151,28 +151,22 @@ export function Unlock({
 
   return (
     <form
-      style={{ display: "contents" }}
+      className="contents"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
         if (!checks.submit()) return;
-        setAttempted(true);
         void unlock.run();
       }}
     >
       <main className="page lock-screen">
         <div className="lock-screen__mark">
-          {/* The mark weaves in once when the screen opens; the loader turns while checking.
-              After a wrong password it stays still: weaving in again would look like success. */}
-          {busy ? <Spinner size={56} /> : <WeaveMark size={56} mode={attempted ? "still" : "settle"} />}
+          {/* The mark is still; the loader turns while the password is checked. */}
+          {busy ? <Spinner size={56} /> : <WeaveMark size={56} mode="still" />}
         </div>
-        <div style={{ textAlign: "center" }}>
-          <h1 className="lock-screen__title">
-            Weft is locked
-          </h1>
-          <p className="muted" style={{ margin: "6px 0 0" }}>
-            {subtitle}
-          </p>
+        <div className="centre stack stack--tight">
+          <h1 className="lock-screen__title">Weft is locked</h1>
+          <p className="muted flat">{subtitle}</p>
         </div>
         <Field label="Password" {...field} error={fieldError}>
           {(a) => (
@@ -191,12 +185,12 @@ export function Unlock({
           </>
         )}
         {onReset && (
-          <button type="button" className="link-btn link-btn--inline" style={{ alignSelf: "center" }} onClick={() => setResetting(true)}>
+          <button type="button" className="link-btn link-btn--inline link-btn--centre" onClick={() => setResetting(true)}>
             Forgot your password?
           </button>
         )}
         {onCancel && (
-          <button type="button" className="link-btn link-btn--inline" style={{ alignSelf: "center" }} onClick={onCancel}>
+          <button type="button" className="link-btn link-btn--inline link-btn--centre" onClick={onCancel}>
             {cancelLabel}
           </button>
         )}
@@ -222,7 +216,7 @@ function ResetWeft({ onCancel, onDone }: { onCancel: () => void; onDone: () => v
   useFocusOnArrival(title);
   return (
     <form
-      style={{ display: "contents" }}
+      className="contents"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -238,7 +232,7 @@ function ResetWeft({ onCancel, onDone }: { onCancel: () => void; onDone: () => v
             Reset Weft?
           </h1>
         </div>
-        <p className="muted" style={{ margin: 0 }}>
+        <p className="muted flat">
           Weft can't recover a forgotten password, because it never stores it. Resetting deletes every identity and private
           key in this browser, your activity and your site connections.
         </p>

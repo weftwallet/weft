@@ -9,6 +9,7 @@ import {
   decideApproval,
   getApproval,
   handleProviderRequest,
+  pendingApprovals,
   registerApprovalListeners,
 } from "../lib/provider";
 import {
@@ -82,6 +83,7 @@ const handlers: Handlers = {
   refreshInvite: ({ networkId }) => wallet.refreshInvite(networkId),
   approvalGet: async ({ id }) => getApproval(id),
   approvalDecide: ({ id, approved }) => decideApproval(id, approved),
+  approvalsPending: async () => pendingApprovals(),
   keepAlive: async () => null,
   vaultStatus: () => vault.status(),
   vaultSetup: async ({ password }) => (await vault.setup(password), vault.status()),
@@ -107,7 +109,7 @@ const handlers: Handlers = {
 
 // Using Weft from its own pages counts as activity for the auto-lock, except
 // the requests an open window sends on its own.
-const PASSIVE: UiMethod[] = ["keepAlive", "state", "vaultStatus", "approvalGet"];
+const PASSIVE: UiMethod[] = ["keepAlive", "state", "vaultStatus", "approvalGet", "approvalsPending"];
 
 export default defineBackground(() => {
   const extensionOrigin = new URL(browser.runtime.getURL("/")).origin;

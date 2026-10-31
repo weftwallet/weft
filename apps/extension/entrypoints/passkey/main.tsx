@@ -9,7 +9,7 @@ import { browser } from "wxt/browser";
 import "../../assets/app.css";
 import { FeedbackProvider } from "../../components/feedback";
 import { useAction } from "../../components/popup/state";
-import { ActionError, Brand, Button, Field, Icon, StatusScreen, WeaveMark, useFocusOnArrival } from "../../components/ui";
+import { ActionError, Brand, Button, Field, Icon, StatusScreen, WeaveMark, tokenMs, useFocusOnArrival } from "../../components/ui";
 import { addPasskey, unlockWithPasskey } from "../../lib/passkey";
 
 const params = new URLSearchParams(location.search);
@@ -29,13 +29,13 @@ function PasskeyWindow() {
       // Back to the popup where the user started, where the browser allows it.
       await browser.action.openPopup?.().catch(() => {});
       window.close();
-    }, 1400);
+    }, tokenMs("--weft-hold-after-done", 1400));
   });
 
   if (done) {
     return (
       <StatusScreen
-        mark={<WeaveMark size={64} mode="settle" />}
+        mark={<WeaveMark size={64} mode="still" />}
         title={action === "add" ? "Passkey added" : "Unlocked"}
         detail="This window closes on its own."
       />
@@ -44,7 +44,7 @@ function PasskeyWindow() {
 
   return (
     <form
-      style={{ display: "contents" }}
+      className="contents"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
@@ -63,7 +63,7 @@ function PasskeyWindow() {
             {action === "add" ? "Add a passkey" : "Unlock with a passkey"}
           </h1>
         </div>
-        <p className="muted" style={{ margin: 0 }}>
+        <p className="muted flat">
           {action === "add"
             ? "Your browser asks you to create a passkey for Weft, on this device, your phone or a security key. Your password keeps working too."
             : "Your browser asks for one of the passkeys you added to Weft."}

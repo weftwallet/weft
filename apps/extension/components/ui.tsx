@@ -8,6 +8,7 @@ import {
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type RefObject,
   type SelectHTMLAttributes,
 } from "react";
@@ -133,7 +134,7 @@ export function Logo({ size = 24, label = "Weft" }: { size?: number; label?: str
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
-  // The warps stay put; on hover the two weft rows pass through again.
+  // Still: nothing in the mark moves once it is drawn (SYSTEM.md, Motion).
   return (
     <svg
       className="logo"
@@ -183,16 +184,13 @@ export function Brand() {
 }
 
 /**
- * The mark, weaving. "draw" builds it from nothing (first run), "settle"
- * weaves the weft in once (done), "still" is the finished mark with no motion
- * (after work that didn't succeed). Working uses Spinner, Weft's loader.
+ * The mark. "draw" builds it from nothing, once per installation (the
+ * welcome's first run; App.tsx keeps the flag); "still" is the finished mark,
+ * which is what it is everywhere else. Working uses Spinner, Weft's loader.
  * prefers-reduced-motion shows the finished mark.
  */
-export function WeaveMark({ size = 72, mode }: { size?: number; mode: "settle" | "draw" | "still" }) {
+export function WeaveMark({ size = 72, mode }: { size?: number; mode: "draw" | "still" }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
-  // Hovering a resting mark weaves its weft in again. A new key restarts the animation.
-  const [hovers, setHovers] = useState(0);
-  const shown = hovers > 0 ? "weave" : mode;
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
   // Each row: [y, x of the warp it passes over, x of the warp it passes under].
@@ -207,15 +205,7 @@ export function WeaveMark({ size = 72, mode }: { size?: number; mode: "settle" |
     [29.25, 12.75],
   ];
   return (
-    <svg
-      key={hovers}
-      className={`weave weave--${shown}`}
-      width={size}
-      height={size}
-      viewBox="0 0 48 48"
-      aria-hidden="true"
-      onMouseEnter={() => setHovers((n) => n + 1)}
-    >
+    <svg className={`weave weave--${mode}`} width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
       <defs>
         {bands.map(([y, h], i) => (
           <clipPath key={i} id={`${id}r${i}`}>
@@ -243,8 +233,8 @@ export function WeaveMark({ size = 72, mode }: { size?: number; mode: "settle" |
 export function useFocusOnArrival(ref: RefObject<HTMLElement | null>, key: unknown = null) {
   useEffect(() => {
     const el = ref.current;
-    // A screen kept mounted under the lock isn't arriving.
-    if (!el || el.closest("[hidden]")) return;
+    // A screen kept mounted under the lock, or one on its way out, isn't arriving.
+    if (!el || el.closest("[hidden], .is-leaving")) return;
     el.focus({ preventScroll: true });
   }, [key]);
 }
@@ -267,7 +257,7 @@ export function BackHeader({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || document.querySelector(".sheet-backdrop")) return;
-      if (heading.current?.closest("[hidden]")) return;
+      if (heading.current?.closest("[hidden], .is-leaving")) return;
       back.current();
     };
     window.addEventListener("keydown", onKey);
@@ -292,11 +282,11 @@ export function BackHeader({
 }
 
 /** Password field with a show/hide toggle. */
-export function SecretInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+export function SecretInput({ ref, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { ref?: Ref<HTMLInputElement> }) {
   const [shown, setShown] = useState(false);
   return (
     <div className="secret">
-      <input {...props} type={shown ? "text" : "password"} autoComplete="off" spellCheck={false} />
+      <input {...props} ref={ref} type={shown ? "text" : "password"} autoComplete="off" spellCheck={false} />
       <button
         type="button"
         className="icon-btn"
@@ -336,7 +326,11 @@ export function Spinner({ small = false, size }: { small?: boolean; size?: numbe
   );
 }
 
-/** A screen still loading: the loader and what it's waiting for. Shown only if the wait is noticeable. */
+/**
+ * A screen still loading: the loader and what it's waiting for. Like a busy
+ * button, it shows nothing until wait-before-loader has passed (app.css
+ * .splash__inner), so a quick answer never flashes a loader.
+ */
 export function Splash({ label }: { label: string }) {
   return (
     <div className="splash" role="status">
@@ -348,10 +342,40 @@ export function Splash({ label }: { label: string }) {
   );
 }
 
+/** A motion token's value in milliseconds. A minifier may write 1400ms as 1.4s. */
+export function tokenMs(name: string, fallback: number): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const v = parseFloat(raw);
+  if (!Number.isFinite(v)) return fallback;
+  return /ms$/.test(raw) ? v : v * 1000;
+}
+
 /**
- * A button that can be busy. Busy, it keeps its label, the loader replaces
- * its icon, and it ignores presses. It's marked aria-disabled, never
- * disabled, so keyboard focus stays on it (SYSTEM.md, States).
+ * Whether the loader should show for a wait: true only once wait-before-loader
+ * has passed since `busy` became true, and false again the moment it ends, so
+ * a quick answer never flashes a loader and a loader never finishes its pass.
+ * The same semantics as ui.ts setBusy(), for React.
+ */
+export function useLoader(busy: boolean): boolean {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!busy) {
+      setShown(false);
+      return;
+    }
+    const t = setTimeout(() => setShown(true), tokenMs("--weft-wait-before-loader", 300));
+    return () => clearTimeout(t);
+  }, [busy]);
+  return busy && shown;
+}
+
+/**
+ * A button that can be busy, the way ui.ts setBusy() does it (SYSTEM.md,
+ * Loading): aria-disabled at once, never disabled, so keyboard focus stays on
+ * it and presses are ignored; the loader joins the label only after
+ * wait-before-loader and is removed at once when the work ends; the label
+ * stays and the width never changes (the loader takes the padding the button
+ * gives up, or the place of the button's own icon).
  */
 export function Button({
   busy = false,
@@ -364,11 +388,12 @@ export function Button({
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean; icon?: IconName; iconSize?: number }) {
   const blocked = busy || rest["aria-disabled"] === true || rest["aria-disabled"] === "true";
+  const loader = useLoader(busy);
   return (
     <button
       {...rest}
       type={type}
-      className={className}
+      className={`${className}${loader && !icon ? " is-working" : ""}`}
       aria-disabled={blocked || undefined}
       data-busy={busy || undefined}
       onClick={(e) => {
@@ -379,7 +404,7 @@ export function Button({
         onClick?.(e);
       }}
     >
-      {busy ? <Spinner small /> : icon ? <Icon name={icon} size={iconSize} /> : null}
+      {loader ? <Spinner small /> : icon ? <Icon name={icon} size={iconSize} /> : null}
       {children}
     </button>
   );
@@ -387,7 +412,7 @@ export function Button({
 
 export function Empty({ icon, children, action }: { icon: IconName; children: ReactNode; action?: { label: string; onClick: () => void } }) {
   return (
-    <div className="empty fade-in">
+    <div className="empty arrive">
       <div className="empty__icon">
         <Icon name={icon} size={20} />
       </div>
@@ -425,12 +450,12 @@ export interface FieldInputProps {
 }
 
 /**
- * A labelled field. Its error, when there is one, sits right below the input
- * and is linked with aria-describedby after the hint (SYSTEM.md, Errors).
- * `onLeave` runs when focus leaves the field after the person has typed in
- * it, which is when it's checked. Leaving an untouched field checks nothing:
- * an error appearing on the way to another control would move that control
- * under the pointer. Submitting checks everything.
+ * A labelled field. Its error line is always there, 20px tall, under the
+ * input and its hint (.field__status, motion.css), so an error appearing never
+ * moves the control below it; the message fades into the line and is linked
+ * with aria-describedby after the hint (SYSTEM.md, Errors). `onLeave` runs
+ * when focus leaves the field after the person has typed in it, which is when
+ * it's checked. Submitting checks everything.
  */
 export function Field({
   label,
@@ -461,21 +486,26 @@ export function Field({
     >
       <label htmlFor={id}>{label}</label>
       {children({ id, ...(error ? { "aria-invalid": true as const } : {}), ...(described ? { "aria-describedby": described } : {}) })}
-      {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
       {hint ? (
         <p className="field__hint" id={`${id}-hint`}>
           {hint}
         </p>
       ) : null}
+      <FieldStatus id={`${id}-error`} error={error ?? null} />
     </div>
   );
 }
 
-export function FieldError({ id, children }: { id: string; children: ReactNode }) {
+/** The field's reserved error line: empty, or the icon and the sentence. */
+export function FieldStatus({ id, error }: { id: string; error: string | null }) {
   return (
-    <p className="field-error" id={id}>
-      <Icon name="alert" size={14} />
-      <span>{children}</span>
+    <p className={`field__status${error ? " field-error" : ""}`} id={id}>
+      {error && (
+        <>
+          <Icon name="alert" size={14} />
+          <span>{error}</span>
+        </>
+      )}
     </p>
   );
 }
@@ -498,7 +528,7 @@ export function toErrorInfo(error: unknown): ErrorInfo {
 export function ActionError({ error, children }: { error: ErrorInfo | null; children?: ReactNode }) {
   if (!error) return null;
   return (
-    <div className="action-error fade-in" role="alert">
+    <div className="action-error arrive" role="alert">
       <p className="action-error__message">
         <Icon name="alert" size={16} />
         <span>{error.message}</span>
@@ -570,11 +600,11 @@ export function StatusScreen({ mark, title, detail, children }: { mark: ReactNod
     <main className={`status-screen ${detail === null ? "status-screen--report" : ""}`}>
       <div className="status-screen__mark">{mark}</div>
       <div className="status-screen__text">
-        <h1 ref={heading} tabIndex={-1} key={title} className="status-screen__title fade-in">
+        <h1 ref={heading} tabIndex={-1} key={title} className="status-screen__title arrive">
           {title}
         </h1>
         {detail !== null && (
-          <div key={`${title}-detail`} className="status-screen__detail muted fade-in">
+          <div key={`${title}-detail`} className="status-screen__detail muted arrive">
             {detail}
           </div>
         )}

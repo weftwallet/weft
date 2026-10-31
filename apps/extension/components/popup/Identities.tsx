@@ -23,11 +23,11 @@ export function Identities({
       title: `Remove ${name}?`,
       body: (
         <>
-          <p style={{ margin: "0 0 8px" }}>
+          <p className="sheet__para">
             The private key for <span className="mono">{name}</span> ({mspId}) is deleted from this browser. It can't be
             recovered, not even by Weft.
           </p>
-          <p style={{ margin: 0 }}>
+          <p className="flat">
             {last
               ? "It's your only identity, so connected sites are disconnected too. You can enrol again with your CA."
               : "You can enrol again with your CA, which issues a new certificate."}
@@ -77,13 +77,13 @@ export function Identities({
         onBack={() => navigate({ name: "home" })}
         action={{ label: "Add", icon: "plus", onClick: () => navigate({ name: "add" }) }}
       />
-      <main className="page" style={{ gap: 18 }}>
+      <main className="page stack--loose">
         {state.identities.length >= FILTER_FROM && (
           <FilterInput value={query} onChange={setQuery} label="Filter identities and networks" />
         )}
 
         {groups.map((group) => (
-          <section key={group.networkId} className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-label={group.network?.name}>
+          <section key={group.networkId} className="stagger stack" aria-label={group.network?.name}>
             <GroupHeading
               title={group.network?.name ?? "Unknown network"}
               detail={group.network?.mspId}
@@ -116,15 +116,13 @@ export function Identities({
         ))}
 
         {empty.map((network) => (
-          <section key={network.id} style={{ display: "flex", flexDirection: "column", gap: 8 }} aria-label={network.name}>
+          <section key={network.id} className="stack" aria-label={network.name}>
             <GroupHeading
               title={network.name}
               detail={network.mspId}
               action={{ label: `Network settings for ${network.name}`, onClick: () => navigate({ name: "network", networkId: network.id }) }}
             />
-            <p className="subtle type-xs" style={{ margin: "0 4px" }}>
-              No identities on this network.
-            </p>
+            <p className="subtle type-xs flat inset-x">No identities on this network.</p>
           </section>
         ))}
 
@@ -135,7 +133,7 @@ export function Identities({
         )}
 
         {state.pendingCsrs.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="stack">
             <h2 className="eyebrow">Waiting for a certificate</h2>
             {state.pendingCsrs.map((p) => (
               <button
@@ -158,7 +156,7 @@ export function Identities({
 
         {state.identities.length === 0 && <AddIdentityOptions navigate={navigate} from="identities" />}
 
-        <div className="row type-xs" style={{ marginTop: "auto", color: "var(--weft-text-muted)" }}>
+        <div className="row type-xs muted push-down">
           <Icon name="shield" size={18} />
           Private keys are created in this browser, encrypted with your password, and can never be exported, even by Weft.
         </div>
@@ -173,33 +171,50 @@ export function AddIdentity({ state, navigate }: { state: WalletState; navigate:
     <>
       <BackHeader title="Add an identity" onBack={() => navigate({ name: state.identities.length ? "identities" : "home" })} />
       <main className="page">
-        <AddIdentityOptions navigate={navigate} showHeading={false} from="add" />
+        <AddIdentityOptions navigate={navigate} showHeading={false} expanded from="add" />
       </main>
     </>
   );
 }
 
+/**
+ * The ways to add an identity. The invite is the one most people take, so it
+ * is the one tile, with the sentence that says what an invite looks like; the
+ * three expert paths sit behind "More ways to add an identity" (a
+ * .reversible, so closing it early turns back from where it is). On the Add
+ * screen (`expanded`) all of them are shown.
+ */
 export function AddIdentityOptions({
   navigate,
   showHeading = true,
+  expanded = false,
   from,
 }: {
   navigate: Navigate;
   showHeading?: boolean;
+  /** Show the expert paths without the disclosure. */
+  expanded?: boolean;
   /** The screen these options are on, which the form's Back returns to. */
   from: AddFrom;
 }) {
+  const [more, setMore] = useState(expanded);
   return (
-    <div className="stagger" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className="welcome__add">
       {showHeading && <h2 className="eyebrow">Add an identity</h2>}
       <button type="button" className="invite-tile" onClick={() => navigate({ name: "join", from })}>
         <Icon name="qr" color="var(--weft-accent-text)" />
-        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontWeight: 500 }}>Join from an invite</span>
-          <span className="muted type-xs">Paste the link from your network admin</span>
+        <span className="invite-tile__text">
+          <span className="strong">Join from an invite</span>
+          <span className="muted type-xs">Your administrator's invite is a link or a QR code.</span>
         </span>
       </button>
-      <div className="add-grid">
+      {!expanded && (
+        <button type="button" className="disclosure disclosure--plain" aria-expanded={more} aria-controls="more-ways" onClick={() => setMore(!more)}>
+          More ways to add an identity
+          <Icon name="chevron" size={16} />
+        </button>
+      )}
+      <div id="more-ways" className={`add-grid${expanded ? "" : ` reversible reversible--down${more ? " is-open" : ""}`}`} hidden={!more}>
         <button type="button" className="add-tile" onClick={() => navigate({ name: "enroll", from })}>
           <Icon name="key" size={18} />
           Enrol with CA

@@ -71,21 +71,21 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
   return (
     <>
       <BackHeader title="Transaction" onBack={back} />
-      <main className="page" style={{ gap: 16 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <main className="page stack--loose">
+        <div className="stack">
+          <div className="inline">
             <span className="dot" style={{ background: head.color }} aria-hidden="true" />
-            <span style={{ fontWeight: 500, color: head.color }}>{head.text}</span>
+            <span className="strong" style={{ color: head.color }}>
+              {head.text}
+            </span>
           </div>
-          <div className="mono" style={{ fontSize: "var(--weft-type-xl)", lineHeight: "var(--weft-leading-xl)", fontWeight: 600, overflowWrap: "anywhere" }}>
-            {item.call.fn}
-          </div>
+          <div className="mono card__title wrap-anywhere">{item.call.fn}</div>
         </div>
 
         {item.status === "failed" && (
-          <section className="notice notice--signal" style={{ flexDirection: "column" }}>
-            <div style={{ fontWeight: 600 }}>{item.title}</div>
-            <div style={{ color: "var(--weft-text)" }}>{item.detail}</div>
+          <section className="notice notice--signal notice--column">
+            <div className="strong">{item.title}</div>
+            <div className="text">{item.detail}</div>
             {technical && (
               <ErrorDetails>
                 {item.code && <div>{item.code}</div>}
@@ -104,7 +104,7 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           {item.transactionId && (
             <>
               <dt>Transaction ID</dt>
-              <dd className="mono" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: -6, marginBottom: -6 }}>
+              <dd className="mono details__with-button">
                 <span title={item.transactionId}>{shorten(item.transactionId)}</span>
                 <CopyButton text={item.transactionId} label="Copy transaction ID" size={14} />
               </dd>
@@ -141,7 +141,7 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           <dd>
             {identity ? (
               <>
-                <span style={{ display: "block" }}>{identity.name}</span>
+                <span className="block">{identity.name}</span>
                 <span className="mono muted type-xs">{identity.mspId}</span>
               </>
             ) : (

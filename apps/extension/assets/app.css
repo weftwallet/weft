@@ -4,6 +4,10 @@
 @import "@fontsource/atkinson-hyperlegible-mono/latin-400.css";
 @import "@fontsource/atkinson-hyperlegible-mono/latin-500.css";
 @import "@weftwallet/brand/tokens.css";
+/* The motion every product shares: pages, the press, .is-new rows, .reversible
+   panels and sheets, .arrive, the reserved error line and reduced motion. The
+   wallet writes no duration of its own; see packages/brand/SYSTEM.md, Motion. */
+@import "@weftwallet/ui/motion.css";
 
 *,
 *::before,
@@ -17,9 +21,9 @@ body {
   background: var(--weft-bg);
   color: var(--weft-text);
   font-family: var(--weft-font-sans);
-  /* The interface size, with a ratio so larger inline sizes keep their leading. */
+  /* The interface size and its paired leading (SYSTEM.md, Type). */
   font-size: var(--weft-type-md);
-  line-height: 1.45;
+  line-height: var(--weft-leading-md);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -97,11 +101,14 @@ h2[tabindex="-1"]:focus {
 
 /* Motion ------------------------------------------------------------ */
 
-/* Short and directional, never in the way. Durations, curves and distances
-   are the brand's motion tokens; with reduced motion the distances are 0, so
-   arrivals become short fades. Leaving is the reverse, with ease-in, in about
-   70% of the time. */
+/* What is the wallet's alone: screens moving in and out of the popup. The
+   durations, curves and distances are the tokens; everything else (rows
+   arriving, panels, sheets, the press, the error line, reduced motion) is
+   motion.css. */
 
+/* Going deeper moves the new screen in from the right and the old one out to
+   the left, in base-out; going back reverses both. The old screen stays
+   mounted over the new one until it has left (App.tsx). */
 .screen[data-dir="forward"],
 .step[data-dir="forward"] {
   animation: screen-in-forward var(--weft-duration-base) var(--weft-ease-out);
@@ -110,6 +117,21 @@ h2[tabindex="-1"]:focus {
 .screen[data-dir="back"],
 .step[data-dir="back"] {
   animation: screen-in-back var(--weft-duration-base) var(--weft-ease-out);
+}
+
+.screen.is-leaving {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--weft-bg);
+}
+
+.screen.is-leaving[data-dir="forward"] {
+  animation: screen-out-forward var(--weft-duration-base-out) var(--weft-ease-in) both;
+}
+
+.screen.is-leaving[data-dir="back"] {
+  animation: screen-out-back var(--weft-duration-base-out) var(--weft-ease-in) both;
 }
 
 @keyframes screen-in-forward {
@@ -123,6 +145,20 @@ h2[tabindex="-1"]:focus {
   from {
     opacity: 0;
     transform: translateX(calc(var(--weft-shift-lg) * -1));
+  }
+}
+
+@keyframes screen-out-forward {
+  to {
+    opacity: 0;
+    transform: translateX(calc(var(--weft-shift-lg) * -1));
+  }
+}
+
+@keyframes screen-out-back {
+  to {
+    opacity: 0;
+    transform: translateX(var(--weft-shift-lg));
   }
 }
 
@@ -148,35 +184,11 @@ h2[tabindex="-1"]:focus {
   }
 }
 
-/* Panels (a disclosure's content, an inline form) arrive with shift-md and
-   leave in reverse. */
-.panel {
-  animation: panel-in var(--weft-duration-base) var(--weft-ease-out);
-}
-
-.panel.is-leaving {
-  animation: panel-out 160ms var(--weft-ease-in) both;
-}
-
-@keyframes panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(calc(var(--weft-shift-md) * -1));
-  }
-}
-
-@keyframes panel-out {
-  to {
-    opacity: 0;
-    transform: translateY(calc(var(--weft-shift-md) * -1));
-  }
-}
-
 /* Rows being removed leave before the list closes up. */
 .site-row.is-leaving,
 .manage-row.is-leaving,
 .list-row.is-leaving {
-  animation: row-out 160ms var(--weft-ease-in) both;
+  animation: row-out var(--weft-duration-base-out) var(--weft-ease-in) both;
   pointer-events: none;
 }
 
@@ -208,73 +220,20 @@ h2[tabindex="-1"]:focus {
   animation-delay: calc(var(--weft-stagger) * 4);
 }
 
-/* Something new while you look (SYSTEM.md, Arriving): a thread runs across
-   its place and is gone, the words follow it in, then a 3px rule seats on the
-   left, stays four seconds and fades. */
-.list-item.is-new {
-  position: relative;
-  animation: fade-in var(--weft-duration-base) var(--weft-ease-out) var(--weft-duration-deliberate) both;
+/* A row that is also arriving as new keeps the shared arrival (motion.css),
+   not the stagger's fade. */
+.stagger > .is-new {
+  animation: none;
 }
 
-.list-item.is-new::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  background: var(--weft-accent);
-  transform-origin: left;
-  animation: pick var(--weft-duration-deliberate) var(--weft-ease-tension) both;
-  pointer-events: none;
+/* The pick and the rule sit inside the row's rounded corners. */
+.list-item.is-new::before,
+.identity-option.is-new::before {
+  top: var(--weft-space-2);
+  bottom: var(--weft-space-2);
 }
 
-.list-item.is-new::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--weft-accent);
-  animation:
-    rule-in var(--weft-duration-base) var(--weft-ease-out) var(--weft-duration-deliberate) both,
-    rule-out var(--weft-duration-slow) var(--weft-ease-in) calc(var(--weft-duration-deliberate) + 4s) forwards;
-}
-
-@keyframes pick {
-  0% {
-    transform: scaleX(0);
-    opacity: 1;
-  }
-  75% {
-    transform: scaleX(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scaleX(1);
-    opacity: 0;
-  }
-}
-
-@keyframes rule-in {
-  from {
-    opacity: 0;
-    transform: scaleY(0);
-  }
-}
-
-@keyframes rule-out {
-  to {
-    opacity: 0;
-  }
-}
-
-/* With reduced motion the shift tokens are 0 and the press scale 1, so
-   arrivals are short fades and nothing travels. What can't become a fade is
-   set here: things that grow, pop or draw appear finished. The loader still
-   turns, since it says something is happening. */
+/* What can't become a fade appears finished (the shift tokens are already 0). */
 @media (prefers-reduced-motion: reduce) {
   .bar > div,
   .tabs__indicator,
@@ -282,12 +241,8 @@ h2[tabindex="-1"]:focus {
     animation: none;
     transition: none;
   }
-  .list-item.is-new::after {
+  .screen.is-leaving {
     display: none;
-  }
-  .list-item.is-new,
-  .list-item.is-new::before {
-    animation-delay: 0s;
   }
 }
 
@@ -337,7 +292,7 @@ textarea {
   padding: 0 8px 0 16px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-bottom: 1px solid var(--weft-line);
   flex: none;
 }
@@ -358,7 +313,7 @@ textarea {
 
 /* The header of the extension's windows: the mark and name, the question, who asks. */
 .request-header {
-  padding: 14px 16px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -399,7 +354,7 @@ textarea {
 .page-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .page-title h1 {
@@ -410,17 +365,17 @@ textarea {
 
 .wordmark {
   font-family: var(--weft-font-mono);
-  font-size: 40px;
+  font-size: var(--weft-type-3xl);
   font-weight: 500;
   letter-spacing: -0.03em;
-  line-height: 1;
+  line-height: var(--weft-leading-3xl);
 }
 
 .page {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -445,15 +400,15 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: linear-gradient(to bottom, transparent, var(--weft-bg) 14px);
+  background: linear-gradient(to bottom, transparent, var(--weft-bg) 16px);
 }
 
 .footer {
   background: var(--weft-bg);
-  padding: 14px 16px 16px;
+  padding: 12px 16px 16px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
   border-top: 1px solid var(--weft-line);
   flex: none;
 }
@@ -465,7 +420,7 @@ textarea {
 /* Controls -------------------------------------------------------- */
 
 .btn {
-  height: 48px;
+  height: 44px;
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line-strong);
   background: transparent;
@@ -482,16 +437,23 @@ textarea {
   transition:
     background-color var(--weft-duration-fast) var(--weft-ease-out),
     border-color var(--weft-duration-fast) var(--weft-ease-out),
-    opacity var(--weft-duration-fast) var(--weft-ease-out),
     transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+/* Busy: the loader (16px) joins the label after wait-before-loader and takes
+   exactly the padding the button gives up, so its width never changes
+   (components/ui.tsx Button, as ui.ts setBusy). A button with its own icon
+   swaps the icon for the loader instead. */
+.btn.is-working {
+  padding-inline: var(--weft-space-1);
 }
 
 /* A long label (an enrolment ID) wraps rather than overflowing. */
 .btn--wrap {
   height: auto;
   min-height: 44px;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
   text-align: center;
   overflow-wrap: anywhere;
 }
@@ -519,14 +481,12 @@ textarea {
 }
 
 .btn--outline-amber {
-  height: 44px;
   border-color: var(--weft-warn);
   color: var(--weft-warn-text);
   font-weight: 600;
 }
 
 .btn--outline-signal {
-  height: 44px;
   border-color: var(--weft-danger);
   color: var(--weft-danger-text);
   font-weight: 600;
@@ -562,9 +522,9 @@ textarea {
   }
 }
 
-/* Pressed: a quick scale, for duration-instant. */
+/* Pressed: down in duration-instant, back in duration-fast (motion.css has
+   .btn; these are the wallet's other controls). */
 :is(
-    .btn,
     .icon-btn,
     .add-tile,
     .invite-tile,
@@ -649,7 +609,7 @@ textarea {
 .tabs button::before {
   content: "";
   position: absolute;
-  inset: -6px;
+  inset: -4px;
 }
 
 .tabs button::before {
@@ -668,7 +628,7 @@ textarea {
 .channel-picker {
   flex: 1;
   min-width: 0;
-  height: 40px;
+  height: 36px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -706,7 +666,7 @@ textarea {
   flex: 1 1 0;
   min-width: 0;
   cursor: pointer;
-  padding-right: 18px;
+  padding-right: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -739,7 +699,7 @@ textarea {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .field label {
@@ -755,7 +715,7 @@ textarea {
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line-strong);
   background: var(--weft-bg-surface);
-  padding: 10px 12px;
+  padding: 8px 12px;
   min-height: 44px;
   transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
 }
@@ -799,12 +759,12 @@ textarea {
   color: var(--weft-text-subtle);
 }
 
-/* SYSTEM.md, Errors: right below the field, an icon then the sentence. */
+/* SYSTEM.md, Errors: the field's reserved line (.field__status, motion.css)
+   holds an icon then the sentence; the line is there before the error is, so
+   nothing below the field moves. */
 .field-error {
-  display: flex;
   align-items: flex-start;
-  gap: 6px;
-  margin: var(--weft-space-1) 0 0;
+  gap: 4px;
   font-size: var(--weft-type-xs);
   line-height: var(--weft-leading-xs);
   font-weight: 500;
@@ -819,7 +779,7 @@ textarea {
 .action-error {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .action-error__message {
@@ -848,7 +808,7 @@ details.error-details summary {
   min-height: 32px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   list-style: none;
   font-family: var(--weft-font-sans);
   color: var(--weft-text-muted);
@@ -894,7 +854,7 @@ details.error-details[open] summary::before {
 
 .select > svg {
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--weft-text-subtle);
@@ -930,11 +890,11 @@ details.error-details[open] summary::before {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .bar {
-  height: 6px;
+  height: 4px;
   border-radius: var(--weft-radius-pill);
   background: var(--weft-bg);
   overflow: hidden;
@@ -942,7 +902,7 @@ details.error-details[open] summary::before {
 
 /* Drawn with a scale, so a change in health moves rather than jumps. */
 .bar > div {
-  height: 6px;
+  height: 4px;
   border-radius: var(--weft-radius-pill);
   transform-origin: left;
   animation: bar-grow var(--weft-duration-deliberate) var(--weft-ease-tension);
@@ -960,8 +920,8 @@ details.error-details[open] summary::before {
 .row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 12px;
   border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-surface);
 }
@@ -992,7 +952,7 @@ details.error-details[open] summary::before {
   transition:
     color var(--weft-duration-fast) var(--weft-ease-out),
     transform var(--weft-duration-fast) var(--weft-ease-out);
-  height: 36px;
+  height: 28px;
   border: 0;
   border-radius: var(--weft-radius-sm);
   background: transparent;
@@ -1029,7 +989,7 @@ details.error-details[open] summary::before {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 4px;
+  padding: 8px 4px;
   border: 0;
   border-bottom: 1px solid var(--weft-line);
   background: transparent;
@@ -1157,9 +1117,13 @@ details.error-details[open] summary::before {
   gap: 8px;
 }
 
+.add-grid[hidden] {
+  display: none;
+}
+
 .add-tile {
   min-height: 72px;
-  padding: 10px 6px;
+  padding: 8px 4px;
   border-radius: var(--weft-radius-lg);
   border: 1px solid var(--weft-line);
   background: var(--weft-bg-surface);
@@ -1168,12 +1132,12 @@ details.error-details[open] summary::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   cursor: pointer;
 }
 
 .add-tile--row {
-  min-height: 48px;
+  min-height: 44px;
   flex-direction: row;
   gap: 8px;
   font-size: var(--weft-type-md);
@@ -1194,12 +1158,12 @@ details.error-details[open] summary::before {
 
 .notice {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
   padding: 12px;
   border-radius: var(--weft-radius-lg);
   font-size: var(--weft-type-md);
-  line-height: 1.45;
+  line-height: var(--weft-leading-md);
 }
 
 .notice--amber {
@@ -1221,7 +1185,7 @@ details.error-details[open] summary::before {
   font-family: var(--weft-font-mono);
   font-size: var(--weft-type-xs);
   font-weight: 500;
-  padding: 3px 7px;
+  padding: 2px 8px;
   border-radius: var(--weft-radius-sm);
   color: var(--weft-on-status);
   text-transform: uppercase;
@@ -1233,7 +1197,7 @@ details.error-details[open] summary::before {
   margin: 0;
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
-  row-gap: 10px;
+  row-gap: 8px;
   column-gap: 12px;
   font-size: var(--weft-type-md);
 }
@@ -1258,7 +1222,7 @@ details.error-details[open] summary::before {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   font-family: var(--weft-font-mono);
   font-size: var(--weft-type-md);
   border-top: 1px solid var(--weft-line);
@@ -1268,8 +1232,8 @@ details.error-details[open] summary::before {
 /* Private inputs: a label row with the reveal control, then one row per input. */
 .args__private {
   align-items: center;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
   font-family: var(--weft-font-sans);
   font-size: var(--weft-type-xs);
 }
@@ -1278,10 +1242,10 @@ details.error-details[open] summary::before {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 10px;
-  margin-right: -6px;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 8px;
+  margin-right: -4px;
   border: 0;
   border-radius: var(--weft-radius-pill);
   background: transparent;
@@ -1330,7 +1294,7 @@ details.error-details[open] summary::before {
   background: transparent;
   color: var(--weft-accent-text);
   cursor: pointer;
-  padding: 10px 12px;
+  padding: 8px 12px;
   min-height: 44px;
   text-align: left;
   width: 100%;
@@ -1345,6 +1309,10 @@ details.error-details[open] summary::before {
   padding: 0 4px;
   align-self: flex-start;
   text-align: center;
+}
+
+.link-btn--centre {
+  align-self: center;
 }
 
 @media (hover: hover) {
@@ -1388,7 +1356,7 @@ details.error-details[open] summary::before {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 8px 10px 12px;
+  padding: 8px 8px 8px 12px;
   border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-surface);
   border: 1px solid var(--weft-line);
@@ -1408,7 +1376,7 @@ details.error-details[open] summary::before {
 
 .small-btn {
   position: relative;
-  height: 32px;
+  height: 36px;
   padding: 0 12px;
   border-radius: var(--weft-radius-pill);
   border: 1px solid var(--weft-line-strong);
@@ -1435,7 +1403,7 @@ details.error-details[open] summary::before {
 .empty__icon {
   width: 44px;
   height: 44px;
-  margin: 0 auto 10px;
+  margin: 0 auto 8px;
   border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-surface);
   border: 1px solid var(--weft-line);
@@ -1492,7 +1460,8 @@ details.error-details[open] summary::before {
   height: 16px;
 }
 
-/* A screen waiting on something: shown only if the wait is noticeable. */
+/* A screen waiting on something: the loader joins only after
+   wait-before-loader, so a quick answer never flashes one (SYSTEM.md, Loading). */
 .splash {
   flex: 1;
   display: flex;
@@ -1505,7 +1474,7 @@ details.error-details[open] summary::before {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  animation: crossfade var(--weft-duration-base) var(--weft-ease-out) 200ms both;
+  animation: crossfade var(--weft-duration-base) var(--weft-ease-out) var(--weft-wait-before-loader) both;
 }
 
 .status-screen {
@@ -1514,7 +1483,7 @@ details.error-details[open] summary::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 12px;
   padding: 24px;
   text-align: center;
   overflow-y: auto;
@@ -1532,9 +1501,9 @@ details.error-details[open] summary::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   /* title (one line) plus up to two lines of detail */
-  min-height: calc(24px + 6px + 2 * 20px);
+  min-height: calc(24px + 4px + 2 * 20px);
   max-width: 280px;
 }
 
@@ -1580,16 +1549,6 @@ details.error-details[open] summary::before {
   background: var(--weft-scrim);
   display: flex;
   align-items: flex-end;
-  animation: backdrop-in var(--weft-duration-slow) var(--weft-ease-out) both;
-}
-
-/* Closing is the opening in reverse, with ease-in, in about 70% of the time. */
-.sheet-backdrop.is-closing {
-  animation: backdrop-out 250ms var(--weft-ease-in) both;
-}
-
-.sheet-backdrop.is-closing .sheet {
-  animation: sheet-out 250ms var(--weft-ease-in) both;
 }
 
 .sheet {
@@ -1602,7 +1561,6 @@ details.error-details[open] summary::before {
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--weft-shadow-3);
-  animation: sheet-in var(--weft-duration-slow) var(--weft-ease-out) both;
 }
 
 .sheet__icon {
@@ -1636,41 +1594,36 @@ details.error-details[open] summary::before {
 .sheet__actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding-top: 6px;
+  gap: 8px;
+  padding-top: 4px;
 }
 
-/* Fade the backdrop's colour, not its opacity, so the sheet inside it stays solid. */
-@keyframes backdrop-in {
-  from {
-    background-color: transparent;
-  }
+/* The sheet is a .reversible--far (motion.css): it rises shift-xl over slow
+   and goes back from wherever it is when closed early. The backdrop fades its
+   colour, not its opacity, so the sheet inside it stays solid. */
+.sheet-backdrop {
+  transition: background-color var(--weft-duration-slow-out) var(--weft-ease-in);
 }
 
-/* A short rise rather than a full slide from off-screen: the sheet is solid
-   from the first frame, so nothing behind it shows through. */
-@keyframes sheet-in {
-  from {
-    transform: translateY(calc(var(--weft-shift-lg) * 2));
-  }
+.sheet-backdrop.is-open {
+  transition-duration: var(--weft-duration-slow);
+  transition-timing-function: var(--weft-ease-out);
 }
 
-@keyframes sheet-out {
-  to {
-    transform: translateY(calc(var(--weft-shift-lg) * 2));
-    opacity: 0;
-  }
+.sheet-backdrop:not(.is-open) {
+  background-color: transparent;
 }
 
-@keyframes backdrop-out {
-  to {
+@starting-style {
+  .sheet-backdrop.is-open {
     background-color: transparent;
   }
 }
 
 /* Toast ------------------------------------------------------------- */
 
-/* Shown, not read: what it says goes to the page's live region. */
+/* Shown, not read: what it says goes to the page's live region. A
+   .reversible, so a toast replaced while leaving turns back from where it is. */
 .toast {
   position: absolute;
   left: 16px;
@@ -1683,7 +1636,7 @@ details.error-details[open] summary::before {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: var(--weft-radius-pill);
   background: var(--weft-bg-overlay);
   border: 1px solid var(--weft-line-strong);
@@ -1691,7 +1644,6 @@ details.error-details[open] summary::before {
   font-size: var(--weft-type-md);
   font-weight: 500;
   box-shadow: var(--weft-shadow-2);
-  animation: toast-in var(--weft-duration-base) var(--weft-ease-out);
   pointer-events: none;
 }
 
@@ -1701,24 +1653,6 @@ details.error-details[open] summary::before {
 
 .toast--error > svg {
   color: var(--weft-danger-text);
-}
-
-.toast.is-leaving {
-  animation: toast-out 150ms var(--weft-ease-in) both;
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(var(--weft-shift-md));
-  }
-}
-
-@keyframes toast-out {
-  to {
-    opacity: 0;
-    transform: translateY(var(--weft-shift-md));
-  }
 }
 
 /* Disclosure for advanced settings ----------------------------------- */
@@ -1758,6 +1692,39 @@ details.error-details[open] summary::before {
   transform: rotate(180deg);
 }
 
+/* A disclosure's content (a .reversible--down, motion.css) is a column; the
+   gap is written here because the panel is hidden with the attribute. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+/* A quieter disclosure: the welcome's "More ways to add an identity". */
+.disclosure--plain {
+  width: auto;
+  align-self: flex-start;
+  padding: 0 4px;
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--weft-accent-text);
+  font-weight: 500;
+  border-radius: var(--weft-radius-sm);
+}
+
+@media (hover: hover) {
+  .disclosure--plain:hover {
+    background: transparent;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
 /* Lists that hold up with many items and long names ------------------- */
 
 .one-line {
@@ -1771,7 +1738,7 @@ details.error-details[open] summary::before {
   font-size: var(--weft-type-xl);
   font-weight: 600;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: var(--weft-leading-xl);
   overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1889,46 +1856,77 @@ details.error-details[open] summary::before {
   }
 }
 
-/* The weave: the mark's weft threads drawn in (components/ui.tsx WeaveMark).
-   Timings are the approved mockup's at 1x. */
+/* The weave: the mark drawn in once, on the welcome's first run only
+   (components/ui.tsx WeaveMark, mode "draw"). The ground settles over base,
+   the warps drop a stagger later, and the three wefts pass through a stagger
+   apart over slow: about duration-deliberate for the whole mark. After that
+   the mark is still, everywhere: nothing moves without a reason. */
 .weave .weave__reveal {
   transform-box: fill-box;
   transform-origin: left center;
   transform: scaleX(0);
 }
 
-.weave--settle .weave__reveal { animation: weave-in 380ms var(--weft-ease-out) both; }
-.weave--settle .weave__reveal--2 { animation-delay: 120ms; }
-.weave--settle .weave__reveal--3 { animation-delay: 240ms; }
+.weave--draw .weave__ground {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: weave-ground var(--weft-duration-base) var(--weft-ease-out) both;
+}
 
-.weave--draw .weave__ground { transform-box: fill-box; transform-origin: center; animation: weave-ground 200ms var(--weft-ease-out) both; }
-.weave--draw .weave__warps { transform-box: fill-box; transform-origin: top center; animation: weave-warps 200ms 80ms var(--weft-ease-out) both; }
-.weave--draw .weave__reveal { animation: weave-in 300ms var(--weft-ease-out) both; }
-.weave--draw .weave__reveal--1 { animation-delay: 200ms; }
-.weave--draw .weave__reveal--2 { animation-delay: 280ms; }
-.weave--draw .weave__reveal--3 { animation-delay: 360ms; }
+.weave--draw .weave__warps {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: weave-warps var(--weft-duration-base) var(--weft-ease-out) var(--weft-stagger) both;
+}
 
-.weave--still .weave__reveal { transform: scaleX(1); }
+.weave--draw .weave__reveal {
+  animation: weave-in var(--weft-duration-slow) var(--weft-ease-tension) both;
+}
 
-/* Hovering a resting mark weaves its weft in again. */
-.weave--weave .weave__reveal { animation: weave-in 380ms var(--weft-ease-out) both; }
-.weave--weave .weave__reveal--2 { animation-delay: 120ms; }
-.weave--weave .weave__reveal--3 { animation-delay: 240ms; }
+.weave--draw .weave__reveal--1 {
+  animation-delay: calc(var(--weft-stagger) * 2);
+}
 
-@keyframes weave-in { to { transform: scaleX(1); } }
-@keyframes weave-ground { from { transform: scale(.85); opacity: 0; } }
-@keyframes weave-warps { from { transform: scaleY(0); } }
+.weave--draw .weave__reveal--2 {
+  animation-delay: calc(var(--weft-stagger) * 3);
+}
+
+.weave--draw .weave__reveal--3 {
+  animation-delay: calc(var(--weft-stagger) * 4);
+}
+
+.weave--still .weave__reveal {
+  transform: scaleX(1);
+}
+
+@keyframes weave-in {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes weave-ground {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes weave-warps {
+  from {
+    transform: scaleY(0);
+  }
+}
 
 /* Reduced motion: the finished mark, still. */
 @media (prefers-reduced-motion: reduce) {
-  .weave,
-  .weave .weave__reveal,
-  .weave .weave__rows,
-  .weave .weave__ground,
-  .weave .weave__warps {
-    animation: none !important;
-    transform: none !important;
-    opacity: 1 !important;
+  .weave--draw .weave__ground,
+  .weave--draw .weave__warps,
+  .weave--draw .weave__reveal {
+    animation: none;
+  }
+  .weave--draw .weave__reveal {
+    transform: scaleX(1);
   }
 }
 
@@ -1937,7 +1935,7 @@ details.error-details[open] summary::before {
 .header__actions {
   display: flex;
   flex: none;
-  margin-left: -6px;
+  margin-left: -4px;
 }
 
 .lock-badge {
@@ -1960,7 +1958,7 @@ details.error-details[open] summary::before {
 /* Top-aligned so an error appearing below doesn't move the mark. */
 .lock-screen {
   justify-content: flex-start;
-  gap: 14px;
+  gap: 12px;
   padding-top: 72px;
   padding-bottom: 32px;
 }
@@ -1979,12 +1977,295 @@ details.error-details[open] summary::before {
   font-weight: 600;
 }
 
-/* The small header mark: its two weft rows pass through again on hover. */
-.logo { flex: none; }
-.logo .logo__reveal { transform-box: fill-box; transform-origin: left center; }
-@media (hover: hover) {
-  .logo:hover .logo__reveal--1 { animation: weave-in-from 260ms var(--weft-ease-out) both; }
-  .logo:hover .logo__reveal--2 { animation: weave-in-from 260ms 80ms var(--weft-ease-out) both; }
+/* The small header mark is still: its warps and wefts never move. */
+.logo {
+  flex: none;
 }
-@keyframes weave-in-from { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@media (prefers-reduced-motion: reduce) { .logo:hover .logo__reveal { animation: none; } }
+
+/* The welcome (App.tsx Welcome) ------------------------------------- */
+
+/* Mark, words, the invite tile, then the quieter ways: top to bottom, a
+   stagger apart (.stagger). The invite is the one path most people take, so
+   it is the one tile; the ground under it says what an invite looks like. */
+.welcome {
+  padding-top: 40px;
+  gap: 24px;
+}
+
+.welcome__mark {
+  height: 72px;
+  display: flex;
+  align-items: center;
+}
+
+.welcome__words {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.welcome__words p {
+  margin: 0;
+}
+
+.welcome__add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invite-tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The popup while the approve window finishes a join (SYSTEM.md, Loading). */
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--weft-radius-lg);
+  border: 1px solid var(--weft-line);
+  background: var(--weft-bg-surface);
+}
+
+.waiting__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The approve window, in place (approve/main.tsx) --------------------- */
+
+/* While the request runs the body dims but stays readable; the title and the
+   footer carry the change. */
+.page {
+  transition: opacity var(--weft-duration-base) var(--weft-ease-out);
+}
+
+.page--dim {
+  opacity: 0.55;
+}
+
+/* On commit the footer becomes one status line: what was done, where, as whom. */
+.footer--status {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.status-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--weft-text-strong);
+  font-weight: 500;
+}
+
+.status-line > svg {
+  margin-top: 2px;
+}
+
+.status-line--failed {
+  color: var(--weft-danger-text);
+}
+
+.status-line__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.status-line__detail {
+  font-weight: 400;
+  color: var(--weft-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.status-line__detail a {
+  color: var(--weft-accent-text);
+}
+
+/* The origin's line: who asks, then what is happening while it runs. */
+.origin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.origin__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.origin__host {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* Small layout helpers, so no screen writes its layout inline ------------ */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stack--tight {
+  gap: 2px;
+}
+
+.stack--loose {
+  gap: 16px;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.centre {
+  text-align: center;
+}
+
+p.flat {
+  margin: 0;
+}
+
+.strong {
+  font-weight: 500;
+}
+
+.push-right {
+  margin-left: auto;
+}
+
+.grow {
+  flex: 1;
+}
+
+.contents {
+  display: contents;
+}
+
+.struck {
+  text-decoration: line-through;
+}
+
+.accent-text {
+  color: var(--weft-accent-text);
+}
+
+.warn-text {
+  color: var(--weft-warn-text);
+}
+
+.danger-text {
+  color: var(--weft-danger-text);
+}
+
+.card__title {
+  font-size: var(--weft-type-xl);
+  line-height: var(--weft-leading-xl);
+  font-weight: 600;
+}
+
+.notice--column {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheet__actions--flush {
+  padding-top: 0;
+}
+
+.inset-x {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+.push-down {
+  margin-top: auto;
+}
+
+.sheet__para {
+  margin: 0 0 8px;
+}
+
+.raw--flush {
+  border-top: 0;
+}
+
+.identity-card__names {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.identity-card__health {
+  padding-top: 4px;
+}
+
+.text {
+  color: var(--weft-text);
+}
+
+.stack--day {
+  gap: 4px;
+}
+
+.day-label {
+  padding: 8px 4px 4px;
+}
+
+.list-note {
+  margin: 8px 0 0;
+}
+
+.list-item__end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex: none;
+}
+
+.block {
+  display: block;
+}
+
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+.args__heading {
+  padding: 8px 12px;
+}
+
+.raw[hidden] {
+  display: none;
+}
+
+/* A detail row with a copy button: the button's height is absorbed so the
+   grid's rows stay even. */
+.details__with-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: -4px;
+  margin-bottom: -4px;
+}
