@@ -81,16 +81,16 @@ function NetworkFields({
       <Field label="Channels" hint="Separate several with commas." {...field("channels")}>
         {(a) => <input {...a} className="mono" placeholder="mychannel" value={draft.channels} onChange={set("channels")} />}
       </Field>
-      <Field label="Relay URL" hint="Your organisation's relay" {...field("relayUrl")}>
+      <Field label="Relay URL" hint="Your organisation's relay picks which peers to use." {...field("relayUrl")}>
         {(a) => <input {...a} type="url" placeholder="https://relay.org1.example.com" value={draft.relayUrl} onChange={set("relayUrl")} />}
       </Field>
       <Field label={needsCa ? "CA URL" : "CA URL (for renewals)"} {...field("caUrl")}>
         {(a) => <input {...a} type="url" placeholder="https://ca.org1.example.com:7054" value={draft.caUrl} onChange={set("caUrl")} />}
       </Field>
-      <Field label="CA name" hint="Only if your CA server hosts more than one CA">
+      <Field label="CA name" hint="Fill this in only if your CA server hosts more than one CA.">
         {(a) => <input {...a} className="mono" placeholder="ca-org1" value={draft.caName} onChange={set("caName")} />}
       </Field>
-      <Field label="Network name" hint="Shown in Weft only">
+      <Field label="Network name" hint="This name is shown in Weft only.">
         {(a) => <input {...a} placeholder="Acme Supply Network" value={draft.name} onChange={set("name")} />}
       </Field>
     </>
@@ -223,7 +223,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
         <Field label="Enrolment ID" {...enrolChecks.field("enrollmentId")}>
           {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
         </Field>
-        <Field label="Enrolment secret" hint="From your administrator. Used once, never stored." {...enrolChecks.field("secret")}>
+        <Field label="Enrolment secret" hint="Your administrator gives you this. Weft uses it once and never stores it." {...enrolChecks.field("secret")}>
           {(a) => <SecretInput {...a} value={secret} onChange={(e) => setSecret(e.target.value)} />}
         </Field>
         <Submit busy={join.busy} label="Enrol" error={join.error} />
@@ -265,7 +265,7 @@ export function EnrollForm({ navigate, onDone, from }: FormProps) {
         <Field label="Enrolment ID" {...checks.field("enrollmentId")}>
           {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
         </Field>
-        <Field label="Enrolment secret" hint="Used once, never stored." {...checks.field("secret")}>
+        <Field label="Enrolment secret" hint="Weft uses it once and never stores it." {...checks.field("secret")}>
           {(a) => <SecretInput {...a} value={secret} onChange={(e) => setSecret(e.target.value)} />}
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa field={checks.field} />
@@ -308,7 +308,7 @@ export function ImportForm({ navigate, onDone, from }: FormProps) {
         <Field label="Certificate (PEM)" {...checks.field("certificate")}>
           {(a) => <textarea {...a} placeholder="-----BEGIN CERTIFICATE-----" value={certificate} onChange={(e) => setCertificate(e.target.value)} />}
         </Field>
-        <Field label="Private key (PKCS#8 PEM)" hint="Imported as a non-extractable key. Delete the file afterwards." {...checks.field("privateKey")}>
+        <Field label="Private key (PKCS#8 PEM)" hint="Weft imports it as a non-extractable key. Delete the file afterwards." {...checks.field("privateKey")}>
           {(a) => <textarea {...a} placeholder="-----BEGIN PRIVATE KEY-----" value={privateKeyPem} onChange={(e) => setPrivateKeyPem(e.target.value)} />}
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa={false} field={checks.field} />
@@ -377,7 +377,7 @@ export function CsrForm({ navigate, onDone, from }: FormProps) {
         <p className="muted flat">
           For CAs that issue certificates by hand. Weft creates the key here; only the request leaves the browser.
         </p>
-        <Field label="Common name" hint="Usually your enrolment ID" {...checks.field("commonName")}>
+        <Field label="Common name" hint="This is usually your enrolment ID." {...checks.field("commonName")}>
           {(a) => <input {...a} className="mono" value={commonName} onChange={(e) => setCommonName(e.target.value)} />}
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa={false} field={checks.field} />

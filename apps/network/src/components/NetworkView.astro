@@ -205,6 +205,38 @@ const { demoExplorers = [] } = Astro.props;
   }
 
   const PILL = { ok: "Agree", bad: "Differ", quiet: "Comparing", one: "One organisation" } as const;
+  /** Status first: ledgers that differ, then those still comparing, then those that agree, then one organisation alone. */
+  const RANK = { bad: 0, quiet: 1, ok: 2, one: 3 } as const;
+
+  /**
+   * Puts the channels' cards in the order given, moving only the cards out of
+   * place. A card that holds focus keeps it: moveBefore() keeps it where the
+   * browser has it, and otherwise focus is put back.
+   */
+  function placeCards(wanted: string[]) {
+    const root = $("nw-channels");
+    const cards = wanted.map((c) => channelCard(c));
+    const placed = new Set<Element>(cards);
+    let prev: Element | null = null;
+    for (const card of cards) {
+      let next = prev ? prev.nextElementSibling : root.firstElementChild;
+      // Cards on their way out keep their place and are stepped over.
+      while (next && next !== card && !placed.has(next)) next = next.nextElementSibling;
+      if (next !== card) {
+        const before = prev ? prev.nextElementSibling : root.firstElementChild;
+        const focused = card.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null;
+        const move = (root as HTMLElement & { moveBefore?: (node: Node, child: Node | null) => void }).moveBefore;
+        try {
+          if (move) move.call(root, card, before);
+          else root.insertBefore(card, before);
+        } catch {
+          root.insertBefore(card, before);
+        }
+        if (focused && document.activeElement !== focused) focused.focus({ preventScroll: true });
+      }
+      prev = card;
+    }
+  }
 
   /** A channel's card, made once; render() updates it in place. */
   function channelCard(channel: string): HTMLElement {
@@ -238,9 +270,11 @@ const { demoExplorers = [] } = Astro.props;
     card.setAttribute("aria-label", `Channel ${channel}`);
     if (!compares.has(channel)) compares.set(channel, compareBlock(channel));
     card.append(compares.get(channel)!);
-    // In order, without moving the cards already there (moving one would take focus off it).
-    const after = [...root.querySelectorAll<HTMLElement>(":scope > section[data-channel]")].find((c) => c.dataset.channel!.localeCompare(channel) > 0);
-    root.insertBefore(card, after ?? null);
+    // It arrives once: a card moved later, when its verdict changes, doesn't fade in again.
+    const made = card;
+    card.addEventListener("animationend", (e) => e.target === made && made.classList.remove("arrive"));
+    // render() puts it in its place, by status (placeCards).
+    root.append(card);
     return card;
   }
 
@@ -288,9 +322,11 @@ const { demoExplorers = [] } = Astro.props;
         setTimeout(() => card.hidden && card.remove(), 500);
       });
 
+    const tones = new Map<string, keyof typeof RANK>();
     for (const channel of channels) {
       const members = reachable.filter((e) => e.status!.channels.some((c) => c.channel === channel));
       const v = verdict(channel, members);
+      tones.set(channel, v.tone);
       const card = channelCard(channel);
       if (card.hidden || card.classList.contains("is-leaving")) reveal(card);
       const h2 = card.querySelector("h2")!;
@@ -334,6 +370,8 @@ const { demoExplorers = [] } = Astro.props;
         text(compares!, agreementText(e, channel));
       }
     }
+    // Status first, then alphabetical within each (channels is sorted).
+    placeCards([...channels].sort((a, b) => RANK[tones.get(a)!] - RANK[tones.get(b)!]));
 
     // Notes under the channels: what couldn't be reached, or why there's nothing.
     // The sentence first; each explorer's own error behind Details.

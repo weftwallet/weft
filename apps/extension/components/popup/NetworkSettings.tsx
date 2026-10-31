@@ -1,5 +1,5 @@
 import type { OrgInvite } from "@weftwallet/protocol";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { NetworkRecord } from "../../lib/db";
 import { ui, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
@@ -67,6 +67,13 @@ function Settings({
     .filter(Boolean);
   const [problems, setProblems] = useState<{ relay: string | null; ca: string | null } | null>(null);
   const [invite, setInvite] = useState<OrgInvite | null>(null);
+  // The notice sits after the fields, so it may start below the fold.
+  const problemsBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!problems) return;
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    problemsBox.current?.scrollIntoView({ block: "nearest", behavior: still ? "auto" : "smooth" });
+  }, [problems]);
   const identities = state.identities.filter((i) => i.networkId === network.id);
 
   const channelsChanged = editableChannels && channelList.join(",") !== network.channels.join(",");
@@ -244,32 +251,34 @@ function Settings({
                 {(a) => <input {...a} className="mono" value={channels} onChange={(e) => setChannels(e.target.value)} />}
               </Field>
             )}
-            <Field label="Relay URL" hint="Your organisation's relay. It picks which peers to use." {...checks.field("relayUrl")}>
+            <Field label="Relay URL" hint="Your organisation's relay picks which peers to use." {...checks.field("relayUrl")}>
               {(a) => <input {...a} type="url" value={relayUrl} onChange={(e) => setRelayUrl(e.target.value)} />}
             </Field>
-            <Field label="CA URL" hint="Used to enrol and renew certificates." {...checks.field("caUrl")}>
+            <Field label="CA URL" hint="Weft enrols and renews certificates with this CA." {...checks.field("caUrl")}>
               {(a) => <input {...a} type="url" value={caUrl} onChange={(e) => setCaUrl(e.target.value)} />}
             </Field>
-            <Field label="CA name" hint="Only if your CA server hosts more than one CA">
+            <Field label="CA name" hint="Fill this in only if your CA server hosts more than one CA.">
               {(a) => <input {...a} className="mono" value={caName} onChange={(e) => setCaName(e.target.value)} />}
             </Field>
-            <Field label="Explorer URL" hint="Optional. Your organisation's explorer, linked from each transaction." {...checks.field("explorerUrl")}>
+            <Field label="Explorer URL" hint="Each transaction links to this explorer. Leave it empty if your organisation has none." {...checks.field("explorerUrl")}>
               {(a) => <input {...a} type="url" value={explorerUrl} onChange={(e) => setExplorerUrl(e.target.value)} />}
             </Field>
+            {/* After the fields it is about, in the page's flow, so the pinned
+                save bar stays the height of its button. */}
+            {dirty && problems && (
+              <div ref={problemsBox} className="notice notice--amber notice--column arrive" role="alert">
+                <div className="strong">Weft couldn't confirm these addresses</div>
+                {problems.relay && <div>The relay {problems.relay}.</div>}
+                {problems.ca && <div>The CA {problems.ca}.</div>}
+                <button type="button" className="link-btn link-btn--inline" onClick={() => void save.run(true)}>
+                  Save anyway
+                </button>
+              </div>
+            )}
             {!dirty && <p className="subtle type-xs flat centre">Change an address or channel to save it.</p>}
             {/* Only a change has a button to ride along the bottom of the page. */}
             {dirty && (
             <div className="page__actions">
-              {problems && (
-                <div className="notice notice--amber notice--column arrive" role="alert">
-                  <div className="strong">Weft couldn't confirm these addresses</div>
-                  {problems.relay && <div>The relay {problems.relay}.</div>}
-                  {problems.ca && <div>The CA {problems.ca}.</div>}
-                  <button type="button" className="link-btn link-btn--inline" onClick={() => void save.run(true)}>
-                    Save anyway
-                  </button>
-                </div>
-              )}
               <ActionError error={save.error} />
               <Button type="submit" className="btn btn--primary" busy={save.busy}>
                 {endpointsChanged ? "Test and save" : "Save"}

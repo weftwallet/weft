@@ -69,7 +69,7 @@ function PasskeyWindow() {
             : "Your browser asks for one of the passkeys you added to Weft."}
         </p>
         {action === "add" && (
-          <Field label="Name" hint="So you can tell your passkeys apart, for example “Laptop” or “YubiKey”. Up to 40 characters.">
+          <Field label="Name" hint="A name tells your passkeys apart, for example “Laptop” or “YubiKey”. Use up to 40 characters.">
             {(a) => <input {...a} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />}
           </Field>
         )}

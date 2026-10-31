@@ -2179,6 +2179,14 @@ details.error-details[open] summary::before {
   color: var(--weft-danger-text);
 }
 
+/* A failed request's outcome, at the top of its body: set apart from the
+   request below it by a line, so it reads as what happened to it. */
+.request-outcome {
+  min-height: 0;
+  padding-bottom: var(--weft-space-3);
+  border-bottom: 1px solid var(--weft-line);
+}
+
 .status-line__text {
   display: flex;
   flex-direction: column;

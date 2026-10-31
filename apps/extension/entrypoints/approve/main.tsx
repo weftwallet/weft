@@ -293,8 +293,9 @@ interface Done {
  * The footer: Reject and the action while the request is reviewed, the
  * action busy where it is while the request runs, and one status line in
  * their place once it has finished: what was done, where and as whom, with a
- * link to the explorer where the network has one. A failure takes the same
- * place, the sentence first and Details behind it, with Close.
+ * link to the explorer where the network has one. A failure keeps only Close
+ * here; what happened goes at the top of the body (FailureOutcome), where it
+ * has room for its Details.
  */
 function Footer({
   onDecide,
@@ -303,7 +304,6 @@ function Footer({
   deciding,
   progress,
   done,
-  view,
 }: {
   onDecide: (approved: boolean) => void;
   cta: string;
@@ -311,9 +311,8 @@ function Footer({
   deciding: boolean;
   progress: Progress;
   done: Done;
-  view: ApprovalView;
 }) {
-  if (progress.phase === "done" && progress.outcome?.status === "failed") return <FailureFooter outcome={progress.outcome} view={view} />;
+  if (failed(progress)) return <CloseFooter />;
   if (progress.phase === "done") {
     return (
       <footer className="footer footer--status">
@@ -349,7 +348,33 @@ function Footer({
   );
 }
 
-function FailureFooter({ outcome, view }: { outcome: Extract<ApprovalOutcome, { status: "failed" }>; view: ApprovalView }) {
+const failed = (progress: Progress) => progress.phase === "done" && progress.outcome?.status === "failed";
+
+/** A finished request's footer when it failed: only Close. */
+function CloseFooter() {
+  return (
+    <footer className="footer footer--single">
+      <button type="button" className="btn" onClick={() => window.close()}>
+        Close
+      </button>
+    </footer>
+  );
+}
+
+/**
+ * How a failed request went, at the top of the request's body: the sentence
+ * first, what happened to the ledger and what to do next, then anything
+ * technical behind Details. The body scrolls to it, so it is the first thing
+ * seen under the title that names the failure.
+ */
+function FailureOutcome({ progress, view }: { progress: Progress; view: ApprovalView }) {
+  const box = useRef<HTMLDivElement>(null);
+  const outcome = progress.outcome?.status === "failed" && progress.phase === "done" ? progress.outcome : null;
+  useEffect(() => {
+    if (!outcome) return;
+    box.current?.scrollIntoView({ block: "nearest" });
+  }, [outcome]);
+  if (!outcome) return null;
   const host = new URL(view.origin).host;
   const submit = view.method === "weft_submit";
   // What happened to the ledger, then what to do next.
@@ -365,20 +390,15 @@ function FailureFooter({ outcome, view }: { outcome: Extract<ApprovalOutcome, { 
       : null;
   const technical = [outcome.code, outcome.raw].filter(Boolean).join(" ");
   return (
-    <footer className="footer footer--status">
-      <div className="status-line status-line--failed arrive" role="alert">
-        <Icon name="alert" size={20} />
-        <div className="status-line__text">
-          <span>{outcome.detail}</span>
-          {(ledger || next) && <span className="status-line__detail">{[ledger, next].filter(Boolean).join(" ")}</span>}
-          {outcome.activityId && <span className="status-line__detail">The details are saved in your Weft activity.</span>}
-          {technical && <ErrorDetails>{technical}</ErrorDetails>}
-        </div>
+    <div ref={box} className="status-line status-line--failed request-outcome arrive" role="alert">
+      <Icon name="alert" size={20} />
+      <div className="status-line__text">
+        <span>{outcome.detail}</span>
+        {(ledger || next) && <span className="status-line__detail">{[ledger, next].filter(Boolean).join(" ")}</span>}
+        {outcome.activityId && <span className="status-line__detail">The details are saved in your Weft activity.</span>}
+        {technical && <ErrorDetails>{technical}</ErrorDetails>}
       </div>
-      <button type="button" className="btn" onClick={() => window.close()}>
-        Close
-      </button>
-    </footer>
+    </div>
   );
 }
 
@@ -422,6 +442,7 @@ function ConnectRequest({ view, onDecide, deciding, progress }: RequestProps) {
         done="Connected"
       />
       <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
+        <FailureOutcome progress={progress} view={view} />
         <h2 className="eyebrow">The site will see</h2>
         <dl className="details">
           <dt>Identity</dt>
@@ -456,7 +477,6 @@ function ConnectRequest({ view, onDecide, deciding, progress }: RequestProps) {
         ctaClass="btn--primary"
         deciding={deciding}
         progress={progress}
-        view={view}
         done={{ headline: `Connected to ${host}.`, detail: identity ? `It sees ${identity.name} in ${identity.mspId}. Closing.` : "Closing." }}
       />
     </>
@@ -480,6 +500,7 @@ function SignInRequest({ view, onDecide, deciding, progress }: RequestProps) {
         done="Signed in"
       />
       <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
+        <FailureOutcome progress={progress} view={view} />
         {view.statement && (
           <div className="card">
             <h2 className="eyebrow">The site says</h2>
@@ -508,7 +529,6 @@ function SignInRequest({ view, onDecide, deciding, progress }: RequestProps) {
         ctaClass="btn--primary"
         deciding={deciding}
         progress={progress}
-        view={view}
         done={{ headline: `Signed in to ${host}.`, detail: view.identity ? `As ${view.identity.name} in ${view.identity.mspId}. Closing.` : "Closing." }}
       />
     </>
@@ -538,6 +558,7 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
         done={submit ? "Committed" : "Read from the ledger"}
       />
       <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
+        <FailureOutcome progress={progress} view={view} />
         <div className={`notice ${submit ? "notice--amber" : "notice--thread"}`}>
           <span className="tag" style={{ background: submit ? "var(--weft-warn)" : "var(--weft-accent)" }}>
             {submit ? "Submit" : "Evaluate"}
@@ -659,7 +680,6 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
         ctaClass={submit ? "btn--amber" : "btn--primary"}
         deciding={deciding}
         progress={progress}
-        view={view}
         done={signDone(view, progress.outcome)}
       />
     </>
@@ -763,16 +783,19 @@ function AddNetworkRequest({ view, onDecide, deciding, progress }: RequestProps)
           }}
         >
           <main key="enrol" className={`${bodyClass(shown)} step`} data-dir="forward" aria-busy={shown.phase === "working" || undefined}>
+            <FailureOutcome progress={progress} view={view} />
             <InviteCard invite={invite} />
             <Field label="Enrolment ID" {...checks.field("enrollmentId")}>
               {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
             </Field>
-            <Field label="Enrolment secret" hint="From your administrator. Used once, never stored." {...checks.field("secret")}>
+            <Field label="Enrolment secret" hint="Your administrator gives you this. Weft uses it once and never stores it." {...checks.field("secret")}>
               {(a) => <SecretInput {...a} value={secret} onChange={(e) => setSecret(e.target.value)} />}
             </Field>
             <ActionError error={enroll.error} />
           </main>
-          {done ? (
+          {failed(progress) ? (
+            <CloseFooter />
+          ) : done ? (
             <footer className="footer footer--status">
               <div className="status-line arrive" role="status">
                 <Icon name="check" size={20} color="var(--weft-accent-text)" />

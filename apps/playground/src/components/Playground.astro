@@ -287,8 +287,10 @@ const { demoInvite = null } = Astro.props;
     head.className = "pg-log-head";
     head.textContent = `${new Date().toLocaleTimeString("en-GB")}  ${direction} ${title}`;
     li.append(head);
+    let pre: HTMLPreElement | null = null;
     if (body !== undefined) {
-      const pre = document.createElement("pre");
+      pre = document.createElement("pre");
+      pre.id = `pg-log-${++logEntries}`;
       pre.textContent = typeof body === "string" ? body : JSON.stringify(body, null, 2);
       li.append(pre);
     }
@@ -296,8 +298,43 @@ const { demoInvite = null } = Astro.props;
     const list = $("pg-log");
     const before = list.scrollHeight;
     list.prepend(li);
+    // An entry taller than its cap (.pg-log pre) gets Show all, once it's in
+    // the page and can be measured.
+    if (pre && pre.scrollHeight > pre.clientHeight + 1) li.append(showAll(pre));
     if (list.scrollTop > 0) list.scrollTop += list.scrollHeight - before;
     $("pg-log-empty").hidden = true;
+  }
+
+  let logEntries = 0;
+
+  /**
+   * Show all and Show less for a long log entry. Its height moves between the
+   * cap and the whole as a transition, so a second press turns it back from
+   * where it is (SYSTEM.md, Motion: reversible things).
+   */
+  function showAll(pre: HTMLPreElement): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn btn--text pg-log-more";
+    button.textContent = "Show all";
+    button.setAttribute("aria-expanded", "false");
+    button.setAttribute("aria-controls", pre.id);
+    const settled = () => {
+      if (button.getAttribute("aria-expanded") === "true") pre.style.maxHeight = "none";
+    };
+    button.addEventListener("click", () => {
+      const open = button.getAttribute("aria-expanded") !== "true";
+      // From the height it has now.
+      pre.style.maxHeight = `${pre.getBoundingClientRect().height}px`;
+      void pre.offsetHeight;
+      button.setAttribute("aria-expanded", String(open));
+      button.textContent = open ? "Show less" : "Show all";
+      pre.classList.toggle("is-open", open);
+      pre.style.maxHeight = open ? `${pre.scrollHeight}px` : "";
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) settled();
+    });
+    pre.addEventListener("transitionend", (e) => e.propertyName === "max-height" && settled());
+    return button;
   }
 
   async function call(method: string, params?: unknown) {
@@ -1364,12 +1401,36 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
     color: var(--weft-text-muted);
   }
+  /* Each entry is capped at 12 lines, its last lines fading, with Show all
+     under it when it runs longer. The height is a transition, so Show less
+     pressed mid-way turns it back from where it is: in over slow on
+     ease-out, back over slow-out on ease-in. */
   .pg-log pre {
     margin: var(--weft-space-1) 0 0;
     font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--weft-text-muted);
+    max-height: calc(12 * var(--weft-leading-xs));
+    overflow: hidden;
+    transition: max-height var(--weft-duration-slow-out) var(--weft-ease-in);
+  }
+  .pg-log pre:has(+ .pg-log-more):not(.is-open) {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--weft-space-8)), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--weft-space-8)), transparent);
+  }
+  .pg-log pre.is-open {
+    transition: max-height var(--weft-duration-slow) var(--weft-ease-out);
+  }
+  .pg-log-more {
+    margin-top: var(--weft-space-1);
+    font-size: var(--weft-type-xs);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pg-log pre,
+    .pg-log pre.is-open {
+      transition-duration: 0s;
+    }
   }
   .pg-options {
     border: 0;

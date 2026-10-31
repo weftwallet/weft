@@ -3,7 +3,7 @@ import type { ActivityRecord } from "../../lib/db";
 import { ui, type IdentityView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import { CopyButton, useFeedback } from "../feedback";
-import { ActionError, Button, Empty, Icon, Logo, compactHex, healthView, shorten, timeAgo, toErrorInfo, useFocusOnArrival, type ErrorInfo } from "../ui";
+import { ActionError, Button, Empty, Icon, Logo, compactHex, healthView, shorten, timeAgo, toErrorInfo, tokenMs, useFocusOnArrival, type ErrorInfo } from "../ui";
 import { FILTER_FROM, FilterInput, GroupHeading, focusTargetAfter, groupByNetwork, matches, namesSummary, useLeaving } from "./lists";
 import { useAction, useActivityEvents, type Navigate } from "./state";
 
@@ -308,11 +308,17 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
   const load = async () => {
     try {
       const loaded = await ui("activity");
-      // What arrived since the list was first shown comes in as new (SYSTEM.md, Arriving).
+      // What arrived since the list was last shown comes in as new (SYSTEM.md,
+      // Arriving), including what came in while another screen or tab was
+      // open: `known` starts from lastActivity, so it plays on the way back.
+      // It plays once: the next mount starts from the list that includes it,
+      // and the class goes after rule-life, so a row redrawn later is still.
       if (known.current) {
         const added = loaded.filter((i) => !known.current!.has(i.id));
         if (added.length) {
-          setFresh((s) => new Set([...s, ...added.map((i) => i.id)]));
+          const ids = added.map((i) => i.id);
+          setFresh((s) => new Set([...s, ...ids]));
+          setTimeout(() => setFresh((s) => new Set([...s].filter((id) => !ids.includes(id)))), tokenMs("--weft-rule-life", 4000) + 1000);
           const first = added[0]!;
           announce(`New activity: ${first.call.fn}, ${STATUS_STYLE[first.status].label.toLowerCase()}.`);
         }

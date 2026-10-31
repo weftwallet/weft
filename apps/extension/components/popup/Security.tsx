@@ -83,7 +83,7 @@ export function Security({
           <ActionError error={lock.error} />
         </section>
 
-        <Field label="Lock automatically" hint="Counted from the last time you used Weft. Closing the browser always locks it.">
+        <Field label="Lock automatically" hint="The time counts from when you last used Weft. Closing the browser always locks it.">
           {(a) => (
             <Select
               {...a}
