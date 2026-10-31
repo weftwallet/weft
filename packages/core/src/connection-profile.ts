@@ -1,7 +1,7 @@
 /**
  * Builds a Weft invite from a Fabric common connection profile, the JSON or
  * YAML file organisations already hand to SDK users
- * (e.g. fabric-samples' connection-org1.json).
+ * (for example fabric-samples' connection-org1.json).
  *
  * A connection profile describes peers, orderers and CAs. Weft only needs the
  * organisation's MSP ID and CA; the relay URL and channels usually aren't in
@@ -56,21 +56,21 @@ function displayName(profileName: string | undefined, organization: string): str
 export function inviteFromConnectionProfile(profile: ConnectionProfile, options: InviteFromProfileOptions): OrgInvite {
   const organizations = profile.organizations ?? {};
   const names = Object.keys(organizations);
-  if (names.length === 0) throw new InviteError("The connection profile has no organizations.");
+  if (names.length === 0) throw new InviteError('The connection profile has no organisations in its "organizations" section.');
 
   const orgKey = options.organization ?? profile.client?.organization ?? (names.length === 1 ? names[0] : undefined);
   if (!orgKey) {
-    throw new InviteError(`The profile lists several organizations (${names.join(", ")}). Choose one.`);
+    throw new InviteError(`The profile lists several organisations (${names.join(", ")}). Choose one.`);
   }
   const org = organizations[orgKey];
-  if (!org) throw new InviteError(`Organization "${orgKey}" is not in the profile. It has: ${names.join(", ")}.`);
-  if (!org.mspid) throw new InviteError(`Organization "${orgKey}" has no mspid.`);
+  if (!org) throw new InviteError(`The organisation "${orgKey}" is not in the profile. It has: ${names.join(", ")}.`);
+  if (!org.mspid) throw new InviteError(`The organisation "${orgKey}" has no "mspid" field.`);
 
   const caKeys = org.certificateAuthorities ?? [];
   const caKey = options.certificateAuthority ?? caKeys[0];
-  if (!caKey) throw new InviteError(`Organization "${orgKey}" lists no certificate authority.`);
+  if (!caKey) throw new InviteError(`The organisation "${orgKey}" lists no certificate authority.`);
   const ca = profile.certificateAuthorities?.[caKey];
-  if (!ca?.url) throw new InviteError(`Certificate authority "${caKey}" has no url in the profile.`);
+  if (!ca?.url) throw new InviteError(`The certificate authority "${caKey}" has no "url" field in the profile.`);
 
   const channels = options.channels?.length ? options.channels : Object.keys(profile.channels ?? {});
   if (channels.length === 0) {

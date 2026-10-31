@@ -7,9 +7,9 @@ Full records live in [`docs/adr`](https://github.com/ifeanyi-ugwu/weft/tree/main
 
 ## 0001: A stateless relay reaches the network
 
-Browsers can't speak native gRPC. Rather than asking every organisation to run Envoy for gRPC-web and building Fabric protobufs in the browser, each organisation runs a thin relay that uses `@hyperledger/fabric-gateway` in **offline-signing** mode. The relay builds unsigned messages, the wallet signs, the relay forwards. Every request carries the bytes it needs, so the relay keeps no state.
+Browsers can't open gRPC connections to Fabric peers. Rather than asking every organisation to run Envoy for gRPC-web and building Fabric protobufs in the browser, each organisation runs a relay that uses `@hyperledger/fabric-gateway` in **offline-signing** mode. The relay builds unsigned messages, the wallet signs, the relay forwards. Every request carries the bytes it needs, so the relay keeps no state.
 
-The trade-off: one more small service per organisation, and the relay sees transaction contents (as peers do). The wallet must verify everything it signs, because the relay builds it.
+The trade-off: one more service per organisation, and the relay sees transaction contents (as peers do). The wallet must verify everything it signs, because the relay builds it.
 
 ## 0002: Keys are non-extractable WebCrypto keys
 
@@ -17,9 +17,9 @@ P-256 keys live in IndexedDB as non-extractable `CryptoKey` objects. Weft conver
 
 The trade-off: keys can't be exported for backup. Recovery is re-enrolment with the CA, which is how Fabric organisations already work. ADR 0005 adds encryption at rest.
 
-## 0003: A request-based provider, and org invites
+## 0003: A request-based provider, and invites
 
-dApps talk to `window.weft.request({ method, params })` with `weft_*` methods and EIP-1193-style error codes, so they're unaffected if the transport under the wallet changes. Organisations publish an **invite** (JSON over HTTPS) so users join a network from one link instead of typing CA and relay URLs.
+dApps call `window.weft.request({ method, params })` with `weft_*` methods and EIP-1193-style error codes, so they're unaffected if the transport under the wallet changes. Organisations publish an **invite** (JSON over HTTPS) so users join a network from one link instead of typing CA and relay URLs.
 
 ## 0004: An explorer that each organisation hosts
 
@@ -31,6 +31,6 @@ All four phases are built: one organisation's explorer, `public` and `members` l
 
 ## 0005: Keys are encrypted with a password, and Weft locks
 
-A random vault key encrypts every private key. Your password (PBKDF2) and any passkeys you add (WebAuthn PRF) each seal a copy of the vault key. Unlocking puts the vault key in the browser's in-memory session storage, so the background worker survives restarts; locking clears it. Weft locks after a period without use, on request, and when the browser closes.
+A random vault key encrypts every private key. Your password (PBKDF2) and any passkeys you add (WebAuthn PRF) each encrypt a copy of the vault key. Unlocking puts the vault key in the browser's in-memory session storage, so the background worker survives restarts; locking clears it. Weft locks after a period without use, on request, and when the browser closes.
 
 The trade-off: a forgotten password with no passkey means enrolling again. Keys saved before this change can't be encrypted after the fact, so Weft asks you to re-enrol them.

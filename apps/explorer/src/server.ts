@@ -16,7 +16,7 @@ import { PUBLIC_PRODUCTS, type ProductAddresses } from "./config.ts";
 
 export interface ServerOptions {
   name: string;
-  /** The organisation running this explorer, e.g. Org1MSP. */
+  /** The organisation running this explorer, for example Org1MSP. */
   mspId?: string;
   /** Indexed channels (public and members). */
   channels: string[];
@@ -24,7 +24,7 @@ export interface ServerOptions {
   db: ExplorerDb;
   status: () => ChannelStatus[];
   auth?: Auth;
-  /** This explorer's public origin, e.g. https://explorer.org1.example. Sign-in messages must name it. */
+  /** This explorer's public origin, for example https://explorer.org1.example. Sign-in messages must name it. */
   publicUrl?: string;
   /** Signs this explorer's checkpoints for other organisations to compare. */
   signer?: CheckpointSigner;
@@ -375,7 +375,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/elections", async (request, reply) => {
     const data = electionData(request, request.params.channel);
-    return data ? data.list : reply.code(404).send({ error: "not found" });
+    return data ? data.list : reply.code(404).send({ error: "Nothing was found at this address." });
   });
 
   app.get<{ Params: { channel: string; id: string; txId: string } }>(
@@ -383,7 +383,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     async (request, reply) => {
       const { channel, id, txId } = request.params;
       const data = electionData(request, channel);
-      if (!data || !data.list.some((e) => e.id === id)) return reply.code(404).send({ error: "not found" });
+      if (!data || !data.list.some((e) => e.id === id)) return reply.code(404).send({ error: "Nothing was found at this address." });
       const tx = db.transaction(channel, txId.toLowerCase());
       return checkReceipt(id, tx ? data.s.view(tx) : null);
     },
@@ -421,15 +421,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
    */
   app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/checkpoint", async (request, reply) => {
     const { channel } = request.params;
-    if (!options.signer || !scope(request).canSee(channel)) return reply.code(404).send({ error: "not found" });
+    if (!options.signer || !scope(request).canSee(channel)) return reply.code(404).send({ error: "Nothing was found at this address." });
     const top = db.nextBlock(channel) - 1;
     const hash = top >= 0 ? db.blockHash(channel, top) : null;
-    if (hash === null) return reply.code(404).send({ error: "no blocks indexed yet" });
+    if (hash === null) return reply.code(404).send({ error: "No blocks are indexed yet." });
     return reply.header("cache-control", "no-store").send(options.signer.sign(channel, top, hash));
   });
 
   app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/organisations", async (request, reply) => {
-    if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
+    if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "Nothing was found at this address." });
     return options.crossCheck?.peersFor(request.params.channel) ?? [];
   });
 
@@ -438,7 +438,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.get<{ Params: { channel: string }; Querystring: { from?: string; to?: string } }>(
     "/api/v1/channels/:channel/headers",
     async (request, reply) => {
-      if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
+      if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "Nothing was found at this address." });
       const from = int(request.query.from) ?? 0;
       const to = Math.min(int(request.query.to) ?? from + HEADERS - 1, from + HEADERS - 1);
       return db.headers(request.params.channel, from, to);
@@ -448,14 +448,14 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   // The members' CAs from the channel configuration, for checking whose
   // certificate signed a checkpoint.
   app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/members", async (request, reply) => {
-    if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
+    if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "Nothing was found at this address." });
     return db.members(request.params.channel).map(({ mspId, rootCerts, intermediateCerts, crls }) => ({ mspId, rootCerts, intermediateCerts, crls: crls ?? [] }));
   });
 
   app.get<{ Params: { channel: string }; Querystring: { before?: string; limit?: string } }>(
     "/api/v1/channels/:channel/blocks",
     async (request, reply) => {
-      if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "not found" });
+      if (!scope(request).canSee(request.params.channel)) return reply.code(404).send({ error: "Nothing was found at this address." });
       const limit = Math.min(int(request.query.limit) ?? PAGE, 100);
       return db.blocks(request.params.channel, { before: int(request.query.before), limit });
     },
@@ -465,7 +465,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const s = scope(request);
     const number = int(request.params.number);
     const found = s.canSee(request.params.channel) && number !== undefined ? db.block(request.params.channel, number) : null;
-    return found ? { block: found.block, transactions: found.transactions.map(s.view) } : reply.code(404).send({ error: "not found" });
+    return found ? { block: found.block, transactions: found.transactions.map(s.view) } : reply.code(404).send({ error: "Nothing was found at this address." });
   });
 
   app.get<{ Params: { channel: string }; Querystring: { contract?: string; org?: string; before?: string; limit?: string } }>(
@@ -473,7 +473,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     async (request, reply) => {
       const s = scope(request);
       const { channel } = request.params;
-      if (!s.canSee(channel)) return reply.code(404).send({ error: "not found" });
+      if (!s.canSee(channel)) return reply.code(404).send({ error: "Nothing was found at this address." });
       const q = request.query;
       if (q.contract && !s.canSeeContract(channel, q.contract)) return [];
       return db
@@ -493,11 +493,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.get<{ Params: { channel: string; txId: string } }>("/api/v1/channels/:channel/transactions/:txId", async (request, reply) => {
     const s = scope(request);
     const tx = s.canSee(request.params.channel) ? db.transaction(request.params.channel, request.params.txId) : null;
-    return tx ? s.view(tx) : reply.code(404).send({ error: "not found" });
+    return tx ? s.view(tx) : reply.code(404).send({ error: "Nothing was found at this address." });
   });
 
   app.setNotFoundHandler((request, reply) =>
-    request.url.startsWith("/api/") ? reply.code(404).send({ error: "not found" }) : notFound(reply, scope(request).site, "There's no page at this address."),
+    request.url.startsWith("/api/") ? reply.code(404).send({ error: "Nothing was found at this address." }) : notFound(reply, scope(request).site, "There's no page at this address."),
   );
 
   // Pages get a page when something goes wrong; the API gets JSON.

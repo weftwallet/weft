@@ -7,18 +7,23 @@ editUrl: false
 
 import { LinkCard, CardGrid } from "@astrojs/starlight/components";
 
-Weft is an identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued you, and signs only the transactions you approve after showing you what they do. These guides are for the three kinds of people who use it.
+Weft is an identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued you, and signs only the transactions you approve after showing you what they do.
 
-## Using Weft
+## Start
 
 <CardGrid>
   <LinkCard title="What is Weft?" href="/start/what-is-weft/" description="What it holds, what it signs, and what it never sees." />
   <LinkCard title="Install and add an identity" href="/start/install/" description="From an organisation's invite, or by hand." />
+</CardGrid>
+
+## Using Weft
+
+<CardGrid>
   <LinkCard title="Reading a signature request" href="/guides/signing/" description="Everything a request shows before you approve it." />
   <LinkCard title="When a transaction fails" href="/guides/failures/" description="What each failure means and what to do about it." />
 </CardGrid>
 
-## Building a dApp
+## Build a dApp
 
 <CardGrid>
   <LinkCard title="Quickstart" href="/dapps/quickstart/" description="Connect to Weft and call a contract in a few lines." />
@@ -27,11 +32,11 @@ Weft is an identity wallet for Hyperledger Fabric. It holds the certificate your
   <LinkCard title="Weft Playground" href="weft:playground/" description="Try a dApp against a network from your browser." />
 </CardGrid>
 
-## Running a network
+## Run a network
 
 <CardGrid>
   <LinkCard title="Deploy the relay" href="/operators/relay/" description="The one service your organisation runs for Weft." />
-  <LinkCard title="Publish an org invite" href="/operators/invites/" description="So your users can join in one step." />
+  <LinkCard title="Publish an invite" href="/operators/invites/" description="So your users can join in one step." />
   <LinkCard title="Run an explorer" href="/operators/explorer/" description="Your organisation's view of the ledger, published as you choose." />
   <LinkCard title="Weft Network" href="weft:network/" description="Every organisation's explorer on one page, and the invite maker." />
 </CardGrid>

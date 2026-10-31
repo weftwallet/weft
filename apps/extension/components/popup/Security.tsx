@@ -107,7 +107,7 @@ export function Security({
               Passkeys
             </h2>
             <Button className="header-action" icon="plus" iconSize={16} busy={addPasskey.busy} onClick={() => void addPasskey.run()}>
-              Add
+              Add passkey
             </Button>
           </div>
           <ActionError error={addPasskey.error} />
@@ -256,7 +256,7 @@ function ChangePassword({ onDone }: { onDone: () => void }) {
           Cancel
         </button>
         <Button type="submit" className="btn btn--primary" busy={change.busy}>
-          Change
+          Change password
         </Button>
       </div>
       </form>

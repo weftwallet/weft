@@ -80,7 +80,7 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: "Start here",
+          label: "Start",
           items: [
             { label: "What is Weft?", slug: "start/what-is-weft" },
             { label: "Install and add an identity", slug: "start/install" },
@@ -108,10 +108,10 @@ export default defineConfig({
           label: "Run a network",
           items: [
             { label: "Deploy the relay", slug: "operators/relay" },
-            { label: "Publish an org invite", slug: "operators/invites" },
+            { label: "Publish an invite", slug: "operators/invites" },
             { label: "Run an explorer", slug: "operators/explorer" },
-            { label: "The network page", slug: "operators/network" },
-            { label: "Weft Network", link: product("network"), attrs: { "data-product": "network" } },
+            { label: "Weft Network", slug: "operators/network" },
+            { label: "Open Weft Network", link: product("network"), attrs: { "data-product": "network" } },
           ],
         },
         {

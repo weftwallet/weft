@@ -27,7 +27,7 @@ export interface BlockHeader {
 export type ChainResult = { ok: true; from: number; to: number } | { ok: false; at: number; reason: string };
 
 const fromHex = (hex: string) => {
-  if (!/^(?:[0-9a-f]{2})*$/i.test(hex)) throw new Error("Not hex.");
+  if (!/^(?:[0-9a-f]{2})*$/i.test(hex)) throw new Error("The value is not hex.");
   return Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16));
 };
 const toHex = (bytes: ArrayBuffer | Uint8Array) => Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -123,8 +123,8 @@ export function parseCheckpoint(message: string): Checkpoint {
   if (lines[0] !== CHECKPOINT_PREFIX || lines.length !== 6) throw new Error("Not a Weft checkpoint.");
   const number = Number(field(3, "number"));
   const hash = field(4, "hash");
-  if (!Number.isSafeInteger(number) || number < 0) throw new Error("Bad block number.");
-  if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error("Bad block hash.");
+  if (!Number.isSafeInteger(number) || number < 0) throw new Error("The block number is not valid.");
+  if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error("The block hash is not valid.");
   return { channel: field(1, "channel"), mspId: field(2, "msp"), number, hash, signedAt: field(5, "signed") };
 }
 

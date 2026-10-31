@@ -1,6 +1,6 @@
 # @weftwallet/brand
 
-Weft's logos, product marks, design tokens and product registry, shared by every Weft product. [SYSTEM.md](SYSTEM.md) is the design system: colour roles, type, motion, states, errors and navigation.
+Weft's logos, product marks, design tokens and product registry, shared by every Weft product. [SYSTEM.md](SYSTEM.md) is the design system: colour roles, type, motion, states, errors, navigation and writing.
 
 ## The mark
 
@@ -22,7 +22,7 @@ When naming the project next to Fabric, write "weft, an identity wallet for Hype
 
 ## Product marks
 
-Weft, the wallet and the docs use the main mark. The playground, the network and the explorer have their own, drawn by `scripts/marks.mjs` into `logo/products/` with a small version for 32px and below. The network and the explorer sit on an ink tile in a teal frame, because an organisation runs them for itself. [SYSTEM.md](SYSTEM.md#marks) has the construction rules.
+The Weft site, Weft Wallet and the docs use the main mark. The playground, Weft Network and the explorer have their own, drawn by `scripts/marks.mjs` into `logo/products/` with a small version for 32px and below. Weft Network and the explorer sit on an ink tile in a teal frame, because an organisation runs them for itself. [SYSTEM.md](SYSTEM.md#marks) has the construction rules.
 
 | File | Mark |
 |---|---|
@@ -45,7 +45,7 @@ Weft, the wallet and the docs use the main mark. The playground, the network and
 }
 ```
 
-Set `invite` and the playground opens on that network, marked "Demo network" in a neutral chip; set `explorers` and the network page opens on those organisations side by side, with its field labelled "Your network". Both are read through `demo` from `@weftwallet/brand/products` at build time, so rebuild the sites after changing them (`pnpm --filter @weftwallet/playground build`, `pnpm --filter @weftwallet/network build`). With both empty, as now, the products look for the local stack (`pnpm playground:up`) and otherwise open on their own fields.
+Set `invite` and the playground opens on that network, marked "Demo network" in a neutral chip; set `explorers` and Weft Network opens on those organisations side by side, with its field labelled "Your network". Both are read through `demo` from `@weftwallet/brand/products` at build time, so rebuild the sites after changing them (`pnpm --filter @weftwallet/playground build`, `pnpm --filter @weftwallet/network build`). With both empty, as now, the products look for the local stack (`pnpm playground:up`) and otherwise open on their own fields.
 
 ## Colour
 

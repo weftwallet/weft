@@ -33,7 +33,7 @@ export class VaultLockedError extends Error {
 
 export class WrongSecretError extends Error {
   constructor(what: "password" | "passkey") {
-    super(what === "password" ? "That password isn't right." : "That passkey can't unlock this wallet.");
+    super(what === "password" ? "That password isn't right." : "That passkey can't unlock Weft.");
     this.name = "WrongSecretError";
   }
 }

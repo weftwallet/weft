@@ -1,13 +1,13 @@
 ---
-title: Publish an org invite
+title: Publish an invite
 description: Give users one link that tells Weft where your CA and relay are, built from the connection profile you already have.
 ---
 
-An invite is a small JSON file served over HTTPS. Users open a link to it, Weft shows them what they're joining, and they enrol with the enrolment ID and secret your registrar gave them. Nobody types a URL.
+An invite is a JSON file served over HTTPS. Users open a link to it, Weft shows them what they're joining, and they enrol with the enrolment ID and secret their administrator gave them. Nobody types a URL.
 
 ## Three ways to publish
 
-Pick whichever fits how you already run things. All three produce the same file.
+All three produce the same file.
 
 ### From the relay (recommended)
 
@@ -54,7 +54,7 @@ The [invite maker](weft:network/invite/) in Weft Network builds the file, the li
 | `network` | `name`, unless you set one |
 | `relayUrl` | Not in profiles: always yours to supply |
 
-Peers, orderers and TLS certificates in the profile are ignored. The wallet never talks to them directly; the [relay](/operators/relay/) does.
+Peers, orderers and TLS certificates in the profile are ignored. Weft never connects to them directly; the [relay](/operators/relay/) does.
 
 ## Sharing it
 
@@ -63,10 +63,10 @@ Every invite has three equivalent links:
 | Link | Use it for |
 |---|---|
 | Join link: `https://weft.ifeanyiugwu.dev/join/?weft-invite=…` | Email, chat, your intranet. Opens a page that previews the invite and hands it to Weft in one click. |
-| Weft link: `weft://invite?u=…` | Pasting straight into Weft's *Join from an org invite*. |
-| Invite URL: `https://…/weft-invite.json` | Admin portals that call `weft.addNetwork(url)` from [the SDK](/dapps/quickstart/#onboard-users-from-your-portal). |
+| Weft link: `weft://invite?u=…` | Pasting straight into Weft's *Join from an invite*. |
+| Invite URL: `https://…/weft-invite.json` | Admin portals that call `weft.addNetwork(url)` from [the SDK](/dapps/quickstart/#add-users-from-your-portal). |
 
-QR codes encode the join link. On a desktop, users don't need a camera: in Weft's *Join from an org invite*, **Scan QR code on this tab** reads a code shown on screen (a slide, a PDF, a portal page), and pasting a screenshot of a code into the link field works too.
+QR codes encode the join link. On a desktop, users don't need a camera: in Weft's *Join from an invite*, **Scan QR code on this tab** reads a code shown on screen (a slide, a PDF, a portal page), and pasting a screenshot of a code into the link field works too.
 
 ## The file
 
@@ -94,7 +94,7 @@ QR codes encode the join link. On a desktop, users don't need a camera: in Weft'
 | `caUrl` | Yes | Base URL of your Fabric CA. |
 | `caName` | No | Needed when the CA server hosts several CAs. |
 | `relayUrl` | Yes | Base URL of your [relay](/operators/relay/). |
-| `channels` | Yes | Channels members of this org use. |
+| `channels` | Yes | Channels your organisation's members use. |
 | `enrollmentId` | No | Pre-fills the enrolment ID, for an invite to one person. |
 | `explorerUrl` | No | Base URL of your [explorer](/operators/explorer/). Weft links each transaction in its activity list to it. |
 

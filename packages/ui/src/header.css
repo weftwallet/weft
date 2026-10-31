@@ -43,7 +43,7 @@
        <svg class="weft-switcher__chevron" aria-hidden="true" …>…</svg>
      </button>
      <ul class="weft-switcher__menu reversible reversible--down" id="weft-products">
-       <li><a href="…" aria-current="page"><svg …/><span><strong>Weft</strong><span>What it is.</span></span></a></li>
+       <li><a href="…" aria-current="page"><svg …/><dl><dt>Weft</dt><dd>What it is.</dd></dl></a></li>
        …
      </ul>
    </div>
@@ -389,18 +389,20 @@ html:has(.shell-head) {
   flex: none;
   display: block;
 }
-.weft-switcher__menu a > span {
+.weft-switcher__menu dl {
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
   font-size: var(--weft-type-md);
   line-height: var(--weft-leading-md);
 }
-.weft-switcher__menu strong {
+.weft-switcher__menu dt {
   font-weight: 600;
   color: var(--weft-text-strong);
 }
-.weft-switcher__menu a > span > span {
+.weft-switcher__menu dd {
+  margin: 0;
   color: var(--weft-text-muted);
   font-size: var(--weft-type-xs);
   line-height: var(--weft-leading-xs);

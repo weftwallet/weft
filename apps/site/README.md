@@ -1,6 +1,6 @@
 # @weftwallet/site
 
-Weft's front page, and the join page that invite links open (`/join/`).
+The Weft site, and the join page that invite links open (`/join/`).
 
 ```sh
 pnpm dev     # http://localhost:4321

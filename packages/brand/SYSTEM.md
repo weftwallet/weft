@@ -4,16 +4,16 @@ How Weft's products look, move and behave. The tokens are in `tokens.css` (gener
 
 ## Products
 
-Weft is six products. They share the tokens, the type, the motion and the rules below, so moving between them feels like one place. Each has its own mark, layout and density, so it's always clear which one you're in.
+Weft is six products. They share the tokens, the type, the motion and the rules below, so moving between them works the same way. Each has its own mark, layout and density, so it's always clear which one you're in.
 
-| Product | Mark | What it is | How it feels |
+| Product | Mark | What it is | Layout and motion |
 |---|---|---|---|
-| Weft (`site`) | The main mark | The front page: what Weft is, and installing it | Spacious. The one place the brand performs |
-| Weft Wallet | The main mark | The browser extension | Compact and calm. Nothing moves without a reason |
-| Weft Docs | The main mark, with a "weft docs" wordmark | Guides and reference | Quiet and typographic. Reading comes first |
-| Weft Playground | The cloth with a pick still to pass | Try a dApp against a network | A workbench. What's live is visibly live |
-| Weft Network | The warp alone, in the loom's frame | Every organisation's explorer on one page, and whether their ledgers agree | Dense and precise. Status first |
-| Weft Explorer | The finished cloth, in the loom's frame | One organisation's view of its ledger, run by that organisation | A record. Everything can be checked |
+| Weft (`site`) | The main mark | The Weft site: what Weft is, and installing it | Wide sections in `type-base`. The only product with motion that doesn't answer an action: the hero and the cloth animations |
+| Weft Wallet | The main mark | The browser extension | A 360px popup and approval window in `type-md`. Motion only answers an action, plus loaders and arriving rows |
+| Weft Docs | The main mark, with a "weft docs" wordmark | Guides and reference | A sidebar and one reading column in `type-base`. Motion only for page changes and menus |
+| Weft Playground | The cloth with a pick still to pass | Try a dApp against a network | Numbered steps beside a provider log. Status pills change as each request runs |
+| Weft Network | The warp alone, in the loom's frame | Every organisation's explorer on one page, and whether their ledgers agree | One table per channel, with its status pill and verdict first. Rows update in place every 15 seconds |
+| Weft Explorer | The finished cloth, in the loom's frame | One organisation's view of its ledger, run by that organisation | Tables and detail lists, each block with its hash check. Live pages update in place as blocks arrive |
 
 Every product header shows its mark and its name. Links between products go through `productUrl()` in `products.mjs`, never a written-out address.
 
@@ -21,7 +21,7 @@ Every product header shows its mark and its name. Links between products go thro
 
 The warp is the network: organisations, peers and channels, strung once and held fixed. The weft is what passes through it: identities and transactions. A weft only holds if it goes over one warp and under the next, which is why every mark shows its crossings.
 
-There are two grounds. A teal tile with ink threads is for products people pass something through: Weft, the wallet, the docs and the playground. An ink tile in a teal frame, with teal threads, is for tools an organisation runs for itself: the network and the explorer. The frame is the loom. At 16px a filled tile and a framed tile are different shapes, which is what keeps the products apart in a row of browser tabs.
+There are two grounds. A teal tile with ink threads is for products people pass something through: the Weft site, the wallet, the docs and the playground. An ink tile in a teal frame, with teal threads, is for tools an organisation runs for itself: Weft Network and the explorer. The frame is the loom. At 16px a filled tile and a framed tile are different shapes, which is what keeps the products apart in a row of browser tabs.
 
 | Mark | Drawing |
 |---|---|
@@ -60,7 +60,7 @@ The two themes are ink and linen: ink for dark, linen, the colour of undyed clot
 
 ## Theme
 
-Dark is the default. A page follows the system (`prefers-color-scheme`) unless it sets `data-theme="light"` or `data-theme="dark"` on `<html>`. The wallet is dark only for now.
+Dark is the default. A page follows the system (`prefers-color-scheme`) unless it sets `data-theme="light"` or `data-theme="dark"` on `<html>`. The wallet follows the system theme and has no theme control.
 
 Changing the theme crossfades the whole page over `duration-base` (a view transition). Nothing slides, and colours don't animate one by one. With reduced motion it changes at once. The control is described under Navigation.
 
@@ -71,7 +71,7 @@ Atkinson Hyperlegible, from the Braille Institute, drawn so that no character ca
 - Atkinson Hyperlegible Next for interface and reading.
 - Atkinson Hyperlegible Mono for anything someone might copy or compare (MSP IDs, enrolment IDs, transaction IDs, hashes, function names, arguments), and for the wordmark, at weight 500.
 
-`type-md` (14px) is the interface base; `type-base` (16px) is for reading, in the docs and on the front page. `type-xs` (12px) is the only size below it. Each size has a matching `leading-*`. Headings use weight 600 and slightly negative tracking at `type-2xl` and above. Eyebrows and table headings are Mono, `type-xs`, uppercase, 0.08em tracking, `text-subtle`.
+`type-md` (14px) is the interface base; `type-base` (16px) is for reading, in the docs and on the Weft site. `type-xs` (12px) is the only size below it. Each size has a matching `leading-*`. Headings use weight 600 and slightly negative tracking at `type-2xl` and above. Eyebrows and table headings are Mono, `type-xs`, uppercase, 0.08em tracking, `text-subtle`.
 
 Identifiers:
 
@@ -112,23 +112,23 @@ What may move:
 
 - Motion that answers an action shows what changed and where it came from: a panel from its button, a screen from the direction of travel, a row from the left.
 - Motion on a timer is allowed in two places only: a loader, and a row that arrived while the person was looking.
-- The landing is the one page that performs. Elsewhere the grounds are plain and nothing moves to look alive. The landing's hero alone has faint warps behind it, on the layout's columns.
+- The Weft site's front page is the only page with motion that doesn't answer an action. Elsewhere the grounds are plain and nothing moves on a timer except loaders and arriving rows. The front page's hero alone has faint warps behind it, on the layout's columns.
 
 Entering and leaving: fade from 0 and move `shift-*` to the place, with `ease-out`; leave the same way in reverse, in the `-out` duration, with `ease-in`.
 
 Interruption: anything a person can reverse (a menu, a disclosure, a panel, a sheet, a tab indicator, a hover, the theme control's thumb) is built with CSS transitions, never keyframes, so a reversal continues from where the element is. `motion.css` has `.reversible` for this: closed by default, `.is-open` brings it in, taking the class away sends it back from wherever it is, with `visibility` hidden at the end, `@starting-style` for the first frame and `transition-behavior: allow-discrete` where `display` changes. Keyframes are for one-way arrivals only: a row, a toast, a page, the pick. The native `<details>` element hides its content at once, so a disclosure keeps keyframes and `closesInReverse()` holds it open; menus do not use `<details>`.
 
-Reduced motion: `motion.css` has one block for everything above. The shift tokens become 0 and `press-scale` 1 and `stagger` 0 (in `tokens.css`), so movement becomes a fade; pages change at once; the pick is not drawn and the words and the rule are simply there; reversible things change at once. Loaders keep turning, as a spinner would; nothing else loops. The hero and the cloth open finished.
+Reduced motion: `motion.css` has one block for everything above. The shift tokens become 0 and `press-scale` 1 and `stagger` 0 (in `tokens.css`), so movement becomes a fade; pages change at once; the pick is not drawn and the words and the rule are shown at once; reversible things change at once. Loaders keep turning, as a spinner would; nothing else loops. The hero and the cloth open finished.
 
 ### Loading
 
-Weft has no generic spinner. A product shows it's working with its own mark, one pick pulled through its warps, seated, then drawn out the other side, every `duration-pass` (`logo/loaders/`, drawn by `scripts/loaders.mjs`, which reads the token; the SVGs carry the number as a literal because they are used as images). At 24px and below use the small drawing (`<id>-small.svg`), on the 16px pixel grid, its pick moving a whole pixel at a time. Each product passes its own thing through: Weft, the wallet and the docs their middle pick; the playground its unfinished last pick, which rests halfway, as in its mark; the network a pick that never stays; the explorer its middle row. A loader is decorative: the words beside it say what's happening.
+Weft has no generic spinner. A product shows it's working with its own mark, one pick pulled through its warps, seated, then drawn out the other side, every `duration-pass` (`logo/loaders/`, drawn by `scripts/loaders.mjs`, which reads the token; the SVGs carry the number as a literal because they are used as images). At 24px and below use the small drawing (`<id>-small.svg`), on the 16px pixel grid, its pick moving a whole pixel at a time. Each product passes its own thing through: the Weft site, the wallet and the docs their middle pick; the playground its unfinished last pick, which rests halfway, as in its mark; Weft Network a pick that never stays; the explorer its middle row. A loader is decorative: the words beside it say what's happening.
 
 A busy control is set with `setBusy(button, true)` from `packages/ui/src/ui.ts`, in every product, including the wallet's Button: `aria-disabled="true"` at once (never `disabled`, which would throw keyboard focus off it) and presses ignored (`isBusy()`); the loader (`.is-working`) joins the label only after `wait-before-loader`; `setBusy(button, false)` removes it at once, so a loader never finishes its pass. The label stays and the width never changes: the loader is 16px and takes exactly the padding `.btn` gives up (`base.css`). A loader that stands for a whole screen (a splash) follows the same wait.
 
 ### Arriving
 
-When something new arrives while a person is looking (a block, a transaction, an identity), it comes in as a pick. One implementation, `.is-new` in `motion.css`, for the wallet's list items, the explorer's table rows and the network page's rows: put the class on the row as it is inserted. The thread (2px, `accent`) crosses the row's middle with `ease-tension` to 420ms and is gone by 600ms (`duration-deliberate`); the words, the row's direct children, follow it in from the left (`shift-md`) at 420ms over `duration-base`, so the eye is never on an empty row; a 3px `accent` rule seats on the left at 480ms, stays `rule-life` and fades over `duration-slow`. With reduced motion the row is simply there and its rule fades after `rule-life`.
+When something new arrives while a person is looking (a block, a transaction, an identity), it comes in as a pick. One implementation, `.is-new` in `motion.css`, for the wallet's list items, the explorer's table rows and Weft Network's rows: put the class on the row as it is inserted. The thread (2px, `accent`) crosses the row's middle with `ease-tension` to 420ms and is gone by 600ms (`duration-deliberate`); the words, the row's direct children, follow it in from the left (`shift-md`) at 420ms over `duration-base`, so the eye is never on an empty row; a 3px `accent` rule seats on the left at 480ms, stays `rule-life` and fades over `duration-slow`. With reduced motion the row appears at once and its rule fades after `rule-life`.
 
 ## States
 
@@ -181,4 +181,27 @@ A menu or a panel closes the way it opened, from wherever it is (`.reversible`).
 
 ## Writing
 
-British spelling. Sentence case. No dashes as punctuation; use a comma, colon or new sentence. Say what something does, not what it is like.
+These rules cover every word a person reads: the wallet, the sites, the explorer, the docs, error messages and the READMEs.
+
+- British spelling: organisation, enrolment, colour, licence.
+- Sentence case for headings, titles, buttons and labels.
+- No em or en dashes. Use a comma, a colon or a new sentence. Write ranges with "to": 5 to 10 minutes, blocks 3 to 7.
+- Say what something does, literally. No figurative language: a page "retries", not "keeps trying"; explorers "exchange signed checkpoints", not "compare notes".
+- No bold lead-ins. A term and its explanation is a `<dl>`, with the term in `<dt>`.
+- No exclamation marks.
+- No "e.g.". Write "for example".
+- Buttons say what happens: "Apply changes", "Copy invite", "Sign and submit", not "OK", "Copy" or "Continue".
+- Errors say what happened first, then what to do: "Weft couldn't read that image. Paste a PNG or JPEG screenshot of the QR code." Developer messages are full sentences too.
+
+Names:
+
+- Weft is the project. The front page is the Weft site. The products are Weft Wallet, Weft Docs, Weft Playground, Weft Network and Weft Explorer; use the full name where the product is named, and "Weft" as the actor in the wallet ("Weft is locked").
+- A person approves, an organisation endorses, a site connects. Keep Fabric's own terms where they are Fabric's (`_lifecycle` "approvals", `EVALUATE` and `SUBMIT`).
+- The reader is "you" in the wallet and the user guides, "the person" on the Weft site, and "the user" in the dApp docs and the API.
+- The calling page is a "site" in the wallet, a "web app" in the user guides and on the Weft site, and a "dApp" in the builder docs.
+- Secrets come from "your administrator". "Registrar" is for the operator docs only, and "admin" only for Fabric's role.
+- A read call is a "read" in prose; its button is "Sign and read".
+- A request the person turns down is "rejected", as the Reject button and `UserRejected` say.
+- The invite flow is "Join from an invite"; its submit button is "Enrol".
+- The extension's worker is the "background worker".
+- The licence is "Apache 2.0" in prose, and the SPDX form only in `package.json`.

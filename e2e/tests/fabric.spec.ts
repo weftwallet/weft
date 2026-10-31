@@ -17,7 +17,7 @@ test("evaluate and submit against the basic contract", { tag: "@fabric" }, async
 
   const all = await wallet.approve(
     () => dapp.request("weft_evaluate", { ...call, fn: "GetAllAssets" }),
-    (win) => win.getByRole("button", { name: "Sign and query" }).click(),
+    (win) => win.getByRole("button", { name: "Sign and read" }).click(),
   );
   expect(JSON.parse(all.text).length).toBeGreaterThan(0);
 
@@ -30,7 +30,7 @@ test("evaluate and submit against the basic contract", { tag: "@fabric" }, async
 
   const read = await wallet.approve(
     () => dapp.request("weft_evaluate", { ...call, fn: "ReadAsset", args: [id] }),
-    (win) => win.getByRole("button", { name: "Sign and query" }).click(),
+    (win) => win.getByRole("button", { name: "Sign and read" }).click(),
   );
   expect(JSON.parse(read.text).ID).toBe(id);
 

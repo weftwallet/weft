@@ -9,7 +9,7 @@
  * uses as --tls.certfiles), and serves plain HTTP on localhost, which
  * browsers allow. It also adds CORS headers.
  *
- * For local development. To serve HTTPS (e.g. when hosting), pass --cert and
+ * For local development. To serve HTTPS (for example when hosting), pass --cert and
  * --key for a certificate browsers trust.
  *
  *   node ca-proxy.mjs --listen 7080 --target https://localhost:7054 --upstream-ca ca-cert.pem

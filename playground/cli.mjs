@@ -448,12 +448,12 @@ ${bold("Weft playground is running.")}
 ${DEMO_USERS.map((u) => `    ${u.id.padEnd(8)} secret ${u.secret.padEnd(10)} ${dim(u.attrs.replace(":ecert", ""))}`).join("\n")}
 
 Next:
-  1. ${bold("pnpm dev:playground")} in another terminal, and ${bold("pnpm dev:network")} for the network page
+  1. ${bold("pnpm dev:playground")} in another terminal, and ${bold("pnpm dev:network")} for Weft Network
   2. Open ${teal(playground)}
   3. Join with Weft as one of the demo users, then run InitLedger
   4. Vote in board-2026 from the same page, and check your receipt in the explorer
   5. Compare the two explorers: Org2 publishes less, and both agree on every block
-  6. Sign in on the network page, ${teal(local("network"))}, to see ${MEMBERS_CHANNEL}, the members-only channel
+  6. Sign in on Weft Network, ${teal(local("network"))}, to see ${MEMBERS_CHANNEL}, the members-only channel
 
 Stop with ${bold("pnpm playground:down")}.
 `);

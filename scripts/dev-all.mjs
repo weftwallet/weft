@@ -1,7 +1,7 @@
 // Runs several of Weft's dev servers in one terminal.
 //
 //   pnpm dev                    # the sites: site, docs, playground and network
-//   pnpm dev site playground    # just these
+//   pnpm dev site playground    # only these
 //   pnpm dev all                # the sites and the extension
 //   pnpm dev --stream           # start on the stream rather than the tabs
 //

@@ -33,7 +33,7 @@ export interface CreateOptions {
 
 /** Builds an invite from a connection profile, or from explicit fields. */
 export async function createInvite(options: CreateOptions): Promise<OrgInvite> {
-  if (!options.relay) throw new Error("--relay is required: the URL of your organisation's Weft relay.");
+  if (!options.relay) throw new Error("--relay is required. Give the URL of your organisation's relay.");
   if (options.profile) {
     return inviteFromConnectionProfile((await readStructured(options.profile)) as ConnectionProfile, {
       relayUrl: options.relay,

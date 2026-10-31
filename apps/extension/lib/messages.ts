@@ -160,7 +160,7 @@ export async function ui<M extends UiMethod>(
 ): Promise<UiApi[M][1]> {
   const request: UiRequest<M> = { channel: "weft-ui", method, payload: payload[0] as UiApi[M][0] };
   const response = (await browser.runtime.sendMessage(request)) as UiResponse<UiApi[M][1]> | undefined;
-  if (!response) throw new UiError("Weft's background service didn't answer. Close this window and open Weft again.");
+  if (!response) throw new UiError("Weft's background worker didn't answer. Close this window and open Weft again.");
   if (!response.ok) throw new UiError(response.error, response.detail);
   return response.value;
 }

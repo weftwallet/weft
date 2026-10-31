@@ -244,7 +244,7 @@ function Settings({
                 {(a) => <input {...a} className="mono" value={channels} onChange={(e) => setChannels(e.target.value)} />}
               </Field>
             )}
-            <Field label="Relay URL" hint="Your organisation's Weft relay. It picks which peers to use." {...checks.field("relayUrl")}>
+            <Field label="Relay URL" hint="Your organisation's relay. It picks which peers to use." {...checks.field("relayUrl")}>
               {(a) => <input {...a} type="url" value={relayUrl} onChange={(e) => setRelayUrl(e.target.value)} />}
             </Field>
             <Field label="CA URL" hint="Used to enrol and renew certificates." {...checks.field("caUrl")}>
@@ -314,7 +314,7 @@ function InviteChanges({
         <Icon name="check" size={18} color="var(--weft-accent-text)" />
         <span className="grow">Up to date with your organisation's invite.</span>
         <button type="button" className="link-btn link-btn--inline" onClick={onCancel}>
-          OK
+          Close
         </button>
       </div>
     );
@@ -333,7 +333,7 @@ function InviteChanges({
         )}
         {removed.length > 0 && (
           <>
-            <dt>Removed</dt>
+            <dt>Removed channels</dt>
             <dd className="mono warn-text">
               {removed.join(", ")}
             </dd>
@@ -359,7 +359,7 @@ function InviteChanges({
           Not now
         </button>
         <Button className="btn btn--primary" busy={busy} onClick={onApply}>
-          Update
+          Apply changes
         </Button>
       </div>
     </section>

@@ -22,7 +22,7 @@ export function resolveInviteUrl(input: string): string {
   try {
     url = new URL(text);
   } catch {
-    throw new InviteError("That doesn't look like an invite link.");
+    throw new InviteError("That doesn't look like an invite link. Paste the link that starts with weft://invite or https://.");
   }
   if (url.protocol === "weft:") {
     const target = url.searchParams.get("u");
@@ -43,7 +43,7 @@ function requireHttps(value: string): string {
   }
   const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
   if (url.protocol !== "https:" && !(local && url.protocol === "http:")) {
-    throw new InviteError("Invites must be served over HTTPS.");
+    throw new InviteError("The invite address must use https://. Plain http:// works only for localhost.");
   }
   return url.toString();
 }

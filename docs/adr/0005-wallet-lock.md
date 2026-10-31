@@ -20,12 +20,12 @@ Constraints:
 
 **A vault key encrypts every private key.** When Weft first needs to save a key, it asks for a password and creates a random 256-bit AES-GCM vault key. Keys are generated or imported as extractable for that moment only, encrypted with the vault key (`wrapKey`, PKCS#8, AES-GCM) and stored encrypted. The extractable `CryptoKey` is then dropped.
 
-**The vault key is sealed once per way of unlocking.**
+**The vault key is encrypted once per way of unlocking.**
 
-- Password: PBKDF2-SHA-256 with 600,000 iterations and a random salt derives a key that seals the vault key with AES-GCM.
-- Passkeys (optional, any number): the PRF output for a random per-passkey salt goes through HKDF-SHA-256 to a key that seals the same vault key.
+- Password: PBKDF2-SHA-256 with 600,000 iterations and a random salt derives a key that encrypts the vault key with AES-GCM.
+- Passkeys (optional, any number): the PRF output for a random per-passkey salt goes through HKDF-SHA-256 to a key that encrypts the same vault key.
 
-A wrong password or passkey fails AES-GCM's authentication, so it is detected rather than producing a wrong key. The password stays required; a passkey is a faster way in, never the only one, so losing a security key never loses the wallet.
+A wrong password or passkey fails AES-GCM's authentication, so it is detected rather than producing a wrong key. The password stays required; a passkey is a faster way in, never the only one, so losing a security key never locks you out of Weft.
 
 **Unlocked means the vault key is in session storage.** On unlock the raw vault key goes into `chrome.storage.session`, which lives in memory, is cleared when the browser closes, and is readable only by the extension's own pages and worker (not content scripts). A worker that restarts reads it back. Keys are decrypted as non-extractable `CryptoKey` objects when first used and cached in the worker's memory.
 

@@ -21,17 +21,17 @@ const pieces = [
 // The four things the approve window shows. The numbers match the markers
 // on the window beside them.
 const shown = [
-  ["Who is asking", "The site's address, and which of your identities it wants to use."],
-  ["Read or write", "Whether it only reads the ledger or changes it, said plainly."],
+  ["Who is asking", "The web app's address, and which of your identities it wants to use."],
+  ["Read or write", "Whether it only reads the ledger or changes it."],
   ["What it calls", "The channel, the contract, the function and every argument, decoded."],
-  ["Who must approve", "Which organisations must endorse it before it is committed."],
+  ["Who must endorse", "Which organisations must endorse it before it is committed."],
 ];
 // The operational side, each piece with where to read about it.
 const pieces2 = [
   ["Relay", "One stateless service your organisation runs next to its peers.", docs("/operators/relay/")],
   ["Invite", "A link that configures the whole network for your users: CA, relay, MSP ID and channels.", docs("/operators/invites/")],
   ["Explorer", "Your organisation's view of its ledger, every block's hash checked in the reader's browser.", docs("/operators/explorer/")],
-  ["Network page", "Every organisation's explorer side by side, and whether their ledgers agree.", productHref("network")],
+  ["Weft Network", "Every organisation's explorer side by side, and whether their ledgers agree.", productHref("network")],
 ];
 const code = [
   'const weft = window.weft;',
@@ -56,8 +56,8 @@ const code = [
   <section class="hero" aria-labelledby="hero-title">
     <div class="hero__ground" aria-hidden="true"></div>
     <div class="hero__text">
-      <h1 id="hero-title">Your Fabric identity, in your own browser.</h1>
-      <p class="hero__sub">Weft is a browser extension that holds the certificate your organisation's CA issued you. Web applications ask it to sign; you read each transaction and approve it; the ledger records you, not a server.</p>
+      <h1 id="hero-title">Your Fabric identity, in your own browser</h1>
+      <p class="hero__sub">Weft is a browser extension that holds the certificate your organisation's CA issued you. A web app asks it to sign, you read the transaction and approve it, and the ledger records your identity as the signer.</p>
       <div class="actions">
         <a class="btn btn--primary" href={docs("/start/install/")}>Install Weft</a>
         <a class="btn" href="#how">See how a transaction is signed</a>
@@ -66,15 +66,15 @@ const code = [
     </div>
     <div class="hero__stage">
       <canvas id="hero-loom" aria-hidden="true"></canvas>
-      <button type="button" class="hero__replay" id="hero-replay" aria-label="Weave the mark again"></button>
+      <button type="button" class="hero__replay" id="hero-replay" aria-label="Replay the logo animation"></button>
     </div>
   </section>
 
   <section class="problem stage-section" aria-labelledby="problem-title">
     <div class="col">
       <span class="eyebrow">Why Weft exists</span>
-      <h2 id="problem-title">Today a server signs for everyone</h2>
-      <p class="muted">On most Fabric applications, a portal holds the users' identities and submits transactions under them. The ledger records the server. With Weft, the identity stays in the person's browser, the application asks for a signature, and the ledger records the person who approved it.</p>
+      <h2 id="problem-title">A portal server signs for every user</h2>
+      <p class="muted">In a portal-based Fabric application, the portal holds the users' identities and submits transactions under them, and the ledger records the portal as the signer. With Weft, the identity stays in the person's browser, the web app asks for a signature, and the ledger records the person who approved it.</p>
     </div>
     <div class="flow" role="img" aria-label="Before: a person uses a portal server, which holds the identity and signs, and sends to the peers. With Weft: the person's browser holds the identity and signs, a relay forwards the signed bytes, and the peers receive them.">
       <div class="flow__row">
@@ -100,7 +100,7 @@ const code = [
     <div class="col">
       <span class="eyebrow">How it works</span>
       <h2 id="cloth-title">Every transaction, shown first</h2>
-      <p class="muted">A web application asks Weft to sign. Weft decodes the request, shows you what it calls, and signs only if you approve. The organisations it needs endorse it, and it is woven into the ledger every one of them keeps.</p>
+      <p class="muted">A web app asks Weft to sign. Weft decodes the request, shows you what it calls, and signs only if you approve. The organisations it needs endorse it, and it is committed to the ledger each of them keeps.</p>
       <dl class="pieces">
         {
           pieces.map(([term, detail]) => (
@@ -114,7 +114,7 @@ const code = [
     </div>
     <div class="cloth__stage">
       <canvas id="cloth-loom" aria-hidden="true"></canvas>
-      <ol class="ledger" id="ledger" aria-label="The transactions woven into the cloth" hidden></ol>
+      <ol class="ledger" id="ledger" aria-label="Transactions in the animation, one per row" hidden></ol>
     </div>
   </section>
 
@@ -122,17 +122,17 @@ const code = [
     <div class="col">
       <span class="eyebrow">Before you sign</span>
       <h2 id="read-title">What you read before you sign</h2>
-      <p class="muted">Nothing is signed that you have not read. The window Weft opens shows four things, and refuses the request if what the network sends differs from what you approved.</p>
-      <ol class="shown">
+      <p class="muted">Weft signs only what you have read and approved. The window Weft opens shows four things, and refuses the request if what the network sends differs from what you approved.</p>
+      <dl class="shown">
         {
           shown.map(([term, detail]) => (
-            <li>
-              <strong>{term}</strong>
-              <span>{detail}</span>
-            </li>
+            <div>
+              <dt>{term}</dt>
+              <dd>{detail}</dd>
+            </div>
           ))
         }
-      </ol>
+      </dl>
     </div>
     <div class="approve" aria-label="The window Weft opens for a transaction, as an example">
       <div class="approve__head">
@@ -164,7 +164,7 @@ const code = [
           <div class="approve__arg"><span>1</span><span class="mono">Org2MSP</span></div>
         </div>
         <div class="approve__endorse" data-shown="4">
-          <span>Will be sent for approval to</span>
+          <span>Sent for endorsement to</span>
           <span class="approve__chips"><span class="approve__chip mono">Org1MSP</span><span class="approve__chip mono">Org2MSP</span></span>
         </div>
       </div>
@@ -179,7 +179,7 @@ const code = [
     <div class="col">
       <span class="eyebrow">For builders</span>
       <h2 id="build-title">Ask for a signature from a web page</h2>
-      <p class="muted">Call a contract from the page the way an Ethereum dApp asks MetaMask. Weft decodes the request and shows it to the person before anything is signed. The code and the window it opens are shown together.</p>
+      <p class="muted">Call a contract from the page the way an Ethereum dApp asks MetaMask. Weft decodes the request and shows it to the person before anything is signed.</p>
       <div class="links">
         <a href={docs("/dapps/quickstart/")}>Read the quickstart</a>
         <a href={productHref("playground")}>Try it in the playground</a>
@@ -215,22 +215,20 @@ const code = [
   <section class="orgs text-section" aria-labelledby="orgs-title">
     <div class="col">
       <span class="eyebrow">For organisations</span>
-      <h2 id="orgs-title">Four small pieces, all open</h2>
-      <p class="muted">The operational side is one service and three things you publish. Each is open source and runs where your peers already run.</p>
+      <h2 id="orgs-title">Four open-source pieces</h2>
+      <p class="muted">The relay is one service you run next to your peers. The invite and the explorer are things you publish, and Weft Network reads the explorers.</p>
     </div>
-    <ul class="rows">
+    <dl class="rows">
       {
         pieces2.map(([name, detail, href]) => (
-          <li>
-            <a href={href}>
-              <strong>{name}</strong>
-              <span>{detail}</span>
-              <svg class="rows__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-            </a>
-          </li>
+          <div>
+            <dt><a href={href}>{name}</a></dt>
+            <dd>{detail}</dd>
+            <svg class="rows__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          </div>
         ))
       }
-    </ul>
+    </dl>
   </section>
 
   <section class="install text-section" aria-labelledby="install-title">
@@ -240,7 +238,6 @@ const code = [
       <div class="actions">
         <a class="btn btn--primary" href={docs("/start/install/")}>Install Weft</a>
       </div>
-      <p class="fine">Open source, Apache 2.0. <a href="https://github.com/ifeanyi-ugwu/weft">Source on GitHub</a>.</p>
     </div>
   </section>
 </Shell>
@@ -495,11 +492,6 @@ const code = [
     color: var(--weft-text-muted);
     max-width: 34rem;
   }
-  .fine {
-    font-size: var(--weft-type-md);
-    line-height: var(--weft-leading-md);
-    color: var(--weft-text-subtle);
-  }
   .links {
     display: flex;
     flex-wrap: wrap;
@@ -660,13 +652,13 @@ const code = [
     flex-direction: column;
     gap: var(--weft-space-4);
   }
-  .shown li {
+  .shown div {
     counter-increment: shown;
     display: grid;
     grid-template-columns: 24px minmax(0, 1fr);
     gap: 2px var(--weft-space-3);
   }
-  .shown li::before,
+  .shown div::before,
   [data-shown]::after {
     content: counter(shown);
     display: flex;
@@ -679,14 +671,15 @@ const code = [
     color: var(--weft-accent-text);
     font: 500 var(--weft-type-xs) / 1 var(--weft-font-mono);
   }
-  .shown li::before {
+  .shown div::before {
     grid-row: 1 / 3;
   }
-  .shown strong {
+  .shown dt {
     font-weight: 600;
     color: var(--weft-text-strong);
   }
-  .shown span {
+  .shown dd {
+    margin: 0;
     color: var(--weft-text-muted);
     font-size: var(--weft-type-md);
     line-height: var(--weft-leading-md);
@@ -922,7 +915,9 @@ const code = [
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--weft-space-3);
   }
-  .rows a {
+  /* Each row is a card; the link in its term covers the whole card. */
+  .rows div {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 20px;
     gap: var(--weft-space-1) var(--weft-space-4);
@@ -933,7 +928,6 @@ const code = [
     border-radius: var(--weft-radius-xl);
     background: var(--weft-bg-raised);
     color: var(--weft-text-muted);
-    text-decoration: none;
     font-size: var(--weft-type-md);
     line-height: var(--weft-leading-md);
     transition:
@@ -941,15 +935,35 @@ const code = [
       transform var(--weft-duration-fast) var(--weft-ease-out);
   }
   /* The press, as motion.css writes it: down in instant, back in fast. */
-  .rows a:active {
+  .rows div:active {
     transform: scale(var(--weft-press-scale));
     transition-duration: var(--weft-duration-fast), var(--weft-duration-instant);
   }
-  .rows strong {
+  .rows dt {
     font-size: var(--weft-type-base);
     line-height: var(--weft-leading-base);
     font-weight: 600;
     color: var(--weft-text-strong);
+  }
+  .rows dd {
+    margin: 0;
+  }
+  .rows a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .rows a::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .rows div:has(a:focus-visible) {
+    outline: var(--weft-focus-ring) solid var(--weft-focus);
+    outline-offset: var(--weft-focus-offset);
+  }
+  .rows a:focus-visible {
+    outline: none;
   }
   .rows__arrow {
     grid-column: 2;
@@ -960,10 +974,10 @@ const code = [
     transition: color var(--weft-duration-fast) var(--weft-ease-out);
   }
   @media (hover: hover) {
-    .rows a:hover {
+    .rows div:hover {
       border-color: var(--weft-text-subtle);
     }
-    .rows a:hover .rows__arrow {
+    .rows div:hover .rows__arrow {
       color: var(--weft-text);
     }
   }

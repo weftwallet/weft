@@ -18,7 +18,7 @@ test("refreshing from the invite shows changes before applying them", async ({ w
   await popup.getByRole("button", { name: "Refresh from invite" }).click();
   await expect(popup.getByText("The invite has changed")).toBeVisible();
   await expect(popup.getByText("shipments")).toBeVisible();
-  await popup.getByRole("button", { name: "Update" }).click();
+  await popup.getByRole("button", { name: "Apply changes" }).click();
   await expect.poll(async () => (await wallet.ui("state")).networks[0].channels).toEqual(["mychannel", "shipments"]);
 });
 

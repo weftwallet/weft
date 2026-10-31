@@ -91,7 +91,7 @@ test("a locked wallet asks to unlock before showing a signature request", async 
       await win.getByLabel("Password").fill(PASSWORD);
       await win.getByRole("button", { name: "Unlock" }).click();
       await expect(win.getByRole("heading", { name: "Read from the ledger?" })).toBeVisible();
-      await win.getByRole("button", { name: "Sign and query" }).click();
+      await win.getByRole("button", { name: "Sign and read" }).click();
     },
   );
   // It signed: without peers the relay reports a network failure, a later step than the lock.
@@ -106,7 +106,7 @@ test("cancelling the unlock rejects the request", async ({ wallet }) => {
   await wallet.lock();
   const result = await wallet.approve(
     () => dapp.request("weft_submit", { channel: "mychannel", chaincode: "basic", fn: "InitLedger" }),
-    (win) => win.getByRole("button", { name: "Reject request" }).click(),
+    (win) => win.getByRole("button", { name: "Reject", exact: true }).click(),
   );
   expect(result.code).toBe(4001);
 });

@@ -1,5 +1,5 @@
 /**
- * @weftwallet/sdk: talk to the Weft wallet from a web app.
+ * @weftwallet/sdk: call Weft from a web app.
  *
  *   const weft = await getWeft();
  *   const me = await weft.connect();
@@ -27,7 +27,7 @@ export * from "@weftwallet/protocol";
 
 export class WeftNotInstalledError extends Error {
   constructor() {
-    super("The Weft wallet extension is not installed in this browser.");
+    super("The Weft Wallet extension is not installed in this browser.");
     this.name = "WeftNotInstalledError";
   }
 }
@@ -109,7 +109,7 @@ export class WeftClient {
   }
 
   /**
-   * Asks the user to join a network from your organisation's invite, e.g. from
+   * Asks the user to join a network from your organisation's invite, for example from
    * an admin portal's "Set up Weft" button. Weft shows the invite, then the user
    * enrols with their enrollment ID and secret. Doesn't require connect().
    */
@@ -141,7 +141,7 @@ export class WeftClient {
       /** Evaluates and parses the result as JSON. */
       evaluateJson: async <T = unknown>(fn: string, ...args: string[]): Promise<T> => {
         const result = await this.evaluate(build(fn, args));
-        if (result.text === null) throw new WeftError(ErrorCode.Internal, "Result is not text");
+        if (result.text === null) throw new WeftError(ErrorCode.Internal, "The result is not text.");
         return JSON.parse(result.text) as T;
       },
     };

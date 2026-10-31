@@ -332,7 +332,7 @@ details.disclosure.is-closing > :not(summary) {
 
 /* The shift tokens are already 0 and press-scale 1 (tokens.css), so what is
    left here is what a fade would still do wrong: pages change at once, the
-   pick is not drawn, the words and the rule are simply there, reversible
+   pick is not drawn, the words and the rule are shown at once, reversible
    things and the error line change at once. Loaders keep turning. */
 @media (prefers-reduced-motion: reduce) {
   @view-transition {

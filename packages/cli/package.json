@@ -2,7 +2,7 @@
   "name": "@weftwallet/cli",
   "version": "0.1.0",
   "license": "Apache-2.0",
-  "description": "Command-line tools for Weft network operators: build org invites and share links",
+  "description": "Command-line tools for Weft network operators: build invites and share links",
   "type": "module",
   "bin": {
     "weft": "./dist/cli.js"

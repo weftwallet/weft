@@ -7,9 +7,9 @@ Weft is not in the Chrome Web Store or any other browser store yet. Until it is,
 
 ## If your organisation gave you an invite
 
-Your network administrator sets Weft up for your organisation and sends you an invite link. They also provide the build of the extension to load, or they install it for you through your browser's managed policies. If you have an invite but no extension, ask your administrator for the build; do not install one from anywhere else.
+Your administrator sets Weft up for your organisation and sends you an invite link. They also provide the build of the extension to load, or they install it for you through your browser's managed policies. If you have an invite but no extension, ask your administrator for the build; do not install one from anywhere else.
 
-Once the extension is loaded, open the invite link, or paste it into Weft, and follow [Join from an org invite](#join-from-an-org-invite-recommended) below. You will need the enrolment ID and secret your administrator gave you.
+Once the extension is loaded, open the invite link, or paste it into Weft, and follow [Join from an invite](#join-from-an-invite-recommended) below. You will need the enrolment ID and secret your administrator gave you.
 
 When Weft is listed in the browser stores, this page will link to the listing and the steps above will shorten to one.
 
@@ -32,13 +32,13 @@ For a network to try it against, see [Local test network](/dapps/test-network/) 
 
 Open Weft from the toolbar. There are four ways in; pick the one your administrator set up.
 
-The first time, Weft asks you to set a password. It encrypts your private keys with it and asks for it again whenever Weft has locked itself. You can add a passkey later under **Security** to unlock with a fingerprint or security key instead.
+The first time, Weft asks you to set a password. It encrypts your private keys with it and asks for it again whenever Weft has locked itself. You can add a passkey later under **Security** to unlock with a fingerprint, face or security key instead.
 
-### Join from an org invite (recommended)
+### Join from an invite (recommended)
 
 If your administrator sent a link that opens a "Join a network" page, click **Open in Weft** there and skip to step 3.
 
-1. Choose **Join from an org invite** and paste the link (it starts with `weft://invite` or `https://`). If you were given a QR code instead, show it on screen and choose **Scan QR code on this tab**, or paste a screenshot of it into the link field.
+1. Choose **Join from an invite** and paste the link (it starts with `weft://invite` or `https://`). If you were given a QR code instead, show it on screen and choose **Scan QR code on this tab**, or paste a screenshot of it into the link field. Then choose **Review invite**.
 2. Weft asks your browser for permission to reach the invite's host. Allow it.
 3. Check the network, organisation, MSP ID and channels shown. If anything looks wrong, stop and ask your administrator.
 4. Enter your **enrolment ID** and **enrolment secret**, then choose **Enrol**. Weft asks for access to the CA and relay hosts, creates a key pair, and asks the CA for a certificate.
@@ -66,11 +66,11 @@ Weft checks the key belongs to the certificate, then stores it encrypted with yo
 
 For CAs where an administrator issues certificates by hand. Weft creates the key and a certificate signing request (CSR). Copy the CSR to your administrator; when they send a certificate back, open **Identities**, find it under **Waiting for a certificate**, and paste it in.
 
-## Connect a site
+## Connect a web app
 
-The first time a web app needs your identity, Weft opens a window asking whether to connect. The site then sees your public identity: name, MSP ID, role, attributes and certificate. Connecting does **not** let it sign anything; each query and transaction asks again.
+The first time a web app needs your identity, Weft opens a window asking whether to connect. The web app then sees your public identity: name, MSP ID, role, attributes and certificate. Connecting does not let it sign anything; each read and transaction asks again.
 
-A connection is for one identity. If you switch to another identity, sites you haven't connected it to are disconnected and must ask again, so a site only ever sees the identities you chose for it. **Sites** on the home screen shows which identities each site can use, and disconnects it.
+A connection is for one identity. If you switch to another identity, web apps you haven't connected it to are disconnected and must ask again, so a web app only ever sees the identities you chose for it. **Sites** on the home screen shows which identities each web app can use, and disconnects it.
 
 ## Network settings
 

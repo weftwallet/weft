@@ -42,7 +42,7 @@ const { demoExplorers = [] } = Astro.props;
       <label for="nw-input" id="nw-label">{demoExplorers.length ? "Your network" : "An explorer, or your organisation's invite"}</label>
       <div class="nw-row" id="nw-row">
         <input id="nw-input" class="input" type="url" placeholder="https://explorer.org1.example.com" spellcheck="false" aria-describedby="nw-status" />
-        <button type="submit" class="btn btn--primary" id="nw-load">Load</button>
+        <button type="submit" class="btn btn--primary" id="nw-load">Find explorers</button>
       </div>
       <p class="field__status" id="nw-input-error"></p>
     </form>
@@ -406,10 +406,10 @@ const { demoExplorers = [] } = Astro.props;
       // The checking code, certificate parsing included, loads only when a check runs.
       const { checkHeaders, verifyCheckpoint } = await import("@weftwallet/core/chain");
       const verified = await verifyCheckpoint(signed, members);
-      if (!verified.ok) return { e, ok: false, text: `Its checkpoint doesn't check out: ${verified.reason}` };
+      if (!verified.ok) return { e, ok: false, text: `Its checkpoint failed verification: ${verified.reason}` };
       const cp = verified.checkpoint;
       if (n > cp.number) return { e, ok: false, pending: true, text: `Hasn't signed up to block ${n} yet; its checkpoint is at block ${cp.number}.` };
-      if (cp.number - n > MAX_WALK) return { e, ok: false, pending: true, text: `Block ${n} is more than ${MAX_WALK.toLocaleString("en-GB")} blocks before its checkpoint, too far to walk here.` };
+      if (cp.number - n > MAX_WALK) return { e, ok: false, pending: true, text: `Block ${n} is more than ${MAX_WALK.toLocaleString("en-GB")} blocks before its checkpoint. This page checks at most ${MAX_WALK.toLocaleString("en-GB")} blocks.` };
       const headers: BlockHeader[] = [];
       for (let from = n; from <= cp.number; from += 1000) {
         const page: BlockHeader[] = await getJson(`${api}/headers?from=${from}&to=${Math.min(from + 999, cp.number)}`).catch(() => []);
@@ -426,7 +426,7 @@ const { demoExplorers = [] } = Astro.props;
         e,
         hash,
         ok: true,
-        text: `${cp.mspId} signed block ${cp.number}${steps ? `, and ${steps} ${steps === 1 ? "link leads" : "links lead"} back to this block` : ""}. Signature and certificate check out.`,
+        text: `${cp.mspId} signed block ${cp.number}${steps ? `, and ${steps} ${steps === 1 ? "link leads" : "links lead"} back to this block` : ""}. The signature and certificate are valid.`,
       };
     } catch (error) {
       return { e, ok: false, text: `The check stopped with an error: ${error instanceof Error ? error.message : String(error)}` };
@@ -444,7 +444,7 @@ const { demoExplorers = [] } = Astro.props;
     const out = el("ul", { className: "nw-hashes" });
     const failed = el("div", { className: "action-error", hidden: true });
     failed.setAttribute("role", "alert");
-    const button = el("button", { type: "submit", className: "btn btn--primary", textContent: "Check" });
+    const button = el("button", { type: "submit", className: "btn btn--primary", textContent: "Check block" });
     const row = el("div", { className: "nw-row" }, input, button);
     const form = el("form", { className: "field nw-check" }, label, row);
     form.noValidate = true;
@@ -517,7 +517,7 @@ const { demoExplorers = [] } = Astro.props;
         el(
           "p",
           { className: "nw-hint" },
-          "For each organisation, the page checks its signed checkpoint against the CAs in the channel configuration, then recomputes every block hash from there back to this block. It doesn't rely on what the explorers say about each other. It can't check a block's transactions, which need the block's raw data; that rests on each explorer's own data hash check.",
+          "For each organisation, the page checks its signed checkpoint against the CAs in the channel configuration, then recomputes every block hash from there back to this block. It doesn't rely on what the explorers say about each other. It can't check a block's transactions, which need the block's raw data. For that, the page depends on each explorer's own data hash check.",
         ),
         form,
         failed,
@@ -611,7 +611,7 @@ const { demoExplorers = [] } = Astro.props;
 
   /** What a wallet error means, for the sign-in. */
   function signInProblem(error: any): string {
-    if (error?.code === 4001) return "You declined in Weft, so you're not signed in. Sign in again when you're ready.";
+    if (error?.code === 4001) return "You rejected the request in Weft, so you're not signed in. Sign in again when you're ready.";
     if (error?.code === 4300) return "Weft has no identity yet. Join your organisation's network in Weft first.";
     if (error?.code === 4301) return "Your certificate has expired. Renew it in Weft, then sign in again.";
     if (error?.code === -32002) return "Weft already has a request from this page waiting. Finish it in the Weft window first.";

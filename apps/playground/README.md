@@ -1,6 +1,6 @@
 # @weftwallet/playground
 
-Weft Playground: a small dApp for trying Weft against any network that publishes an invite, including the local one `pnpm playground:up` starts.
+Weft Playground: a dApp for trying Weft against any network that publishes an invite, including the local one `pnpm playground:up` starts.
 
 ```sh
 pnpm dev     # http://localhost:4323
@@ -11,4 +11,4 @@ Pages are built in the shared shell from `@weftwallet/ui`, with the tokens from 
 
 ## The demo network
 
-With no network running, the page opens on "Weft not found" and an empty invite field, and quietly looks for the local stack (`pnpm playground:up`). To open it on a hosted demo network instead, set `demo.invite` in `packages/brand/products.json` to that network's invite URL (`https://relay.demo.example/.well-known/weft-invite.json`) and rebuild. The page then loads that invite first, marks it with a "Demo network" chip, and still accepts any other invite typed in or given with `?invite=`. The same file's `demo.explorers` opens the network page on the demo's explorers. Leave both empty to keep today's behaviour.
+With no network running, the page opens on "Weft not found" and an empty invite field, and looks for the local stack in the background (`pnpm playground:up`). To open it on a hosted demo network instead, set `demo.invite` in `packages/brand/products.json` to that network's invite URL (`https://relay.demo.example/.well-known/weft-invite.json`) and rebuild. The page then loads that invite first, marks it with a "Demo network" chip, and still accepts any other invite typed in or given with `?invite=`. The same file's `demo.explorers` opens Weft Network on the demo's explorers. Leave both empty to keep today's behaviour.

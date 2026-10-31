@@ -25,7 +25,7 @@ const { demoInvite = null } = Astro.props;
       <label for="pg-invite">Invite URL</label>
       <div class="pg-row" id="pg-invite-row">
         <input id="pg-invite" class="input" type="url" placeholder={demoInvite ?? "http://localhost:8787/.well-known/weft-invite.json"} spellcheck="false" aria-describedby="pg-invite-status" />
-        <button type="submit" id="pg-load" class="btn">Load</button>
+        <button type="submit" id="pg-load" class="btn">Load invite</button>
       </div>
       <p class="field__status" id="pg-invite-error"></p>
     </form>
@@ -109,7 +109,7 @@ const { demoInvite = null } = Astro.props;
       <h3>Result</h3>
       <div class="action-error" id="pg-result-error" role="alert" hidden></div>
       <pre id="pg-result" class="pg-out"></pre>
-      <a id="pg-result-explorer" class="pg-out-link" target="_blank" rel="noreferrer" hidden>See it in the explorer</a>
+      <a id="pg-result-explorer" class="pg-out-link" target="_blank" rel="noreferrer" hidden>View in the explorer</a>
       <h3>The same call in code</h3>
       <pre id="pg-code" class="pg-out"></pre>
     </div>
@@ -128,7 +128,7 @@ const { demoInvite = null } = Astro.props;
       <label for="pg-el-id">Election ID</label>
       <div class="pg-row" id="pg-el-row">
         <input id="pg-el-id" class="input mono" value="board-2026" spellcheck="false" />
-        <button type="submit" id="pg-el-load" class="btn" disabled>Load</button>
+        <button type="submit" id="pg-el-load" class="btn" disabled>Load election</button>
       </div>
       <p class="field__status" id="pg-el-id-error"></p>
     </form>
@@ -153,7 +153,7 @@ const { demoInvite = null } = Astro.props;
       <p class="pg-hint">Keep it. With the choice and the salt, anyone can check this commitment is your vote; without them, no one can tell.</p>
       <pre id="pg-receipt-json" class="pg-out" data-tone="ok"></pre>
       <div class="pg-row pg-wrap">
-        <a id="pg-receipt-check" class="btn btn--primary" target="_blank" rel="noreferrer" hidden>Check it in the explorer</a>
+        <a id="pg-receipt-check" class="btn btn--primary" target="_blank" rel="noreferrer" hidden>Check your receipt in the explorer</a>
         <button type="button" id="pg-receipt-copy" class="btn">Copy receipt</button>
       </div>
       <div class="action-error" id="pg-receipt-error" role="alert" hidden></div>
@@ -187,7 +187,7 @@ const { demoInvite = null } = Astro.props;
           <button type="submit" id="pg-new-create" class="btn btn--write" disabled>Create election</button>
         </div>
         <div class="action-error" id="pg-new-error" role="alert" hidden></div>
-        <p class="pg-hint">Only your organisation can close it, once voting has closed. Closing counts the private ballots and publishes the result.</p>
+        <p class="pg-hint">When the voting time ends, only your organisation can close the election. Closing counts the private ballots and publishes the result.</p>
       </form>
     </details>
   </section>
@@ -212,7 +212,7 @@ const { demoInvite = null } = Astro.props;
   <aside class="pg-card pg-log-card" aria-labelledby="pg-log-heading">
     <div class="pg-head">
       <h2 id="pg-log-heading">Provider log</h2>
-      <button type="button" id="pg-clear" class="btn btn--text">Clear</button>
+      <button type="button" id="pg-clear" class="btn btn--text">Clear log</button>
     </div>
     <p class="pg-hint">Every <code>window.weft</code> request and response, with timings, as this page sends and receives them.</p>
     <p class="pg-hint" id="pg-log-empty">No requests yet. Connect or call a function to see them here.</p>
@@ -256,7 +256,7 @@ const { demoInvite = null } = Astro.props;
   const votedIn = new Set<string>();
 
   /** What a wallet error means for the person, in words. */
-  function walletProblem(error: any, fallback = "Weft couldn't complete the request.", declined = "You declined in Weft, so nothing was sent. Try again when you're ready."): string {
+  function walletProblem(error: any, fallback = "Weft couldn't complete the request.", declined = "You rejected the request in Weft, so nothing was sent. Try again when you're ready."): string {
     switch (error?.code) {
       case 4001:
         return declined;
@@ -269,7 +269,7 @@ const { demoInvite = null } = Astro.props;
       case -32002:
         return "Weft already has a request from this page waiting. Finish it in the Weft window first.";
       case 5001:
-        return "The network rejected the call. Details has its reason.";
+        return "The network rejected the call. The reason is under Details.";
       case 5002:
         return "Weft couldn't reach the network's relay. Check that the network is running, then try again.";
       default:
@@ -563,7 +563,7 @@ const { demoInvite = null } = Astro.props;
       why("pg-id-why", text);
       announce(text);
     } catch (error) {
-      showError($("pg-id-error"), walletProblem(error, "Weft couldn't add the network.", "You cancelled in Weft, so the network wasn't added. Join again when you're ready."), technical(error));
+      showError($("pg-id-error"), walletProblem(error, "Weft couldn't add the network.", "You rejected the request in Weft, so the network wasn't added. Join again when you're ready."), technical(error));
     } finally {
       setBusy(button, false);
     }
@@ -579,7 +579,7 @@ const { demoInvite = null } = Astro.props;
       setBusy(button, false);
       setConnected(true);
     } catch (error) {
-      showError($("pg-id-error"), walletProblem(error, "Weft couldn't connect this page.", "You declined in Weft, so this page isn't connected. Connect again when you're ready."), technical(error));
+      showError($("pg-id-error"), walletProblem(error, "Weft couldn't connect this page.", "You rejected the request in Weft, so this page isn't connected. Connect again when you're ready."), technical(error));
     } finally {
       setBusy(button, false);
       updateButtons();
@@ -703,7 +703,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       if (kind === "submit") void loadExplorers();
     } catch (error) {
       result$.hidden = true;
-      showError($("pg-result-error"), walletProblem(error, kind === "submit" ? "The transaction didn't go through." : "The call didn't return a result."), technical(error));
+      showError($("pg-result-error"), walletProblem(error, kind === "submit" ? "The transaction wasn't committed." : "The call didn't return a result."), technical(error));
     } finally {
       result$.classList.remove("is-working");
       setBusy(pressed, false);
@@ -883,7 +883,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     } catch (error) {
       if (/already voted/.test(contractSays(error) ?? "")) votedIn.add(election.id);
       $("pg-el-message").textContent = "";
-      electionError("pg-vote-error", error, "Your vote didn't go through.");
+      electionError("pg-vote-error", error, "Your vote wasn't committed.");
     } finally {
       setBusy(button, false);
       updateElectionButtons();
@@ -1128,7 +1128,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       tries.push([`See the elections, their ballots and results, and check a receipt.`, `${ballots.base}/channels/${encodeURIComponent(channel)}/elections`]);
     }
     if (rows.every((r) => r.ok && !r.c)) {
-      tries.push([`Sign in on the network page with Weft to see ${channel}, if your organisation is a member.`, networkPage(explorerBase)]);
+      tries.push([`Sign in on Weft Network with Weft to see ${channel}, if your organisation is a member.`, networkPage(explorerBase)]);
     }
     tries.push([`See every organisation's explorer on one page, and compare a block's hash across them.`, networkPage(explorerBase)]);
     // The suggestions change rarely; only rebuilt when they do, so focus on a link survives.

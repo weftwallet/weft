@@ -246,7 +246,7 @@ export function BackHeader({
 }: {
   title: string;
   onBack: () => void;
-  /** A text button on the right, e.g. "Add". */
+  /** A text button on the right, for example "Add". */
   action?: { label: string; onClick: () => void; icon?: IconName };
 }) {
   const heading = useRef<HTMLHeadingElement>(null);

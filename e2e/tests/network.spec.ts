@@ -23,7 +23,7 @@ test("the network page finds every explorer and compares their blocks", { tag: "
   const block = await wallet.context.newPage();
   await block.goto(`${s.explorerUrl}/channels/mychannel/blocks/3`);
   await expect(block.getByText("Your browser computed the same hash from this header.")).toBeVisible();
-  await expect(block.getByRole("link", { name: "network page" })).toHaveAttribute("href", `${s.sites.network}/?explorer=${encodeURIComponent(s.explorerUrl!)}`);
+  await expect(block.locator("#network-page")).toHaveAttribute("href", `${s.sites.network}/?explorer=${encodeURIComponent(s.explorerUrl!)}`);
 });
 
 test("signing in on the network page shows the members-only channel", { tag: "@fabric" }, async ({ wallet }) => {

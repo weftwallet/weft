@@ -129,7 +129,7 @@ export async function passkeyRequest(): Promise<{ id: string; salt: number[] }[]
 export async function unlockWithPasskey(credentialId: string, prfOutput: Uint8Array): Promise<void> {
   const vault = await requireVault();
   const passkey = vault.passkeys.find((p) => p.id === credentialId);
-  if (!passkey) throw new Error("That passkey isn't set up for this wallet.");
+  if (!passkey) throw new Error("That passkey isn't set up for Weft.");
   const key = await deriveKeyFromPrf(prfOutput, passkey.salt);
   await becomeUnlocked(await open(key, passkey.sealed, "passkey"), vault.autoLockMinutes);
 }
@@ -207,7 +207,7 @@ export async function signingKey(owner: { id: string; wrappedKey?: WrappedKey; p
   return unwrapped;
 }
 
-/** Drops a cached key, e.g. after re-enrolment replaced it. */
+/** Drops a cached key, for example after re-enrolment replaced it. */
 export function forget(ownerId: string): void {
   cache.delete(ownerId);
 }

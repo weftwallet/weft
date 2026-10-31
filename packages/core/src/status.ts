@@ -5,7 +5,7 @@
  */
 
 export interface StatusExplanation {
-  /** Short headline, e.g. "Not enough organisations approved it". */
+  /** Short headline, for example "Not enough organisations endorsed it". */
   title: string;
   /** One or two sentences on what happened and what to do. */
   detail: string;
@@ -20,13 +20,13 @@ export interface StatusExplanation {
 const EXPLANATIONS: Record<string, Omit<StatusExplanation, "code">> = {
   VALID: {
     title: "Committed",
-    detail: "The transaction was approved and written to the ledger.",
+    detail: "The transaction was endorsed and written to the ledger.",
     retryable: false,
   },
   MVCC_READ_CONFLICT: {
     title: "Someone else changed the same data first",
     detail:
-      "Another transaction updated a value this one read, between approval and commit. Nothing was written. Trying again usually works.",
+      "Another transaction updated a value this one read, between endorsement and commit. Nothing was written. Trying again usually works.",
     retryable: true,
   },
   PHANTOM_READ_CONFLICT: {
@@ -35,9 +35,9 @@ const EXPLANATIONS: Record<string, Omit<StatusExplanation, "code">> = {
     retryable: true,
   },
   ENDORSEMENT_POLICY_FAILURE: {
-    title: "Not enough organisations approved it",
+    title: "Not enough organisations endorsed it",
     detail:
-      "The contract's policy needs approval from more organisations than signed. A peer may be offline, or an organisation may have rejected the request.",
+      "The contract's policy needs endorsements from more organisations than signed. A peer may be offline, or an organisation may have rejected the request.",
     retryable: true,
   },
   DUPLICATE_TXID: {
@@ -52,7 +52,7 @@ const EXPLANATIONS: Record<string, Omit<StatusExplanation, "code">> = {
   },
   BAD_PROPOSAL_TXID: {
     title: "The request was malformed",
-    detail: "The transaction ID did not match its contents. The app or the relay has a bug.",
+    detail: "The transaction ID did not match its contents. The site or the relay has a bug.",
     retryable: false,
   },
   EXPIRED_CHAINCODE: {
@@ -66,19 +66,19 @@ const EXPLANATIONS: Record<string, Omit<StatusExplanation, "code">> = {
     retryable: true,
   },
   INVALID_ENDORSER_TRANSACTION: {
-    title: "The approvals did not match",
+    title: "The endorsements did not match",
     detail:
-      "Organisations returned different results for the same request, often because the contract reads the clock or random data. Contact the app's developer.",
+      "Organisations returned different results for the same request, often because the contract reads the clock or random data. Contact the site's developer.",
     retryable: false,
   },
   ILLEGAL_WRITESET: {
     title: "The contract tried to write data it may not",
-    detail: "The network rejected the changes this transaction made. Contact the app's developer.",
+    detail: "The network rejected the changes this transaction made. Contact the site's developer.",
     retryable: false,
   },
   INVALID_WRITESET: {
     title: "The contract tried to write data it may not",
-    detail: "The network rejected the changes this transaction made. Contact the app's developer.",
+    detail: "The network rejected the changes this transaction made. Contact the site's developer.",
     retryable: false,
   },
 };
@@ -89,7 +89,7 @@ export function explainStatus(code: string): StatusExplanation {
   if (known) return { ...known, code };
   return {
     title: "The network rejected this transaction",
-    detail: "Nothing was written to the ledger. The code below will help your network administrator.",
+    detail: "Nothing was written to the ledger. Give the code below to your administrator.",
     retryable: false,
     code,
   };
@@ -125,7 +125,7 @@ export function explainEndorseError(message: string): StatusExplanation {
   if (m.includes("chaincode") && (m.includes("not found") || m.includes("could not find"))) {
     return {
       title: "That contract is not on this channel",
-      detail: "Check the channel and contract name the app is using.",
+      detail: "Check the channel and contract name the site is using.",
       retryable: false,
       code: "CHAINCODE_NOT_FOUND",
     };
@@ -171,7 +171,7 @@ export function explainRelayUnreachable(host: string, timedOut: boolean): Status
 export function explainRelayHttp(host: string, status: number): StatusExplanation {
   return {
     title: "The relay returned an error",
-    detail: `The relay at ${host} couldn't handle this request. Try again shortly. If it keeps happening, tell your network administrator.`,
+    detail: `The relay at ${host} couldn't handle this request. Try again shortly. If it keeps happening, tell your administrator.`,
     retryable: true,
     code: `RELAY_HTTP_${status}`,
   };

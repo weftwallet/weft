@@ -81,7 +81,7 @@ function NetworkFields({
       <Field label="Channels" hint="Separate several with commas." {...field("channels")}>
         {(a) => <input {...a} className="mono" placeholder="mychannel" value={draft.channels} onChange={set("channels")} />}
       </Field>
-      <Field label="Relay URL" hint="Your organisation's Weft relay" {...field("relayUrl")}>
+      <Field label="Relay URL" hint="Your organisation's relay" {...field("relayUrl")}>
         {(a) => <input {...a} type="url" placeholder="https://relay.org1.example.com" value={draft.relayUrl} onChange={set("relayUrl")} />}
       </Field>
       <Field label={needsCa ? "CA URL" : "CA URL (for renewals)"} {...field("caUrl")}>
@@ -125,7 +125,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
   const linkChecks = useChecks({ link: () => check.inviteLink(link) });
   const enrolChecks = useChecks({
     enrollmentId: () => check.required(enrollmentId, "Enter your enrolment ID."),
-    secret: () => check.required(secret, "Enter the enrolment secret from your registrar."),
+    secret: () => check.required(secret, "Enter the enrolment secret from your administrator."),
   });
 
   const load = useAction(async (value: string) => {
@@ -139,10 +139,10 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
 
   // Scanning hands over a link but can't open the permission prompt itself:
   // the browser only allows that from a click. So scanning fills the field and
-  // the user presses Continue.
+  // the user presses Review invite.
   const scan = useAction(async () => {
     setLink(await scanActiveTab());
-    announce("Found an invite link. Press Continue.");
+    announce("Found an invite link. Press Review invite.");
   });
   const [pasteError, setPasteError] = useState<ErrorInfo | null>(null);
 
@@ -155,7 +155,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
       .then((text) => {
         if (!text) return;
         setLink(text);
-        announce("Found an invite link. Press Continue.");
+        announce("Found an invite link. Press Review invite.");
       })
       .catch((error: unknown) => setPasteError(toErrorInfo(error)));
   };
@@ -177,7 +177,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
     const scanError = scan.error ?? pasteError;
     return (
       <>
-        <BackHeader title="Join from invite" onBack={() => navigate({ name: from ?? "add" })} />
+        <BackHeader title="Join from an invite" onBack={() => navigate({ name: from ?? "add" })} />
         <form
           key="link"
           className="page step"
@@ -189,7 +189,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
           }}
         >
           <p className="muted flat">
-            Your network administrator shares a link that tells Weft where your organisation's CA and relay are.
+            Your administrator shares a link that tells Weft where your organisation's CA and relay are.
           </p>
           <Field label="Invite link" hint="Paste the link, or paste a screenshot of the QR code." {...linkChecks.field("link")}>
             {(a) => (
@@ -200,7 +200,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
             Scan QR code on this tab
           </Button>
           <ActionError error={scanError} />
-          <Submit busy={load.busy} label="Continue" error={load.error} />
+          <Submit busy={load.busy} label="Review invite" error={load.error} />
         </form>
       </>
     );
@@ -208,7 +208,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
 
   return (
     <>
-      <BackHeader title="Enrol with invite" onBack={() => void leave()} />
+      <BackHeader title="Join from an invite" onBack={() => void leave()} />
       <form
         key="enrol"
         className="page step"
@@ -223,7 +223,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
         <Field label="Enrolment ID" {...enrolChecks.field("enrollmentId")}>
           {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
         </Field>
-        <Field label="Enrolment secret" hint="From your registrar. Used once, never stored." {...enrolChecks.field("secret")}>
+        <Field label="Enrolment secret" hint="From your administrator. Used once, never stored." {...enrolChecks.field("secret")}>
           {(a) => <SecretInput {...a} value={secret} onChange={(e) => setSecret(e.target.value)} />}
         </Field>
         <Submit busy={join.busy} label="Enrol" error={join.error} />
@@ -240,7 +240,7 @@ export function EnrollForm({ navigate, onDone, from }: FormProps) {
   const [secret, setSecret] = useState("");
   const checks = useChecks({
     enrollmentId: () => check.required(enrollmentId, "Enter your enrolment ID."),
-    secret: () => check.required(secret, "Enter the enrolment secret from your registrar."),
+    secret: () => check.required(secret, "Enter the enrolment secret from your administrator."),
     ...networkChecks(draft, true),
   });
   const action = useAction(async () => {
@@ -308,7 +308,7 @@ export function ImportForm({ navigate, onDone, from }: FormProps) {
         <Field label="Certificate (PEM)" {...checks.field("certificate")}>
           {(a) => <textarea {...a} placeholder="-----BEGIN CERTIFICATE-----" value={certificate} onChange={(e) => setCertificate(e.target.value)} />}
         </Field>
-        <Field label="Private key (PKCS#8 PEM)" hint="Imported as a non-exportable key. Delete the file afterwards." {...checks.field("privateKey")}>
+        <Field label="Private key (PKCS#8 PEM)" hint="Imported as a non-extractable key. Delete the file afterwards." {...checks.field("privateKey")}>
           {(a) => <textarea {...a} placeholder="-----BEGIN PRIVATE KEY-----" value={privateKeyPem} onChange={(e) => setPrivateKeyPem(e.target.value)} />}
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa={false} field={checks.field} />
@@ -345,7 +345,7 @@ export function CsrForm({ navigate, onDone, from }: FormProps) {
         />
         <main className="page step" data-dir="forward">
           <p className="muted flat">
-            Send this request to your CA administrator. When they send back a certificate, open Identities and paste it
+            Send this request to your administrator. When they send back a certificate, open Identities and paste it
             under “Waiting for a certificate”.
           </p>
           <div className="args">

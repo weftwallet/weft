@@ -102,7 +102,7 @@ function Approve() {
         status: "failed",
         activityId: null,
         title: "Weft stopped responding",
-        detail: "Weft's background service stopped before it could say how the request went.",
+        detail: "Weft's background worker stopped before it could say how the request went.",
         raw: toErrorInfo(error).message,
         // A submit may have gone out before the worker stopped.
         uncertain: view?.method === "weft_submit",
@@ -138,7 +138,7 @@ function Approve() {
 
   if (loadError) {
     return (
-      <StatusScreen mark={<WeaveMark size={64} mode="still" />} title="Weft couldn't open this request" detail="Its background service didn't answer.">
+      <StatusScreen mark={<WeaveMark size={64} mode="still" />} title="Weft couldn't open this request" detail="Its background worker didn't answer.">
         <div className="status-screen__actions">
           <Button
             className="btn btn--primary"
@@ -201,7 +201,7 @@ function Approve() {
         subtitle={`${host} is waiting. Unlock to review the request.`}
         onUnlocked={reloadVault}
         onCancel={() => void decide(false)}
-        cancelLabel="Reject request"
+        cancelLabel="Reject"
       />
     );
   } else if (view.method === "weft_addNetwork") screen = <AddNetworkRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />;
@@ -446,7 +446,7 @@ function ConnectRequest({ view, onDecide, deciding, progress }: RequestProps) {
         <div className="notice notice--thread">
           <Icon name="shield" size={18} color="var(--weft-accent-text)" />
           <span>
-            Connecting does not let the site sign anything. Every query and transaction will still ask for your approval.
+            Connecting does not let the site sign anything. Every read and transaction will still ask for your approval.
           </span>
         </div>
       </main>
@@ -534,7 +534,7 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
         origin={view.origin}
         subtitle={submit ? "wants you to sign a transaction" : "wants to read from the ledger"}
         progress={progress}
-        working={submit ? "Signing and submitting" : "Signing and querying"}
+        working={submit ? "Signing and submitting" : "Signing and reading"}
         done={submit ? "Committed" : "Read from the ledger"}
       />
       <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
@@ -554,7 +554,7 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
             <Icon name="alert" size={18} color="var(--weft-warn-text)" />
             <span>
               Your invite for {view.identity.networkName} doesn't list the channel <span className="mono">{call.channel}</span>.
-              The network will likely reject this unless your organisation has joined it since.
+              The network rejects this unless your organisation has joined the channel since the invite was published.
             </span>
           </div>
         )}
@@ -639,7 +639,7 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
         {submit &&
           (call.endorsingOrganizations?.length ? (
             <div className="stack">
-              <div className="subtle">Will be sent for approval to</div>
+              <div className="subtle">Sent for endorsement to</div>
               <div className="chips">
                 {call.endorsingOrganizations.map((msp) => (
                   <span key={msp} className="chip">
@@ -651,11 +651,11 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
           ) : (
             <p className="subtle flat">The network asks the organisations the contract's endorsement policy requires.</p>
           ))}
-        <p className="subtle type-xs flat">Weft checks that the network's request matches exactly what is shown here before signing.</p>
+        <p className="subtle type-xs flat">Before signing, Weft checks that the relay's messages match what is shown here.</p>
       </main>
       <Footer
         onDecide={onDecide}
-        cta={submit ? "Sign and submit" : "Sign and query"}
+        cta={submit ? "Sign and submit" : "Sign and read"}
         ctaClass={submit ? "btn--amber" : "btn--primary"}
         deciding={deciding}
         progress={progress}
@@ -698,7 +698,7 @@ function AddNetworkRequest({ view, onDecide, deciding, progress }: RequestProps)
   const [secret, setSecret] = useState("");
   const checks = useChecks({
     enrollmentId: () => check.required(enrollmentId, "Enter your enrolment ID."),
-    secret: () => check.required(secret, "Enter the enrolment secret from your registrar."),
+    secret: () => check.required(secret, "Enter the enrolment secret from your administrator."),
   });
 
   const review = useAction(async () => {
@@ -767,7 +767,7 @@ function AddNetworkRequest({ view, onDecide, deciding, progress }: RequestProps)
             <Field label="Enrolment ID" {...checks.field("enrollmentId")}>
               {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
             </Field>
-            <Field label="Enrolment secret" hint="From your registrar. Used once, never stored." {...checks.field("secret")}>
+            <Field label="Enrolment secret" hint="From your administrator. Used once, never stored." {...checks.field("secret")}>
               {(a) => <SecretInput {...a} value={secret} onChange={(e) => setSecret(e.target.value)} />}
             </Field>
             <ActionError error={enroll.error} />

@@ -49,7 +49,7 @@ export default defineContentScript({
         .then(() => browser.runtime.sendMessage(request))
         .then((response: ProviderResponse | undefined) => {
           if (!response) {
-            post({ target: MESSAGE_TARGET.toPage, kind: "response", id, error: { code: -32603, message: "Weft did not respond" } });
+            post({ target: MESSAGE_TARGET.toPage, kind: "response", id, error: { code: -32603, message: "Weft did not respond." } });
           } else if ("error" in response) {
             post({ target: MESSAGE_TARGET.toPage, kind: "response", id, error: response.error });
           } else {
@@ -57,7 +57,7 @@ export default defineContentScript({
           }
         })
         .catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : "Weft is unavailable";
+          const message = error instanceof Error ? error.message : "Weft is unavailable.";
           post({
             target: MESSAGE_TARGET.toPage,
             kind: "response",

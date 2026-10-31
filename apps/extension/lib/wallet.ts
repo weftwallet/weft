@@ -160,7 +160,7 @@ export async function importIdentity(network: NetworkInput, certificate: string,
   await vault.requireUnlocked();
   const privateKey = await importPrivateKeyPem(privateKeyPem, "P-256", { extractable: true });
   if (!(await keyMatchesCertificate(privateKey, certificate))) {
-    throw new Error("The private key does not belong to this certificate.");
+    throw new Error("The private key does not belong to this certificate. Paste the key file from the same identity's msp/keystore folder.");
   }
   const wrappedKey = await vault.wrap(privateKey);
   const record = await upsertNetwork(network);
@@ -189,7 +189,7 @@ export async function completeCsr(pendingId: string, certificate: string): Promi
   const pending = await db.get<PendingCsrRecord>("pendingCsrs", pendingId);
   if (!pending) throw new Error("That request no longer exists.");
   if (!(await certificateMatchesKey(certificate, pending.publicKey))) {
-    throw new Error("This certificate was not issued for this request's key.");
+    throw new Error("This certificate was not issued for this request's key. Check you pasted the certificate your administrator issued for this request.");
   }
   const network = await db.get<NetworkRecord>("networks", pending.networkId);
   if (!network) throw new Error("The network for this request was removed.");
@@ -207,7 +207,7 @@ export async function completeCsr(pendingId: string, certificate: string): Promi
 /** Gets a fresh certificate from the CA with a new key, replacing the old pair. */
 export async function reenroll(identityId: string): Promise<IdentityView> {
   const identity = await db.get<IdentityRecord>("identities", identityId);
-  if (!identity) throw new Error("Identity not found.");
+  if (!identity) throw new Error("This identity no longer exists in Weft.");
   const network = await db.get<NetworkRecord>("networks", identity.networkId);
   if (!network) throw new Error("This identity's network was removed.");
   const commonName = identity.enrollmentId ?? parseCertificate(identity.certificate).subjectName.getField("CN")[0];
@@ -237,7 +237,7 @@ function checkUrl(label: string, value: string): string {
   }
   const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
   if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) {
-    throw new Error(`${label} must use HTTPS (plain HTTP is only allowed for localhost).`);
+    throw new Error(`${label} must use https://. Plain http:// works only for localhost.`);
   }
   return url.toString().replace(/\/+$/, "");
 }
@@ -278,7 +278,7 @@ async function probe(url: string, expect: (response: Response) => Promise<boolea
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (!response.ok) return `answered HTTP ${response.status}`;
-    return (await expect(response)) ? null : "answered, but not like a Weft relay or Fabric CA";
+    return (await expect(response)) ? null : "answered, but not with a relay or Fabric CA response";
   } catch (error) {
     return error instanceof Error && error.name === "TimeoutError" ? "didn't answer within 6 seconds" : "couldn't be reached";
   }

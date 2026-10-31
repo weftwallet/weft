@@ -16,7 +16,7 @@ The explorer doesn't sign transactions and holds no wallet keys. Its identity on
 
 Each block stores the hash of the block before it. The explorer recomputes every block's header hash and data hash itself, rather than trusting what it's given, and shows any block that doesn't match the one before it or its own transactions. A ledger that was changed after the fact shows up as a broken link.
 
-That shows what your peers recorded. To show that other organisations recorded the same, explorers compare notes: see [Cross-checking](#cross-checking).
+That shows what your peers recorded. To show that other organisations recorded the same, explorers exchange signed checkpoints: see [Cross-checking](#cross-checking).
 
 ## Choose what to publish
 
@@ -49,7 +49,7 @@ A contract can be more private than its channel, never less: `members` contracts
 
 A transaction that calls a hidden contract still appears in its block, with its ID, time and status only, so the block's transaction count stays true. Writes a public contract makes to a hidden one are left out.
 
-Private data never reaches the shared ledger: the peers of the organisations in a collection keep the values, and every peer keeps only their hashes. So the explorer never shows private values, whatever the policy says. It shows which collections a transaction used and how many keys it read and wrote, and with `privateData: hashes`, the hashes themselves.
+Private data never reaches the shared ledger: the peers of the organisations in a collection keep the values, and every peer keeps only their hashes, so the explorer never shows private values, whatever the policy says. It shows which collections a transaction used and how many keys it read and wrote, and with `privateData: hashes`, the hashes themselves.
 
 :::caution[Hashes of guessable values]
 A hash hides a value only when it's hard to guess. If a value has few possibilities, such as yes or no, or a price in a known range, anyone can hash each one and compare. Publish hashes only for collections whose values include something random. The ballot contract stores each ballot with the voter's random salt for this reason.
@@ -66,13 +66,13 @@ Config blocks hold the channel's whole configuration. The explorer compares each
 | `WEFT_PEER_ENDPOINT` | Yes | Peer Gateway address, as for the relay. |
 | `WEFT_PEER_TLS_CA_CERT` | For TLS | PEM of the CA that signed the peer's TLS certificate. |
 | `WEFT_PEER_HOST_ALIAS` | No | TLS server name to expect. |
-| `WEFT_EXPLORER_MSP_ID` | Yes | Your MSP ID, e.g. `Org1MSP`. |
+| `WEFT_EXPLORER_MSP_ID` | Yes | Your MSP ID, for example `Org1MSP`. |
 | `WEFT_EXPLORER_CERT` | Yes | The explorer identity's certificate: a PEM file, or an MSP `signcerts` folder. |
 | `WEFT_EXPLORER_KEY` | Yes | Its private key: a PEM file, or an MSP `keystore` folder. |
 | `WEFT_EXPLORER_POLICY` | Yes | Path to the policy file. |
 | `WEFT_EXPLORER_DB` | No | SQLite file. Default `explorer.db`. |
 | `WEFT_EXPLORER_NAME` | No | Name shown on the pages. Defaults to the policy's `organisation`, then the MSP ID. |
-| `WEFT_EXPLORER_PUBLIC_URL` | Behind a proxy | The address people open, e.g. `https://explorer.org1.example`. Sign-ins must name it. Defaults to the address each request arrived at. |
+| `WEFT_EXPLORER_PUBLIC_URL` | Behind a proxy | The address people open, for example `https://explorer.org1.example`. Sign-ins must name it. Defaults to the address each request arrived at. |
 | `WEFT_EXPLORER_SESSION_SECRET` | No | Signs session cookies. Without it, a random secret is made at start, which signs everyone out when the explorer restarts. |
 | `WEFT_EXPLORER_PEERS` | No | Other organisations' explorers to cross-check with, comma-separated base URLs. HTTPS, except `localhost`. |
 | `WEFT_EXPLORER_NETWORK_PAGE` | No | The [network page](/operators/network/) that block pages link to, for checking a block without relying on this explorer. It's also the only page whose Weft sign-ins this explorer accepts, for members-only channels. Defaults to [Weft Network](weft:network/); set it to your own copy, or `off`. |
@@ -113,7 +113,7 @@ docker run -p 8790:8790 \
   weft-explorer
 ```
 
-The image keeps its index in `/data`, a volume, so a new image picks up where the last one stopped. It runs as an unprivileged user and reports its health from `/api/v1/status`. Put it behind your usual TLS-terminating proxy, at the root of its address.
+The image keeps its index in `/data`, a volume, so a new image continues from the last stored block. It runs as an unprivileged user and reports its health from `/api/v1/status`. Put it behind your usual TLS-terminating proxy, at the root of its address.
 
 The first start reads the whole channel from block 0. After that it carries on from the last stored block. If the database comes from a different network (block 0 doesn't match), the explorer stops indexing that channel and says so; delete the file to start again.
 
@@ -129,7 +129,7 @@ When anything is published at `members`, the explorer shows **Sign in with Weft*
 
 A signed-in person is a member of every published channel whose configuration lists their MSP. They see that channel's `members` level, and **Your transactions** lists the ones their identity submitted. Sessions last eight hours, in an HTTP-only cookie.
 
-Revocation lists come from the same place peers read them: each organisation's MSP in the channel configuration. The explorer applies them to sign-ins, to other explorers' signed checkpoints and requests, and publishes them at `/api/v1/channels/:channel/members`, so the network page and Weft can check too. A certificate revoked after someone signed in keeps their session until it ends, up to eight hours.
+Revocation lists come from the same place peers read them: each organisation's MSP in the channel configuration. The explorer applies them to sign-ins, to other explorers' signed checkpoints and requests, and publishes them at `/api/v1/channels/:channel/members`, so Weft Network and Weft can check too. A certificate revoked after someone signed in keeps their session until it ends, up to eight hours.
 
 ## Cross-checking
 
@@ -154,7 +154,7 @@ Members-only channels are cross-checked too. A members-only channel's checkpoint
 | Org1, [localhost:8790](http://localhost:8790) | `playground/explorer.yaml` | Everything, with submitters and the ballots' private data hashes. Contract approvals (`_lifecycle`) are for signed-in members only. |
 | Org2, [localhost:8791](http://localhost:8791) | `playground/explorer-org2.yaml` | No submitters. The `basic` contract's transactions are for signed-in members only. |
 
-Both show the elections the playground seeds and, once you sign in, the `members` channel's assets, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground](weft:playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart just the explorers with `pnpm playground:explorer`.
+Both show the elections the playground seeds and, once you sign in, the `members` channel's assets, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground](weft:playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart only the explorers with `pnpm playground:explorer`.
 
 To link Weft to your own explorer, add `explorerUrl` to your organisation's [invite](/operators/invites/). To show every organisation's explorer on one page, link to [Weft Network](weft:network/) with `?explorer=<your explorer>`.
 

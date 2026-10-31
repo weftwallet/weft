@@ -38,7 +38,7 @@ export interface DecodedTransaction {
   type: "endorser" | "config" | "other";
   typeName: string;
   timestamp: number | null;
-  /** Fabric's validation code name, e.g. "VALID" or "MVCC_READ_CONFLICT". */
+  /** Fabric's validation code name, for example "VALID" or "MVCC_READ_CONFLICT". */
   validation: string;
   creator: Party | null;
   chaincode: string | null;
@@ -138,7 +138,7 @@ function party(serialized: Uint8Array): Party | null {
     const subject = new X509Certificate(certificate).subject;
     name = /(?:^|\n)CN=([^\n]+)/.exec(subject)?.[1] ?? null;
   } catch {
-    /* not a certificate (e.g. an idemix identity); keep the MSP ID */
+    /* not a certificate (for example an idemix identity); keep the MSP ID */
   }
   return { mspId: identity.getMspid(), name, certificate };
 }

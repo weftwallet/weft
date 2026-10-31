@@ -24,7 +24,7 @@ export function url(value: string, missing?: string): Check {
   }
   const local = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
   if (parsed.protocol === "https:" || (parsed.protocol === "http:" && local)) return null;
-  if (parsed.protocol === "http:") return "Use https://. Plain http:// only works for localhost.";
+  if (parsed.protocol === "http:") return "The address must use https://. Plain http:// works only for localhost.";
   return "Enter the full address, starting with https://.";
 }
 
@@ -38,7 +38,7 @@ export function inviteLink(value: string): Check {
     resolveInviteUrl(value);
     return null;
   } catch (error) {
-    return error instanceof Error ? error.message : "That doesn't look like an invite link.";
+    return error instanceof Error ? error.message : "That doesn't look like an invite link. Paste the link that starts with weft://invite or https://.";
   }
 }
 

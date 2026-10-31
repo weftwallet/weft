@@ -16,7 +16,7 @@ export interface ExplorerConfig {
   privateKey: Buffer;
   databasePath: string;
   policy: Policy;
-  /** Shown in the page header, e.g. "Org1". Defaults to the policy's organisation or the MSP ID. */
+  /** Shown in the page header, for example "Org1". Defaults to the policy's organisation or the MSP ID. */
   name: string;
   /** The origin people open the explorer at. Sign-ins must name it. Defaults to the request's own. */
   publicUrl: string | undefined;
@@ -65,7 +65,7 @@ export function productAddress(id: ProductId, where: ProductAddresses, path = "/
 
 function required(env: NodeJS.ProcessEnv, name: string, example: string): string {
   const value = env[name];
-  if (!value) throw new Error(`${name} is required, e.g. ${example}`);
+  if (!value) throw new Error(`${name} is required. Set it, for example to ${example}.`);
   return value;
 }
 
@@ -115,7 +115,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
       .map((u) => {
         const url = new URL(u);
         if (url.protocol !== "https:" && url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
-          throw new Error(`WEFT_EXPLORER_PEERS: ${u} must use HTTPS (plain HTTP is only allowed for localhost).`);
+          throw new Error(`WEFT_EXPLORER_PEERS: ${u} must use https://. Plain http:// works only for localhost.`);
         }
         return url.toString().replace(/\/+$/, "");
       }),

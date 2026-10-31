@@ -1,5 +1,5 @@
 ---
-// Builds an org invite, its share links and a QR code entirely in the browser.
+// Builds an invite, its share links and a QR code entirely in the browser.
 // Nothing typed here leaves the page.
 import { productHref } from "@weftwallet/ui/links";
 
@@ -59,7 +59,7 @@ const fields = [
   <pre id="invite-json" class="weft-output">Fill in the fields above. The invite appears here as you type.</pre>
   <div class="weft-actions">
     <button type="button" class="btn btn--primary" id="download-json">Download invite.json</button>
-    <button type="button" class="btn" id="copy-json">Copy</button>
+    <button type="button" class="btn" id="copy-json">Copy invite</button>
   </div>
   <div class="action-error" id="copy-json-error" role="alert" hidden></div>
 
@@ -118,7 +118,7 @@ const fields = [
         const list = channelList();
         if (!list.length) return "Enter at least one channel, for example mychannel.";
         const bad = list.find((c) => !/^[a-z][a-z0-9.-]*$/.test(c));
-        return bad ? `"${bad}" isn't a channel name: Fabric's are lower case letters, digits, dots and hyphens, starting with a letter.` : null;
+        return bad ? `"${bad}" isn't a channel name: Fabric's are lowercase letters, digits, dots and hyphens, starting with a letter.` : null;
       },
     },
     { field: field("caUrl"), check: url("caUrl", "your CA's address") },
@@ -231,7 +231,7 @@ const fields = [
     const orgs = Object.keys(profile?.organizations ?? {});
     const orgKey = profile?.client?.organization ?? (orgs.length === 1 ? orgs[0] : undefined);
     if (!orgKey) {
-      fail(orgs.length ? `The profile lists several organisations (${orgs.join(", ")}). Keep only yours, then try again.` : "The profile has no organizations section. Check it's a Fabric connection profile.");
+      fail(orgs.length ? `The profile lists several organisations (${orgs.join(", ")}). Keep only yours, then try again.` : 'The profile has no "organizations" section. Check it\'s a Fabric connection profile.');
       return;
     }
     const org = profile.organizations[orgKey];

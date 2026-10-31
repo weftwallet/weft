@@ -34,7 +34,7 @@ export class RelayError extends Error {
   readonly status: number;
   readonly explanation: StatusExplanation;
   readonly details: RelayErrorResponse["error"]["details"];
-  /** The relay path that failed, e.g. RELAY_PATHS.submit. */
+  /** The relay path that failed, for example RELAY_PATHS.submit. */
   readonly path: string | null;
   /** The raw message, for "Details". */
   readonly detail: string;

@@ -43,10 +43,10 @@ const menuId = `weft-products-${Math.random().toString(36).slice(2, 7)}`;
         <li>
           <a href={productHref(p.id)} aria-current={p.id === product ? "page" : undefined}>
             <Fragment set:html={markOf(p.id)} />
-            <span>
-              <strong>{p.name}</strong>
-              <span>{p.summary}</span>
-            </span>
+            <dl>
+              <dt>{p.name}</dt>
+              <dd>{p.summary}</dd>
+            </dl>
           </a>
         </li>
       ))

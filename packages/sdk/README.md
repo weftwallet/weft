@@ -1,6 +1,6 @@
 # @weftwallet/sdk
 
-Talk to the [Weft](../../README.md) wallet from a web app.
+Call [Weft](../../README.md) from a web app.
 
 ```ts
 import { getWeft } from "@weftwallet/sdk";

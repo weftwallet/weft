@@ -14,4 +14,4 @@ npx @weftwallet/cli invite check https://relay.org1.example.com/.well-known/weft
 | `invite share` | Prints the join link, the `weft://` link and the raw URL; writes a QR code (`.svg` or `.png`) or prints one in the terminal. |
 | `invite check` | Validates an invite and checks its relay and CA respond. Exits non-zero on any failure, so it fits in CI. |
 
-Run `weft --help` for every option. Guide: [Publish an org invite](../../apps/docs/src/content/docs/operators/invites.md).
+Run `weft --help` for every option. Guide: [Publish an invite](../../apps/docs/src/content/docs/operators/invites.md).

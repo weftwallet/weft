@@ -64,7 +64,7 @@ export function CreatePassword({
           {(a) => <SecretInput {...a} value={again} onChange={(e) => setAgain(e.target.value)} />}
         </Field>
         <p className="subtle flat">
-          Weft can't reset this password. If you forget it, you enrol your identities again with your CA. You can add a
+          Weft can't recover this password. If you forget it, you reset Weft and enrol your identities again with your CA. You can add a
           passkey later to unlock without typing it.
         </p>
         <ActionError error={setup.error} />
@@ -240,7 +240,7 @@ function ResetWeft({ onCancel, onDone }: { onCancel: () => void; onDone: () => v
           <Icon name="alert" size={18} color="var(--weft-danger-text)" />
           <span>
             This can't be undone. Your certificates stay valid on the network, and your networks are kept, so you can enrol
-            again with your CA's enrolment ID and secret.
+            again with a new enrolment ID and secret from your administrator.
           </span>
         </div>
         <Field label={`Type “${RESET_PHRASE}” to confirm`} hint="Reset Weft stays off until the phrase matches.">

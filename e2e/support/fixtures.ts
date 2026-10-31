@@ -18,7 +18,7 @@ export function stack(): StackInfo {
   return JSON.parse(raw) as StackInfo;
 }
 
-/** A blank web app on localhost, plus JSON documents tests can change (e.g. an invite). */
+/** A blank web app on localhost, plus JSON documents tests can change (for example an invite). */
 export class Site {
   readonly origin = `http://localhost:${PORTS.site}`;
   private docs = new Map<string, unknown>();

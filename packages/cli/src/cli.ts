@@ -13,12 +13,12 @@ Usage
   weft invite check  <invite-url | weft-link | file>
 
 invite create   Build an invite from your Fabric connection profile (JSON or YAML)
-  --profile <file>       Connection profile, e.g. connection-org1.json
-  --relay <url>          Your organisation's Weft relay (required)
+  --profile <file>       Connection profile, for example connection-org1.json
+  --relay <url>          Your organisation's relay (required)
   --channel <name>       Channel to offer; repeat for several (required if the profile lists none)
   --org <name>           Organisation in the profile, if it lists several
   --network <name>       Display name for the network
-  --enrollment-id <id>   Pre-fill the enrollment ID (per-person invites)
+  --enrollment-id <id>   Pre-fill the enrolment ID (per-person invites)
   --explorer <url>       Your organisation's explorer, which Weft links transactions to
   --msp, --ca, --ca-name Describe the organisation without a profile
   -o, --out <file>       Write the invite here instead of printing it
@@ -97,7 +97,7 @@ async function main(argv: string[]) {
           "join-page": { type: "string" },
         },
       });
-      const url = positionals[0] ?? fail("give the invite's URL, e.g. https://relay.org1.example.com/.well-known/weft-invite.json");
+      const url = positionals[0] ?? fail("give the invite's URL, for example https://relay.org1.example.com/.well-known/weft-invite.json");
       const result = await shareInvite(url, {
         ...(values.qr ? { qr: values.qr } : {}),
         ...(values.terminal ? { terminal: true } : {}),

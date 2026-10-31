@@ -108,7 +108,7 @@ function Screens() {
       <StatusScreen
         mark={<WeaveMark size={56} mode="still" />}
         title="Weft couldn't open"
-        detail="Its background service didn't answer. Try again, or close the popup and open it again."
+        detail="Its background worker didn't answer. Try again, or close the popup and open it again."
       >
         <div className="status-screen__actions">
           <Button
@@ -140,7 +140,7 @@ function Screens() {
       <div className="screen fade-in">
         <CreatePassword
           heading="Weft needs a password now"
-          intro="Weft now encrypts private keys with a password and locks itself when you're not using it. Set one to keep going."
+          intro="Weft now encrypts private keys with a password and locks itself when you're not using it. Set one to continue."
           onDone={() => void refresh()}
         />
       </div>
@@ -280,8 +280,8 @@ function Welcome({ navigate }: { navigate: (r: Route) => void }) {
           weft
         </h1>
         <p className="muted">
-          An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued and signs only the
-          transactions you approve.
+          An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued you and signs only
+          the transactions you approve.
         </p>
       </div>
       {joining ? (

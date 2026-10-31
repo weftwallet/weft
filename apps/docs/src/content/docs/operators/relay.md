@@ -1,9 +1,9 @@
 ---
 title: Deploy the relay
-description: Run the Weft relay next to your organisation's peers so browsers can reach the Fabric Gateway.
+description: Run the relay next to your organisation's peers so browsers can reach the Fabric Gateway.
 ---
 
-Browsers can't speak Fabric's gRPC protocol, so each organisation runs a small HTTP **relay** next to its peers. It uses the official `@hyperledger/fabric-gateway` SDK in offline-signing mode:
+Browsers can't open gRPC connections to Fabric peers, so each organisation runs an HTTP **relay** next to its peers. It uses the official `@hyperledger/fabric-gateway` SDK in offline-signing mode:
 
 1. The relay builds an unsigned proposal for the wallet's certificate.
 2. The wallet checks it, signs it, and sends the signature back.
@@ -15,7 +15,7 @@ The relay **never holds private keys** and keeps **no state** between requests, 
 
 | Variable | Required | Description |
 |---|---|---|
-| `WEFT_PEER_ENDPOINT` | Yes | Peer Gateway address, e.g. `peer0.org1.example.com:7051`. |
+| `WEFT_PEER_ENDPOINT` | Yes | Peer Gateway address, for example `peer0.org1.example.com:7051`. |
 | `WEFT_PEER_TLS_CA_CERT` | For TLS | Path to the PEM of the CA that signed the peer's TLS certificate. Omit only for plaintext dev networks. |
 | `WEFT_PEER_HOST_ALIAS` | No | TLS server name to expect, when the endpoint is an IP or tunnel. |
 | `WEFT_ALLOWED_ORIGINS` | No | Comma-separated browser origins allowed by CORS. Default `*`. |

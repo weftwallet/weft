@@ -135,13 +135,13 @@ function party(p: PublishedParty | null): Html {
 const STATUS_NAMES: Record<string, string> = {
   MVCC_READ_CONFLICT: "conflict",
   PHANTOM_READ_CONFLICT: "conflict",
-  ENDORSEMENT_POLICY_FAILURE: "not approved",
+  ENDORSEMENT_POLICY_FAILURE: "not endorsed",
   DUPLICATE_TXID: "duplicate",
   BAD_CREATOR_SIGNATURE: "signature refused",
   BAD_PROPOSAL_TXID: "malformed",
   EXPIRED_CHAINCODE: "contract changed",
   CHAINCODE_VERSION_CONFLICT: "contract changed",
-  INVALID_ENDORSER_TRANSACTION: "approvals differ",
+  INVALID_ENDORSER_TRANSACTION: "endorsements differ",
   ILLEGAL_WRITESET: "write refused",
   INVALID_WRITESET: "write refused",
 };
@@ -186,7 +186,7 @@ function call(tx: TransactionRow): Html {
   if (tx.type === "config") {
     const first = tx.config?.changes[0];
     const more = (tx.config?.changes.length ?? 0) - 1;
-    return html`<span>Channel configuration</span>${first ? html`<div class="small subtle">${first}${more > 0 ? ` And ${more} more.` : ""}</div>` : ""}`;
+    return html`<span>Channel configuration</span>${first ? html`<div class="small subtle">${more > 0 ? `${first.replace(/\.$/, "")}, and ${more} more.` : first}</div>` : ""}`;
   }
   if (!tx.chaincode) return html`<span class="subtle">${tx.typeName.toLowerCase()}</span>`;
   return html`<a class="mono" href="${contractUrl(tx.channel, tx.chaincode)}">${tx.chaincode}</a><span class="mono subtle">.</span><span class="mono">${tx.fn ?? ""}</span>`;
@@ -225,7 +225,7 @@ function productSwitcher(where: ProductAddresses): Html {
   return html`<div class="weft-switcher" data-weft-switcher>
         <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls="weft-products">${SWITCHER_MARK}<span class="weft-switcher__label">Products</span>${ICONS.chevron}</button>
         <ul class="weft-switcher__menu reversible reversible--down" id="weft-products">
-          ${sites(where).map((p) => html`<li><a href="${p.href}">${p.mark}<span><strong>${p.name}</strong><span>${p.summary}</span></span></a></li>`)}
+          ${sites(where).map((p) => html`<li><a href="${p.href}">${p.mark}<dl><dt>${p.name}</dt><dd>${p.summary}</dd></dl></a></li>`)}
         </ul>
       </div>`;
 }
@@ -421,7 +421,7 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
     ${themeControl()}
   </div>
 </header>
-<main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page isn't updating. It keeps trying.</p>` : ""}${body}</main>
+<main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page has stopped updating. It retries in the background.</p>` : ""}${body}</main>
 <footer class="foot">
   <div class="wrap foot__inner">
     <p class="foot__run">Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish. <a href="/api/v1/status">Read this data as JSON</a></p>
@@ -623,7 +623,7 @@ const LIVE = `
   }
   function failed() {
     failures++;
-    if (failures === 3 && note) { note.hidden = false; weftSay("This page isn't updating. It keeps trying."); }
+    if (failures === 3 && note) { note.hidden = false; weftSay("This page has stopped updating. It retries in the background."); }
   }
   function refresh() {
     fetch(location.href, { headers: { accept: "text/html" }, signal: AbortSignal.timeout(15000) })
@@ -673,7 +673,7 @@ function indexerState(site: Site, c: ChannelSummary, s: ChannelStatus | undefine
     };
   }
   if (s?.state === "starting") return { pill: html`<span class="pill pill--quiet">starting</span>`, note: html`` };
-  if (behind > 0) return { pill: html`<span class="pill pill--warn">catching up, ${behind} behind</span>`, note: html`` };
+  if (behind > 0) return { pill: html`<span class="pill pill--warn">${behind} ${behind === 1 ? "block" : "blocks"} behind</span>`, note: html`` };
   return { pill: LIVE_CHIP, note: html`` };
 }
 
@@ -710,7 +710,7 @@ function channelCard(site: Site, c: ChannelSummary, s: ChannelStatus | undefined
     ${problems
       ? `${problems} ${problems === 1 ? "block doesn't" : "blocks don't"} match the hashes around ${problems === 1 ? "it" : "them"}. See the blocks list.`
       : c.height > 0
-        ? `Each of the ${c.height.toLocaleString("en")} blocks carries the hash of the one before, and every one checks out.`
+        ? `Each of the ${c.height.toLocaleString("en")} blocks carries the hash of the one before, and every hash matches.`
         : `No blocks indexed yet. They appear here as this explorer reads them from ${site.name}'s peer.`}
   </p>`}
   ${crossCheckSummary(site.peers(c.channel), c.height)}
@@ -952,7 +952,7 @@ export function blockPage(site: Site, block: BlockRow, txs: TransactionRow[], ha
   </dl>
   <p class="card__note subtle small">The hash is computed from the block header. Every block stores the hash of the one before it, so changing an old block breaks every link after it.${
     site.networkPage
-      ? html` To check this block against every organisation's ledger, without relying on this explorer, use the <a id="network-page" href="${site.networkPage}">network page</a>.`
+      ? html` To check this block against every organisation's ledger, without relying on this explorer, use <a id="network-page" href="${site.networkPage}">Weft Network</a>.`
       : ""
   }</p>
 </section>
@@ -1018,7 +1018,7 @@ ${tx.redacted
     <dt>Type</dt><dd>${tx.type === "endorser" ? "Contract call" : tx.type === "config" ? "Channel configuration" : tx.typeName}</dd>
     ${tx.chaincode ? html`<dt>Contract</dt><dd><a class="mono" href="${contractUrl(tx.channel, tx.chaincode)}">${tx.chaincode}</a></dd><dt>Function</dt><dd class="mono fn">${tx.fn ?? ""}</dd>` : ""}
     <dt>Submitted by</dt><dd>${party(tx.creator)}</dd>
-    ${tx.type === "endorser" ? html`<dt>Approved by</dt><dd>${tx.endorsers.length === 0 ? html`<span class="subtle">none</span>` : tx.endorsers.map((e) => html`<div>${party(e)}</div>`)}</dd>` : ""}
+    ${tx.type === "endorser" ? html`<dt>Endorsed by</dt><dd>${tx.endorsers.length === 0 ? html`<span class="subtle">none</span>` : tx.endorsers.map((e) => html`<div>${party(e)}</div>`)}</dd>` : ""}
   </dl>
 </section>
 ${tx.config ? configSection(tx.config) : ""}
@@ -1087,7 +1087,7 @@ function privateDataSection(tx: TransactionRow): Html {
     (p) => html`<dt class="mono">${p.namespace !== tx.chaincode ? html`<span class="subtle">${p.namespace}/</span>` : ""}${p.collection}</dt><dd>${
       [p.writes ? `wrote ${count(p.writes, "key")}` : "", p.deletes ? `deleted ${count(p.deletes, "key")}` : "", p.reads ? `read ${count(p.reads, "key")}` : ""]
         .filter(Boolean)
-        .join(", ") || "touched, without reads or writes"
+        .join(", ") || "used, with no reads or writes published"
     }</dd>`,
   )}</dl>
 </div>
@@ -1187,7 +1187,7 @@ export function errorPage(site: Site, statusCode: number, detail: string): strin
     site,
     bad ? "Address not valid" : "Something went wrong",
     html`<h1>${bad ? "That address isn't valid" : "Something went wrong"}</h1><p class="lead bad">${
-      bad ? "This explorer couldn't read that address. Check it, or start again from the overview." : "Something went wrong on this explorer. Try again in a moment."
+      bad ? "This explorer couldn't read that address. Check it, or start again from the overview." : "This explorer couldn't build this page. Try again in a moment."
     }</p>${errorDetails(`${statusCode}: ${detail}`)}<p class="next"><a href="/">Go to the overview</a></p>`,
   );
 }

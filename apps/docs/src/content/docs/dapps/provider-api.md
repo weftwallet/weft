@@ -30,15 +30,15 @@ The provider may be injected after your script runs. Wait for the `weft#initiali
 | `weft_disconnect` | None | `null` | No |
 | `weft_signIn` | `{ nonce, statement? }` | `SignInResult` | Every time |
 
-`weft_addNetwork` asks the user to join a network from an [org invite](/operators/invites/). `url` is the invite's HTTPS URL, a `weft://` link or a join link. Weft fetches the invite itself from that address, shows it, and the user enrols. It doesn't need the site to be connected, which suits an admin portal's "Set up Weft" button.
+`weft_addNetwork` asks the user to join a network from an [invite](/operators/invites/). `url` is the invite's HTTPS URL, a `weft://` link or a join link. Weft fetches the invite itself from that address, shows it, and the user enrols. It doesn't need the site to be connected, which suits an admin portal's "Set up Weft" button.
 
-A connection is to one identity. If the user switches to an identity your site hasn't been approved for, your site gets `disconnect` with reason `"identity-changed"` and has to call `weft_connect` again; switching back to an approved identity sends `identityChanged` instead. Your site never sees identities the user didn't approve for it.
+A connection is to one identity. If the user switches to an identity that isn't connected to your site, your site gets `disconnect` with reason `"identity-changed"` and has to call `weft_connect` again; switching back to a connected identity sends `identityChanged` instead. Your site never sees identities the user didn't connect to it.
 
 `weft_identity` returns `null` for sites that aren't connected. `weft_networks`, `weft_evaluate` and `weft_submit` fail with `4100` until the site is connected.
 
 `weft_signIn` proves to your site that the user holds the active identity, for signing in. It needs a connected site. See [Sign in with Weft](#sign-in-with-weft).
 
-`weft_networks` lists the networks of the identities approved for your site, the active one first (`active: true`). The user's other networks stay private: they would reveal organisations your site wasn't shown.
+`weft_networks` lists the networks of the identities connected to your site, the active one first (`active: true`). The user's other networks stay private: they would reveal organisations your site wasn't shown.
 
 ### Types
 
@@ -46,7 +46,7 @@ A connection is to one identity. If the user switches to an identity your site h
 interface IdentitySummary {
   id: string;
   name: string;                         // certificate common name
-  mspId: string;                        // e.g. "Org1MSP"
+  mspId: string;                        // for example "Org1MSP"
   role: string | null;                  // NodeOU: "client", "admin", "peer", "orderer"
   attributes: Record<string, string>;   // Fabric CA attributes, including hf.*
   issuer: string;
@@ -143,8 +143,8 @@ The [explorer](/operators/explorer/) does all three; its `src/auth.ts` is a comp
 | `disconnect` reason | Meaning | What to do |
 |---|---|---|
 | `"user"` | The user disconnected your site in Weft. | Show "Connect". |
-| `"site"` | Your page called `weft_disconnect`, maybe in another tab. | Show "Connect". |
-| `"identity-changed"` | The user switched to an identity your site isn't approved for. | Show "Connect"; connecting asks for the new identity. |
+| `"site"` | Your page called `weft_disconnect`, in this tab or another. | Show "Connect". |
+| `"identity-changed"` | The user switched to an identity that isn't connected to your site. | Show "Connect"; connecting asks for the new identity. |
 | `"no-identity"` | The user removed their last identity. | Show "Connect"; Weft will ask them to add one. |
 | `"wallet-updated"` | Weft was updated or reloaded while your page was open. | Ask the user to reload the page. |
 
@@ -156,10 +156,10 @@ Rejected promises carry `{ code, message, data? }` (a `WeftError` when you use t
 |---|---|---|
 | `4001` | UserRejected | The user rejected the request or closed the window. |
 | `4100` | Unauthorized | The site isn't connected. Call `weft_connect`. |
-| `4200` | UnsupportedMethod | Unknown method. |
+| `4200` | UnsupportedMethod | Weft does not support the method. |
 | `4300` | NoIdentity | Weft has no identity yet. |
 | `4301` | CertificateExpired | The active certificate has expired. |
-| `-32002` | RequestPending | This site already has a request waiting in Weft. Weft brings that window to the front; wait for it to settle before sending another. |
+| `-32002` | RequestPending | This site already has a request waiting in Weft. Weft brings that window to the front. Wait until the user approves or rejects it before sending another. |
 | `5001` | TransactionFailed | The network rejected the transaction. `data` has the Fabric code and, for endorsement failures, per-peer details. |
 | `5002` | NetworkUnavailable | The relay couldn't be reached. |
 | `-32602` | InvalidParams | Malformed params. |

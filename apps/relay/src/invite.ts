@@ -23,7 +23,7 @@ function list(value: string | undefined): string[] | undefined {
 /**
  * Builds the invite the relay serves, from (in order of preference):
  *   WEFT_INVITE_FILE           a ready-made invite JSON, or
- *   WEFT_CONNECTION_PROFILE    the org's Fabric connection profile (JSON or YAML),
+ *   WEFT_CONNECTION_PROFILE    the organisation's Fabric connection profile (JSON or YAML),
  *                              plus WEFT_PUBLIC_URL and, if the profile has none, WEFT_INVITE_CHANNELS.
  * Returns null when neither is set: serving an invite is optional.
  */

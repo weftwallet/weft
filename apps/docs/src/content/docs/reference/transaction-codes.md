@@ -13,13 +13,13 @@ Returned after ordering, when the block is committed.
 |---|---|---|
 | `VALID` | Committed | Not needed |
 | `MVCC_READ_CONFLICT` | Someone else changed the same data first | Yes |
-| `PHANTOM_READ_CONFLICT` | The data changed while this was in flight | Yes |
-| `ENDORSEMENT_POLICY_FAILURE` | Not enough organisations approved it | Yes |
+| `PHANTOM_READ_CONFLICT` | The data changed before this transaction committed | Yes |
+| `ENDORSEMENT_POLICY_FAILURE` | Not enough organisations endorsed it | Yes |
 | `DUPLICATE_TXID` | This transaction was already submitted | No |
 | `BAD_CREATOR_SIGNATURE` | The network did not accept your signature | No |
 | `BAD_PROPOSAL_TXID` | The request was malformed | No |
 | `EXPIRED_CHAINCODE`, `CHAINCODE_VERSION_CONFLICT` | The contract version changed | Yes |
-| `INVALID_ENDORSER_TRANSACTION` | The approvals did not match | No |
+| `INVALID_ENDORSER_TRANSACTION` | The endorsements did not match | No |
 | `ILLEGAL_WRITESET`, `INVALID_WRITESET` | The contract tried to write data it may not | No |
 | anything else | The network rejected this transaction | No |
 
@@ -30,7 +30,7 @@ Returned before ordering, as gRPC errors from peers. Weft matches the text:
 | Weft code | Matches | Weft says |
 |---|---|---|
 | `ACCESS_DENIED` | "access denied", "creator org unknown", "failed evaluating policy" | Your identity is not allowed to do this |
-| `UNAVAILABLE` | "no peers available", "unavailable", "failed to connect" | The network could not be reached |
+| `UNAVAILABLE` | "no peers available", "unavailable", "failed to connect", "deadline exceeded" | The network could not be reached |
 | `CHAINCODE_NOT_FOUND` | "chaincode … not found" | That contract is not on this channel |
 | `CERTIFICATE_EXPIRED` | "certificate … expired" | Your certificate has expired |
 | `ENDORSE_FAILED` | anything else | The contract returned an error (with its message) |

@@ -9,29 +9,29 @@ Open the failed item in **Activity** to see:
 
 - a plain-English headline and what to do,
 - for endorsement failures, each organisation's peer and what it said,
-- the original Fabric code, e.g. `ENDORSEMENT_POLICY_FAILURE`,
+- the original Fabric code, for example `ENDORSEMENT_POLICY_FAILURE`,
 - the transaction ID, which you can copy for your administrator.
 
 ## Common cases
 
 ### Someone else changed the same data first
 
-Fabric's code for this is `MVCC_READ_CONFLICT`. Two transactions changed the same record at the same time and the other was committed first. Nothing was written. A retry usually succeeds.
+Fabric's code for this is `MVCC_READ_CONFLICT`. Another transaction updated a value this one read, between endorsement and commit. Nothing was written. Trying again usually works.
 
-### Not enough organisations approved it
+### Not enough organisations endorsed it
 
-Fabric's code for this is `ENDORSEMENT_POLICY_FAILURE`. The contract needs approval from more organisations than responded. Usually a peer is down. Try again later, or ask the administrator which organisation is missing.
+Fabric's code for this is `ENDORSEMENT_POLICY_FAILURE`. The contract's policy needs endorsements from more organisations than signed. A peer may be offline, or an organisation may have rejected the request. Try again later, or ask your administrator which organisation is missing.
 
 ### Your identity is not allowed to do this
 
-The channel's access policy rejected your identity. Check you're using the right identity and role.
+The channel's access policy rejected this identity. Check you are using the right organisation and role.
 
 ### The network could not be reached
 
-No peer answered through the relay. The network may be down, or the relay misconfigured.
+No peer answered in time. The network may be down or the relay misconfigured. Try again shortly.
 
 ### Weft refused to sign
 
-The relay returned something different from what you approved. This should never happen with a correctly configured relay; tell your administrator, because it may indicate a compromised relay.
+What the relay sent back didn't match the request you approved, so Weft didn't sign it. The relay may be misconfigured or compromised. Tell your administrator.
 
 The full list is in [Transaction codes](/reference/transaction-codes/).

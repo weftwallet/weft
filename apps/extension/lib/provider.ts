@@ -137,7 +137,7 @@ function finish(approval: PendingApproval, outcome: ApprovalOutcome) {
 
 async function requireConnected(origin: string): Promise<void> {
   if (!(await isConnected(origin))) {
-    throw new WeftError(ErrorCode.Unauthorized, "Call weft_connect first; this site is not connected.");
+    throw new WeftError(ErrorCode.Unauthorized, "This site is not connected. Call weft_connect first.");
   }
 }
 
@@ -150,16 +150,16 @@ function parseCall(params: unknown): ContractCall {
   const bad = (msg: string): never => {
     throw new WeftError(ErrorCode.InvalidParams, msg);
   };
-  if (typeof p.channel !== "string" || !p.channel) bad('"channel" is required');
-  if (typeof p.chaincode !== "string" || !p.chaincode) bad('"chaincode" is required');
-  if (typeof p.fn !== "string" || !p.fn) bad('"fn" is required');
-  if (p.contract !== undefined && typeof p.contract !== "string") bad('"contract" must be a string');
+  if (typeof p.channel !== "string" || !p.channel) bad('The "channel" parameter is required.');
+  if (typeof p.chaincode !== "string" || !p.chaincode) bad('The "chaincode" parameter is required.');
+  if (typeof p.fn !== "string" || !p.fn) bad('The "fn" parameter is required.');
+  if (p.contract !== undefined && typeof p.contract !== "string") bad('The "contract" parameter must be a string.');
   const args = p.args ?? [];
-  if (!Array.isArray(args) || !args.every((a) => typeof a === "string")) bad('"args" must be a list of strings');
+  if (!Array.isArray(args) || !args.every((a) => typeof a === "string")) bad('The "args" parameter must be a list of strings.');
   if (p.transient !== undefined) {
     const ok =
       typeof p.transient === "object" && p.transient !== null && Object.values(p.transient).every((v) => typeof v === "string");
-    if (!ok) bad('"transient" must map names to strings');
+    if (!ok) bad('The "transient" parameter must map names to strings.');
   }
   return {
     channel: p.channel!,
@@ -196,7 +196,7 @@ async function connect(origin: string) {
   const approval = await openApproval(view);
   if (!(await approval.decision.promise)) {
     finish(approval, { status: "rejected" });
-    throw new WeftError(ErrorCode.UserRejected, "The user declined to connect.");
+    throw new WeftError(ErrorCode.UserRejected, "The user rejected the connection request.");
   }
   await connectSite(origin, active.record.id);
   finish(approval, { status: "approved", activityId: null });
@@ -332,7 +332,7 @@ async function revokedFailure(
     return null;
   }
   const title = "Your certificate has been revoked";
-  const detail = `${active.record.mspId} has revoked this identity's certificate, so peers refuse it. Renewing it won't help; ask your organisation's administrator.`;
+  const detail = `${active.record.mspId} has revoked this identity's certificate, so peers refuse it. Renewing it won't help. Ask your administrator.`;
   return {
     error: new WeftError(ErrorCode.TransactionFailed, title, { code: "CERTIFICATE_REVOKED" }),
     record: { code: "CERTIFICATE_REVOKED", title, detail },
@@ -395,8 +395,8 @@ function describeFailure(error: unknown): {
     error: new WeftError(ErrorCode.Internal, message),
     record: {
       code: "INTERNAL",
-      title: "Something went wrong in Weft",
-      detail: "Weft hit an error it didn't expect. Try again, and if it keeps happening, report it with the details.",
+      title: "Weft had an unexpected error",
+      detail: "Nothing was signed. Try again, and if it happens again, report it with the details.",
       raw: message,
     },
     retryable: true,
@@ -410,12 +410,12 @@ function describeFailure(error: unknown): {
  */
 async function addNetwork(origin: string, params: unknown) {
   const url = (params as { url?: unknown } | undefined)?.url;
-  if (typeof url !== "string" || !url) throw new WeftError(ErrorCode.InvalidParams, '"url" is required');
+  if (typeof url !== "string" || !url) throw new WeftError(ErrorCode.InvalidParams, 'The "url" parameter is required.');
   let inviteUrl: string;
   try {
     inviteUrl = resolveInviteUrl(url);
   } catch (error) {
-    throw new WeftError(ErrorCode.InvalidParams, error instanceof InviteError ? error.message : "Invalid invite URL");
+    throw new WeftError(ErrorCode.InvalidParams, error instanceof InviteError ? error.message : "The invite URL is not valid.");
   }
   const active = await activeIdentity();
   const view: ApprovalView = {
@@ -431,7 +431,7 @@ async function addNetwork(origin: string, params: unknown) {
   // any change of active identity.
   if (!(await approval.decision.promise)) {
     finish(approval, { status: "rejected" });
-    throw new WeftError(ErrorCode.UserRejected, "The user did not add the network.");
+    throw new WeftError(ErrorCode.UserRejected, "The user rejected the request to add the network.");
   }
   finish(approval, { status: "approved", activityId: null });
   return { added: true as const };
@@ -448,7 +448,7 @@ async function signIn(origin: string, params: unknown) {
   try {
     checked = checkSignInParams(params);
   } catch (error) {
-    throw new WeftError(ErrorCode.InvalidParams, error instanceof SignInError ? error.message : "Invalid sign-in request");
+    throw new WeftError(ErrorCode.InvalidParams, error instanceof SignInError ? error.message : "The sign-in request is not valid.");
   }
   const active = await requireUsableIdentity();
   const view: ApprovalView = {
@@ -462,7 +462,7 @@ async function signIn(origin: string, params: unknown) {
   const approval = await openApproval(view);
   if (!(await approval.decision.promise)) {
     finish(approval, { status: "rejected" });
-    throw new WeftError(ErrorCode.UserRejected, "The user declined to sign in.");
+    throw new WeftError(ErrorCode.UserRejected, "The user rejected the sign-in request.");
   }
   try {
     const issuedAt = new Date();
@@ -495,7 +495,7 @@ async function signIn(origin: string, params: unknown) {
 
 export async function handleProviderRequest(origin: string, method: unknown, params: unknown): Promise<unknown> {
   if (!isWeftMethod(method)) {
-    throw new WeftError(ErrorCode.UnsupportedMethod, `Unknown method ${String(method)}`);
+    throw new WeftError(ErrorCode.UnsupportedMethod, `Weft does not support the method ${String(method)}.`);
   }
   switch (method) {
     case "weft_connect":

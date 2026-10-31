@@ -8,7 +8,7 @@ The [ballot contract](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/ba
 - each organisation's explorer shows how many ballots were cast, and the result once voting closes;
 - anyone can check that the published total matches the ballots on the ledger;
 - each voter can check that their ballot is in a valid block, and that it's a vote for what they chose;
-- the organisations' explorers compare their copies of the ledger, so no one can quietly change the count.
+- the organisations' explorers compare their copies of the ledger, so a changed count on one ledger shows as a disagreement.
 
 ## Try it
 
@@ -16,7 +16,7 @@ The [ballot contract](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/ba
 
 ## How a ballot stays private
 
-A ballot is sent as transient data, which never reaches the shared ledger. The contract writes it to a private data collection and puts a commitment on the ledger: SHA-256 of the election ID, the choice and a random salt the voter's app picks. Only someone who knows the choice and the salt can tell which choice a commitment is for.
+A ballot is sent as transient data, which never reaches the shared ledger. The contract writes it to a private data collection and puts a commitment on the ledger: SHA-256 of the election ID, the choice and a random salt the voter's web app picks. Only someone who knows the choice and the salt can tell which choice a commitment is for.
 
 The voter keeps a receipt: the transaction ID, the commitment, their choice and the salt.
 
@@ -41,7 +41,7 @@ const result = await weft.submit({
 const receipt = { ...JSON.parse(result.text!), option: "Ada", salt };
 ```
 
-Weft's approval window lists `ballot` as a private input with its value hidden until the voter chooses **Show**, so also show the voter their choice in your app before they sign. Weft checks the value it signs is the one your app sent, and doesn't keep it in its activity list.
+Weft's approval window lists `ballot` as a private input with its value hidden until the voter chooses **Show**, so also show the voter their choice in your web app before they sign. Weft checks the value it signs is the one your web app sent, and doesn't keep it in its activity list.
 
 ## Showing it in the explorer
 
@@ -63,4 +63,4 @@ The explorer then has an **Elections** page per channel. Each election shows:
 
 ## What it can't do
 
-A Fabric transaction carries its submitter's certificate, and every member organisation's peer keeps it. So this proves the count and lets voters check their ballot, but it doesn't hide who voted, or their choice, from the member organisations themselves: their peers can read the private collection. Hiding that needs cryptography beyond this design (blind signatures, mixnets or homomorphic tallying). Tell your voters what the system does and doesn't hide. ([ADR 0004](/reference/decisions/))
+A Fabric transaction carries its submitter's certificate, and every member organisation's peer keeps it. This design proves the count and lets voters check their ballot. It doesn't hide who voted, or their choice, from the member organisations themselves: their peers can read the private collection. Hiding that needs cryptography beyond this design (blind signatures, mixnets or homomorphic tallying). Tell your voters what the system does and doesn't hide. ([ADR 0004](/reference/decisions/))

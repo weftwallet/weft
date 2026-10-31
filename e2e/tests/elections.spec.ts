@@ -37,7 +37,7 @@ test("vote from the docs playground and check the receipt in the explorer", { ta
   );
   const query = await readBack!;
   await query.waitForLoadState();
-  await query.getByRole("button", { name: "Sign and query" }).click();
+  await query.getByRole("button", { name: "Sign and read" }).click();
   await expect(page.locator("#pg-el-state")).toHaveText("Open");
 
   await page.getByLabel("Amber").check();

@@ -1,7 +1,7 @@
 /**
  * @weftwallet/protocol
  *
- * The contract between a dApp and the Weft wallet. The extension injects an
+ * The contract between a dApp and Weft Wallet. The extension injects an
  * object implementing `WeftProvider` at `window.weft`. Everything that crosses
  * that boundary is described here, so the extension, the SDK and the docs agree.
  */
@@ -16,11 +16,11 @@ export const PROVIDER_VERSION = "0.1.0";
 export interface IdentitySummary {
   /** Stable local ID for this identity in the wallet. */
   id: string;
-  /** The certificate's common name, e.g. "appUser". */
+  /** The certificate's common name, for example "appUser". */
   name: string;
-  /** Membership service provider ID, e.g. "Org1MSP". */
+  /** Membership service provider ID, for example "Org1MSP". */
   mspId: string;
-  /** NodeOU role taken from the certificate's OU, e.g. "client" or "admin". */
+  /** NodeOU role taken from the certificate's OU, for example "client" or "admin". */
   role: string | null;
   /** Fabric CA attributes embedded in the certificate (hf.* and custom). */
   attributes: Record<string, string>;
@@ -35,9 +35,9 @@ export interface IdentitySummary {
 }
 
 export interface NetworkSummary {
-  /** Stable local ID, usually derived from the org invite. */
+  /** Stable local ID, usually derived from the invite. */
   id: string;
-  /** Display name, e.g. "Acme Supply Network". */
+  /** Display name, for example "Acme Supply Network". */
   name: string;
   mspId: string;
   channels: string[];
@@ -51,16 +51,16 @@ export interface NetworkSummary {
 
 /** A call to a smart contract (chaincode) function. */
 export interface ContractCall {
-  /** Channel name, e.g. "mychannel". */
+  /** Channel name, for example "mychannel". */
   channel: string;
-  /** Chaincode name, e.g. "basic". */
+  /** Chaincode name, for example "basic". */
   chaincode: string;
   /**
    * Optional contract name inside the chaincode, for chaincode built with
    * the Fabric contract API that exposes more than one contract.
    */
   contract?: string;
-  /** Function name, e.g. "TransferAsset". */
+  /** Function name, for example "TransferAsset". */
   fn: string;
   /** String arguments, in order. */
   args?: string[];
@@ -95,7 +95,7 @@ export interface AddNetworkResult {
 export interface SignInParams {
   /** 16 to 128 characters of [A-Za-z0-9_-], chosen by the site and used once. */
   nonce: string;
-  /** One line shown in the approval window, e.g. "Sign in to Org1's explorer". */
+  /** One line shown in the approval window, for example "Sign in to Org1's explorer". */
   statement?: string;
 }
 
@@ -112,7 +112,7 @@ export interface SignInResult {
 export interface SubmitResult extends EvaluateResult {
   transactionId: string;
   blockNumber: string;
-  /** Fabric validation code name, e.g. "VALID". */
+  /** Fabric validation code name, for example "VALID". */
   status: string;
 }
 
@@ -309,7 +309,7 @@ export type WalletToPageMessage =
   | { target: typeof MESSAGE_TARGET.toPage; kind: "event"; event: WeftEvent; payload: unknown };
 
 /* ------------------------------------------------------------------ */
-/* Org invites                                                         */
+/* Invites                                                             */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -324,7 +324,7 @@ export interface OrgInvite {
   /** Display name for the organisation. */
   organization: string;
   mspId: string;
-  /** Base URL of the organisation's Fabric CA, e.g. "https://ca.org1.example.com:7054". */
+  /** Base URL of the organisation's Fabric CA, for example "https://ca.org1.example.com:7054". */
   caUrl: string;
   /** CA name when the server hosts more than one CA. */
   caName?: string;
@@ -397,14 +397,14 @@ export interface RelaySignedCommit {
 export interface RelayCommitStatusResponse {
   transactionId: string;
   blockNumber: string;
-  /** Validation code name, e.g. "VALID" or "MVCC_READ_CONFLICT". */
+  /** Validation code name, for example "VALID" or "MVCC_READ_CONFLICT". */
   status: string;
   successful: boolean;
 }
 
 export interface RelayErrorResponse {
   error: {
-    /** Machine-readable kind, e.g. "endorse", "submit", "bad_request". */
+    /** Machine-readable kind, for example "endorse", "submit", "bad_request". */
     kind: string;
     message: string;
     /** gRPC status details from peers, when the network returned them. */

@@ -24,7 +24,7 @@ function prfOf(credential: PublicKeyCredential): PrfResults | undefined {
 /** WebAuthn errors come back as DOMExceptions with browser wording; say what happened instead. */
 function explain(error: unknown): Error {
   if (error instanceof DOMException && error.name === "NotAllowedError") {
-    return new Error("The passkey request was cancelled or timed out.");
+    return new Error("The passkey request was cancelled or timed out. Try again.");
   }
   if (error instanceof DOMException && error.name === "InvalidStateError") {
     return new Error("That passkey is already set up for Weft.");
@@ -43,7 +43,7 @@ async function evaluate(credentialIds: { id: string; salt: Uint8Array }[]) {
       extensions: { prf: { evalByCredential } } as AuthenticationExtensionsClientInputs,
     },
   })) as PublicKeyCredential | null;
-  if (!assertion) throw new Error("No passkey was used.");
+  if (!assertion) throw new Error("No passkey was used. Try again, or unlock with your password.");
   const first = prfOf(assertion)?.results?.first;
   if (!first) throw new Error(NO_PRF);
   return { credentialId: assertion.id, prfOutput: new Uint8Array(first) };
@@ -52,7 +52,7 @@ async function evaluate(credentialIds: { id: string; salt: Uint8Array }[]) {
 /** Asks for one of the wallet's passkeys and unlocks with it. */
 export async function unlockWithPasskey(): Promise<void> {
   const passkeys = (await ui("passkeyRequest")).map((p) => ({ id: p.id, salt: new Uint8Array(p.salt) }));
-  if (passkeys.length === 0) throw new Error("No passkey is set up for this wallet.");
+  if (passkeys.length === 0) throw new Error("No passkey is set up for Weft.");
   try {
     const { credentialId, prfOutput } = await evaluate(passkeys);
     await ui("passkeyUnlock", { credentialId, prfOutput: Array.from(prfOutput) });
@@ -68,7 +68,7 @@ export async function addPasskey(name: string): Promise<void> {
     const credential = (await navigator.credentials.create({
       publicKey: {
         rp: { name: "Weft" },
-        user: { id: toArrayBuffer(random(16)), name: "weft", displayName: name || "Weft wallet" },
+        user: { id: toArrayBuffer(random(16)), name: "weft", displayName: name || "Weft Wallet" },
         challenge: toArrayBuffer(random(32)),
         pubKeyCredParams: [
           { type: "public-key", alg: -7 },

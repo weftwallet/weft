@@ -270,7 +270,7 @@ function IdentityCard({
         {(health.state === "expiring" || health.state === "expired") && !canRenew && (
           <div className={`notice notice--column ${health.state === "expired" ? "notice--signal" : "notice--amber"}`}>
             <span>
-              Weft can't renew this certificate itself, because it wasn't enrolled with a CA here. Ask your CA administrator
+              Weft can't renew this certificate itself, because it wasn't enrolled with a CA here. Ask your administrator
               for a new certificate, then add it with Import PEM.
             </span>
             <button type="button" className="link-btn link-btn--inline" onClick={onAdd}>
@@ -344,7 +344,7 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
   // Reserved space while loading, so the tab doesn't jump when the list arrives.
   if (!items) return <div className="list-placeholder" aria-busy="true" />;
   if (items.length === 0) {
-    return <Empty icon="activity">No transactions yet. Requests from apps you connect will show up here.</Empty>;
+    return <Empty icon="activity">No transactions yet. Requests from sites you connect will show up here.</Empty>;
   }
   const days = groupByDay(items);
   return (
@@ -403,7 +403,7 @@ function ActivityRow({ item, isNew, navigate }: { item: ActivityRecord; isNew: b
         ) : (
           <span className="mono subtle one-line type-xs">
             {item.call.chaincode}
-            {item.blockNumber ? ` · block ${Number(item.blockNumber).toLocaleString()}` : item.kind === "evaluate" ? " · query" : ""}
+            {item.blockNumber ? ` · block ${Number(item.blockNumber).toLocaleString()}` : item.kind === "evaluate" ? " · read" : ""}
           </span>
         )}
       </span>
@@ -519,7 +519,7 @@ function SiteList({ state, onState }: { state: WalletState; onState: (s: WalletS
   const leaving = useLeaving();
   const list = useRef<HTMLDivElement>(null);
   if (state.sites.length === 0) {
-    return <Empty icon="globe">No sites connected. Apps ask to connect the first time they need your identity.</Empty>;
+    return <Empty icon="globe">No sites connected. Sites ask to connect the first time they need your identity.</Empty>;
   }
   const disconnect = async (origin: string, row: Element | null) => {
     const host = new URL(origin).host;

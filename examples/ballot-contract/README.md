@@ -1,6 +1,6 @@
 # Ballot contract
 
-A Fabric contract for elections that can be counted and checked without revealing anyone's choice. It's the template for the voting case in [ADR 0004](../../docs/adr/0004-explorer-hosted-by-each-organisation.md), and the [Weft explorer](../../apps/explorer) shows its elections.
+A Fabric contract for elections that can be counted and checked without revealing anyone's choice. It's the template for the voting case in [ADR 0004](../../docs/adr/0004-explorer-hosted-by-each-organisation.md), and [Weft Explorer](../../apps/explorer) shows its elections.
 
 - `CreateElection(id, title, optionsJson, closesAt)`
 - `CastVote(id)`, with the choice as transient data `ballot` = `{"option": "...", "salt": "<32+ hex characters>"}`. Returns the receipt `{ electionId, txId, commitment }`.

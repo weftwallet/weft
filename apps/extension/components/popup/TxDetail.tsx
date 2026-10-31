@@ -8,7 +8,7 @@ import type { Navigate } from "./state";
 const HEADLINE = {
   committed: { color: "var(--weft-accent-text)", text: "Committed to the ledger" },
   evaluated: { color: "var(--weft-text-muted)", text: "Read only" },
-  failed: { color: "var(--weft-danger-text)", text: "Not committed" },
+  failed: { color: "var(--weft-danger-text)", text: "Failed, nothing written" },
   rejected: { color: "var(--weft-text-subtle)", text: "Rejected by you" },
 } as const;
 
@@ -138,7 +138,7 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
             <>
               <dt>Private</dt>
               <dd>
-                <span className="mono">{item.privateInputs.join(", ")}</span> <span className="subtle">· values not kept</span>
+                <span className="mono">{item.privateInputs.join(", ")}</span> <span className="subtle">(values not kept)</span>
               </dd>
             </>
           )}

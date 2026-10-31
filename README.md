@@ -5,7 +5,7 @@
 <h1 align="center">weft</h1>
 
 <p align="center">An identity wallet for Hyperledger Fabric.<br>
-It holds the certificate your organisation's CA issued and signs only the transactions you approve.</p>
+It holds the certificate your organisation's CA issued you and signs only the transactions you approve.</p>
 
 ---
 
@@ -13,11 +13,11 @@ Weft is a browser extension that does for permissioned Fabric networks what Meta
 
 Fabric has no coins, gas or addresses. Weft is built around X.509 identities issued by your organisation's CA, channels, contracts and endorsement.
 
-- The home screen shows your certificate, MSP ID, role and attributes, with the expiry date and one-click renewal.
+- The home screen shows your certificate, MSP ID, role and attributes, with the expiry date and a button to renew it.
 - Every request shows the channel, contract, function and decoded arguments. Reads are teal and ledger writes are amber.
 - Private keys are encrypted with your password and used as non-extractable WebCrypto keys. Weft locks itself, and unlocks with the password or a passkey. The relay sees only certificates, unsigned messages and signatures.
 - Weft decodes every Fabric message it's asked to sign and refuses anything that doesn't match what you approved.
-- Failures are explained in plain English: `ENDORSEMENT_POLICY_FAILURE` becomes "Not enough organisations approved it", with per-peer details.
+- Failures are explained in plain English: `ENDORSEMENT_POLICY_FAILURE` becomes "Not enough organisations endorsed it", with per-peer details.
 
 ## How it works
 
@@ -25,14 +25,14 @@ Fabric has no coins, gas or addresses. Weft is built around X.509 identities iss
  Browser                                   Your organisation
 ┌───────────────────────────────┐         ┌────────────────────────────────┐
 │ Web app ──window.weft──┐      │         │                                │
-│                        ▼      │  HTTPS  │  Weft relay ──gRPC──▶ Peer     │
+│                        ▼      │  HTTPS  │  Relay ──gRPC──▶ Peer          │
 │  Weft extension (keys, ───────┼────────▶│  (offline-signing gateway)     │
 │  approvals, verification)     │         │                                │
 │                               │────────▶│  Fabric CA (enrol, re-enrol)   │
 └───────────────────────────────┘         └────────────────────────────────┘
 ```
 
-Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless **relay** using the official `@hyperledger/fabric-gateway` SDK in offline-signing mode. The relay builds unsigned messages; the extension verifies and signs them; the relay forwards the signed bytes. Organisations share an **invite link** so users join without typing URLs. See [`docs/adr`](docs/adr) for the reasoning.
+Browsers can't open gRPC connections to Fabric peers, so each organisation runs a stateless **relay** using the official `@hyperledger/fabric-gateway` SDK in offline-signing mode. The relay builds unsigned messages; the extension verifies and signs them; the relay forwards the signed bytes. Organisations share an **invite link** so users join without typing URLs. See [`docs/adr`](docs/adr) for the reasoning.
 
 ## Repository
 
@@ -41,19 +41,19 @@ Browsers can't speak Fabric's gRPC, so each organisation runs a small stateless 
 | `apps/extension` | `@weftwallet/extension` | The MV3 browser extension (WXT + React). |
 | `apps/relay` | `@weftwallet/relay` | The relay service (Fastify + fabric-gateway). Dockerfile included. |
 | `apps/explorer` | `@weftwallet/explorer` | A block explorer one organisation runs for the channels it publishes. |
-| `apps/site` | `@weftwallet/site` | Weft's front page, and the join page invite links open. |
+| `apps/site` | `@weftwallet/site` | The Weft site, and the join page invite links open. |
 | `apps/docs` | `@weftwallet/docs` | Weft Docs, the documentation (Astro Starlight). |
 | `apps/playground` | `@weftwallet/playground` | Weft Playground: try a dApp against a Fabric network from the browser. |
 | `apps/network` | `@weftwallet/network` | Weft Network: every organisation's explorer on one page, and the invite maker. |
 | `packages/protocol` | `@weftwallet/protocol` | Types shared by everything: provider API, errors, relay API, invites. |
 | `packages/core` | `@weftwallet/core` | Signing, certificates, Fabric CA client, message decoding and verification, relay client. |
-| `packages/sdk` | `@weftwallet/sdk` | What dApps import to talk to the wallet. |
+| `packages/sdk` | `@weftwallet/sdk` | What dApps import to call Weft. |
 | `packages/cli` | `@weftwallet/cli` | `weft` command for operators: build invites from connection profiles, share links and QR codes, check a deployment. |
 | `packages/brand` | `@weftwallet/brand` | The design system: tokens, logos and product marks, and where each product lives (`products.json`). |
-| `packages/ui` | `@weftwallet/ui` | The page shell, base styles and links between products, shared by the site, the playground and the network page. |
-| `playground/` | – | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the playground. |
-| `examples/` | – | A plain-HTML demo dApp, a sample org invite, and a ballot contract for elections the explorer can check. |
-| `docs/adr/` | – | Architecture decision records. |
+| `packages/ui` | `@weftwallet/ui` | The page shell, base styles and links between products, shared by the Weft site, the playground and Weft Network. |
+| `playground/` | None | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the playground. |
+| `examples/` | None | A plain-HTML demo dApp, a sample invite, and a ballot contract for elections the explorer can check. |
+| `docs/adr/` | None | Architecture decision records. |
 
 ## Develop
 
@@ -84,7 +84,7 @@ Each product also has its own command, for a terminal of its own:
 pnpm dev:extension  # Chrome with the extension loaded, hot reload
 pnpm dev:relay      # needs apps/relay/.env, see .env.example
 pnpm dev:explorer   # set its variables in apps/explorer/.env, see the explorer docs
-pnpm dev:site       # http://localhost:4321, the front page
+pnpm dev:site       # http://localhost:4321, the Weft site
 pnpm dev:docs       # http://localhost:4322
 pnpm dev:playground # http://localhost:4323
 pnpm dev:network    # http://localhost:4324
@@ -112,4 +112,4 @@ Weft is in early development. The extension, relay, SDK and docs work end to end
 
 ## Licence
 
-[Apache-2.0](LICENSE). Hyperledger and Fabric are trademarks of the Linux Foundation; Weft is an independent project and is not affiliated with or endorsed by it.
+[Apache 2.0](LICENSE). Hyperledger and Fabric are trademarks of the Linux Foundation; Weft is an independent project and is not affiliated with or endorsed by it.

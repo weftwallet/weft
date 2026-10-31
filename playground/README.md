@@ -21,24 +21,24 @@ pnpm playground:explorer # start or restart only the explorers, on a running sta
 
 | Piece | Where | Notes |
 |---|---|---|
-| Fabric `test-network` | Docker | Two orgs, Raft orderer, a CA per org, channels `mychannel` and `members` |
+| Fabric `test-network` | Docker | Two organisations, Raft orderer, a CA per organisation, channels `mychannel` and `members` |
 | `basic` contract | `mychannel` | fabric-samples' asset-transfer (TypeScript) |
 | `ballot` contract | `mychannel` | `examples/ballot-contract`, with its private collection. `seed-elections.mjs` adds `team-lunch` (counted) and `board-2026` (open); receipts for the seeded ballots are in `.state/receipts.json` |
-| `basic` contract | `members` | A second channel both explorers publish to signed-in members only. `seed-members.mjs` adds the sample's starting assets. Sign in on an explorer or on the network page to see it |
+| `basic` contract | `members` | A second channel both explorers publish to signed-in members only. `seed-members.mjs` adds the sample's starting assets. Sign in on an explorer or on Weft Network to see it |
 | Org1 CA proxy | `http://localhost:7080`, or `https://localhost:7443` with `--https` | Forwards to the CA's HTTPS on 7054, so the browser can enrol (see below) |
-| Weft relay | `http://localhost:8787` | Talks to `peer0.org1`; serves the invite at `/.well-known/weft-invite.json` |
+| Relay | `http://localhost:8787` | Connects to `peer0.org1`; serves the invite at `/.well-known/weft-invite.json` |
 | Explorers | `http://localhost:8790` (Org1), `http://localhost:8791` (Org2) | Each reads `mychannel` and `members` from its own organisation's peer, publishes what `explorer.yaml` or `explorer-org2.yaml` allows, and cross-checks with the other. Org1's also publishes the ballots' private data hashes. Org2's publishes less: no submitters, private data by name only, and `basic` for members only. The invite names Org1's, so Weft links activity to it |
 
 ## Demo users (Org1)
 
-| Enrollment ID | Secret | Attributes |
+| Enrolment ID | Secret | Attributes |
 |---|---|---|
 | `alice` | `alicepw` | `role=auditor` |
 | `bob` | `bobpw` | `role=trader` |
 
 ## Why the playground uses a CA proxy
 
-The test network's CA serves HTTPS with a self-signed certificate. Browsers reject it, and accepting it in a tab doesn't help: the extension's background worker still refuses it, so enrolment fails with "Failed to fetch". The proxy talks HTTPS to the CA, verifying it against the CA's own root certificate, and serves plain HTTP on `localhost`, which browsers allow. This mode needs no certificate installed or trusted.
+The test network's CA serves HTTPS with a self-signed certificate. Browsers reject it, and accepting it in a tab doesn't help: the extension's background worker still refuses it, so enrolment fails with "Failed to fetch". The proxy connects to the CA over HTTPS, verifying it against the CA's own root certificate, and serves plain HTTP on `localhost`, which browsers allow. This mode needs no certificate installed or trusted.
 
 ### HTTPS with `--https`
 

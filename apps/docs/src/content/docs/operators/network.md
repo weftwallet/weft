@@ -1,9 +1,9 @@
 ---
-title: The network page
+title: Weft Network
 description: How Weft Network shows every organisation's explorer for one network on one page, and checks that their ledgers agree.
 ---
 
-Each organisation runs its own [explorer](/operators/explorer/), so there's no single place that shows a whole network. The network page in [Weft Network](weft:network/) is that place. Give it one explorer and it finds the others through it, then shows, per channel:
+Each organisation runs its own [explorer](/operators/explorer/), so there's no single place that shows a whole network. [Weft Network](weft:network/) is that place. Give it one explorer and it finds the others through it, then shows, per channel:
 
 - each organisation's explorer, how many blocks it has, and what it publishes;
 - what each one reports about the others: up to which block their ledgers match, or where they differ;
@@ -21,16 +21,16 @@ The *Check a block in your browser* panel, on each channel, doesn't rely on what
 
 If every organisation passes and the hashes match, each organisation has signed a ledger that contains that block. The channel configuration comes from the explorers themselves, so the page uses the one most of them report, and says if any report a different one.
 
-What it can't check is a block's transactions: that they're the ones its data hash covers needs the block's raw data, which explorers don't publish. That part rests on each explorer's own check, shown on its block pages.
+What it can't check is a block's transactions: that they're the ones its data hash covers needs the block's raw data, which explorers don't publish. For that, the page depends on each explorer's own check, shown on its block pages.
 
-Each explorer's block pages also recompute the block's hash in your browser, and link to the network page to check it against everyone else.
+Each explorer's block pages also recompute the block's hash in your browser, and link to Weft Network to check it against everyone else.
 
 ## What it needs
 
-- Explorers that can reach each other: each lists the others in `WEFT_EXPLORER_PEERS`, which is how the network page finds them.
+- Explorers that can reach each other: each lists the others in `WEFT_EXPLORER_PEERS`, which is how Weft Network finds them.
 - For members-only channels, a sign-in. See below.
 
-With `pnpm playground:up` running, the network page finds the playground's two explorers by itself. Sign in as a playground user to see its members-only channel, `members`.
+With `pnpm playground:up` running, Weft Network finds the playground's two explorers by itself. Sign in as a playground user to see its members-only channel, `members`.
 
 ## Members-only channels
 

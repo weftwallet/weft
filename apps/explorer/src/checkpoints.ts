@@ -51,8 +51,8 @@ export function parseCheckpointMessage(message: string): Checkpoint {
   };
   const number = Number(field(3, "number"));
   const hash = field(4, "hash");
-  if (!Number.isSafeInteger(number) || number < 0) throw new Error("Bad block number.");
-  if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error("Bad block hash.");
+  if (!Number.isSafeInteger(number) || number < 0) throw new Error("The block number is not valid.");
+  if (!/^[0-9a-f]{64}$/.test(hash)) throw new Error("The block hash is not valid.");
   const parsed = { channel: field(1, "channel"), mspId: field(2, "msp"), number, hash, signedAt: field(5, "signed") };
   if (checkpointMessage(parsed) !== message) throw new Error("Checkpoint isn't in canonical form.");
   return parsed;

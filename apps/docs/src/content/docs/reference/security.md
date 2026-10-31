@@ -6,8 +6,8 @@ description: What Weft protects against, how, and what it does not cover yet.
 ## What Weft protects
 
 1. Nobody, including web pages, the relay and Weft's own UI code, should be able to read private keys, and a copy of your browser profile shouldn't be enough to use them.
-2. Nothing should be signed that the user didn't see and approve.
-3. Sites learn who you are only after you connect them, and only for the identities you connect them to.
+2. Nothing should be signed that you didn't see and approve.
+3. Web apps learn who you are only after you connect them, and only for the identities you connect them to.
 
 ## How
 
@@ -21,11 +21,11 @@ Fabric requires low-S DER signatures; Weft converts WebCrypto's output according
 
 ### Weft locks itself
 
-Weft locks after 15 minutes without use (you can choose 5 minutes to 4 hours, or only when the browser closes), when you choose **Lock now** under **Security**, and when the browser closes. While locked, nothing can be signed and no identity can be added. A site that asks for a signature gets an approval window that asks you to unlock first.
+Weft locks after 15 minutes without use (you can choose 5 minutes to 4 hours, or only when the browser closes), when you choose **Lock now** under **Security**, and when the browser closes. While locked, nothing can be signed and no identity can be added. A web app that asks for a signature gets an approval window that asks you to unlock first.
 
-Sites you connected can still read your public identity while Weft is locked, because they already have it.
+Web apps you connected can still read your public identity while Weft is locked, because they already have it.
 
-Passkeys are optional and need the WebAuthn PRF extension, which most phone and laptop passkeys and recent security keys support. Your password always works, so losing a security key doesn't lose the wallet. Weft can't recover a forgotten password. **Forgot your password?** on the lock screen resets Weft instead: after you type a phrase to confirm, it deletes every identity and key in the browser and keeps your networks, so you can enrol again with your CA.
+Passkeys are optional and need the WebAuthn PRF extension, which most phone and laptop passkeys and recent security keys support. Your password always works, so losing a security key doesn't lock you out of Weft. Weft can't recover a forgotten password. **Forgot your password?** on the lock screen resets Weft instead: after you type a phrase to confirm, it deletes every identity and key in the browser and keeps your networks, so you can enrol again with your CA.
 
 ### Pages have no privileges
 
@@ -43,11 +43,11 @@ Any mismatch stops the flow with "Weft refused to sign". This is covered by test
 
 ### Approval is explicit
 
-Connecting a site doesn't authorise signing. Each evaluate and submit opens an approval window; closing it rejects. Reads and writes look different (teal and amber) so a write can't pass as a read.
+Connecting a web app doesn't authorise signing. Each read and each write opens an approval window; closing it rejects. Reads and writes look different (teal and amber) so a write can't pass as a read.
 
 ### Sign-in signs text, never a transaction
 
-`weft_signIn` signs a message Weft writes from fixed fields: the site's origin as the browser reports it, the MSP ID, the site's nonce, and five minutes of validity. A site can add one line of text and nothing else. The message is text starting `weft-sign-in:v1`, so its signature can't be used as a signature over a Fabric proposal or transaction, which are protobuf bytes. The approval window says it doesn't sign a transaction.
+`weft_signIn` signs a message Weft writes from fixed fields: the web app's origin as the browser reports it, the MSP ID, the web app's nonce, and five minutes of validity. A web app can add one line of text and nothing else. The message is text starting `weft-sign-in:v1`, so its signature can't be used as a signature over a Fabric proposal or transaction, which are protobuf bytes. The approval window says it doesn't sign a transaction.
 
 ### Hosts are granted one by one
 

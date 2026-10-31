@@ -4,7 +4,7 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "description": "Stateless relay between the Weft wallet and a Fabric peer Gateway service",
+  "description": "Stateless relay between Weft Wallet and a Fabric peer Gateway service",
   "files": [
     "dist"
   ],

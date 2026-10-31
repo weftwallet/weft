@@ -39,21 +39,21 @@ export class FabricCaError extends Error {
 function explainCaErrors(status: number, errors: { code: number; message: string }[]): string {
   const text = errors.map((e) => e.message).join(" ").toLowerCase();
   if (errors.some((e) => e.code === 20) || status === 401 || text.includes("authentication failure")) {
-    return "The CA didn't accept that enrolment ID and secret. Check them with your registrar: a secret usually works only once.";
+    return "The CA didn't accept that enrolment ID and secret. Check them with your administrator. A secret usually works only once.";
   }
   if (text.includes("max") && text.includes("enroll")) {
-    return "This enrolment ID has been used as many times as the CA allows. Ask your registrar for a new secret.";
+    return "This enrolment ID has been used as many times as the CA allows. Ask your administrator for a new secret.";
   }
   if (text.includes("revoked")) {
-    return "The CA has revoked this identity. Ask your organisation's administrator.";
+    return "The CA has revoked this identity. Ask your administrator.";
   }
   if (text.includes("not found") || text.includes("not registered") || text.includes("unknown identity")) {
-    return "The CA doesn't know this enrolment ID. Check it with your registrar.";
+    return "The CA doesn't know this enrolment ID. Check it with your administrator.";
   }
   if (text.includes("ca") && text.includes("does not exist")) {
     return "The CA server doesn't host a CA with that name. Check the CA name in the network's settings.";
   }
-  return "The CA refused the request. If it keeps happening, show the details to your CA administrator.";
+  return "The CA refused the request. If it keeps happening, show the details to your administrator.";
 }
 
 /** How long Weft waits for the CA before saying it didn't answer. */
@@ -68,7 +68,7 @@ interface CaResponse {
 const decoder = new TextDecoder();
 
 export interface FabricCaClientOptions {
-  /** e.g. "https://ca.org1.example.com:7054" */
+  /** for example "https://ca.org1.example.com:7054" */
   url: string;
   /** Needed when one server hosts several CAs. */
   caName?: string;
@@ -149,7 +149,7 @@ export class FabricCaClient {
       throw new FabricCaError(
         response.status,
         [{ code: 0, message: `${this.url}${path} returned HTTP ${response.status} without a Fabric CA answer.` }],
-        `The address ${this.url} answered, but not like a Fabric CA. Check the CA address in the network's settings.`,
+        `The address ${this.url} answered, but not with a Fabric CA response. Check the CA address in the network's settings.`,
       );
     }
     if (!response.ok || !json.success || !json.result?.Cert) {

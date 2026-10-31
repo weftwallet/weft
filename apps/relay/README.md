@@ -1,6 +1,6 @@
 # @weftwallet/relay
 
-A stateless HTTP relay between the Weft wallet and a Fabric peer's Gateway service. It uses `@hyperledger/fabric-gateway` in offline-signing mode, so it never holds private keys. Why it exists: [ADR 0001](../../docs/adr/0001-relay-for-network-access.md).
+A stateless HTTP relay between Weft Wallet and a Fabric peer's Gateway service. It uses `@hyperledger/fabric-gateway` in offline-signing mode, so it never holds private keys. Why it exists: [ADR 0001](../../docs/adr/0001-relay-for-network-access.md).
 
 ```sh
 cp .env.example .env     # point it at your peer

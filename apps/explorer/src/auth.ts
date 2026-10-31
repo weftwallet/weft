@@ -139,7 +139,7 @@ export class Auth {
       this.nonces.delete(fields.nonce); // one use, whatever happens next
     } else {
       if (fields.expiresAt.getTime() - fields.issuedAt.getTime() > CHOSEN_NONCE_MS) {
-        throw new SignInError("This sign-in is valid for too long. Try again.");
+        throw new SignInError("This sign-in is valid for more than 15 minutes, which this explorer doesn't accept. Try again.");
       }
       for (const [n, until] of this.used) if (until < now) this.used.delete(n);
       if (this.used.has(fields.nonce)) throw new SignInError("This sign-in was already used. Try again.");

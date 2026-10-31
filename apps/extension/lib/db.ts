@@ -73,7 +73,7 @@ export interface ActivityRecord {
   status: ActivityStatus;
   transactionId?: string;
   blockNumber?: string;
-  /** Fabric code, e.g. "VALID", "MVCC_READ_CONFLICT", "ENDORSE_FAILED". */
+  /** Fabric code, for example "VALID", "MVCC_READ_CONFLICT", "ENDORSE_FAILED". */
   code?: string;
   title?: string;
   detail?: string;

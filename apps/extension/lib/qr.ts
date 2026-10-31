@@ -17,7 +17,7 @@ async function decodeBlob(blob: Blob): Promise<string | null> {
   const bitmap = await createImageBitmap(blob);
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("Could not read the image.");
+  if (!context) throw new Error("Weft couldn't read that image. Paste a PNG or JPEG screenshot of the QR code.");
   context.drawImage(bitmap, 0, 0);
   const { data, width, height } = context.getImageData(0, 0, bitmap.width, bitmap.height);
   bitmap.close();

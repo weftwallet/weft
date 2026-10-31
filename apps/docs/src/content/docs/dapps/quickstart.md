@@ -3,7 +3,7 @@ title: Quickstart
 description: Connect a web app to Weft and call a Fabric contract in a few lines with @weftwallet/sdk.
 ---
 
-`@weftwallet/sdk` is a small typed wrapper around the `window.weft` provider the extension injects.
+`@weftwallet/sdk` is a typed wrapper around the `window.weft` provider the extension injects.
 
 ## Install
 
@@ -22,7 +22,7 @@ import { getWeft, WeftNotInstalledError } from "@weftwallet/sdk";
 
 try {
   const weft = await getWeft();          // waits up to 3s for the extension
-  const me = await weft.connect();        // the user approves once per site
+  const me = await weft.connect();        // the user approves once per site and identity
   console.log(`${me.name} from ${me.mspId}`, me.attributes);
 } catch (error) {
   if (error instanceof WeftNotInstalledError) {
@@ -31,7 +31,7 @@ try {
 }
 ```
 
-`connect()` resolves with the active identity's public details: name, MSP ID, role, attributes, expiry, fingerprint and PEM certificate. Use them to tailor your UI, e.g. hide admin actions from `role: "client"`.
+`connect()` resolves with the active identity's public details: name, MSP ID, role, attributes, expiry, fingerprint and PEM certificate. Use them to tailor your UI, for example hide admin actions from `role: "client"`.
 
 ## Call a contract
 
@@ -40,7 +40,7 @@ Bind a channel and chaincode once, then call functions by name. Arguments are st
 ```ts
 const assets = weft.contract({ channel: "mychannel", chaincode: "basic" });
 
-// Read-only. The user approves; nothing is written.
+// A read. The user approves; nothing is written.
 const asset = await assets.evaluateJson<{ ID: string; Owner: string }>("ReadAsset", "asset6");
 
 // Write. Resolves once the transaction is committed as VALID.
@@ -73,7 +73,7 @@ try {
   switch (error.code) {
     case ErrorCode.UserRejected:      // 4001: the user said no; don't retry automatically
       break;
-    case ErrorCode.TransactionFailed: // 5001: error.data.status, e.g. "MVCC_READ_CONFLICT"
+    case ErrorCode.TransactionFailed: // 5001: error.data.status, for example "MVCC_READ_CONFLICT"
       break;
     case ErrorCode.CertificateExpired: // 4301: ask the user to renew in Weft
       break;
@@ -83,9 +83,9 @@ try {
 
 The full list is in the [Provider API](/dapps/provider-api/#errors).
 
-## Onboard users from your portal
+## Add users from your portal
 
-If your app is also where users are given access, hand them straight to enrolment:
+If your dApp is also where users are given access, open Weft's join window for them:
 
 ```ts
 await weft.addNetwork("https://relay.org1.example.com/.well-known/weft-invite.json");

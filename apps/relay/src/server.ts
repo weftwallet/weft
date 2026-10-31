@@ -27,21 +27,21 @@ class BadRequest extends Error {}
 const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
 
 function bytes(value: unknown, field: string): Uint8Array {
-  if (typeof value !== "string" || value.length === 0) throw new BadRequest(`"${field}" must be base64`);
+  if (typeof value !== "string" || value.length === 0) throw new BadRequest(`The "${field}" field must be base64.`);
   return new Uint8Array(Buffer.from(value, "base64"));
 }
 
 function str(value: unknown, field: string): string {
-  if (typeof value !== "string" || value.length === 0) throw new BadRequest(`"${field}" is required`);
+  if (typeof value !== "string" || value.length === 0) throw new BadRequest(`The "${field}" field is required.`);
   return value;
 }
 
 function parseSigner(value: unknown, allowed: string[] | undefined): RelaySigner {
   const s = (value ?? {}) as Partial<RelaySigner>;
   const signer = { mspId: str(s.mspId, "signer.mspId"), certificate: str(s.certificate, "signer.certificate") };
-  if (!signer.certificate.includes("BEGIN CERTIFICATE")) throw new BadRequest('"signer.certificate" must be PEM');
+  if (!signer.certificate.includes("BEGIN CERTIFICATE")) throw new BadRequest('The "signer.certificate" field must be PEM.');
   if (allowed && !allowed.includes(signer.mspId)) {
-    throw new BadRequest(`This relay does not serve ${signer.mspId}`);
+    throw new BadRequest(`This relay does not serve ${signer.mspId}.`);
   }
   return signer;
 }
@@ -50,7 +50,7 @@ function parseCall(value: unknown): ContractCall {
   const c = (value ?? {}) as Partial<ContractCall>;
   const args = c.args ?? [];
   if (!Array.isArray(args) || !args.every((a) => typeof a === "string")) {
-    throw new BadRequest('"call.args" must be a list of strings');
+    throw new BadRequest('The "call.args" field must be a list of strings.');
   }
   return {
     channel: str(c.channel, "call.channel"),

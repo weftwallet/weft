@@ -7,7 +7,7 @@ import { productHref } from "@weftwallet/ui/links";
 <div class="weft-join">
   <div id="join-missing" class="weft-card" hidden>
     <h2 class="weft-card__title">This link is missing its invite</h2>
-    <p>Ask your network administrator for the full link.</p>
+    <p>Ask your administrator for the full link.</p>
   </div>
 
   <div id="join-main" class="weft-join" hidden>
@@ -33,7 +33,7 @@ import { productHref } from "@weftwallet/ui/links";
       <h2 class="weft-card__title" id="join-install-title" tabindex="-1">Weft isn't installed in this browser</h2>
       <p>
         <a href={productHref("docs", "/start/install/")}>Install Weft</a>, then come back to this page. Or, in Weft, choose{" "}
-        <em>Join from an org invite</em> and paste this link:
+        <em>Join from an invite</em> and paste this link:
       </p>
       <code id="join-weft-link"></code>
     </div>
@@ -128,7 +128,7 @@ import { productHref } from "@weftwallet/ui/links";
         $("join-status").hidden = true;
         showError(
           $("join-error"),
-          error?.code === 4001 ? "You cancelled in Weft. Open in Weft again when you're ready." : "Weft couldn't add the network. Try again, or ask your network administrator to check the invite.",
+          error?.code === 4001 ? "You rejected the request in Weft, so the network wasn't added. Open in Weft again when you're ready." : "Weft couldn't add the network. Try again, or ask your administrator to check the invite.",
           error?.code === 4001 ? null : technical(error),
         );
       } finally {

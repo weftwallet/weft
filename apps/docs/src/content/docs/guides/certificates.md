@@ -13,7 +13,7 @@ The identity card on the home screen shows:
 |---|---|
 | Teal | Valid, more than 30 days left. |
 | Amber | Expires within 30 days. A **Re-enrol** button appears. |
-| Red | Expired. Weft refuses to sign and apps receive error `4301`. |
+| Red | Expired. Weft refuses to sign and web apps receive error `4301`. |
 
 ## Renewing
 
@@ -25,7 +25,7 @@ Choose **Re-enrol** to ask your organisation's CA for a new certificate:
 
 You don't need your enrolment secret. You do need the CA URL, which comes from your invite or the details you entered when enrolling. Identities imported from PEM files without a CA URL can't be renewed from Weft; import the new certificate and key instead.
 
-Re-enrolment only works while the current certificate is still valid. If it has already expired, ask your registrar for a new enrolment secret and enrol again.
+Re-enrolment only works while the current certificate is still valid. If it has already expired, ask your administrator for a new enrolment secret and enrol again.
 
 ## Fingerprints
 
