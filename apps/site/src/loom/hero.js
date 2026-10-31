@@ -36,7 +36,8 @@ export function create(canvas, glyphs, { frozen, autoplay, clear = false } = {})
 
   function layout(w, h) {
     if (c && c.w === w && c.h === h) return c;
-    const M = Math.min(h * 0.5, w / 4.6, 240);
+    // The lockup is at most 160px tall: the words beside it are the hero.
+    const M = Math.min(h * 0.5, w / 4.6, 160);
     const u = M / 48;
     const F = M * 0.95;
     const gap = M * 0.32;

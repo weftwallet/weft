@@ -1,43 +1,52 @@
 ---
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import Shell from "@weftwallet/ui/Shell.astro";
 import { productHref } from "@weftwallet/ui/links";
 
 const docs = (path: string) => productHref("docs", path);
-const shown = [
-  ["Who's asking", "The site's address, and which of your identities it wants to use."],
-  ["What it calls", "The channel, the contract and the function, and every argument decoded."],
-  ["Read or write", "Whether it only reads the ledger or changes it, said plainly."],
-  ["What happens next", "Which organisations must approve it, and afterwards whether they did."],
+const require = createRequire(import.meta.url);
+const markSmall = readFileSync(require.resolve("@weftwallet/brand/logo/mark-small.svg"), "utf8")
+  .replace(/<!--[\s\S]*?-->\s*/g, "")
+  .replace(/<svg /, '<svg aria-hidden="true" focusable="false" ')
+  .replace(/\s+role="img"/, "")
+  .replace(/\s+aria-label="[^"]*"/, "");
+
+// The three pieces, named under the cloth.
+const pieces = [
+  ["The extension", "Holds your identities and signs. It shows every request before signing."],
+  ["The relay", "Runs inside your organisation, next to its peers. It builds the unsigned messages and forwards the signed bytes. It never sees your key."],
+  ["The invite", "A link your administrator shares. It tells Weft where the CA and the relay are, so nobody types a URL."],
 ];
-const audiences = [
-  {
-    title: "Signing transactions",
-    body: "Your organisation sends you an invite. Weft enrols you with its CA, keeps your key encrypted in the browser, and tells you before your certificate expires.",
-    links: [
-      ["Install Weft", docs("/start/install/")],
-      ["Reading a signature request", docs("/guides/signing/")],
-    ],
-  },
-  {
-    title: "Building a dApp",
-    body: "Call a Fabric contract from a web page, the way an Ethereum dApp asks MetaMask. Weft shows the user each request and signs it with their own identity.",
-    links: [
-      ["Quickstart", docs("/dapps/quickstart/")],
-      ["Try the playground", productHref("playground")],
-    ],
-  },
-  {
-    title: "Running a network",
-    body: "Run a small relay for your organisation and publish an invite. An explorer shows your ledger as you choose, and the network page puts every organisation's side by side.",
-    links: [
-      ["Deploy the relay", docs("/operators/relay/")],
-      ["Weft Network", productHref("network")],
-    ],
-  },
+// The four things the approve window shows. The numbers match the markers
+// on the window beside them.
+const shown = [
+  ["Who is asking", "The site's address, and which of your identities it wants to use."],
+  ["Read or write", "Whether it only reads the ledger or changes it, said plainly."],
+  ["What it calls", "The channel, the contract, the function and every argument, decoded."],
+  ["Who must approve", "Which organisations must endorse it before it is committed."],
+];
+// The operational side, each piece with where to read about it.
+const pieces2 = [
+  ["Relay", "One stateless service your organisation runs next to its peers.", docs("/operators/relay/")],
+  ["Invite", "A link that configures the whole network for your users: CA, relay, MSP ID and channels.", docs("/operators/invites/")],
+  ["Explorer", "Your organisation's view of its ledger, every block's hash checked in the reader's browser.", docs("/operators/explorer/")],
+  ["Network page", "Every organisation's explorer side by side, and whether their ledgers agree.", productHref("network")],
+];
+const code = [
+  'const weft = window.weft;',
+  'await weft.request({ method: "weft_connect" });',
+  'await weft.request({',
+  '  method: "weft_submit",',
+  '  params: {',
+  '    channel: "mychannel", chaincode: "basic",',
+  '    fn: "TransferAsset", args: ["asset7", "Org2MSP"],',
+  '  },',
+  '});',
 ];
 ---
 
-<Shell product="site" description="An identity wallet for Hyperledger Fabric. Every transaction Weft signs is decoded and shown to you first." wide>
+<Shell product="site" description="Weft is a browser extension that holds the certificate your organisation's CA issued you and signs Fabric transactions for you, after showing you each one." wide>
   <Fragment slot="nav">
     <a href={docs("/")}>Docs</a>
     <a href={productHref("playground")}>Playground</a>
@@ -45,52 +54,56 @@ const audiences = [
   </Fragment>
 
   <section class="hero" aria-labelledby="hero-title">
-    <h1 id="hero-title" class="visually-hidden">Weft, an identity wallet for Hyperledger Fabric</h1>
+    <div class="hero__ground" aria-hidden="true"></div>
+    <div class="hero__text">
+      <h1 id="hero-title">Your Fabric identity, in your own browser.</h1>
+      <p class="hero__sub">Weft is a browser extension that holds the certificate your organisation's CA issued you. Web applications ask it to sign; you read each transaction and approve it; the ledger records you, not a server.</p>
+      <div class="actions">
+        <a class="btn btn--primary" href={docs("/start/install/")}>Install Weft</a>
+        <a class="btn" href="#how">See how a transaction is signed</a>
+      </div>
+      <p class="hero__proof">Open source, Apache 2.0. Keys never leave the browser. Works with any Fabric network that runs the relay.</p>
+    </div>
     <div class="hero__stage">
-      <div class="hero__ground" aria-hidden="true"></div>
       <canvas id="hero-loom" aria-hidden="true"></canvas>
       <button type="button" class="hero__replay" id="hero-replay" aria-label="Weave the mark again"></button>
     </div>
-    <div class="hero__text" data-arrive>
-      <script is:inline>
-        // Hidden before the first paint, so the words never show and then
-        // vanish: they arrive with the word (below). If the loom never
-        // starts, they come in anyway.
-        if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-          const words = document.currentScript.parentElement;
-          words.dataset.arrive = "waiting";
-          setTimeout(() => words.dataset.arrive === "waiting" && (words.dataset.arrive = "here"), 8000);
-        }
-      </script>
-      <p class="hero__tagline">An identity wallet for Hyperledger Fabric.</p>
-      <p class="hero__sub">Weft holds the certificate your organisation's CA issued you, and signs only what you approve, after showing you exactly what it does.</p>
-      <div class="actions">
-        <a class="btn btn--primary" href={docs("/start/install/")}>Install Weft</a>
-        <a class="btn" href={productHref("playground")}>Try the playground</a>
-        <a class="btn" href={docs("/start/what-is-weft/")}>How it works</a>
+  </section>
+
+  <section class="problem stage-section" aria-labelledby="problem-title">
+    <div class="col">
+      <span class="eyebrow">Why Weft exists</span>
+      <h2 id="problem-title">Today a server signs for everyone</h2>
+      <p class="muted">On most Fabric applications, a portal holds the users' identities and submits transactions under them. The ledger records the server. With Weft, the identity stays in the person's browser, the application asks for a signature, and the ledger records the person who approved it.</p>
+    </div>
+    <div class="flow" role="img" aria-label="Before: a person uses a portal server, which holds the identity and signs, and sends to the peers. With Weft: the person's browser holds the identity and signs, a relay forwards the signed bytes, and the peers receive them.">
+      <div class="flow__row">
+        <span class="flow__label">Before</span>
+        <div class="flow__box"><span>Person</span></div>
+        <span class="flow__arrow"></span>
+        <div class="flow__box flow__box--warn"><span>Portal server</span><small>holds identity, signs</small></div>
+        <span class="flow__arrow"></span>
+        <div class="flow__box"><span>Peers</span></div>
+      </div>
+      <div class="flow__row">
+        <span class="flow__label">With Weft</span>
+        <div class="flow__box flow__box--accent"><span>Person's browser</span><small>holds identity, signs</small></div>
+        <span class="flow__arrow"></span>
+        <div class="flow__box"><span>Relay</span><small>forwards signed bytes</small></div>
+        <span class="flow__arrow"></span>
+        <div class="flow__box"><span>Peers</span></div>
       </div>
     </div>
   </section>
 
-  <section class="cloth" aria-labelledby="cloth-title">
-    <div class="cloth__text">
+  <section class="cloth stage-section" id="how" aria-labelledby="cloth-title">
+    <div class="col">
       <span class="eyebrow">How it works</span>
       <h2 id="cloth-title">Every transaction, shown first</h2>
-      <p>A dApp asks Weft to sign. Weft decodes the request, shows you what it calls, and signs only if you approve. Then the organisations it needs endorse it, and it's woven into the ledger every one of them keeps.</p>
-    </div>
-    <div class="cloth__stage">
-      <canvas id="cloth-loom" aria-hidden="true"></canvas>
-      <ol class="ledger" id="ledger" aria-label="The transactions woven into the cloth" hidden></ol>
-    </div>
-  </section>
-
-  <section class="sheet" aria-labelledby="sheet-title">
-    <div class="sheet__text">
-      <span class="eyebrow">Before you sign</span>
-      <h2 id="sheet-title">Nothing is signed that you haven't read</h2>
-      <dl class="shown">
+      <p class="muted">A web application asks Weft to sign. Weft decodes the request, shows you what it calls, and signs only if you approve. The organisations it needs endorse it, and it is woven into the ledger every one of them keeps.</p>
+      <dl class="pieces">
         {
-          shown.map(([term, detail]) => (
+          pieces.map(([term, detail]) => (
             <div>
               <dt>{term}</dt>
               <dd>{detail}</dd>
@@ -99,32 +112,136 @@ const audiences = [
         }
       </dl>
     </div>
-    <img
-      src="/hero-product.png"
-      width="953"
-      height="1020"
-      loading="lazy"
-      alt="The Weft wallet showing an identity and its recent transactions, next to a signature request for a TransferShipment transaction."
-    />
+    <div class="cloth__stage">
+      <canvas id="cloth-loom" aria-hidden="true"></canvas>
+      <ol class="ledger" id="ledger" aria-label="The transactions woven into the cloth" hidden></ol>
+    </div>
   </section>
 
-  <section class="who" aria-labelledby="who-title">
-    <h2 id="who-title">Weft is for three kinds of people</h2>
-    <ul class="who__list">
+  <section class="read stage-section" aria-labelledby="read-title">
+    <div class="col">
+      <span class="eyebrow">Before you sign</span>
+      <h2 id="read-title">What you read before you sign</h2>
+      <p class="muted">Nothing is signed that you have not read. The window Weft opens shows four things, and refuses the request if what the network sends differs from what you approved.</p>
+      <ol class="shown">
+        {
+          shown.map(([term, detail]) => (
+            <li>
+              <strong>{term}</strong>
+              <span>{detail}</span>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+    <div class="approve" aria-label="The window Weft opens for a transaction, as an example">
+      <div class="approve__head">
+        <span class="approve__brand"><Fragment set:html={markSmall} />weft</span>
+        <p class="approve__title">Sign this transaction?</p>
+        <div class="approve__origin" data-shown="1">
+          <span class="approve__origin-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="10" height="7" rx="1.5"></rect><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"></path></svg></span>
+          <span class="approve__origin-text"><span>asset-transfer.example</span><small>wants you to sign a transaction</small></span>
+        </div>
+      </div>
+      <div class="approve__body">
+        <div class="approve__notice" data-shown="2">
+          <span class="approve__tag">Submit</span>
+          <span>This changes the ledger. Once endorsed and committed it cannot be undone.</span>
+        </div>
+        <dl class="approve__details" data-shown="3">
+          <dt>Signing as</dt>
+          <dd><span>alice</span> <span class="mono approve__msp">Org1MSP</span></dd>
+          <dt>Channel</dt>
+          <dd class="mono">mychannel</dd>
+          <dt>Contract</dt>
+          <dd class="mono">basic</dd>
+          <dt>Function</dt>
+          <dd class="mono approve__fn">TransferAsset</dd>
+        </dl>
+        <div class="approve__args">
+          <span class="eyebrow">Arguments</span>
+          <div class="approve__arg"><span>0</span><span class="mono">asset7</span></div>
+          <div class="approve__arg"><span>1</span><span class="mono">Org2MSP</span></div>
+        </div>
+        <div class="approve__endorse" data-shown="4">
+          <span>Will be sent for approval to</span>
+          <span class="approve__chips"><span class="approve__chip mono">Org1MSP</span><span class="approve__chip mono">Org2MSP</span></span>
+        </div>
+      </div>
+      <div class="approve__foot" aria-hidden="true">
+        <span class="btn">Reject</span>
+        <span class="btn btn--write">Sign and submit</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="build stage-section" aria-labelledby="build-title">
+    <div class="col">
+      <span class="eyebrow">For builders</span>
+      <h2 id="build-title">Ask for a signature from a web page</h2>
+      <p class="muted">Call a contract from the page the way an Ethereum dApp asks MetaMask. Weft decodes the request and shows it to the person before anything is signed. The code and the window it opens are shown together.</p>
+      <div class="links">
+        <a href={docs("/dapps/quickstart/")}>Read the quickstart</a>
+        <a href={productHref("playground")}>Try it in the playground</a>
+      </div>
+    </div>
+    <div class="build__stage">
+      <pre class="code" tabindex="0" aria-label="Nine lines of JavaScript calling window.weft.request"><code>{code.join("\n")}</code></pre>
+      <div class="approve approve--compact" aria-label="The window the code opens: Sign this transaction? Function TransferAsset with arguments asset7 and Org2MSP">
+        <div class="approve__head">
+          <span class="approve__brand"><Fragment set:html={markSmall} />weft</span>
+          <p class="approve__title">Sign this transaction?</p>
+          <div class="approve__origin">
+            <span class="approve__origin-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"></circle><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"></path></svg></span>
+            <span class="approve__origin-text"><span>localhost:5173</span><small>wants you to sign a transaction</small></span>
+          </div>
+        </div>
+        <div class="approve__body">
+          <dl class="approve__details">
+            <dt>Function</dt>
+            <dd class="mono approve__fn">TransferAsset</dd>
+            <dt>Arguments</dt>
+            <dd class="mono">asset7, Org2MSP</dd>
+          </dl>
+        </div>
+        <div class="approve__foot" aria-hidden="true">
+          <span class="btn">Reject</span>
+          <span class="btn btn--write">Sign and submit</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="orgs text-section" aria-labelledby="orgs-title">
+    <div class="col">
+      <span class="eyebrow">For organisations</span>
+      <h2 id="orgs-title">Four small pieces, all open</h2>
+      <p class="muted">The operational side is one service and three things you publish. Each is open source and runs where your peers already run.</p>
+    </div>
+    <ul class="rows">
       {
-        audiences.map((a) => (
+        pieces2.map(([name, detail, href]) => (
           <li>
-            <h3>{a.title}</h3>
-            <p>{a.body}</p>
-            <div class="who__links">
-              {a.links.map(([label, href]) => (
-                <a href={href}>{label}</a>
-              ))}
-            </div>
+            <a href={href}>
+              <strong>{name}</strong>
+              <span>{detail}</span>
+              <svg class="rows__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </a>
           </li>
         ))
       }
     </ul>
+  </section>
+
+  <section class="install text-section" aria-labelledby="install-title">
+    <div class="col">
+      <h2 id="install-title">Install Weft</h2>
+      <p class="muted">Weft runs in Chrome, Edge, Brave and other Chromium browsers. It is not in the browser stores yet: build it from the source, or ask your administrator for the build.</p>
+      <div class="actions">
+        <a class="btn btn--primary" href={docs("/start/install/")}>Install Weft</a>
+      </div>
+      <p class="fine">Open source, Apache 2.0. <a href="https://github.com/ifeanyi-ugwu/weft">Source on GitHub</a>.</p>
+    </div>
   </section>
 </Shell>
 
@@ -138,10 +255,10 @@ const audiences = [
   const clothCanvas = document.getElementById("cloth-loom") as HTMLCanvasElement;
   const replay = document.getElementById("hero-replay") as HTMLButtonElement;
   const ledger = document.getElementById("ledger") as HTMLOListElement;
-  const text = document.querySelector<HTMLElement>("[data-arrive]")!;
 
   function startHero() {
     // The page's ground shows through around the loom, faint warps and all.
+    // The words beside it arrive on their own, from the stylesheet, at 0.4s.
     const a = hero.create(heroCanvas, glyphs, { frozen: still ? hero.T.total : undefined, clear: true });
     let playingUntil = still ? 0 : performance.now() + hero.T.total;
     const busy = () => {
@@ -149,10 +266,6 @@ const audiences = [
       setTimeout(() => replay.removeAttribute("aria-disabled"), playingUntil - performance.now());
     };
     if (!still) busy();
-
-    // The hero's words arrive as the word sets itself again beside the mark.
-    // The early script in the markup has already hidden them.
-    if (!still) setTimeout(() => (text.dataset.arrive = "here"), hero.T.wordAgain + 200);
 
     // The mark is a button, the mark's own size, laid over it: click, tap
     // or Enter weaves it again from the word, which stays faintly in place.
@@ -207,21 +320,18 @@ const audiences = [
     ledger.addEventListener("pointerleave", () => b.select(pinned));
     new ResizeObserver(() => done && requestAnimationFrame(build)).observe(clothCanvas);
 
-    // Woven once, when the bottom of the loom is in view: its bottom rows
-    // are woven first. On a screen too short for the whole loom, the bottom
-    // coming into view is enough. If it's on screen for a while without
-    // that, or scrolled past, it's shown finished, so it's never blank.
+    // Woven once, when the top third of the loom is in view, whatever the
+    // loom's height, so it plays on a phone too. A reader who has scrolled
+    // past it before it began sees it finished, so it is never blank.
     if (still) build();
     else {
       let started = false;
-      let lingering = 0;
       const header = () => document.querySelector(".shell-head")?.getBoundingClientRect().bottom ?? 0;
       const begin = (finished: boolean) => {
         if (started) return;
         started = true;
         seen.disconnect();
         removeEventListener("scroll", look);
-        clearTimeout(lingering);
         if (finished) {
           b.show(cloth.T.total);
           done = true;
@@ -236,18 +346,13 @@ const audiences = [
       };
       function look() {
         const r = clothCanvas.getBoundingClientRect();
-        const visible = r.top < innerHeight && r.bottom > header();
-        if (visible && r.bottom <= innerHeight + 24) begin(false);
-        else if (r.bottom <= header()) begin(true);
-        else if (visible && !lingering) lingering = window.setTimeout(() => begin(true), 2500);
-        else if (!visible) {
-          clearTimeout(lingering);
-          lingering = 0;
-        }
+        if (r.bottom <= header()) begin(true);
+        else if (r.top + r.height / 3 <= innerHeight && r.bottom > header()) begin(false);
       }
       const seen = new IntersectionObserver(look, { threshold: [0, 0.25, 0.5, 0.75, 1] });
       seen.observe(clothCanvas);
       addEventListener("scroll", look, { passive: true });
+      look();
     }
     return b;
   }
@@ -266,29 +371,74 @@ const audiences = [
 </script>
 
 <style>
-  /* Hero: the loom, then the words beneath it. */
+  /* The hero: the words on the left, the loom weaving the lockup beside
+     them. Faint warps behind it only: hairlines on the layout's twelve
+     columns, fading out before the next section. */
   .hero {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--weft-space-6);
-    margin-top: calc(var(--weft-space-12) * -1);
-  }
-  .hero__stage {
     position: relative;
-    width: 100%;
-    height: clamp(260px, 52vh, 520px);
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--weft-space-8);
+    align-items: center;
+    padding-block: var(--weft-space-8) var(--weft-space-4);
   }
-  /* Faint warps behind the hero only: hairlines on the layout's twelve
-     columns, gone before the words. The loom the word is woven into. */
   .hero__ground {
     position: absolute;
-    inset: 0;
+    inset: calc(var(--weft-space-12) * -1) 0 0 0;
     pointer-events: none;
     background-image: linear-gradient(to right, color-mix(in srgb, var(--weft-bg), var(--weft-text) 4%) 1px, transparent 1px);
     background-size: calc(100% / 12) 100%;
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
     mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
+  }
+  .hero__text {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-5);
+    max-width: 42rem;
+  }
+  /* The words are on screen from 0.4s, as the warps drop, one after the
+     other at the stagger; the weave beside them finishes on its own time. A
+     one-way arrival, so keyframes. */
+  .hero__text > * {
+    animation: hero-words var(--weft-duration-slow) var(--weft-ease-out) 400ms both;
+  }
+  .hero__text > :nth-child(2) {
+    animation-delay: calc(400ms + var(--weft-stagger));
+  }
+  .hero__text > :nth-child(3) {
+    animation-delay: calc(400ms + var(--weft-stagger) * 2);
+  }
+  .hero__text > :nth-child(4) {
+    animation-delay: calc(400ms + var(--weft-stagger) * 3);
+  }
+  @keyframes hero-words {
+    from {
+      opacity: 0;
+      transform: translateY(var(--weft-shift-md));
+    }
+  }
+  .hero h1 {
+    font-size: var(--weft-type-display);
+    line-height: var(--weft-leading-display);
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+  .hero__sub {
+    font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
+    color: var(--weft-text-muted);
+    max-width: 34rem;
+  }
+  .hero__proof {
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    color: var(--weft-text-subtle);
+  }
+  .hero__stage {
+    position: relative;
+    height: 320px;
   }
   .hero__replay {
     position: absolute;
@@ -304,6 +454,167 @@ const audiences = [
   }
   .hero__replay:focus-visible {
     outline-offset: 4px;
+  }
+  .hero__stage canvas,
+  .cloth__stage canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-3);
+  }
+
+  /* The sections: space-24 before one with a stage, space-16 before one
+     that is text, counting the Shell's own gap between sections. */
+  .stage-section {
+    padding-top: calc(var(--weft-space-24) - var(--weft-space-8));
+  }
+  .text-section {
+    padding-top: calc(var(--weft-space-16) - var(--weft-space-8));
+  }
+  h2 {
+    font-size: var(--weft-type-2xl);
+    line-height: var(--weft-leading-2xl);
+    letter-spacing: -0.02em;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-4);
+    min-width: 0;
+  }
+  .col > .eyebrow + h2 {
+    margin-top: calc(var(--weft-space-2) * -1);
+  }
+  .muted {
+    color: var(--weft-text-muted);
+    max-width: 34rem;
+  }
+  .fine {
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    color: var(--weft-text-subtle);
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-2) var(--weft-space-5);
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+  }
+
+  /* The problem: text beside a before-and-after diagram, drawn in HTML so
+     its labels stay readable at every width. */
+  .problem {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--weft-space-12);
+    align-items: center;
+  }
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-6);
+  }
+  .flow__row {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) var(--weft-space-8) minmax(0, 7fr) var(--weft-space-8) minmax(0, 4fr);
+    align-items: center;
+  }
+  .flow__label {
+    grid-column: 1 / -1;
+    margin-bottom: var(--weft-space-2);
+    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--weft-text-subtle);
+  }
+  .flow__box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: 60px;
+    padding: var(--weft-space-2) var(--weft-space-3);
+    border: 1.5px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-lg);
+    text-align: center;
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    color: var(--weft-text);
+    overflow-wrap: anywhere;
+  }
+  .flow__box small {
+    font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
+    color: var(--weft-text-muted);
+  }
+  .flow__box--warn small {
+    color: var(--weft-warn-text);
+  }
+  .flow__box--accent {
+    border-color: var(--weft-accent-line);
+    color: var(--weft-text-strong);
+  }
+  .flow__box--accent small {
+    color: var(--weft-accent-text);
+  }
+  /* A 1.5px line with a head, in the subtle text colour. */
+  .flow__arrow {
+    position: relative;
+    height: 1.5px;
+    background: var(--weft-text-subtle);
+  }
+  .flow__arrow::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    border: 1.5px solid var(--weft-text-subtle);
+    border-width: 1.5px 1.5px 0 0;
+    transform: translate(-1px, -50%) rotate(45deg);
+  }
+
+  /* How it works: the cloth. */
+  .cloth {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--weft-space-8);
+    align-items: center;
+  }
+  .cloth__stage {
+    position: relative;
+    height: clamp(300px, 42vw, 440px);
+  }
+  .pieces {
+    margin: var(--weft-space-2) 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+  }
+  .pieces div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: var(--weft-space-3);
+    border-left: 2px solid var(--weft-accent-line);
+  }
+  .pieces dt {
+    font-weight: 600;
+    color: var(--weft-text-strong);
+  }
+  .pieces dd {
+    margin: 0;
+    color: var(--weft-text-muted);
   }
   /* The cloth's rows as real buttons over the canvas: the readable ledger. */
   .ledger {
@@ -331,172 +642,399 @@ const audiences = [
   .ledger :global(.ledger__row:focus-visible) {
     outline-offset: -2px;
   }
-  .hero__stage canvas,
-  .cloth__stage canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    display: block;
-  }
-  .hero__text {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--weft-space-4);
-    max-width: 40rem;
-    text-align: center;
-  }
-  /* Visible unless the script is about to bring it in with the word. */
-  .hero__text[data-arrive="waiting"] > * {
-    opacity: 0;
-    transform: translateY(var(--weft-shift-md));
-  }
-  .hero__text[data-arrive="here"] > * {
-    opacity: 1;
-    transform: none;
-    transition:
-      opacity var(--weft-duration-slow) var(--weft-ease-out),
-      transform var(--weft-duration-slow) var(--weft-ease-out);
-  }
-  /* The first child is the early script; the words follow it. */
-  .hero__text[data-arrive="here"] > :nth-child(3) {
-    transition-delay: var(--weft-stagger);
-  }
-  .hero__text[data-arrive="here"] > :nth-child(4) {
-    transition-delay: calc(var(--weft-stagger) * 2);
-  }
-  .hero__tagline {
-    font-size: var(--weft-type-2xl);
-    line-height: var(--weft-leading-2xl);
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--weft-text-strong);
-    text-wrap: balance;
-  }
-  .hero__sub {
-    font-size: var(--weft-type-lg);
-    line-height: var(--weft-leading-lg);
-    color: var(--weft-text-muted);
-    text-wrap: balance;
-  }
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--weft-space-3);
-    padding-top: var(--weft-space-2);
-  }
 
-  /* Sections after the hero */
-  section:not(.hero) {
-    padding-top: var(--weft-space-24);
-  }
-  h2 {
-    font-size: var(--weft-type-2xl);
-    line-height: var(--weft-leading-2xl);
-    letter-spacing: -0.02em;
-  }
-
-  .cloth {
+  /* What you read before you sign: the four things, numbered, beside the
+     approve window carrying the same numbers. */
+  .read {
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: var(--weft-space-8);
-    align-items: center;
-  }
-  .cloth__text,
-  .sheet__text {
-    display: flex;
-    flex-direction: column;
-    gap: var(--weft-space-4);
-  }
-  .cloth__text p {
-    color: var(--weft-text-muted);
-    max-width: 34rem;
-  }
-  .cloth__stage {
-    position: relative;
-    height: clamp(300px, 42vw, 440px);
-  }
-
-  .sheet {
-    display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
     gap: var(--weft-space-12);
     align-items: center;
   }
-  .sheet img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
   .shown {
-    margin: 0;
+    margin: var(--weft-space-2) 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: shown;
     display: flex;
     flex-direction: column;
     gap: var(--weft-space-4);
   }
-  .shown div {
-    display: flex;
-    flex-direction: column;
-    gap: var(--weft-space-1);
-    padding-left: var(--weft-space-4);
-    border-left: 2px solid var(--weft-accent-line);
+  .shown li {
+    counter-increment: shown;
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 2px var(--weft-space-3);
   }
-  .shown dt {
+  .shown li::before,
+  [data-shown]::after {
+    content: counter(shown);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--weft-accent-soft);
+    color: var(--weft-accent-text);
+    font: 500 var(--weft-type-xs) / 1 var(--weft-font-mono);
+  }
+  .shown li::before {
+    grid-row: 1 / 3;
+  }
+  .shown strong {
     font-weight: 600;
     color: var(--weft-text-strong);
   }
-  .shown dd {
-    margin: 0;
+  .shown span {
     color: var(--weft-text-muted);
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
   }
 
-  .who {
+  /* The approve window, as the wallet draws it, in the page's theme. */
+  .approve {
+    position: relative;
+    width: min(100%, 380px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--weft-bg-surface);
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-xl);
+    box-shadow: var(--weft-shadow-2);
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    color: var(--weft-text);
+  }
+  .approve__head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
+    padding: var(--weft-space-4) var(--weft-space-4) var(--weft-space-3);
+    border-bottom: 1px solid var(--weft-line);
+  }
+  .approve__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--weft-space-2);
+    font: 500 var(--weft-type-md) / 1 var(--weft-font-mono);
+    letter-spacing: -0.03em;
+    color: var(--weft-text-strong);
+  }
+  .approve__brand :global(svg) {
+    width: 20px;
+    height: 20px;
+    display: block;
+  }
+  .approve__title {
+    font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
+    font-weight: 600;
+    color: var(--weft-text-strong);
+  }
+  .approve__origin {
+    display: flex;
+    align-items: center;
+    gap: var(--weft-space-2);
+  }
+  .approve__origin-icon {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--weft-radius-sm);
+    background: var(--weft-bg-raised);
+    color: var(--weft-text-muted);
+  }
+  .approve__origin-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .approve__origin-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-weight: 500;
+    color: var(--weft-text-strong);
+  }
+  .approve__origin-text small {
+    font-weight: 400;
+    font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
+    color: var(--weft-text-muted);
+  }
+  .approve__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
+    padding: var(--weft-space-3) var(--weft-space-4);
+  }
+  .approve__notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--weft-space-2);
+    padding: var(--weft-space-2) var(--weft-space-3);
+    border-radius: var(--weft-radius-lg);
+    background: var(--weft-warn-soft);
+    color: var(--weft-text);
+    font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
+  }
+  .approve__tag {
+    flex: none;
+    padding: 0 var(--weft-space-2);
+    border-radius: var(--weft-radius-sm);
+    background: var(--weft-warn);
+    color: var(--weft-on-status);
+    font: 600 var(--weft-type-xs) / 16px var(--weft-font-sans);
+  }
+  .approve__details {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: var(--weft-space-2) var(--weft-space-3);
+  }
+  .approve__details dt {
+    color: var(--weft-text-muted);
+  }
+  .approve__details dd {
+    margin: 0;
+    color: var(--weft-text-strong);
+    overflow-wrap: anywhere;
+  }
+  .approve__msp {
+    color: var(--weft-text-muted);
+    font-size: var(--weft-type-xs);
+  }
+  .approve__fn {
+    color: var(--weft-accent-text);
+    font-weight: 500;
+  }
+  .approve__args {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--weft-line);
+    border-radius: var(--weft-radius-lg);
+  }
+  .approve__args > .eyebrow {
+    padding: var(--weft-space-2) var(--weft-space-3);
+  }
+  .approve__arg {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: var(--weft-space-2);
+    padding: var(--weft-space-2) var(--weft-space-3);
+    border-top: 1px solid var(--weft-line);
+    color: var(--weft-text-strong);
+  }
+  .approve__arg > :first-child {
+    color: var(--weft-text-subtle);
+  }
+  .approve__endorse {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-2);
+    color: var(--weft-text-subtle);
+  }
+  .approve__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-2);
+  }
+  .approve__chip {
+    padding: 0 var(--weft-space-2);
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-sm);
+    color: var(--weft-text);
+    font-size: var(--weft-type-xs);
+    line-height: 22px;
+  }
+  .approve__foot {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--weft-space-2);
+    padding: var(--weft-space-3) var(--weft-space-4) var(--weft-space-4);
+    border-top: 1px solid var(--weft-line);
+  }
+  .approve__foot .btn {
+    cursor: default;
+  }
+  /* The markers that match the list: on the window's right edge. */
+  [data-shown] {
+    position: relative;
+  }
+  [data-shown]::after {
+    content: attr(data-shown);
+    position: absolute;
+    right: calc(var(--weft-space-4) * -1 - 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    border: 1px solid var(--weft-bg);
+  }
+  .approve--compact {
+    width: min(100%, 320px);
+    margin: 0;
+  }
+
+  /* For builders: the code, then the window it opens. */
+  .build {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: var(--weft-space-12);
+    align-items: center;
+  }
+  .build__stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--weft-space-6);
+    align-items: center;
+  }
+  .code {
+    margin: 0;
+    max-width: 100%;
+    padding: var(--weft-space-4);
+    border: 1px solid var(--weft-line);
+    border-radius: var(--weft-radius-xl);
+    background: var(--weft-bg-sunken);
+    color: var(--weft-text);
+    font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    overflow-x: auto;
+    tab-size: 2;
+  }
+  .code code {
+    font: inherit;
+  }
+
+  /* For organisations: four rows, each a link. */
+  .orgs {
     display: flex;
     flex-direction: column;
     gap: var(--weft-space-8);
   }
-  .who__list {
-    list-style: none;
+  .rows {
     margin: 0;
     padding: 0;
+    list-style: none;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--weft-space-4);
-  }
-  .who__list li {
-    display: flex;
-    flex-direction: column;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--weft-space-3);
-    padding: var(--weft-space-6);
-    background: var(--weft-bg-raised);
+  }
+  .rows a {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20px;
+    gap: var(--weft-space-1) var(--weft-space-4);
+    align-items: center;
+    height: 100%;
+    padding: var(--weft-space-4) var(--weft-space-5);
     border: 1px solid var(--weft-line);
     border-radius: var(--weft-radius-xl);
-  }
-  .who__list h3 {
-    font-size: var(--weft-type-lg);
-    line-height: var(--weft-leading-lg);
-  }
-  .who__list p {
+    background: var(--weft-bg-raised);
     color: var(--weft-text-muted);
-    flex: 1;
-  }
-  .who__links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--weft-space-2) var(--weft-space-4);
+    text-decoration: none;
     font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  .rows strong {
+    font-size: var(--weft-type-base);
+    line-height: var(--weft-leading-base);
+    font-weight: 600;
+    color: var(--weft-text-strong);
+  }
+  .rows__arrow {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 20px;
+    height: 20px;
+    color: var(--weft-text-subtle);
+    transition: color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  @media (hover: hover) {
+    .rows a:hover {
+      border-color: var(--weft-text-subtle);
+    }
+    .rows a:hover .rows__arrow {
+      color: var(--weft-text);
+    }
   }
 
-  @media (max-width: 860px) {
-    .cloth,
-    .sheet,
-    .who__list {
+  @media (max-width: 1100px) {
+    .build__stage {
       grid-template-columns: minmax(0, 1fr);
+    }
+    .approve--compact {
+      justify-self: start;
+    }
+  }
+  /* On a phone the diagram's rows stand on end: each box under the last,
+     the arrows pointing down, so every label has the full width. */
+  @media (max-width: 560px) {
+    .flow__row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--weft-space-2);
+    }
+    .flow__box {
+      min-height: 52px;
+    }
+    .flow__arrow {
+      width: 1.5px;
+      height: var(--weft-space-5);
+      justify-self: center;
+    }
+    .flow__arrow::after {
+      right: auto;
+      top: auto;
+      bottom: 0;
+      left: 50%;
+      transform: translate(-50%, -1px) rotate(135deg);
+    }
+  }
+  @media (max-width: 860px) {
+    .hero,
+    .problem,
+    .cloth,
+    .read,
+    .build {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .hero {
+      gap: var(--weft-space-6);
+      padding-top: 0;
+    }
+    /* The weave above the words, small, so the headline is on the first
+       screen. */
+    .hero__stage {
+      order: -1;
+      height: 160px;
     }
     .cloth__stage {
       height: 340px;
+    }
+    .rows {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .approve {
+      margin: 0;
+    }
+    /* With the window on its own row the markers sit inside its edge. */
+    [data-shown]::after {
+      right: calc(var(--weft-space-4) * -1 + 4px);
+      top: var(--weft-space-1);
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html) {
+      scroll-behavior: smooth;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero__text > * {
+      animation: none;
     }
   }
 </style>
