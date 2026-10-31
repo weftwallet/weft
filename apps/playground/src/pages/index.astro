@@ -1,9 +1,13 @@
 ---
+import { demo } from "@weftwallet/brand/products";
 import Shell from "@weftwallet/ui/Shell.astro";
 import { productHref } from "@weftwallet/ui/links";
 import Playground from "../components/Playground.astro";
 
 const docs = (path: string) => productHref("docs", path);
+// With a public demo network (packages/brand/products.json, "demo") the page
+// opens on it; without one it looks for the local stack.
+const demoInvite = demo.invite;
 ---
 
 <Shell product="playground" description="Try Weft against a real Fabric network: join, connect, and call a contract while watching every provider request." wide>
@@ -17,10 +21,16 @@ const docs = (path: string) => productHref("docs", path);
     <h1>Try a dApp against a Fabric network</h1>
     <p>A small dApp for trying Weft. It works with any network that publishes an <a href={docs("/operators/invites/")}>org invite</a>, and shows every request it sends to the wallet.</p>
     <ul>
-      <li>On your machine, run <code>pnpm playground:up</code> in the Weft repository. It starts Fabric's test network with the <code>basic</code> asset contract, the ballot contract, a relay and an explorer for each organisation, and this page finds it by itself. See <a href={docs("/dapps/test-network/")}>Local test network</a>.</li>
+      {
+        demoInvite ? (
+          <li>It opens on the demo network, which is reset every night: join it with Weft, connect, and call the <code>basic</code> asset contract or vote in an election.</li>
+        ) : (
+          <li>On your machine, run <code>pnpm playground:up</code> in the Weft repository. It starts Fabric's test network with the <code>basic</code> asset contract, the ballot contract, a relay and an explorer for each organisation, and this page finds it by itself. See <a href={docs("/dapps/test-network/")}>Local test network</a>.</li>
+        )
+      }
       <li>For your own network, paste your organisation's invite URL below, or open this page with <code style="white-space: nowrap">?invite=&lt;url&gt;</code>.</li>
     </ul>
   </div>
 
-  <Playground />
+  <Playground demoInvite={demoInvite} />
 </Shell>

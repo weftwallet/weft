@@ -1,6 +1,11 @@
 {
   "$comment": "Weft's products: names, marks and where each one lives. Every app links to the others through products.mjs, which builds addresses from domain and subdomain (\"\" is the domain itself; null means no public site: the explorer is run by each organisation, the wallet is installed). dev is what `pnpm dev:<id>` serves. Change the domain here and every link follows.",
   "domain": "weft.ifeanyiugwu.dev",
+  "demo": {
+    "$comment": "A public demo network, when one is hosted. invite is its org invite URL (…/.well-known/weft-invite.json); explorers are the URLs of its organisations' explorers. With invite set the playground opens on it, marked \"Demo network\"; with explorers set the network page opens on them side by side. Leave both empty and the products look for the local stack (pnpm playground:up) as before.",
+    "invite": "",
+    "explorers": []
+  },
   "products": {
     "site": {
       "name": "Weft",
@@ -34,7 +39,7 @@
     },
     "network": {
       "name": "Weft Network",
-      "summary": "Every organisation's explorer on one page, and tools for running a network.",
+      "summary": "Every organisation's explorer on one page, and whether their ledgers agree.",
       "mark": "logo/products/network.svg",
       "markSmall": "logo/products/network-small.svg",
       "loader": "logo/loaders/network.svg",

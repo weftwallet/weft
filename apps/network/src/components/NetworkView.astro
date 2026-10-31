@@ -7,20 +7,51 @@
  * once; each explorer that names this page then gives it a token for what it
  * publishes to members.
  */
+interface Props {
+  /** The demo network's explorers, when one is hosted; the page opens on them. */
+  demoExplorers?: string[];
+}
+const { demoExplorers = [] } = Astro.props;
 ---
 
-<div class="nw">
+<div class="nw" data-demo-explorers={demoExplorers.length ? JSON.stringify(demoExplorers) : undefined}>
+  <!-- The shape of what the page shows, until a network is loaded: one channel,
+       its organisations side by side, and the line that says whether they agree.
+       Decorative; the sentence under it carries the meaning. -->
+  <section class="nw-card nw-preview" id="nw-preview">
+    <div class="nw-preview__figure" aria-hidden="true">
+      <div class="nw-head"><h2 class="mono">a channel</h2><span class="nw-pill nw-pill--ok">Agree</span></div>
+      <p class="nw-verdict nw-verdict--ok">Both organisations agree on every block up to 1,204.</p>
+      <div class="nw-table">
+        <table>
+          <tbody>
+            <tr><td><span class="nw-org">Org1</span><div class="nw-sub mono">Org1MSP</div></td><td class="mono nw-num" data-label="Blocks">1,205</td><td data-label="Publishes">Public: values, submitters, elections</td><td class="nw-sub" data-label="Compares with">Org2MSP: same up to 1,204</td></tr>
+            <tr><td><span class="nw-org">Org2</span><div class="nw-sub mono">Org2MSP</div></td><td class="mono nw-num" data-label="Blocks">1,205</td><td data-label="Publishes">Public: values as hashes, no submitters</td><td class="nw-sub" data-label="Compares with">Org1MSP: same up to 1,204</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="nw-hint">For each channel: every organisation's explorer side by side, how far each has got, what it publishes, and one line saying whether their ledgers agree. Load a network below to see yours.</p>
+  </section>
+
+  <div id="nw-channels" class="nw-channels"></div>
+  <div id="nw-notes" class="nw-notes"></div>
+
   <div class="nw-card nw-source">
     <form class="field" id="nw-form" novalidate>
-      <label for="nw-input">An explorer, or your organisation's invite</label>
+      <label for="nw-input" id="nw-label">{demoExplorers.length ? "Your network" : "An explorer, or your organisation's invite"}</label>
       <div class="nw-row" id="nw-row">
         <input id="nw-input" class="input" type="url" placeholder="https://explorer.org1.example.com" spellcheck="false" aria-describedby="nw-status" />
         <button type="submit" class="btn btn--primary" id="nw-load">Load</button>
       </div>
+      <p class="field__status" id="nw-input-error"></p>
     </form>
-    <p class="nw-hint" id="nw-status">
-      Give one explorer: the page finds the others through it. Or open this page with <code>?explorer=&lt;url&gt;</code>.
-    </p>
+    <div class="nw-status-row">
+      <span class="nw-pill" id="nw-demo" hidden>Demo network</span>
+      <p class="nw-hint" id="nw-status">
+        {demoExplorers.length ? "Showing the demo network. Enter your organisation's explorer, or its invite, to see your own." : <Fragment>Give one explorer: the page finds the others through it. Or open this page with <code>?explorer=&lt;url&gt;</code>.</Fragment>}
+      </p>
+    </div>
     <div class="action-error" id="nw-error" role="alert" hidden></div>
     <div class="nw-signin" id="nw-signin" hidden>
       <p class="nw-hint" id="nw-signin-text">Members of the network can sign in with Weft to include members-only channels.</p>
@@ -28,9 +59,6 @@
       <div class="action-error" id="nw-signin-error" role="alert" hidden></div>
     </div>
   </div>
-
-  <div id="nw-channels" class="nw-channels"></div>
-  <div id="nw-notes" class="nw-notes"></div>
 </div>
 
 <script>
@@ -38,6 +66,8 @@
   import { announce, clearError, closesInReverse, conceal, fetchProblem, grouped, isBusy, isWebUrl, reveal, setBusy, setFieldError, showError, technical, watchFields } from "@weftwallet/ui/ui";
 
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
+  /** The public demo network's explorers, when one is hosted (products.json, "demo"). */
+  const DEMO_EXPLORERS: string[] = JSON.parse(document.querySelector<HTMLElement>(".nw")!.dataset.demoExplorers ?? "[]");
   const MAX_EXPLORERS = 24;
   const REFRESH_MS = 15_000;
 
@@ -190,7 +220,7 @@
         {},
         el(
           "thead",
-          {},
+          { className: "visually-hidden" },
           el(
             "tr",
             {},
@@ -218,13 +248,17 @@
   function orgRow(tbody: HTMLElement, base: string): HTMLTableRowElement {
     let tr = tbody.querySelector<HTMLTableRowElement>(`:scope > tr[data-base="${CSS.escape(base)}"]`);
     if (tr) return tr;
+    const labelled = (td: HTMLTableCellElement, label: string) => {
+      td.dataset.label = label;
+      return td;
+    };
     tr = el(
       "tr",
       { className: "arrive" },
-      el("td", {}, el("a", { target: "_blank", rel: "noreferrer" }), el("div", { className: "nw-sub mono" })),
-      el("td", { className: "mono nw-num" }),
-      el("td"),
-      el("td", { className: "nw-sub" }),
+      el("td", {}, el("a", { target: "_blank", rel: "noreferrer", className: "nw-org" }), el("div", { className: "nw-sub mono" })),
+      labelled(el("td", { className: "mono nw-num" }), "Blocks"),
+      labelled(el("td"), "Publishes"),
+      labelled(el("td", { className: "nw-sub" }), "Compares with"),
     );
     tr.dataset.base = base;
     tbody.append(tr);
@@ -241,6 +275,8 @@
     );
     const channels = [...new Set(reachable.flatMap((e) => e.status!.channels.map((c) => c.channel)))].sort();
     const changes: string[] = [];
+    // The shape of the page gives way to the page itself.
+    if (reachable.length) conceal($("nw-preview"));
 
     // Channels no longer published (after signing out, say) leave the way they came.
     $("nw-channels")
@@ -686,6 +722,7 @@
     try {
       const from = await resolve($<HTMLInputElement>("nw-input").value);
       history.replaceState(null, "", `?explorer=${encodeURIComponent(from[0]!)}`);
+      $("nw-demo").hidden = true;
       await load(from);
     } catch (error: any) {
       showError($("nw-error"), error?.message ?? String(error), error?.details);
@@ -699,6 +736,11 @@
     Promise.all(given.map(resolve))
       .then((lists) => load(lists.flat()))
       .catch((error) => showError($("nw-error"), error?.message ?? String(error), error?.details));
+  } else if (DEMO_EXPLORERS.length) {
+    // The demo network is the default; the chip says so until another is loaded.
+    $("nw-demo").hidden = false;
+    $<HTMLInputElement>("nw-input").placeholder = "https://explorer.your-organisation.example";
+    load(DEMO_EXPLORERS, true).catch((error) => showError($("nw-error"), error?.message ?? String(error), error?.details));
   } else {
     // Quietly look for the local playground, as the playground page does.
     getJson(LOCAL_INVITE)
@@ -835,9 +877,9 @@
   .nw-verdict--bad {
     border-left-color: var(--weft-danger);
   }
-  .nw-table {
-    overflow-x: auto;
-  }
+  /* The organisations, side by side: each one a column with its name, how
+     far it has got, what it publishes and whom it agrees with. The columns
+     stack when there is no room for two. */
   .nw table {
     width: 100%;
     border-collapse: collapse;
@@ -845,59 +887,79 @@
     line-height: var(--weft-leading-md);
     margin: 0;
   }
-  /* Table headings as SYSTEM.md has them: Mono, type-xs, uppercase, 0.08em. */
-  .nw th {
-    text-align: left;
-    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
-    color: var(--weft-text-subtle);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 0 var(--weft-space-3) var(--weft-space-2) 0;
-    border-bottom: 1px solid var(--weft-line-strong);
+  .nw tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--weft-space-3);
   }
-  .nw th.nw-num {
-    text-align: right;
+  .nw tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
+    padding: var(--weft-space-4);
+    border: 1px solid var(--weft-line);
+    border-radius: var(--weft-radius-lg);
+    background: var(--weft-bg);
+    min-width: 0;
   }
   .nw td {
-    padding: var(--weft-space-3) var(--weft-space-3) var(--weft-space-3) 0;
-    vertical-align: top;
-    border-bottom: 1px solid var(--weft-line-strong);
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
-  .nw tr:last-child td {
-    border-bottom: 0;
+  .nw td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--weft-text-subtle);
+    margin-bottom: 2px;
   }
-  .nw td a {
+  .nw-org {
     font-weight: 600;
+    font-size: var(--weft-type-lg);
+    line-height: var(--weft-leading-lg);
+    color: var(--weft-text-strong);
+  }
+  .nw td a.nw-org {
+    color: var(--weft-accent-text);
   }
   .nw-num {
-    text-align: right;
+    font-size: var(--weft-type-xl);
+    line-height: var(--weft-leading-xl);
+    color: var(--weft-text-strong);
     font-variant-numeric: tabular-nums;
   }
-  /* A new block since you looked: a 3px accent rule on the row's left, in the
-     card's padding, for four seconds (SYSTEM.md, Arriving). */
-  .nw tr > td:first-child {
-    position: relative;
-  }
-  .nw tr.is-new > td:first-child::before {
-    content: "";
-    position: absolute;
-    left: calc(var(--weft-space-3) * -1);
-    top: var(--weft-space-2);
-    bottom: var(--weft-space-2);
-    width: 3px;
-    border-radius: 2px;
-    background: var(--weft-accent);
-    animation: nw-new-rule var(--weft-duration-deliberate) var(--weft-ease-out) 4s both;
-  }
-  @keyframes nw-new-rule {
-    to {
-      opacity: 0;
-    }
+  /* A new block since you looked: the column's first cell draws the pick and
+     the rule (motion.css .is-new, on the tr). The cell is the column's width. */
+  .nw tbody tr.is-new > td:first-child::before {
+    left: calc(var(--weft-space-4) * -1 + 3px);
   }
   .nw-sub {
     font-size: var(--weft-type-xs);
     line-height: var(--weft-leading-xs);
     color: var(--weft-text-subtle);
+  }
+  /* The page's shape, before a network is loaded: dimmed, and gone once one is. */
+  .nw-preview__figure {
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-3);
+    opacity: 0.6;
+  }
+  .nw-preview__figure .nw-org {
+    color: var(--weft-text);
+  }
+  .nw-status-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--weft-space-3);
+    flex-wrap: wrap;
+  }
+  .nw-status-row .nw-hint {
+    flex: 1 1 16rem;
   }
   .nw-compare[open] {
     display: flex;
@@ -950,31 +1012,6 @@
     color: var(--weft-text-strong);
   }
   @media (max-width: 40rem) {
-    .nw thead {
-      display: none;
-    }
-    .nw tr {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: var(--weft-space-1) var(--weft-space-3);
-      padding: var(--weft-space-3) 0;
-      border-bottom: 1px solid var(--weft-line-strong);
-    }
-    .nw tr:last-child {
-      border-bottom: 0;
-    }
-    .nw td {
-      padding: 0;
-      border: 0;
-    }
-    .nw td:nth-child(3),
-    .nw td:nth-child(4) {
-      grid-column: 1 / -1;
-    }
-    .nw-num::after {
-      content: " blocks";
-      color: var(--weft-text-subtle);
-    }
     .nw-hash {
       grid-template-columns: 1fr;
       gap: var(--weft-space-1);

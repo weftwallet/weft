@@ -1,25 +1,36 @@
 ---
 // An interactive dApp for trying Weft against any network that publishes an
-// invite: the local playground stack, a hosted demo, or your own.
+// invite: the public demo network when one is hosted (products.json, "demo"),
+// the local playground stack, or your own.
 import { productHref } from "@weftwallet/ui/links";
 const docs = (path: string) => productHref("docs", path);
+interface Props {
+  /** The demo network's invite URL, when one is hosted; the page opens on it. */
+  demoInvite?: string | null;
+}
+const { demoInvite = null } = Astro.props;
 ---
 
-<div class="pg" data-docs={productHref("docs")} data-network={productHref("network")}>
+<div class="pg" data-docs={productHref("docs")} data-network={productHref("network")} data-demo-invite={demoInvite ?? undefined}>
+  <div class="pg-main">
   <section class="pg-card" aria-labelledby="pg-net-heading">
     <div class="pg-head">
       <h2 id="pg-net-heading">1. Network</h2>
-      <span class="pg-pill is-working" id="pg-weft" data-state="pending">Looking for Weft…</span>
+      <span class="pg-chips">
+        <span class="pg-pill" id="pg-demo" data-state="pending" hidden>Demo network</span>
+        <span class="pg-pill" id="pg-weft" data-state="pending">Looking for Weft…</span>
+      </span>
     </div>
     <form class="field" id="pg-invite-form" novalidate>
       <label for="pg-invite">Invite URL</label>
       <div class="pg-row" id="pg-invite-row">
-        <input id="pg-invite" class="input" type="url" placeholder="http://localhost:8787/.well-known/weft-invite.json" spellcheck="false" aria-describedby="pg-invite-status" />
+        <input id="pg-invite" class="input" type="url" placeholder={demoInvite ?? "http://localhost:8787/.well-known/weft-invite.json"} spellcheck="false" aria-describedby="pg-invite-status" />
         <button type="submit" id="pg-load" class="btn">Load</button>
       </div>
+      <p class="field__status" id="pg-invite-error"></p>
     </form>
     <p class="pg-hint" id="pg-invite-status">
-      Run <code>pnpm playground:up</code> for a local network, or paste any organisation's invite URL.
+      {demoInvite ? "Loading the demo network. Or paste any organisation's invite URL." : <Fragment>Run <code>pnpm playground:up</code> for a local network, or paste any organisation's invite URL.</Fragment>}
     </p>
     <div class="action-error" id="pg-invite-failed" role="alert" hidden></div>
     <dl class="pg-details" id="pg-invite-details" hidden>
@@ -69,14 +80,17 @@ const docs = (path: string) => productHref("docs", path);
       <div class="field">
         <label for="pg-channel">Channel</label>
         <select id="pg-channel" class="input"><option value="mychannel">mychannel</option></select>
+        <p class="field__status" aria-hidden="true"></p>
       </div>
       <div class="field">
         <label for="pg-chaincode">Contract <span class="field__hint">chaincode name</span></label>
         <input id="pg-chaincode" class="input mono" value="basic" spellcheck="false" />
+        <p class="field__status" id="pg-chaincode-error"></p>
       </div>
       <div class="field">
         <label for="pg-fn">Function</label>
         <input id="pg-fn" class="input mono" value="GetAllAssets" spellcheck="false" />
+        <p class="field__status" id="pg-fn-error"></p>
       </div>
     </div>
     <div class="field">
@@ -116,6 +130,7 @@ const docs = (path: string) => productHref("docs", path);
         <input id="pg-el-id" class="input mono" value="board-2026" spellcheck="false" />
         <button type="submit" id="pg-el-load" class="btn" disabled>Load</button>
       </div>
+      <p class="field__status" id="pg-el-id-error"></p>
     </form>
     <p class="pg-hint pg-why" id="pg-el-why" hidden></p>
     <div class="action-error" id="pg-el-error" role="alert" hidden></div>
@@ -150,18 +165,22 @@ const docs = (path: string) => productHref("docs", path);
           <div class="field">
             <label for="pg-new-id">ID</label>
             <input id="pg-new-id" class="input mono" placeholder="lunch-friday" spellcheck="false" />
+            <p class="field__status" id="pg-new-id-error"></p>
           </div>
           <div class="field">
             <label for="pg-new-title">Question</label>
             <input id="pg-new-title" class="input" placeholder="Where should we eat?" />
+            <p class="field__status" id="pg-new-title-error"></p>
           </div>
           <div class="field">
             <label for="pg-new-options">Choices <span class="field__hint">separated by commas</span></label>
             <input id="pg-new-options" class="input" placeholder="Noodles, Tacos" />
+            <p class="field__status" id="pg-new-options-error"></p>
           </div>
           <div class="field">
             <label for="pg-new-minutes">Voting closes in</label>
             <select id="pg-new-minutes" class="input"><option value="2">2 minutes</option><option value="10">10 minutes</option><option value="60">1 hour</option><option value="1440">1 day</option></select>
+            <p class="field__status" aria-hidden="true"></p>
           </div>
         </div>
         <div>
@@ -188,15 +207,17 @@ const docs = (path: string) => productHref("docs", path);
     <ul class="pg-try" id="pg-ex-try"></ul>
   </section>
 
-  <section class="pg-card" aria-labelledby="pg-log-heading">
+  </div>
+
+  <aside class="pg-card pg-log-card" aria-labelledby="pg-log-heading">
     <div class="pg-head">
       <h2 id="pg-log-heading">Provider log</h2>
       <button type="button" id="pg-clear" class="btn btn--text">Clear</button>
     </div>
-    <p class="pg-hint">Every <code>window.weft</code> request and response, with timings.</p>
+    <p class="pg-hint">Every <code>window.weft</code> request and response, with timings, as this page sends and receives them.</p>
     <p class="pg-hint" id="pg-log-empty">No requests yet. Connect or call a function to see them here.</p>
     <ol id="pg-log" class="pg-log"></ol>
-  </section>
+  </aside>
 </div>
 
 <script>
@@ -218,6 +239,8 @@ const docs = (path: string) => productHref("docs", path);
   const w = window as any;
   /** The other products this page links to, from @weftwallet/brand's registry. */
   const root = document.querySelector<HTMLElement>(".pg")!;
+  /** The public demo network's invite, when one is hosted (products.json, "demo"). */
+  const DEMO_INVITE = root.dataset.demoInvite || null;
   const docsAt = (path: string) => new URL(path, root.dataset.docs).toString();
   const networkPage = (explorer: string) => `${new URL("/", root.dataset.network)}?explorer=${encodeURIComponent(explorer)}`;
   const dateOf = (d: string | number) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -295,12 +318,23 @@ const docs = (path: string) => productHref("docs", path);
 
   /* ---------------- wallet detection ---------------- */
 
+  /**
+   * Whether Weft is in this browser. Not a warning when it isn't: the chip
+   * stays neutral and offers the install page.
+   */
   function setWeftPill(state: "ok" | "missing") {
     const pill = $("pg-weft");
+    clearTimeout(lookingLoader);
     pill.classList.remove("is-working");
     pill.dataset.state = state;
-    pill.textContent = state === "ok" ? `Weft ${weft.version} detected` : "Weft not found";
+    if (state === "ok") {
+      pill.textContent = `Weft ${weft.version} detected`;
+      return;
+    }
+    pill.replaceChildren("Weft not found. ", Object.assign(document.createElement("a"), { href: docsAt("/start/install/"), textContent: "Install it" }));
   }
+  // The chip says it is looking; the loader joins it only if the look takes a while.
+  const lookingLoader = window.setTimeout(() => $("pg-weft").dataset.state === "pending" && $("pg-weft").classList.add("is-working"), 300);
 
   function detect() {
     if (w.weft?.isWeft) {
@@ -474,7 +508,7 @@ const docs = (path: string) => productHref("docs", path);
       void loadExplorers();
     } catch (error: any) {
       conceal($("pg-invite-details"));
-      $("pg-invite-status").textContent = "No invite loaded.";
+      $("pg-invite-status").textContent = DEMO_INVITE && url === new URL(DEMO_INVITE).toString() ? "The demo network didn't answer. Try again in a moment, or paste another organisation's invite URL." : "No invite loaded.";
       if (!quiet) {
         const sentence = /^Not a Weft invite/.test(error?.message) ? "That address answered, but not with a Weft invite. Check you have the invite's URL." : fetchProblem(error, "The invite's address");
         showError($("pg-invite-failed"), sentence, `${url}\n${error?.message ?? error}`);
@@ -489,6 +523,11 @@ const docs = (path: string) => productHref("docs", path);
   if (fromQuery) {
     $<HTMLInputElement>("pg-invite").value = fromQuery;
     void loadInvite();
+  } else if (DEMO_INVITE) {
+    // The demo network is the default; the chip says so.
+    $<HTMLInputElement>("pg-invite").value = DEMO_INVITE;
+    $("pg-demo").hidden = false;
+    void loadInvite(true);
   } else {
     // Quietly look for the local playground stack.
     fetch(LOCAL_INVITE, { signal: AbortSignal.timeout(1500) })
@@ -505,7 +544,10 @@ const docs = (path: string) => productHref("docs", path);
     if (isBusy($("pg-load")) || !inviteField.checkAll()) return;
     void loadInvite();
   });
-  $("pg-invite").addEventListener("input", updateButtons);
+  $("pg-invite").addEventListener("input", () => {
+    $("pg-demo").hidden = !DEMO_INVITE || inviteUrl() !== new URL(DEMO_INVITE).toString();
+    updateButtons();
+  });
 
   /* ---------------- identity actions ---------------- */
 
@@ -1112,11 +1154,39 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   /* Global because the arguments and log rows are created by the script, which
      Astro's scoped styles would not reach. Every selector is under .pg.
      Buttons, inputs, fields and errors are base.css's. */
-  .pg {
+  .pg,
+  .pg-main {
     display: flex;
     flex-direction: column;
     gap: var(--weft-space-5);
+  }
+  .pg {
     margin-top: var(--weft-space-6);
+  }
+  /* At desktop widths the provider log sits beside the form and stays in
+     view, so a request and its decoded form can be read together. */
+  @media (min-width: 1100px) {
+    .pg {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+      align-items: start;
+    }
+    .pg-log-card {
+      position: sticky;
+      top: calc(60px + var(--weft-space-4));
+      max-height: calc(100vh - 60px - var(--weft-space-8));
+      overflow: hidden;
+    }
+    .pg-log-card .pg-log {
+      max-height: none;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+  .pg-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-2);
   }
   .pg-card {
     border: 1px solid var(--weft-line-strong);
@@ -1159,9 +1229,10 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     border-color: var(--weft-accent);
     color: var(--weft-accent-text);
   }
-  .pg-pill[data-state="missing"] {
-    border-color: var(--weft-warn);
-    color: var(--weft-warn-text);
+  /* Weft absent, or not connected, is a fact, not a warning: the chip stays
+     neutral. Amber is for writes to the ledger only. */
+  .pg-pill a {
+    color: var(--weft-accent-text);
   }
   .pg-pill[data-state="ok"]::before {
     content: "";

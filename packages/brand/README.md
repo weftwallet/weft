@@ -34,6 +34,19 @@ Weft, the wallet and the docs use the main mark. The playground, the network and
 
 `products.json` names each product and says where it lives. Apps link to each other with `productUrl()` from `@weftwallet/brand/products`, so changing `domain` there moves every link.
 
+## The demo network
+
+`products.json` has a `demo` entry for a public demo network, once one is hosted:
+
+```json
+"demo": {
+  "invite": "https://relay.demo.weft.ifeanyiugwu.dev/.well-known/weft-invite.json",
+  "explorers": ["https://explorer.org1.demo.weft.ifeanyiugwu.dev", "https://explorer.org2.demo.weft.ifeanyiugwu.dev"]
+}
+```
+
+Set `invite` and the playground opens on that network, marked "Demo network" in a neutral chip; set `explorers` and the network page opens on those organisations side by side, with its field labelled "Your network". Both are read through `demo` from `@weftwallet/brand/products` at build time, so rebuild the sites after changing them (`pnpm --filter @weftwallet/playground build`, `pnpm --filter @weftwallet/network build`). With both empty, as now, the products look for the local stack (`pnpm playground:up`) and otherwise open on their own fields.
+
 ## Colour
 
 | Token | Hex | Role |

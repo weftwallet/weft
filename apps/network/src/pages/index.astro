@@ -1,23 +1,27 @@
 ---
+import { demo } from "@weftwallet/brand/products";
 import Shell from "@weftwallet/ui/Shell.astro";
 import { productHref } from "@weftwallet/ui/links";
 import NetworkView from "../components/NetworkView.astro";
 
 const docs = (path: string) => productHref("docs", path);
+// With a public demo network (packages/brand/products.json, "demo") the page
+// opens on its organisations; without one it looks for the local stack.
+const demoExplorers = demo.explorers;
 ---
 
 <Shell product="network" description="Every organisation's explorer for one network on one page, with whether their ledgers agree." wide>
   <Fragment slot="nav">
     <a href="/" aria-current="page">Network page</a>
-    <a href="/invite/">Invite maker</a>
+    <a href="/invite/">Invite maker, for operators</a>
     <a href={docs("/operators/network/")}>How it works</a>
   </Fragment>
 
   <div class="page-intro">
-    <h1>Every organisation's explorer, on one page</h1>
-    <p>Each organisation runs its own <a href={docs("/operators/explorer/")}>explorer</a>, so there's no single place that shows a whole network. This page is that place. Give it one explorer and it finds the others through it, then shows, for each channel, what every organisation publishes and whether their ledgers agree. You can check a block yourself, in your browser, without trusting any of them.</p>
+    <h1>Every organisation's explorer on one page, and whether their ledgers agree</h1>
+    <p>Each organisation runs its own <a href={docs("/operators/explorer/")}>explorer</a> over its own peers, so no single one shows the whole network. This page puts them side by side. Give it one explorer and it finds the others through it, then shows, for each channel, how far each organisation has got, what it publishes, and whether their ledgers agree. You can check a block yourself, in your browser, without trusting any of them.</p>
     <p>The page holds no data: it reads each explorer from your browser. To link someone to your network, use <code>?explorer=&lt;your explorer's URL&gt;</code>, or <code>?invite=&lt;your invite's URL&gt;</code> if the invite names your explorer. <a href={docs("/operators/network/")}>How the network page works</a>.</p>
   </div>
 
-  <NetworkView />
+  <NetworkView demoExplorers={demoExplorers} />
 </Shell>
