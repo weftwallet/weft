@@ -14,8 +14,9 @@
       Shell inlines it; the docs and the explorer inline the same file).
 
    2. The press. Down to press-scale in duration-instant, back in
-      duration-fast. Applies to .btn, .press, [data-press], the switcher's
-      button and the theme control's options. A control in the list must
+      duration-fast. Applies to .btn, .press, [data-press], the products
+      grid's button and the header's 36px tools (.shell-tool, the theme
+      toggle among them). A control in the list must
       transition transform over duration-fast itself (base.css .btn does;
       .press and [data-press] get it here), so the release settles.
 
@@ -47,8 +48,10 @@
       below, a panel), --far (a sheet rising shift-xl over slow). An element
       that is also shown with the hidden attribute, or display: none, gets
       its first frame from @starting-style and keeps display until the leave
-      ends (transition-behavior: allow-discrete). Set --weft-reversible-from
-      to move it another way.
+      ends (transition-behavior: allow-discrete). A popover (the popover
+      attribute) is open while :popover-open, as with .is-open, and stays in
+      the top layer until its leave ends. Set --weft-reversible-from to move
+      it another way.
 
       The native <details> element hides its content at once when it closes,
       so a disclosure keeps keyframes and ui.ts closesInReverse() holds it
@@ -130,7 +133,7 @@ html:active-view-transition-type(back)::view-transition-new(root) {
 .press:active:not(:disabled, [aria-disabled="true"]),
 [data-press]:active:not(:disabled, [aria-disabled="true"]),
 .weft-switcher__button:active,
-.weft-theme__option:active {
+.shell-tool:active {
   transform: scale(var(--weft-press-scale));
   transition-duration: var(--weft-duration-instant);
 }
@@ -238,8 +241,24 @@ tr.is-new > td:first-child::before {
   transition-delay: 0s;
   transition-timing-function: var(--weft-ease-out);
 }
+/* A popover opens and closes itself (:popover-open), and leaves the top
+   layer at once unless overlay is held to the end of the leave too. */
+.reversible[popover] {
+  transition-property: opacity, transform, visibility, display, overlay;
+  transition-duration: var(--weft-reversible-out), var(--weft-reversible-out), 0s, 0s, 0s;
+  transition-delay: 0s, 0s, var(--weft-reversible-out), var(--weft-reversible-out), var(--weft-reversible-out);
+}
+.reversible:popover-open {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-duration: var(--weft-reversible-in), var(--weft-reversible-in), 0s, 0s, 0s;
+  transition-delay: 0s;
+  transition-timing-function: var(--weft-ease-out);
+}
 @starting-style {
-  .reversible.is-open {
+  .reversible.is-open,
+  .reversible:popover-open {
     opacity: 0;
     transform: translateY(var(--weft-reversible-from));
   }
@@ -357,6 +376,7 @@ details.disclosure.is-closing > :not(summary) {
   }
   .reversible,
   .reversible.is-open,
+  .reversible:popover-open,
   .field__status,
   .field__status.field-error {
     transition-duration: 0s;

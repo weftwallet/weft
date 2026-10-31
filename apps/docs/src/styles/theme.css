@@ -136,19 +136,15 @@ mobile-starlight-toc nav {
 
 /* The header: every Weft product's (packages/ui/src/header.css; the markup
    is in src/components/Header.astro). Starlight's bar is a fixed box of
-   --sl-nav-height, border included, so the height is set here: the 60px bar
-   and its 1px border, and 44px more under 900px where the links take a
-   second row (36px, and 8px under it), as on every other product. */
+   --sl-nav-height, border included, so the height is the one header.js
+   measures (the 60px bar and its 1px border, and 44px more where the
+   sections take a second row). header.js runs before the first paint, so
+   the fallback is only for a page without scripts. */
 :root {
-  --sl-nav-height: 61px;
+  --sl-nav-height: var(--weft-head-height, 61px);
   --sl-nav-pad-x: 0px;
   --sl-nav-pad-y: 0px;
   --sl-menu-button-size: 36px;
-}
-@media (max-width: 900px) {
-  :root {
-    --sl-nav-height: 105px;
-  }
 }
 .page > header.header {
   /* It stays put while the page under it moves (motion.css). */
@@ -160,62 +156,68 @@ mobile-starlight-toc nav {
 }
 /* The bar runs the full width here, over the sidebar and the page, with
    the sidebar's own inset. */
-.page > header.header > .shell-bar {
-  max-width: none;
-}
 @media (min-width: 50rem) {
   .page > header.header > .shell-bar {
     padding-inline: max(var(--weft-space-6), env(safe-area-inset-left, 0px)) max(var(--weft-space-6), env(safe-area-inset-right, 0px));
   }
 }
-/* On a phone the menu button that opens the page list sits at the end of
-   the links' row (after the theme control, when that moves there). It is
-   Starlight's, outside the header, so the row keeps its place empty. */
+/* On a phone the button that opens the page list (MobileMenuToggle.astro)
+   is the last tool in the row. It is Starlight's, outside the header, so
+   the row keeps its place empty and the button is fixed over that place. */
 @media (max-width: 49.99rem) {
   [data-has-sidebar] .shell-bar::before {
     content: "";
-    order: 9;
+    order: 4;
     flex: none;
     width: var(--sl-menu-button-size);
     height: var(--sl-menu-button-size);
-    margin-bottom: var(--weft-space-2);
   }
 }
 .shell-menu-toggle {
   position: fixed;
-  top: 60px;
+  top: calc((60px - var(--sl-menu-button-size)) / 2);
   inset-inline-end: max(var(--weft-space-4), env(safe-area-inset-right, 0px));
   z-index: var(--sl-z-index-navbar);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--sl-menu-button-size);
-  height: var(--sl-menu-button-size);
-  padding: 0;
-  border: 1px solid var(--weft-line);
-  border-radius: var(--weft-radius-lg);
-  background: transparent;
-  color: var(--weft-text-muted);
-  cursor: pointer;
-  transition:
-    border-color var(--weft-duration-fast) var(--weft-ease-out),
-    color var(--weft-duration-fast) var(--weft-ease-out);
 }
-.shell-menu-toggle svg {
+/* The icon: the list and the cross stacked in one 16px box, crossfading as
+   transitions, so a quick second press turns them back. */
+.shell-menu-toggle__icons {
+  position: relative;
   width: 16px;
   height: 16px;
+  display: block;
+}
+.shell-menu-toggle__icons > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transform: rotate(-45deg) scale(0.6);
+  transition:
+    opacity var(--weft-duration-base-out) var(--weft-ease-in),
+    transform var(--weft-duration-base-out) var(--weft-ease-in);
+}
+.shell-menu-toggle:not(:has(~ :popover-open)) .shell-menu-toggle__open,
+.shell-menu-toggle:has(~ :popover-open) .shell-menu-toggle__close {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--weft-duration-base) var(--weft-ease-out),
+    transform var(--weft-duration-base) var(--weft-ease-out);
 }
 .shell-menu-toggle:has(~ :popover-open) {
   border-color: var(--weft-line-strong);
-  color: var(--weft-text);
-}
-.shell-menu-toggle:has(~ :popover-open) .shell-menu-toggle__open,
-.shell-menu-toggle:not(:has(~ :popover-open)) .shell-menu-toggle__close {
-  display: none;
+  color: var(--weft-text-strong);
 }
 @media (min-width: 50rem) {
   .shell-menu-toggle {
     display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-menu-toggle__icons > svg {
+    transition-duration: 0s !important;
   }
 }
 /* The button is outside the header, so while the products menu is open the
@@ -223,61 +225,145 @@ mobile-starlight-toc nav {
 .page > header.header:has(.weft-switcher__menu.is-open) {
   z-index: calc(var(--sl-z-index-navbar) + 1);
 }
-@media (hover: hover) {
-  .shell-menu-toggle:hover {
-    border-color: var(--weft-line-strong);
-    color: var(--weft-text);
-  }
-}
-/* The page list opens under the taller bar. */
+/* The page list opens under the bar. */
 .sidebar-pane {
   inset-block-start: var(--sl-nav-height);
 }
 
-/* Search as a tool: a 36px control like the Shell's search field, opening
-   Starlight's dialog. The word shows where there is room for it. */
+/* The sections at the top of the page list on a phone (Sidebar.astro).
+   From 50rem they are in the header instead. */
+.docs-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--weft-space-3);
+}
+@media (min-width: 50rem) {
+  .docs-sections {
+    display: none;
+  }
+}
+.docs-sections__label {
+  margin: 0;
+  font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--weft-text-subtle);
+}
+.docs-sections__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.docs-sections__list li {
+  margin: 0;
+}
+.docs-sections__list a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: var(--weft-space-2) var(--weft-space-3);
+  border: 1px solid var(--weft-line);
+  border-radius: var(--weft-radius-lg);
+  color: var(--weft-text-muted);
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+  text-decoration: none;
+  transition:
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.docs-sections__list a[aria-current="page"] {
+  background: var(--weft-accent-soft);
+  border-color: var(--weft-accent-line);
+  color: var(--weft-text-strong);
+}
+.docs-sections__list a:focus-visible {
+  outline-offset: calc(var(--weft-focus-offset) * -1);
+}
+.docs-sections hr {
+  width: 100%;
+  height: 1px;
+  margin: var(--weft-space-1) 0;
+  border: 0;
+  background: var(--weft-line);
+}
+@media (hover: hover) {
+  .docs-sections__list a:not([aria-current]):hover {
+    border-color: var(--weft-line-strong);
+    color: var(--weft-text);
+  }
+}
+
+/* Search opens Starlight's dialog. From 50rem its button is drawn as the
+   header's search field (header.css .shell-search__input); under 50rem it
+   is a 36px search tool (header.css .shell-tool). */
 site-search {
   display: flex;
+}
+.shell-bar > site-search {
+  flex: 0 1 240px;
+  min-width: 160px;
 }
 site-search > button[data-open-modal] {
   display: flex;
   align-items: center;
-  gap: var(--weft-space-2);
+  gap: var(--weft-space-3);
+  width: 100%;
   height: 36px;
-  min-width: 36px;
   padding: 0 var(--weft-space-3);
   border: 1px solid var(--weft-line);
   border-radius: var(--weft-radius-lg);
   background: var(--weft-bg-sunken);
   color: var(--weft-text-subtle);
   font: var(--weft-type-md) / var(--weft-leading-md) var(--weft-font-sans);
+  text-align: start;
   cursor: pointer;
   transition:
     border-color var(--weft-duration-fast) var(--weft-ease-out),
-    color var(--weft-duration-fast) var(--weft-ease-out);
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 site-search > button[data-open-modal] > svg {
+  flex: none;
   width: 16px;
   height: 16px;
   font-size: 16px;
 }
 site-search > button[data-open-modal] > kbd {
-  display: none;
+  display: none !important;
 }
 @media (hover: hover) {
   site-search > button[data-open-modal]:hover {
     border-color: var(--weft-line-strong);
-    color: var(--weft-text);
   }
 }
-@media (max-width: 1100px) {
+@media (max-width: 49.99rem) {
+  .shell-bar > site-search {
+    flex: none;
+    min-width: 0;
+  }
   site-search > button[data-open-modal] {
     width: 36px;
     padding: 0;
     justify-content: center;
+    background: transparent;
+    color: var(--weft-text-muted);
   }
   site-search > button[data-open-modal] > span {
     display: none;
+  }
+  site-search > button[data-open-modal]:active {
+    transform: scale(var(--weft-press-scale));
+    transition-duration: var(--weft-duration-instant);
+  }
+}
+@media (max-width: 49.99rem) and (hover: hover) {
+  site-search > button[data-open-modal]:hover {
+    color: var(--weft-text-strong);
   }
 }
 site-search dialog {

@@ -56,11 +56,13 @@ export default defineConfig({
       favicon: "/favicon.svg",
       head: [{ tag: "script", attrs: { "data-theme-key": "starlight-theme" }, content: early }],
       // The header every Weft product renders, from @weftwallet/ui: the
-      // lockup, the docs' links, search, the products switcher and the
-      // theme control; the phone's menu button as one of its tools.
+      // products grid, the lockup, the docs' sections, search and the theme
+      // toggle; the phone's page list button at the end of its row, and the
+      // sections at the top of the page list on a phone.
       components: {
         Header: "./src/components/Header.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
+        Sidebar: "./src/components/Sidebar.astro",
         MobileMenuToggle: "./src/components/MobileMenuToggle.astro",
         MobileMenuFooter: "./src/components/MobileMenuFooter.astro",
       },

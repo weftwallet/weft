@@ -1,75 +1,109 @@
-/* The header every Weft product renders: 60px tall, the product's 28px mark
-   and name on the left, its own links in the centre, and on the right the
-   tools: search (where the product has one), the products switcher, then
-   the theme control. Under 900px the links (and the search) drop to a second
-   row under the bar. Plain CSS with no imports: it needs tokens.css before
-   it. base.css imports it for the sites; the docs load it beside their
-   Starlight overrides; the explorer serves it as a static file. Shell.astro
-   renders this markup; the docs and the explorer render the same from their
-   own templates, and header.js (a plain script the explorer inlines) keeps
-   the markup in the order the items are drawn:
+/* The header every Weft product renders: one 60px row with the products
+   grid first, then the product's 28px mark and name, its own links where
+   they fit, and on the right the tools at 36px: search (where the product
+   has one) and the theme toggle. Plain CSS with no imports: it needs
+   tokens.css and motion.css before it. base.css imports it for the sites;
+   the docs load it beside their Starlight overrides; the explorer serves it
+   as a static file. Shell.astro renders this markup; the docs and the
+   explorer render the same from their own templates. header.js (a plain
+   script each product inlines right after the header, so it runs before the
+   first paint) chooses the links' layout and keeps the markup in the order
+   the items are drawn:
 
    <header class="shell-head">
      <div class="shell-bar">
+       …the products grid (below)…
        <a class="shell-lockup" href="/">
          <svg aria-hidden="true" …>the product's small mark</svg>
          <span class="shell-word">weft<span class="shell-word__product"> docs</span></span>
        </a>
        <nav class="shell-nav" aria-label="Weft Docs">
          <a href="/guides/" aria-current="page">Guides</a>
-         <a href="/reference/">Reference</a>
+         <a href="/invite/"><span class="shell-nav__full">Invite maker, for operators</span><span class="shell-nav__short">Invite maker</span></a>
        </nav>
        <form class="shell-search" role="search" action="/search">          (optional)
          <svg class="shell-search__icon" aria-hidden="true" …>…</svg>
          <input class="shell-search__input" type="search" name="q" placeholder="Search" aria-label="Search" />
        </form>
-       …the products switcher (below)…
-       …the theme control (below)…
+       <button type="button" class="shell-tool shell-search-open" aria-expanded="false" aria-controls="search-pop" aria-label="Search" title="Search" data-shell-search-open>…</button>   (with the form)
+       <div class="shell-search-pop reversible reversible--down" id="search-pop">
+         <form class="shell-search" …>…the same field…</form>
+         <button type="button" class="shell-tool" aria-label="Close search" title="Close search" data-shell-search-close>…</button>
+       </div>
+       …the theme toggle (below)…
      </div>
    </header>
 
-   Everything is a child of the bar, with no wrapper round the tools, so
-   each can take its own row on a phone. The site's word after "weft" is the
+   Everything is a child of the bar, with no wrapper round the tools, so the
+   links can take a row of their own. The site's word after "weft" is the
    product's name without "Weft " in lower case, and is left out on Weft
-   itself. The nav may be empty.
+   itself. The nav may be empty or left out. A link may carry a short label
+   for a narrow row: its two labels in .shell-nav__full and .shell-nav__short.
 
-   The products switcher (ProductSwitcher.astro renders this; its behaviour
-   is product-switcher.js, a plain script the explorer inlines):
+   The links never scroll. header.js sets data-links on the bar to the first
+   of these in which they fit: "inline" (in the bar, centred between the
+   lockup and the tools), "row" (a row of their own under the bar), "short"
+   (that row with the short labels), "wrap" (the last resort: the row wraps).
+   A bar with data-links-menu="<media query>" tries "inline" then "menu"
+   while the query matches: the links are hidden and the product shows them
+   elsewhere (the docs, at the top of the page list). With no links it is
+   "none".
+
+   With a search field and a .shell-search-open button, under 720px the
+   field leaves the bar and the button opens .shell-search-pop, the same
+   field across the bar (header.js wires it). A product whose search is a
+   dialog (the docs) styles its own.
+
+   The products grid (ProductSwitcher.astro renders this; its behaviour is
+   product-switcher.js, a plain script the explorer inlines):
 
    <div class="weft-switcher" data-weft-switcher>
-     <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls="weft-products">
-       <svg class="weft-switcher__mark" aria-hidden="true" …>the current product's small mark</svg>
-       <span class="weft-switcher__label">Products</span>
-       <svg class="weft-switcher__chevron" aria-hidden="true" …>…</svg>
+     <button type="button" class="weft-switcher__button" aria-expanded="false" aria-controls="weft-products" aria-label="Weft products" title="Weft products">
+       <svg class="weft-switcher__grid" aria-hidden="true" …>four squares</svg>
      </button>
      <ul class="weft-switcher__menu reversible reversible--down" id="weft-products">
-       <li><a href="…" aria-current="page"><svg …/><dl><dt>Weft</dt><dd>What it is.</dd></dl></a></li>
+       <li><a href="…" aria-current="page">
+         <svg …/>the product's mark
+         <span class="weft-switcher__text">
+           <span class="weft-switcher__name">Weft Explorer</span>
+           <span class="weft-switcher__summary">What it is.</span>
+           <span class="weft-switcher__here">Run by Org1MSP</span>              (optional)
+         </span>
+         <svg class="weft-switcher__check" aria-hidden="true" …/>              (on the current one)
+       </a></li>
        …
      </ul>
    </div>
 
-   Under 720px the button shows the current product's mark alone; "Products"
-   stays its accessible name. The menu is a .reversible (motion.css):
-   .is-open on the list opens it, and it closes from wherever it is.
+   A 16px glyph in a 36px hit area, with no border at rest, first in the
+   row: its glyph sits on the content edge. From 1288px, where the gutter
+   outside the 1200px column has room, it hangs in the gutter and the lockup
+   is on the edge (not on a .shell-bar--full bar, which has no gutter). The
+   menu opens under it from its left edge; under 720px it spans the bar. It
+   is a .reversible (motion.css): .is-open on the list opens it, and it
+   closes from wherever it is.
 
-   The theme control (ThemeControl.astro renders this; its behaviour is
-   theme-control.js, a plain script the explorer inlines): a segmented
-   control, 36px tall, three 32px options and one thumb that slides between
-   them. It is a radio group: arrow keys move the choice, Tab leaves it.
+   The theme toggle (ThemeControl.astro renders this; its behaviour is
+   theme-control.js, a plain script the explorer inlines):
 
-   <div class="weft-theme" role="radiogroup" aria-label="Theme" data-weft-theme="weft-theme" data-choice="system">
-     <span class="weft-theme__thumb" aria-hidden="true"></span>
-     <button type="button" class="weft-theme__option" role="radio" aria-checked="true" tabindex="0" data-theme-choice="system" title="Match the system">
-       <svg …/><span class="weft-theme__sr">System</span>
-     </button>
-     <button … role="radio" aria-checked="false" tabindex="-1" data-theme-choice="light" title="Light">…</button>
-     <button … role="radio" aria-checked="false" tabindex="-1" data-theme-choice="dark" title="Dark">…</button>
-   </div>
+   <button type="button" class="weft-theme shell-tool" aria-pressed="false" aria-label="Dark theme" aria-describedby="weft-theme-desc" data-weft-theme="weft-theme">
+     <svg class="weft-theme__icon" aria-hidden="true" …>
+       <mask id="weft-theme-mask">…<circle class="weft-theme__cut" …/></mask>
+       <circle class="weft-theme__core" … mask="url(#weft-theme-mask)"/>
+       <g class="weft-theme__rays">…</g>
+     </svg>
+     <span class="weft-theme__desc" id="weft-theme-desc">Following your device</span>
+   </button>
 
-   data-weft-theme is the storage key; data-always-set (present or not) makes
-   following the system write the system's theme to <html data-theme> rather
-   than removing it, which Starlight's styles need. data-choice is kept by the
-   script and moves the thumb. */
+   One 36px button, named "Dark theme" and pressed when the page is dark. It
+   follows the device until pressed; a press flips light and dark, and
+   pressing back to the device's own theme follows the device again. The
+   description says which: "Following your device", "Light" or "Dark".
+   data-weft-theme is the storage key; data-always-set (present or not)
+   makes following the device write its theme to <html data-theme> rather
+   than removing it, which Starlight's styles need. The icon follows the
+   page's theme from the first paint, by CSS: a sun, whose disc grows into a
+   moon as a second disc slides in to cut it and the rays turn away. */
 
 /* The bar ------------------------------------------------------------- */
 
@@ -87,21 +121,35 @@ html:has(.shell-head) {
   scroll-padding-top: calc(var(--weft-head-height, 61px) + var(--weft-space-4));
 }
 
-/* Every item is a child of the bar, placed by its order rather than where
-   it is in the markup, so the rows below can rearrange them; header.js then
-   puts the markup in the order they are drawn, which is the order focus and
-   a screen reader take. Orders: 1 the lockup and anything a product sets by
-   it, 2 the links, 3 the tools (the default). The lockup's end margin takes
-   the free room, so the tools sit at the end even with no links. */
+/* Every item is a child of the bar, placed by its order: 0 the grid, 1 the
+   lockup and anything a product sets by it, 2 the links, 3 the tools (the
+   default), 4 anything a product keeps at the end. The lockup's end margin
+   takes the free room, so the tools sit at the end even with no links. */
 .shell-bar {
+  --shell-gap: var(--weft-space-3);
+  position: relative;
   max-width: 1200px;
   min-height: 60px;
   margin: 0 auto;
   padding-inline: max(var(--weft-space-4), env(safe-area-inset-left, 0px)) max(var(--weft-space-4), env(safe-area-inset-right, 0px));
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0 var(--weft-space-3);
+  gap: 0 var(--shell-gap);
+}
+@media (max-width: 899px) {
+  .shell-bar {
+    --shell-gap: var(--weft-space-2);
+  }
+}
+@media (max-width: 359px) {
+  .shell-bar {
+    --shell-gap: 6px;
+  }
+}
+/* A bar that runs the full width of the page (the docs'). */
+.shell-bar--full {
+  max-width: none;
 }
 .shell-bar > * {
   order: 3;
@@ -137,21 +185,29 @@ html:has(.shell-head) {
 .shell-word__product {
   color: var(--weft-text-subtle);
 }
+@media (max-width: 420px) {
+  .shell-word {
+    font-size: var(--weft-type-base);
+  }
+}
 
-/* The links, centred in the room between the lockup and the tools, 24px
-   from each. */
+/* Touch: the header's controls show their own press, not the browser's grey
+   flash. */
+.shell-bar a,
+.shell-bar button,
+.shell-bar input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The links ------------------------------------------------------------ */
+
 .shell-bar > .shell-nav {
   order: 2;
-  flex: 1 1 auto;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: var(--weft-space-1);
   min-width: 0;
-  margin-inline: var(--weft-space-3);
-}
-.shell-bar > .shell-nav:empty {
-  display: none;
+  overflow: hidden;
 }
 .shell-nav a {
   padding: var(--weft-space-2) var(--weft-space-3);
@@ -165,30 +221,131 @@ html:has(.shell-head) {
     color var(--weft-duration-fast) var(--weft-ease-out),
     background-color var(--weft-duration-fast) var(--weft-ease-out);
 }
-.shell-nav a[aria-current="page"] {
-  color: var(--weft-text-strong);
-  background: var(--weft-bg-raised);
+.shell-nav a:focus-visible {
+  outline-offset: calc(var(--weft-focus-offset) * -1);
 }
-/* Touch: the header's controls show their own press, not the browser's grey
-   flash; a link takes the current link's ground while it is held. */
-.shell-bar a,
-.shell-bar button,
-.shell-bar input {
-  -webkit-tap-highlight-color: transparent;
-}
+.shell-nav a[aria-current="page"],
 .shell-nav a:active {
   color: var(--weft-text-strong);
   background: var(--weft-bg-raised);
+}
+.shell-nav a:active {
   transition-duration: var(--weft-duration-instant);
 }
+.shell-nav__short {
+  display: none;
+}
 
-/* The tools: search, the switcher, then the theme control, all 36px tall
-   and 12px apart. */
-.shell-bar > .shell-search {
+/* In the bar: centred in the room between the lockup and the tools, 12px
+   from each. Basis 0, so the links never push the bar onto a second line;
+   header.js compares what they need with the room they get. Before
+   header.js has run (it runs before the first paint, so only without
+   scripts), the links are in the bar from 900px and on a row below it. */
+.shell-bar[data-links="inline"] > .shell-nav {
+  flex: 1 1 0;
+  justify-content: center;
+  margin-inline: var(--weft-space-3);
+}
+@media (min-width: 900px) {
+  .shell-bar:not([data-links]) > .shell-nav {
+    flex: 1 1 0;
+    justify-content: center;
+    margin-inline: var(--weft-space-3);
+  }
+}
+/* On a row of their own: everything after the break starts it. Each row is
+   36px with 8px under it, so the header is 104px. */
+.shell-bar:is([data-links="row"], [data-links="short"], [data-links="wrap"]) {
+  flex-wrap: wrap;
+}
+.shell-bar:is([data-links="row"], [data-links="short"], [data-links="wrap"])::after {
+  content: "";
+  order: 5;
+  flex-basis: 100%;
+}
+.shell-bar:is([data-links="row"], [data-links="short"], [data-links="wrap"]) > .shell-nav {
+  order: 6;
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  min-height: 36px;
+  margin: 0 calc(var(--weft-space-3) * -1) var(--weft-space-2);
+}
+.shell-bar:is([data-links="row"], [data-links="short"], [data-links="wrap"]) > .shell-nav a {
+  padding: 6px var(--weft-space-3);
+}
+.shell-bar[data-links="wrap"] > .shell-nav {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.shell-bar:is([data-links="short"], [data-links="wrap"]) .shell-nav__short {
+  display: inline;
+}
+.shell-bar:is([data-links="short"], [data-links="wrap"]) .shell-nav__full {
+  display: none;
+}
+.shell-bar:is([data-links="menu"], [data-links="none"]) > .shell-nav,
+.shell-bar > .shell-nav:empty {
+  display: none;
+}
+@media (max-width: 899px) {
+  .shell-bar:not([data-links]):has(> .shell-nav:not(:empty)) {
+    flex-wrap: wrap;
+  }
+  .shell-bar:not([data-links]):has(> .shell-nav:not(:empty))::after {
+    content: "";
+    order: 5;
+    flex-basis: 100%;
+  }
+  .shell-bar:not([data-links]) > .shell-nav {
+    order: 6;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    min-height: 36px;
+    margin: 0 calc(var(--weft-space-3) * -1) var(--weft-space-2);
+  }
+}
+
+/* The tools ------------------------------------------------------------ */
+
+/* A 36px tool with an icon: the theme toggle, the search button, the docs'
+   page list. */
+.shell-tool {
   position: relative;
-  flex: 0 1 240px;
-  min-width: 0;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--weft-line);
+  border-radius: var(--weft-radius-lg);
+  background: transparent;
+  color: var(--weft-text-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    color var(--weft-duration-fast) var(--weft-ease-out),
+    transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+.shell-tool > svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.shell-tool[aria-expanded="true"] {
+  border-color: var(--weft-line-strong);
+  color: var(--weft-text-strong);
+}
+
+/* Search: a field on a desktop, a 36px icon on a phone that opens the field
+   across the bar. */
+.shell-search {
+  position: relative;
   margin: 0;
+}
+.shell-bar > .shell-search {
+  flex: 0 1 240px;
+  min-width: 160px;
 }
 .shell-search__icon {
   position: absolute;
@@ -203,6 +360,7 @@ html:has(.shell-head) {
 .shell-search__input {
   width: 100%;
   height: 36px;
+  margin: 0;
   padding: 0 var(--weft-space-3) 0 36px;
   border: 1px solid var(--weft-line);
   border-radius: var(--weft-radius-lg);
@@ -227,130 +385,97 @@ html:has(.shell-head) {
 .shell-search__input::-webkit-search-cancel-button {
   -webkit-appearance: none;
 }
+.shell-bar > .shell-search-open {
+  display: none;
+}
+.shell-search-pop {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 5;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: var(--weft-space-2);
+  padding-inline: max(var(--weft-space-4), env(safe-area-inset-left, 0px)) max(var(--weft-space-4), env(safe-area-inset-right, 0px));
+  background: var(--weft-bg);
+}
+.shell-search-pop > .shell-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+@media (max-width: 719px) {
+  .shell-bar:has(> .shell-search-open) > .shell-search {
+    display: none;
+  }
+  .shell-bar > .shell-search-open {
+    display: grid;
+  }
+}
+@media (min-width: 720px) {
+  .shell-search-pop {
+    display: none;
+  }
+}
 
 @media (hover: hover) {
   .shell-nav a:hover {
     color: var(--weft-text);
+  }
+  .shell-tool:hover {
+    border-color: var(--weft-line-strong);
+    color: var(--weft-text-strong);
   }
   .shell-search__input:hover:not(:focus) {
     border-color: var(--weft-line-strong);
   }
 }
 
-/* Under 900px the bar is the lockup and the tools, and the links take a row
-   of their own under it, then a search field (a search that is a button,
-   like the docs', stays a tool). Each lower row is 36px with 8px under it,
-   so with links the header is 104px in every product. Orders here: 1 the
-   lockup and what sits by it, 2 the tools in the bar (the default), 3 the
-   break, 4 the links, 5 the search field and a product's tools beside it
-   (the explorer's sign-in), 6 the theme control under 420px, 9 anything a
-   product keeps at the end of the links' row (the docs' page list button,
-   which is outside the header). */
-@media (max-width: 900px) {
-  .shell-bar {
-    gap: 0 var(--weft-space-2);
-  }
-  .shell-bar > * {
-    order: 2;
-  }
-  /* Everything after this starts the second row. */
-  .shell-bar::after {
-    content: "";
-    order: 3;
-    flex-basis: 100%;
-  }
-  .shell-bar > .shell-nav {
-    order: 4;
-    flex: 1 1 0;
-    min-height: 36px;
-    margin: 0 calc(var(--weft-space-1) * -1) var(--weft-space-2);
-    justify-content: flex-start;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 0 var(--weft-space-6) 0 var(--weft-space-1);
-    /* When the links run past the edge, they fade out there, so a cut word
-       reads as more to scroll to; the end padding lets the last link clear
-       the fade once scrolled to. */
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--weft-space-6)), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - var(--weft-space-6)), transparent);
-  }
-  .shell-nav::-webkit-scrollbar {
-    display: none;
-  }
-  .shell-nav a {
-    padding: var(--weft-space-1) var(--weft-space-3);
-  }
-  .shell-bar > .shell-search {
-    order: 5;
-    flex: 1 1 160px;
-    margin-bottom: var(--weft-space-2);
-  }
-  /* With links, the search field has a row of its own, so the links keep a
-     full row. */
-  .shell-bar:has(> .shell-nav:not(:empty)) > .shell-search {
-    flex-basis: 100%;
-  }
-}
-/* On a narrow phone the theme control leaves the bar for the end of the
-   second row, so a long product name and the switcher still fit beside
-   each other at 320px. */
-@media (max-width: 420px) {
-  .shell-word {
-    font-size: var(--weft-type-base);
-  }
-  .shell-bar > .weft-theme {
-    order: 6;
-    margin-inline-start: auto;
-    margin-bottom: var(--weft-space-2);
-  }
-}
+/* The products grid ---------------------------------------------------- */
 
-/* The products switcher ------------------------------------------------ */
-
-.weft-switcher {
+/* First in the row, its glyph on the content edge and the hit area 10px
+   into the gutter; 4px from the lockup. */
+.shell-bar > .weft-switcher {
+  order: 0;
   position: relative;
-  flex: none;
+  margin-inline: -10px calc(var(--weft-space-1) - var(--shell-gap));
+}
+@media (min-width: 1288px) {
+  .shell-bar:not(.shell-bar--full) > .weft-switcher {
+    margin-inline-start: -40px;
+  }
 }
 .weft-switcher__button {
-  display: flex;
-  align-items: center;
-  gap: var(--weft-space-1);
+  width: 36px;
   height: 36px;
-  padding: 0 var(--weft-space-3);
-  border: 1px solid var(--weft-line);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: var(--weft-radius-lg);
   background: transparent;
-  color: var(--weft-text-muted);
-  font: var(--weft-type-md) / 1 var(--weft-font-sans);
+  color: var(--weft-text-subtle);
   cursor: pointer;
   transition:
-    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
     color var(--weft-duration-fast) var(--weft-ease-out),
     transform var(--weft-duration-fast) var(--weft-ease-out);
 }
-.weft-switcher__button[aria-expanded="true"] {
-  border-color: var(--weft-line-strong);
-  color: var(--weft-text);
-}
-.weft-switcher__mark {
-  display: none;
+.weft-switcher__button > svg {
   width: 16px;
   height: 16px;
+  display: block;
 }
-.weft-switcher__chevron {
-  width: 14px;
-  height: 14px;
-  transition: transform var(--weft-duration-base) var(--weft-ease-out);
+.weft-switcher__button[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--weft-text) 8%, transparent);
+  color: var(--weft-text-strong);
 }
-.weft-switcher__button[aria-expanded="true"] .weft-switcher__chevron {
-  transform: rotate(180deg);
-}
+/* Under the grid, from its left edge. */
 .weft-switcher__menu {
   position: absolute;
   z-index: 30;
-  right: 0;
-  top: calc(100% + var(--weft-space-2));
-  width: min(340px, calc(100vw - 2 * var(--weft-space-4)));
+  left: 0;
+  top: calc(100% + 20px);
+  width: 340px;
   margin: 0;
   padding: var(--weft-space-2);
   list-style: none;
@@ -358,14 +483,12 @@ html:has(.shell-head) {
   border: 1px solid var(--weft-line-strong);
   border-radius: var(--weft-radius-xl);
   box-shadow: var(--weft-shadow-3);
+  transform-origin: top left;
   /* On a short screen (a phone on its side) the list scrolls rather than
      running off the bottom. */
-  max-height: calc(100dvh - 60px - var(--weft-space-4));
+  max-height: calc(100dvh - 68px - var(--weft-space-4));
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* --weft-switcher-from is the older name a page may still set to open the
-     menu upwards (the docs' mobile menu does). */
-  --weft-reversible-from: var(--weft-switcher-from, calc(var(--weft-shift-md) * -1));
 }
 .weft-switcher__menu li {
   margin: 0;
@@ -377,146 +500,81 @@ html:has(.shell-head) {
   padding: var(--weft-space-3);
   border-radius: var(--weft-radius-lg);
   color: var(--weft-text);
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
   text-decoration: none;
   transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.weft-switcher__menu a:focus-visible {
+  outline-offset: calc(var(--weft-focus-offset) * -1);
 }
 .weft-switcher__menu a[aria-current="page"] {
   background: var(--weft-accent-soft);
 }
-.weft-switcher__menu svg {
+.weft-switcher__menu a > svg {
   width: 24px;
   height: 24px;
   flex: none;
   display: block;
 }
-.weft-switcher__menu dl {
-  margin: 0;
+.weft-switcher__text {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: var(--weft-type-md);
-  line-height: var(--weft-leading-md);
+  min-width: 0;
+  flex: 1 1 auto;
 }
-.weft-switcher__menu dt {
+.weft-switcher__name {
   font-weight: 600;
   color: var(--weft-text-strong);
 }
-.weft-switcher__menu dd {
-  margin: 0;
-  color: var(--weft-text-muted);
+.weft-switcher__summary,
+.weft-switcher__here {
   font-size: var(--weft-type-xs);
   line-height: var(--weft-leading-xs);
+  color: var(--weft-text-muted);
+}
+.weft-switcher__here {
+  color: var(--weft-accent-text);
+  overflow-wrap: anywhere;
+}
+.weft-switcher__menu a > svg.weft-switcher__check {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--weft-accent-text);
 }
 @media (hover: hover) {
   .weft-switcher__button:hover {
-    border-color: var(--weft-line-strong);
-    color: var(--weft-text);
+    background: color-mix(in srgb, var(--weft-text) 8%, transparent);
+    color: var(--weft-text-strong);
   }
-  .weft-switcher__menu a:hover {
+  .weft-switcher__menu a:not([aria-current]):hover {
     background: var(--weft-bg-raised);
   }
 }
-/* On a phone the button is the current product's mark: it says where you
-   are, and opens the others. */
-@media (max-width: 720px) {
-  .weft-switcher__button {
-    width: 36px;
-    padding: 0;
-    justify-content: center;
+/* On a phone the menu spans the bar, under it. */
+@media (max-width: 719px) {
+  .shell-bar > .weft-switcher {
+    position: static;
   }
-  .weft-switcher__label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .weft-switcher__chevron {
-    display: none;
-  }
-  .weft-switcher__mark {
-    display: block;
-  }
-  /* The menu spans the viewport under the bar, rather than hanging off the
-     button, which sits near the right edge. */
   .weft-switcher__menu {
-    position: fixed;
-    top: calc(60px + var(--weft-space-2));
     left: max(var(--weft-space-4), env(safe-area-inset-left, 0px));
     right: max(var(--weft-space-4), env(safe-area-inset-right, 0px));
+    top: 68px;
     width: auto;
   }
 }
 
-/* The theme control ---------------------------------------------------- */
+/* The theme toggle ----------------------------------------------------- */
 
-.weft-theme {
-  --weft-theme-index: 0;
-  position: relative;
-  display: inline-flex;
-  flex: none;
-  height: 36px;
-  padding: 2px;
-  border-radius: var(--weft-radius-lg);
-  background: var(--weft-bg-sunken);
-  box-shadow: inset 0 0 0 1px var(--weft-line);
-}
-.weft-theme[data-choice="light"] {
-  --weft-theme-index: 1;
-}
-.weft-theme[data-choice="dark"] {
-  --weft-theme-index: 2;
-}
-/* The thumb slides under the chosen option; a transition, so changing your
-   mind mid-slide turns it back from where it is. Until the script has set
-   the stored choice it does not move, so the page never opens on a slide. */
-.weft-theme__thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--weft-bg-overlay);
-  box-shadow:
-    var(--weft-shadow-1),
-    inset 0 0 0 1px var(--weft-line-strong);
-  transform: translateX(calc(var(--weft-theme-index) * 32px));
-  pointer-events: none;
-}
-.weft-theme.is-ready .weft-theme__thumb {
-  transition: transform var(--weft-duration-base) var(--weft-ease-out);
-}
-.weft-theme__option {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--weft-text-subtle);
-  cursor: pointer;
-  transition:
-    color var(--weft-duration-fast) var(--weft-ease-out),
-    transform var(--weft-duration-fast) var(--weft-ease-out);
-}
-.weft-theme__option svg {
+.weft-theme__icon {
   width: 16px;
   height: 16px;
   display: block;
+  overflow: visible;
 }
-.weft-theme__option[aria-checked="true"] {
-  color: var(--weft-text-strong);
-}
-.weft-theme__option:focus-visible {
-  outline-offset: 0;
-}
-.weft-theme__sr {
+.weft-theme__desc {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -524,17 +582,57 @@ html:has(.shell-head) {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-@media (hover: hover) {
-  .weft-theme__option:hover {
-    color: var(--weft-text);
+/* Sun: a small disc and eight rays. Moon: the disc grows, a second disc
+   slides in to cut the crescent, the rays turn and shrink away. Each part is
+   a transition, so a second press halfway turns it back from where it is. */
+.weft-theme__core {
+  transform-box: view-box;
+  transform-origin: 8px 8px;
+  transform: scale(0.55);
+  transition: transform var(--weft-duration-base) var(--weft-ease-out);
+}
+.weft-theme__cut {
+  transform: translate(6px, -6px);
+  transition: transform var(--weft-duration-base) var(--weft-ease-out);
+}
+.weft-theme__rays {
+  transform-box: view-box;
+  transform-origin: 8px 8px;
+  transition:
+    transform var(--weft-duration-base) var(--weft-ease-out),
+    opacity var(--weft-duration-base) var(--weft-ease-out);
+}
+:root[data-theme="dark"] .weft-theme__core {
+  transform: scale(1);
+}
+:root[data-theme="dark"] .weft-theme__cut {
+  transform: none;
+}
+:root[data-theme="dark"] .weft-theme__rays {
+  transform: rotate(-60deg) scale(0.4);
+  opacity: 0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .weft-theme__core {
+    transform: scale(1);
+  }
+  :root:not([data-theme="light"]) .weft-theme__cut {
+    transform: none;
+  }
+  :root:not([data-theme="light"]) .weft-theme__rays {
+    transform: rotate(-60deg) scale(0.4);
+    opacity: 0;
   }
 }
 
-/* Reduced motion: the thumb and the switcher's chevron change at once, as
-   every reversible thing does (motion.css). */
+/* Reduced motion: the icon and the grid's ground change at once, as every
+   reversible thing does (motion.css). */
 @media (prefers-reduced-motion: reduce) {
-  .weft-theme.is-ready .weft-theme__thumb,
-  .weft-switcher__chevron {
+  .weft-theme__core,
+  .weft-theme__cut,
+  .weft-theme__rays,
+  .weft-switcher__button,
+  .shell-tool {
     transition-duration: 0s;
   }
 }

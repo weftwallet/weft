@@ -1,38 +1,36 @@
 ---
 /**
  * Starlight's header replaced by the one every Weft product renders
- * (packages/ui/src/header.css documents the markup): the lockup, the docs'
- * own links in the centre, and on the right the tools, search, the
- * products switcher and the theme control. Under 900px the links take a
- * second row, as on every other site; theme.css gives the bar the room.
+ * (packages/ui/src/header.css documents the markup): the products grid, the
+ * lockup, the docs' sections where they fit, and on the right search and
+ * the theme toggle. The bar runs the full width, over the sidebar. Under
+ * 50rem (Starlight's own breakpoint) the sections move to the top of the
+ * page list (Sidebar.astro), and the page list's button
+ * (MobileMenuToggle.astro, which Starlight places outside the header) takes
+ * the end of the row. The header's scripts are inlined after it, so its
+ * layout is in place before the first paint; theme.css gives Starlight's
+ * fixed header the height header.js measures.
  */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import Search from "@astrojs/starlight/components/Search.astro";
 import ProductSwitcher from "@weftwallet/ui/ProductSwitcher.astro";
 import ThemeControl from "@weftwallet/ui/ThemeControl.astro";
+import { inSection, sections } from "../sections";
 import SiteTitle from "./SiteTitle.astro";
 
-// The docs' sections, each to its first page. The current one is the
-// section the page's path starts with.
-const sections = [
-  ["Start", "/start/what-is-weft/", "/start/"],
-  ["Using Weft", "/guides/signing/", "/guides/"],
-  ["Build a dApp", "/dapps/quickstart/", "/dapps/"],
-  ["Run a network", "/operators/relay/", "/operators/"],
-  ["Reference", "/reference/security/", "/reference/"],
-] as const;
+const require = createRequire(import.meta.url);
+const headerScripts = ["theme-control.js", "product-switcher.js", "header.js"].map((f) => readFileSync(require.resolve(`@weftwallet/ui/${f}`), "utf8")).join("\n");
 const path = Astro.url.pathname;
 ---
 
-<div class="shell-bar">
+<div class="shell-bar shell-bar--full" data-links-menu="(max-width: 49.99rem)">
+  <ProductSwitcher product="docs" />
   <SiteTitle />
   <nav class="shell-nav" aria-label="Weft Docs">
-    {sections.map(([label, href, prefix]) => <a href={href} aria-current={path.startsWith(prefix) ? "page" : undefined}>{label}</a>)}
+    {sections.map((s) => <a href={s.href} aria-current={inSection(path, s) ? "page" : undefined}>{s.label}</a>)}
   </nav>
   <Search class="shell-search-tool" />
-  <ProductSwitcher product="docs" />
   <ThemeControl storageKey="starlight-theme" alwaysSet />
 </div>
-
-<script>
-  import "@weftwallet/ui/header.js";
-</script>
+<script is:inline set:html={headerScripts}></script>

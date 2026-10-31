@@ -1,10 +1,11 @@
 ---
 /**
  * The page every Weft site except the docs is built in: the header
- * (header.css: the product's mark and name, its own navigation, a switcher
- * to the other products, the theme control), the content and the footer.
- * The docs render the same header from Starlight's overrides, and the
- * explorer from its templates; header.css documents the markup.
+ * (header.css: the products grid, the product's mark and name, its own
+ * links, the theme toggle), the content and the footer, which marks the
+ * current product as the grid's menu does. The docs render the same header
+ * from Starlight's overrides, and the explorer from its templates;
+ * header.css documents the markup.
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -26,7 +27,8 @@ interface Props {
 
 /**
  * Slots: the default is the page; "nav" is the product's own links (plain
- * <a> elements, the current one with aria-current="page"); "search" is a
+ * <a> elements, the current one with aria-current="page", and a short label
+ * where the full one is long: header.css has the markup); "search" is a
  * search form for the tools, where the product has one (header.css has its
  * markup, form.shell-search).
  */
@@ -45,6 +47,10 @@ const github = "https://github.com/ifeanyi-ugwu/weft";
 // Before the first paint: the stored theme, and the page transition's
 // direction. One file, shared with the docs and the explorer.
 const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
+// Right after the header, so its controls and its layout are in place before
+// the first paint: the theme toggle, the products grid, then the header's
+// layout. The same files the docs and the explorer inline.
+const headerScripts = ["theme-control.js", "product-switcher.js", "header.js"].map((f) => readFileSync(require.resolve(`@weftwallet/ui/${f}`), "utf8")).join("\n");
 ---
 
 <!doctype html>
@@ -62,16 +68,17 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
     <p id="weft-status" class="visually-hidden" role="status"></p>
     <header class="shell-head">
       <div class="shell-bar">
-        <a class="shell-lockup" href={productHref(product)}>
+        <ProductSwitcher product={product} />
+        <a class="shell-lockup" href={productHref(product)} aria-label={`${me.name}, home`}>
           <Fragment set:html={markOf(product)} />
           <span class="shell-word">weft{word && <span class="shell-word__product"> {word}</span>}</span>
         </a>
         <nav class="shell-nav" aria-label={me.name}><slot name="nav" /></nav>
         <slot name="search" />
-        <ProductSwitcher product={product} />
         <ThemeControl />
       </div>
     </header>
+    <script is:inline set:html={headerScripts}></script>
 
     <main id="main" tabindex="-1" class:list={["shell-main", { "shell-main--wide": wide }]}>
       <slot />
@@ -83,7 +90,7 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
           {
             siteProducts.map((p) => (
               <li>
-                <a href={productHref(p.id)}>
+                <a href={productHref(p.id)} aria-current={p.id === product ? "page" : undefined}>
                   <Fragment set:html={markOf(p.id)} />
                   {p.name}
                 </a>
@@ -97,10 +104,6 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
       </div>
     </footer>
 
-
-    <script>
-      import "./header.js";
-    </script>
 
     <style>
       .shell-skip {
@@ -159,13 +162,24 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
         padding: 0;
         list-style: none;
       }
+      /* The current product on the grid menu's ground. The padding is taken
+         back by the margin, so the names stay where they were. */
       .shell-foot__products a {
         display: flex;
         align-items: center;
         gap: var(--weft-space-2);
+        padding: var(--weft-space-1) var(--weft-space-2);
+        margin: calc(var(--weft-space-1) * -1) calc(var(--weft-space-2) * -1);
+        border-radius: var(--weft-radius-sm);
         color: var(--weft-text-muted);
         text-decoration: none;
-        transition: color var(--weft-duration-fast) var(--weft-ease-out);
+        transition:
+          color var(--weft-duration-fast) var(--weft-ease-out),
+          background-color var(--weft-duration-fast) var(--weft-ease-out);
+      }
+      .shell-foot__products a[aria-current="page"] {
+        background: var(--weft-accent-soft);
+        color: var(--weft-text-strong);
       }
       .shell-foot__products :global(svg) {
         width: 16px;
@@ -173,7 +187,7 @@ const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");
         display: block;
       }
       @media (hover: hover) {
-        .shell-foot__products a:hover {
+        .shell-foot__products a:not([aria-current]):hover {
           color: var(--weft-text);
         }
       }

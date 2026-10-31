@@ -254,7 +254,8 @@ const code = [
   const ledger = document.getElementById("ledger") as HTMLOListElement;
 
   function startHero() {
-    // The page's ground shows through around the loom, faint warps and all.
+    // The loom is drawn on a clear canvas, so the page shows round it; the
+    // faint warps run over it.
     // The words beside it arrive on their own, from the stylesheet, at 0.4s.
     const a = hero.create(heroCanvas, glyphs, { frozen: still ? hero.T.total : undefined, clear: true });
     let playingUntil = still ? 0 : performance.now() + hero.T.total;
@@ -369,8 +370,11 @@ const code = [
 
 <style>
   /* The hero: the words on the left, the loom weaving the lockup beside
-     them. Faint warps behind it only: hairlines on the layout's twelve
-     columns, fading out before the next section. */
+     them. Faint warps across it only: translucent lines at a fixed 32px
+     pitch from the hero's left edge, the text colour at 4%, fading out
+     before the next section. They are drawn over the loom at every width,
+     so they run through the mark and tint it without cutting it; the words
+     sit over them. */
   .hero {
     position: relative;
     display: grid;
@@ -382,14 +386,16 @@ const code = [
   .hero__ground {
     position: absolute;
     inset: calc(var(--weft-space-12) * -1) 0 0 0;
+    z-index: 1;
     pointer-events: none;
-    background-image: linear-gradient(to right, color-mix(in srgb, var(--weft-bg), var(--weft-text) 4%) 1px, transparent 1px);
-    background-size: calc(100% / 12) 100%;
+    background-image: linear-gradient(to right, color-mix(in srgb, var(--weft-text) 4%, transparent) 1px, transparent 1px);
+    background-size: 32px 100%;
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
     mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%);
   }
   .hero__text {
     position: relative;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     gap: var(--weft-space-5);

@@ -1,0 +1,43 @@
+---
+/**
+ * A button in running text that opens the docs' search, the same dialog as
+ * the header's Search. Used on the 404 page.
+ */
+interface Props {
+  label: string;
+}
+const { label } = Astro.props;
+---
+
+<button type="button" class="open-search" data-open-search>{label}</button>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-open-search]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      // Search closes on a click outside its dialog, which this one would
+      // reach once it bubbled to the window.
+      event.stopPropagation();
+      document.querySelector<HTMLButtonElement>("site-search button[data-open-modal]")?.click();
+    });
+  });
+</script>
+
+<style>
+  /* Reads as a link in the sentence; it opens a dialog, so it is a button. */
+  .open-search {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--sl-color-text-accent);
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    cursor: pointer;
+  }
+  @media (hover: hover) {
+    .open-search:hover {
+      color: var(--sl-color-white);
+    }
+  }
+</style>

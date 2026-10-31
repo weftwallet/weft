@@ -1,7 +1,7 @@
-// The products switcher's behaviour (header.css has its markup and styles).
-// Plain script with no imports: ProductSwitcher.astro imports it, and the
-// explorer inlines the file into its template. It runs once per page and
-// serves every [data-weft-switcher] on it.
+// The products grid's behaviour (header.css has its markup and styles).
+// Plain script with no imports: Shell.astro and the docs' header inline it
+// after the header, and the explorer inlines it into its template. It
+// serves every [data-weft-switcher] on the page, once each.
 //
 // The menu is a .reversible (motion.css): .is-open on the list opens it, and
 // taking the class away closes it from wherever it is, so opening and
@@ -9,6 +9,8 @@
 // returns to the button), on a click outside it, and when focus leaves it.
 (function () {
   document.querySelectorAll("[data-weft-switcher]").forEach(function (switcher) {
+    if (switcher.hasAttribute("data-ready")) return;
+    switcher.setAttribute("data-ready", "");
     var button = switcher.querySelector(".weft-switcher__button");
     var menu = switcher.querySelector(".weft-switcher__menu");
     if (!button || !menu) return;
@@ -28,6 +30,7 @@
     switcher.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && isOpen()) {
         e.preventDefault();
+        e.stopPropagation();
         set(false);
         button.focus();
       }

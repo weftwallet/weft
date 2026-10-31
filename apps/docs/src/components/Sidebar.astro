@@ -1,0 +1,30 @@
+---
+/**
+ * The page list. On a phone, where the header has no room for them, the
+ * docs' five sections come first, then Starlight's list of pages,
+ * unchanged. From 50rem the sections are in the header and this is
+ * Starlight's sidebar alone.
+ */
+import Default from "@astrojs/starlight/components/Sidebar.astro";
+import { inSection, sections } from "../sections";
+
+const path = Astro.url.pathname;
+---
+
+<div class="docs-sections">
+  <p class="docs-sections__label" id="docs-sections-label">Sections</p>
+  <ul class="docs-sections__list" aria-labelledby="docs-sections-label">
+    {
+      sections.map((s) => (
+        <li>
+          <a href={s.href} aria-current={inSection(path, s) ? "page" : undefined}>
+            {s.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <hr />
+  <p class="docs-sections__label">Pages</p>
+</div>
+<Default />

@@ -8,8 +8,8 @@ const docs = (path: string) => productHref("docs", path);
 
 <Shell product="network" title="Invite maker" description="Build your organisation's Weft invite, share links and QR code in the browser.">
   <Fragment slot="nav">
-    <a href="/">Weft Network</a>
-    <a href="/invite/" aria-current="page">Invite maker, for operators</a>
+    <a href="/"><span class="shell-nav__full">Weft Network</span><span class="shell-nav__short">Network</span></a>
+    <a href="/invite/" aria-current="page"><span class="shell-nav__full">Invite maker, for operators</span><span class="shell-nav__short">Invite maker</span></a>
     <a href={docs("/operators/network/")}>How it works</a>
   </Fragment>
 

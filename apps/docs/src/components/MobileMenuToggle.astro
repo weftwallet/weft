@@ -1,15 +1,44 @@
 ---
 /**
- * The button that opens the page list on a phone, as a 36px tool in the
- * header's row rather than Starlight's floating round button. It keeps
- * Starlight's popover target, so the menu itself is unchanged.
+ * The button that opens the page list on a phone: a 36px tool at the end of
+ * the header's row rather than Starlight's floating round button. Starlight
+ * renders it outside the header, after it, so focus reaches it after the
+ * header's tools, where it is drawn; theme.css keeps its place in the row.
+ * It keeps Starlight's popover target, so the list itself is Starlight's.
+ * Its icon crossfades between the list and a cross; the list opens and
+ * closes as a .reversible (motion.css), from wherever it is.
  */
+const icons = {
+  open: '<path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"></path>',
+  close: '<path d="M4 4l8 8M12 4l-8 8"></path>',
+};
 ---
 
-<button popovertarget="starlight__sidebar" class="shell-menu-toggle md:sl-hidden print:hidden" aria-label={Astro.locals.t("menuButton.accessibleLabel")}>
-  <svg class="shell-menu-toggle__open" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"></path></svg>
-  <svg class="shell-menu-toggle__close" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"></path></svg>
+<button popovertarget="starlight__sidebar" class="shell-menu-toggle shell-tool md:sl-hidden print:hidden" aria-label="Sections and pages" title="Sections and pages">
+  <span class="shell-menu-toggle__icons">
+    <svg class="shell-menu-toggle__open" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false" set:html={icons.open} />
+    <svg class="shell-menu-toggle__close" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false" set:html={icons.close} />
+  </span>
 </button>
+
+<script>
+  // The list is a .reversible only while it is a popover (under 50rem):
+  // from 50rem Starlight drops the popover and it is the sidebar, always
+  // shown. The expanded state is the popover's, for the button's name.
+  const pane = document.getElementById("starlight__sidebar");
+  const button = document.querySelector<HTMLButtonElement>(".shell-menu-toggle");
+  if (pane && button) {
+    const phone = matchMedia("(max-width: 49.99rem)");
+    const sync = () => {
+      pane.classList.toggle("reversible", phone.matches);
+      pane.classList.toggle("reversible--down", phone.matches);
+    };
+    sync();
+    phone.addEventListener("change", sync);
+    button.setAttribute("aria-expanded", "false");
+    pane.addEventListener("toggle", (e) => button.setAttribute("aria-expanded", String((e as ToggleEvent).newState === "open")));
+  }
+</script>
 
 <style is:global>
   body:has(#starlight__sidebar:popover-open) {

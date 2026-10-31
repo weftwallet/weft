@@ -1,50 +1,36 @@
 ---
 /**
- * The theme control every Weft site shows: match the system, light or dark,
- * as a segmented control with one thumb that slides to the choice. The
- * choice is kept in localStorage; with no choice stored the page follows
- * the system. The page's own early script (early.js) applies a stored
- * choice before the first paint. The styles are in header.css and the
- * behaviour in theme-control.js, so the explorer can render the same
- * control from its own template; both files document the markup.
+ * The theme toggle every Weft site shows: one 36px button. It follows the
+ * device until pressed; a press flips light and dark and keeps the choice
+ * in localStorage; pressing back to the device's own theme forgets the
+ * choice, so the page follows the device again. The page's early script
+ * (early.js) applies a stored choice before the first paint, and the icon
+ * follows the page's theme by CSS, so it is right from the first paint too.
+ * The styles are in header.css and the behaviour in theme-control.js, which
+ * the header inlines after itself (Shell.astro, the docs' Header.astro), so
+ * the explorer can render the same control from its own template; both
+ * files document the markup.
  */
 interface Props {
   /** Where the choice is kept. The docs use Starlight's key. */
   storageKey?: string;
   /**
-   * Set data-theme to the system's theme when following the system, rather
+   * Set data-theme to the device's theme when following the device, rather
    * than removing it. Starlight's styles need data-theme to be set.
    */
   alwaysSet?: boolean;
 }
 
 const { storageKey = "weft-theme", alwaysSet = false } = Astro.props;
-
-// Icons on the 16px grid, one 1.5px stroke with round ends.
-const icons = {
-  system: '<rect x="1.75" y="2.75" width="12.5" height="8.5" rx="1.75"></rect><path d="M5.5 13.25h5M8 11.25v2"></path>',
-  light: '<circle cx="8" cy="8" r="2.75"></circle><path d="M8 1.5v1.75M8 12.75v1.75M1.5 8h1.75M12.75 8h1.75M3.4 3.4l1.24 1.24M11.36 11.36l1.24 1.24M3.4 12.6l1.24-1.24M11.36 4.64l1.24-1.24"></path>',
-  dark: '<path d="M13.6 9.9A5.6 5.6 0 0 1 6.1 2.4a5.6 5.6 0 1 0 7.5 7.5z"></path>',
-};
-const choices = [
-  { id: "system", label: "System", title: "Match the system" },
-  { id: "light", label: "Light", title: "Light" },
-  { id: "dark", label: "Dark", title: "Dark" },
-] as const;
+const id = Math.random().toString(36).slice(2, 7);
+const rays = "M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06";
 ---
 
-<div class="weft-theme" role="radiogroup" aria-label="Theme" data-weft-theme={storageKey} data-always-set={alwaysSet ? "" : undefined} data-choice="system">
-  <span class="weft-theme__thumb" aria-hidden="true"></span>
-  {
-    choices.map((c) => (
-      <button type="button" class="weft-theme__option" role="radio" aria-checked={c.id === "system" ? "true" : "false"} tabindex={c.id === "system" ? 0 : -1} data-theme-choice={c.id} title={c.title}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={icons[c.id]} />
-        <span class="weft-theme__sr">{c.label}</span>
-      </button>
-    ))
-  }
-</div>
-
-<script>
-  import "./theme-control.js";
-</script>
+<button type="button" class="weft-theme shell-tool" aria-pressed="false" aria-label="Dark theme" aria-describedby={`weft-theme-desc-${id}`} data-weft-theme={storageKey} data-always-set={alwaysSet ? "" : undefined}>
+  <svg class="weft-theme__icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <mask id={`weft-theme-mask-${id}`}><rect x="-4" y="-4" width="24" height="24" fill="#fff"></rect><circle class="weft-theme__cut" cx="12.5" cy="3.5" r="4.6" fill="#000"></circle></mask>
+    <circle class="weft-theme__core" cx="8" cy="8" r="6" fill="currentColor" mask={`url(#weft-theme-mask-${id})`}></circle>
+    <g class="weft-theme__rays" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d={rays}></path></g>
+  </svg>
+  <span class="weft-theme__desc" id={`weft-theme-desc-${id}`}>Following your device</span>
+</button>
