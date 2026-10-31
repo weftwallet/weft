@@ -899,21 +899,17 @@ details.error-details[open] summary::before {
   overflow: hidden;
 }
 
-/* Drawn with a scale, so a change in health moves rather than jumps. */
+/* Drawn with a scale, so a change in health while it is shown moves rather
+   than jumps. It has no arrival of its own: Home mounts again after every
+   unlock, and a bar that grew from zero each time would be motion without a
+   change. It appears at its value. */
 .bar > div {
   height: 4px;
   border-radius: var(--weft-radius-pill);
   transform-origin: left;
-  animation: bar-grow var(--weft-duration-deliberate) var(--weft-ease-tension);
   transition:
     transform var(--weft-duration-deliberate) var(--weft-ease-tension),
     background-color var(--weft-duration-fast) var(--weft-ease-out);
-}
-
-@keyframes bar-grow {
-  from {
-    transform: scaleX(0);
-  }
 }
 
 .row {
@@ -1948,10 +1944,11 @@ details.error-details[open] summary::before {
   }
 }
 
-/* The weave: the mark drawn in once, on the welcome's first run only
-   (components/ui.tsx WeaveMark, mode "draw"). The ground settles over base,
+/* The weave: the mark drawn in once on its own, on the welcome's first run
+   only, and again each time a large mark is pressed (components/ui.tsx
+   WeaveMark, mode "draw"; ReplayMark). The ground settles over base,
    the warps drop a stagger later, and the three wefts pass through a stagger
-   apart over slow: about duration-deliberate for the whole mark. After that
+   apart over slow: about duration-deliberate for the whole mark. Otherwise
    the mark is still, everywhere: nothing moves without a reason. */
 .weave .weave__reveal {
   transform-box: fill-box;
@@ -2010,6 +2007,28 @@ details.error-details[open] summary::before {
   }
 }
 
+/* A large mark as a button that draws it again (components/ui.tsx
+   ReplayMark): the mark's own size, no ground or border, the tile's corner.
+   The press is motion.css's (.press). */
+.mark-replay {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+  cursor: pointer;
+  /* The tile's corner (12 of 48), as a share of its size. */
+  border-radius: 25%;
+}
+
+.mark-replay[aria-disabled="true"] {
+  cursor: default;
+}
+
+.mark-replay:focus-visible {
+  outline-offset: 4px;
+}
+
 /* Reduced motion: the finished mark, still. */
 @media (prefers-reduced-motion: reduce) {
   .weave--draw .weave__ground,
@@ -2055,7 +2074,10 @@ details.error-details[open] summary::before {
   padding-bottom: 32px;
 }
 
+/* First on screen, last in the markup, so it comes after Unlock in the tab
+   order (components/lock.tsx). */
 .lock-screen__mark {
+  order: -1;
   display: flex;
   justify-content: center;
   align-items: center;

@@ -6,7 +6,7 @@ import * as check from "../lib/validate";
 import type { VaultStatus } from "../lib/vault";
 import { useChecks } from "./form";
 import { useAction } from "./popup/state";
-import { ActionError, Button, Field, Icon, SecretInput, Spinner, WeaveMark, useFocusOnArrival, useLoader } from "./ui";
+import { ActionError, Button, Field, Icon, ReplayMark, SecretInput, seatLoader, useFocusOnArrival, useLoader } from "./ui";
 
 /**
  * Sets the wallet password. Shown before the first key is saved, and to
@@ -93,6 +93,7 @@ export function Unlock({
   passkey,
   subtitle = "Unlock to continue.",
   onUnlocked,
+  onHold,
   onCancel,
   cancelLabel = "Cancel",
   onReset,
@@ -101,6 +102,15 @@ export function Unlock({
   passkey: "inline" | "window";
   subtitle?: string;
   onUnlocked: () => void;
+  /**
+   * Called with true while this screen must stay up even if the vault has
+   * opened: from when its loader shows until the pick has seated and the
+   * mark has been whole for its beat (seatLoader). The parent keeps
+   * rendering it while held, and false lets the next screen arrive. Without
+   * it, a parent that reads the new state at once removes the lock screen at
+   * once.
+   */
+  onHold?: (held: boolean) => void;
   onCancel?: () => void;
   cancelLabel?: string;
   /** Offers "Forgot your password?", which leads to resetting Weft. The popup passes it. */
@@ -110,6 +120,25 @@ export function Unlock({
   // A wrong password is the password field's error; it clears once it's changed.
   const [wrong, setWrong] = useState<{ password: string; message: string } | null>(null);
   const [resetting, setResetting] = useState(false);
+  // After a successful unlock the loader seats before Home arrives (SYSTEM.md,
+  // Loading); `seating` keeps it in place once the work itself has ended.
+  const [seating, setSeating] = useState(false);
+  const mark = useRef<HTMLDivElement>(null);
+  const loaderShown = useRef(false);
+  const opened = () => {
+    // Only a loader that was showing seats; a quick unlock goes straight on,
+    // and with reduced motion the loader is removed at once.
+    if (loaderShown.current && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setSeating(true);
+      // Released here rather than from the effect below, so Home arrives in
+      // the same render as the seat ends.
+      void seatLoader(mark.current).then(() => {
+        setSeating(false);
+        hold.current?.(false);
+      });
+    }
+    onUnlocked();
+  };
   const checks = useChecks({ password: () => check.required(password, "Enter your password.") });
   const passwordId = checks.field("password").id;
   const unlock = useAction(async () => {
@@ -122,7 +151,7 @@ export function Unlock({
       input?.select();
       return;
     }
-    onUnlocked();
+    opened();
   });
   const withPasskey = useAction(async () => {
     if (passkey === "window") {
@@ -131,11 +160,19 @@ export function Unlock({
       return;
     }
     await unlockWithPasskey();
-    onUnlocked();
+    opened();
   });
   const hasPasskey = status.passkeys.length > 0;
   // The loader takes the mark's place only once the wait is noticeable.
   const busy = useLoader(unlock.busy || withPasskey.busy);
+  loaderShown.current = busy;
+  const held = busy || seating;
+  const hold = useRef(onHold);
+  hold.current = onHold;
+  useEffect(() => {
+    hold.current?.(held);
+  }, [held]);
+  useEffect(() => () => hold.current?.(false), []);
   // The one thing to do here is type the password, so focus goes straight to
   // it rather than to the heading (SYSTEM.md, Navigation).
   useEffect(() => {
@@ -160,10 +197,6 @@ export function Unlock({
       }}
     >
       <main className="page lock-screen">
-        <div className="lock-screen__mark">
-          {/* The mark is still; the loader turns while the password is checked. */}
-          {busy ? <Spinner size={56} /> : <WeaveMark size={56} mode="still" />}
-        </div>
         <div className="centre stack stack--tight">
           <h1 className="lock-screen__title">Weft is locked</h1>
           <p className="muted flat">{subtitle}</p>
@@ -173,12 +206,12 @@ export function Unlock({
             <SecretInput {...a} value={password} onChange={(e) => setPassword(e.target.value)} />
           )}
         </Field>
-        <Button type="submit" className="btn btn--primary" busy={unlock.busy} aria-disabled={withPasskey.busy || undefined}>
+        <Button type="submit" className="btn btn--primary" busy={unlock.busy} aria-disabled={withPasskey.busy || seating || undefined}>
           Unlock
         </Button>
         {hasPasskey && (
           <>
-            <Button icon="key" iconSize={16} busy={withPasskey.busy} aria-disabled={unlock.busy || undefined} onClick={() => void withPasskey.run()}>
+            <Button icon="key" iconSize={16} busy={withPasskey.busy} aria-disabled={unlock.busy || seating || undefined} onClick={() => void withPasskey.run()}>
               Use a passkey
             </Button>
             <ActionError error={withPasskey.error} />
@@ -194,6 +227,13 @@ export function Unlock({
             {cancelLabel}
           </button>
         )}
+        {/* The mark is still, and draws again when pressed; the loader takes
+            its place while the password is checked. It is shown first
+            (app.css .lock-screen__mark) but comes after Unlock in the tab
+            order, since the one thing to do here is unlock. */}
+        <div className="lock-screen__mark" ref={mark}>
+          <ReplayMark size={56} working={busy || seating} />
+        </div>
       </main>
     </form>
   );

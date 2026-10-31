@@ -185,9 +185,10 @@ export function Brand() {
 }
 
 /**
- * The mark. "draw" builds it from nothing, once per installation (the
- * welcome's first run; App.tsx keeps the flag); "still" is the finished mark,
- * which is what it is everywhere else. Working uses Spinner, Weft's loader.
+ * The mark. "draw" builds it from nothing: on its own once per installation
+ * (the welcome's first run; App.tsx keeps the flag), and when a large mark is
+ * pressed (ReplayMark); "still" is the finished mark, which is what it is
+ * everywhere else. Working uses Spinner, Weft's loader.
  * prefers-reduced-motion shows the finished mark.
  */
 export function WeaveMark({ size = 72, mode }: { size?: number; mode: "draw" | "still" }) {
@@ -227,6 +228,52 @@ export function WeaveMark({ size = 72, mode }: { size?: number; mode: "draw" | "
         ))}
       </g>
     </svg>
+  );
+}
+
+/**
+ * A large mark (the welcome's 72px, the lock screen's 56px) as a button that
+ * draws it again. It draws once on its own when `draw` is set (the welcome's
+ * first run) and again on every press, one full draw per press; presses while
+ * it is drawing are ignored. Nothing else moves it: no hover, no timer. With
+ * reduced motion the button stays and shows the still mark. `working` puts
+ * Weft's loader in its place (the lock screen while unlocking), and presses
+ * do nothing until it ends.
+ */
+export function ReplayMark({ size, draw = false, working = false }: { size: number; draw?: boolean; working?: boolean }) {
+  // Each press is a new draw: a new key mounts the mark again, so its
+  // keyframes start from the beginning.
+  const [run, setRun] = useState(draw ? 1 : 0);
+  const [drawing, setDrawing] = useState(draw);
+  const host = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (run === 0) return;
+    const svg = host.current?.querySelector(".weave");
+    // Reduced motion has no animations here, so the press ends at once.
+    const playing = svg ? svg.getAnimations({ subtree: true }) : [];
+    let live = true;
+    void Promise.all(playing.map((a) => a.finished.catch(() => undefined))).then(() => live && setDrawing(false));
+    return () => {
+      live = false;
+    };
+  }, [run]);
+  const blocked = working || drawing;
+  return (
+    <button
+      ref={host}
+      type="button"
+      className="mark-replay press"
+      aria-label="Replay the logo animation"
+      aria-disabled={blocked || undefined}
+      onClick={() => {
+        if (blocked) return;
+        setDrawing(true);
+        setRun((n) => n + 1);
+      }}
+    >
+      {/* Still once its draw has ended, so coming back from the loader never draws it. */}
+      {working ? <Spinner size={size} /> : <WeaveMark key={run} size={size} mode={drawing ? "draw" : "still"} />}
+    </button>
   );
 }
 
@@ -364,11 +411,103 @@ export function tokenMs(name: string, fallback: number): number {
   return /ms$/.test(raw) ? v : v * 1000;
 }
 
+/** A CSS cubic-bezier() as a function of progress, for motion drawn from script. */
+function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
+  return (t: number) => {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    let u = t;
+    for (let i = 0; i < 8; i++) {
+      const x = 3 * (1 - u) * (1 - u) * u * x1 + 3 * (1 - u) * u * u * x2 + u * u * u - t;
+      const dx = 3 * (1 - u) * (1 - u) * x1 + 6 * (1 - u) * u * (x2 - x1) + 3 * u * u * (1 - x2);
+      if (Math.abs(dx) < 1e-6) break;
+      u -= x / dx;
+    }
+    u = Math.min(1, Math.max(0, u));
+    return 3 * (1 - u) * (1 - u) * u * y1 + 3 * (1 - u) * u * u * y2 + u * u * u;
+  };
+}
+// The loader's own curves (scripts/loaders.mjs): ease-tension in, ease-in-out out.
+const easeTension = cubicBezier(0.3, 0.7, 0.2, 1);
+const easeInOut = cubicBezier(0.65, 0, 0.35, 1);
+
+/**
+ * The one loader that finishes its pass (SYSTEM.md, Loading, the unlock's
+ * seat): the lock screen's 56px loader, once Weft has unlocked. The pick
+ * seats from wherever its pass is, in at most the budget left after the
+ * whole mark's beat, then the mark is whole for duration-fast. The seat and
+ * the beat together never take longer than wait-before-loader (300ms), so
+ * an unlock slow enough to show the loader is never more than that later.
+ * Resolves when the beat ends. `host` holds the loader (Spinner).
+ */
+export function seatLoader(host: Element | null): Promise<void> {
+  const picks = host ? [...host.querySelectorAll<SVGPathElement>(".weft-loader-weft")] : [];
+  const timing = picks[0]?.getAnimations()[0]?.effect?.getComputedTiming();
+  if (!picks.length || !timing) return Promise.resolve();
+  const whole = tokenMs("--weft-duration-fast", 140);
+  const cap = tokenMs("--weft-wait-before-loader", 300) - whole;
+  // The pass, as the loader's keyframes write it: in to 42%, held to 62%,
+  // drawn out to 96%. The dash offset goes 29 (not yet in), 0 (seated), -29 (out).
+  const pass = Number(timing.duration) || 1600;
+  const inEnd = pass * 0.42, holdEnd = pass * 0.62, outEnd = pass * 0.96;
+  const natural = (m: number) => {
+    if (m < inEnd) return 29 * (1 - easeTension(m / inEnd));
+    if (m < holdEnd) return 0;
+    if (m < outEnd) return -29 * easeInOut((m - holdEnd) / (outEnd - holdEnd));
+    return -29;
+  };
+  const m = (timing.progress ?? 0) * pass;
+  // From here the pick is drawn from script, not the loader's keyframes.
+  const own = (path: SVGPathElement, offset: number) => {
+    path.classList.remove("weft-loader-weft");
+    path.setAttribute("stroke-dasharray", "28 200");
+    path.setAttribute("stroke-dashoffset", String(offset));
+  };
+  const set = (paths: SVGPathElement[], offset: number) => paths.forEach((p) => p.setAttribute("stroke-dashoffset", String(offset)));
+  picks.forEach((p) => own(p, natural(m)));
+
+  let seat = 0;
+  let frame: (u: number) => void = () => {};
+  if (m < inEnd) {
+    // Coming in: it finishes coming in, faster if it has far to go.
+    seat = Math.min(inEnd - m, cap);
+    frame = (u) => set(picks, natural(m + (inEnd - m) * u));
+  } else if (m >= holdEnd) {
+    // Being drawn out: it goes on out, and the next pick seats behind it.
+    seat = cap;
+    const next = picks.map((p) => p.cloneNode() as SVGPathElement);
+    next.forEach((p) => own(p, 29));
+    picks[picks.length - 1]!.after(...next);
+    frame = (u) => {
+      set(picks, m < outEnd ? natural(m + (outEnd - m) * u) : -29);
+      set(next, natural(inEnd * u));
+    };
+  }
+  // Already seated: nothing to draw, only the beat.
+  return new Promise((resolve) => {
+    const t0 = performance.now();
+    if (seat > 0) {
+      const tick = (now: number) => {
+        const u = Math.min(1, (now - t0) / seat);
+        frame(u);
+        if (u < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+    // On a timer, not frames, so a slow frame never adds time.
+    setTimeout(() => {
+      frame(1);
+      resolve();
+    }, seat + whole);
+  });
+}
+
 /**
  * Whether the loader should show for a wait: true only once wait-before-loader
  * has passed since `busy` became true, and false again the moment it ends, so
  * a quick answer never flashes a loader and a loader never finishes its pass.
- * The same semantics as ui.ts setBusy(), for React.
+ * The one exception is the lock screen's loader after a successful unlock
+ * (seatLoader). The same semantics as ui.ts setBusy(), for React.
  */
 export function useLoader(busy: boolean): boolean {
   const [shown, setShown] = useState(false);

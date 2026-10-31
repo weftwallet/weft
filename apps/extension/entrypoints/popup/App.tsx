@@ -9,7 +9,7 @@ import { CreatePassword, Unlock } from "../../components/lock";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { usePendingApproval, useUiEvents, useWallet, type Route } from "../../components/popup/state";
 import { FeedbackProvider, useFeedback } from "../../components/feedback";
-import { Button, ErrorDetails, Spinner, Splash, StatusScreen, WeaveMark, tokenMs, useFocusOnArrival } from "../../components/ui";
+import { Button, ErrorDetails, ReplayMark, Spinner, Splash, StatusScreen, WeaveMark, tokenMs, useFocusOnArrival } from "../../components/ui";
 
 /** How deep each screen sits, so moving deeper slides one way and back the other. */
 const DEPTH: Record<Route["name"], number> = {
@@ -82,6 +82,19 @@ function Screens() {
   useEffect(() => {
     if (isLocked) dismiss();
   }, [isLocked, dismiss]);
+
+  // The lock screen stays up while it holds (its loader showing, then
+  // seating after the unlock), even once the state says Weft is unlocked.
+  const [unlockHeld, setUnlockHeld] = useState(false);
+  const lockUp = isLocked || (unlockHeld && state?.vault.state === "unlocked");
+  // After an unlock, focus goes to the heading of the screen that was there
+  // all along, once the lock screen has gone.
+  const focusAfterUnlock = useRef(false);
+  useEffect(() => {
+    if (lockUp || !focusAfterUnlock.current || !state) return;
+    focusAfterUnlock.current = false;
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(".screen h1")?.focus({ preventScroll: true }));
+  }, [lockUp, state]);
 
   // Identities that arrive while the popup is open (from a join here, or in
   // an approval window) come in as new rows on the identities tab.
@@ -204,7 +217,7 @@ function Screens() {
   // The lock comes before everything else (docs/adr/0005). A screen that was
   // open when Weft locked stays mounted underneath, hidden, so whatever was
   // typed into it is still there after unlocking.
-  const locked = state.vault.state === "locked";
+  const locked = lockUp;
   if (!locked) current.current = { key: visits.current, node: screen };
   return (
     <>
@@ -215,11 +228,10 @@ function Screens() {
             passkey="window"
             onUnlocked={() => {
               direction.current = "none";
-              void refresh().then(() => {
-                // The screen underneath was there all along: move focus to its heading.
-                requestAnimationFrame(() => document.querySelector<HTMLElement>(".screen h1")?.focus({ preventScroll: true }));
-              });
+              focusAfterUnlock.current = true;
+              void refresh();
             }}
+            onHold={setUnlockHeld}
             onReset={() => {
               direction.current = "none";
               setRoute({ name: "home" });
@@ -274,7 +286,7 @@ function Welcome({ navigate }: { navigate: (r: Route) => void }) {
 
   return (
     <main className="page welcome stagger">
-      <div className="welcome__mark">{mode && <WeaveMark size={72} mode={mode} />}</div>
+      <div className="welcome__mark">{mode && <ReplayMark size={72} draw={mode === "draw"} />}</div>
       <div className="welcome__words">
         <h1 ref={heading} tabIndex={-1} className="wordmark">
           weft

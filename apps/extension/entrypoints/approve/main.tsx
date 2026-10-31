@@ -56,6 +56,9 @@ function Approve() {
   // A load that failed, as opposed to a request that's gone.
   const [loadError, setLoadError] = useState<ErrorInfo | null>(null);
   const [reloading, setReloading] = useState(false);
+  // The lock screen stays up while it holds (its loader seating after the
+  // unlock), even once the vault reads as unlocked.
+  const [unlockHeld, setUnlockHeld] = useState(false);
 
   const load = async () => {
     setLoadError(null);
@@ -193,13 +196,14 @@ function Approve() {
         cancelLabel="Reject"
       />
     );
-  } else if (phase === "review" && vault?.state === "locked") {
+  } else if (phase === "review" && (vault?.state === "locked" || (unlockHeld && vault?.state === "unlocked"))) {
     screen = (
       <Unlock
         status={vault}
         passkey="inline"
         subtitle={`${host} is waiting. Unlock to review the request.`}
         onUnlocked={reloadVault}
+        onHold={setUnlockHeld}
         onCancel={() => void decide(false)}
         cancelLabel="Reject"
       />
@@ -211,7 +215,7 @@ function Approve() {
   return (
     // The request stays on screen from review to done: working and finished
     // are changes to its title and footer, not screens of their own.
-    <div key={phase === "review" && vault?.state !== "unlocked" ? vault?.state : "request"} className="screen fade-in">
+    <div key={phase === "review" && (vault?.state !== "unlocked" || unlockHeld) ? (unlockHeld ? "locked" : vault?.state) : "request"} className="screen fade-in">
       {screen}
     </div>
   );
