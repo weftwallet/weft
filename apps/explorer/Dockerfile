@@ -8,6 +8,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/brand packages/brand
 COPY packages/protocol packages/protocol
 COPY packages/core packages/core
+COPY packages/ui packages/ui
 COPY apps/explorer apps/explorer
 RUN pnpm install --frozen-lockfile --filter @weftwallet/explorer... \
  && pnpm --filter @weftwallet/protocol build \

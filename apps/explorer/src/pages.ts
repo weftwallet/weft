@@ -43,6 +43,8 @@ const markSvg = (file: string, size: number) =>
 
 /** Weft Explorer's mark: the finished cloth, on ink in the loom's frame. */
 const MARK = markSvg(products.explorer.markSmall, 28);
+/** The same mark at 16px, in the switcher's button: it says where you are. */
+const SWITCHER_MARK = raw(markSvg(products.explorer.markSmall, 16).value.replace(/<svg /, '<svg class="weft-switcher__mark" '));
 
 /**
  * The other Weft products, as the sites' switcher lists them. They point at
@@ -56,6 +58,16 @@ const SITES = (["site", "docs", "playground", "network"] as const).map((id) => (
   small: markSvg(products[id].markSmall, 16),
 }));
 const GET_WEFT = productUrl("site", { dev: local, path: "/" })!;
+
+/**
+ * The scripts every Weft page shares, inlined from @weftwallet/ui so there is
+ * one copy: early.js (the stored theme before the first paint, the page
+ * transition's direction), theme-control.js and product-switcher.js (the
+ * header's controls; header.css documents their markup).
+ */
+const shared = (file: string) => readFileSync(require.resolve(`@weftwallet/ui/${file}`), "utf8");
+const EARLY_SHARED = shared("early.js");
+const HEADER_SCRIPTS = shared("theme-control.js") + "\n" + shared("product-switcher.js");
 
 /** The page ground in each theme, for the browser's own chrome (theme-color). */
 const TOKENS = readFileSync(require.resolve("@weftwallet/brand/tokens.css"), "utf8");
@@ -163,18 +175,49 @@ function call(tx: TransactionRow): Html {
 }
 
 const ICONS = {
-  grid: raw(`<svg class="switcher__grid" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg>`),
-  chevron: raw(`<svg class="switcher__chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`),
-  system: raw(`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>`),
-  light: raw(`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>`),
-  dark: raw(`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>`),
-  alert: raw(`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg>`),
+  chevron: raw(`<svg class="weft-switcher__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>`),
+  search: raw(`<svg class="shell-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>`),
   close: raw(`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`),
 };
 
-/** A field's error, right below it. Hidden until there's something to say. */
+/** The theme control's icons, on the 16px grid, as ThemeControl.astro draws them. */
+const THEME_ICONS = {
+  system: '<rect x="1.75" y="2.75" width="12.5" height="8.5" rx="1.75"></rect><path d="M5.5 13.25h5M8 11.25v2"></path>',
+  light: '<circle cx="8" cy="8" r="2.75"></circle><path d="M8 1.5v1.75M8 12.75v1.75M1.5 8h1.75M12.75 8h1.75M3.4 3.4l1.24 1.24M11.36 11.36l1.24 1.24M3.4 12.6l1.24-1.24M11.36 4.64l1.24-1.24"></path>',
+  dark: '<path d="M13.6 9.9A5.6 5.6 0 0 1 6.1 2.4a5.6 5.6 0 1 0 7.5 7.5z"></path>',
+};
+const THEME_CHOICES = [
+  { id: "system", label: "System", title: "Match the system" },
+  { id: "light", label: "Light", title: "Light" },
+  { id: "dark", label: "Dark", title: "Dark" },
+] as const;
+
+/** The theme control, as every Weft site renders it (header.css has the markup). */
+function themeControl(): Html {
+  return html`<div class="weft-theme" role="radiogroup" aria-label="Theme" data-weft-theme="weft-theme" data-choice="system">
+        <span class="weft-theme__thumb" aria-hidden="true"></span>
+        ${THEME_CHOICES.map(
+          (c) => html`<button type="button" class="weft-theme__option" role="radio" aria-checked="${c.id === "system" ? "true" : "false"}" tabindex="${c.id === "system" ? "0" : "-1"}" data-theme-choice="${c.id}" title="${c.title}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${raw(THEME_ICONS[c.id])}</svg><span class="weft-theme__sr">${c.label}</span></button>`,
+        )}
+      </div>`;
+}
+
+/** The products switcher, as every Weft site renders it. The menu is a .reversible (motion.css). */
+function productSwitcher(): Html {
+  return html`<div class="weft-switcher" data-weft-switcher>
+        <button type="button" class="weft-switcher__button" aria-expanded="false" aria-haspopup="true" aria-controls="weft-products">${SWITCHER_MARK}<span class="weft-switcher__label">Products</span>${ICONS.chevron}</button>
+        <ul class="weft-switcher__menu reversible reversible--down" id="weft-products">
+          ${SITES.map((p) => html`<li><a href="${p.href}">${p.mark}<span><strong>${p.name}</strong><span>${p.summary}</span></span></a></li>`)}
+        </ul>
+      </div>`;
+}
+
+/**
+ * A field's reserved error line (SYSTEM.md, Errors): always present, 20px
+ * tall, so nothing below the field moves when a message fades into it.
+ */
 function fieldError(id: string, message = ""): Html {
-  return html`<p class="field-error" id="${id}"${message ? "" : raw(" hidden")}>${ICONS.alert}<span>${message}</span></p>`;
+  return html`<p class="field__status${message ? " field-error" : ""}" id="${id}">${message}</p>`;
 }
 
 /** A field's attributes when the server already found it wrong. */
@@ -183,29 +226,25 @@ function invalid(errorId: string | null): Html {
 }
 
 /**
- * In the head, before the first paint: the chosen theme, so it never flashes
- * the other one; the direction of a page change; and the helpers the pages'
- * own scripts use for announcing and checking fields.
+ * In the head, before the first paint: the shared early script (the chosen
+ * theme, so it never flashes the other one, and the direction of a page
+ * change), the browser's own chrome colour, and the helpers the pages' own
+ * scripts use for announcing, busy controls and checking fields.
  */
 const EARLY = `
+${EARLY_SHARED}
 (function () {
   var root = document.documentElement;
-  try { var t = localStorage.getItem("weft-theme"); if (t === "light" || t === "dark") root.dataset.theme = t; } catch (e) {}
   var bg = ${JSON.stringify(BG)};
-  window.weftThemeColour = function () {
+  // The browser's own chrome follows the page's theme.
+  function themeColour() {
     var t = root.dataset.theme;
     document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) {
       m.content = t ? bg[t] : m.media.indexOf("light") >= 0 ? bg.light : bg.dark;
     });
-  };
-  window.weftThemeColour();
-  // A page arriving moves in from the right, or from the left when going back through history.
-  window.addEventListener("pagereveal", function (e) {
-    if (!e.viewTransition) return;
-    var type = window.navigation && navigation.activation ? navigation.activation.navigationType : "push";
-    root.dataset.nav = type === "traverse" ? "back" : "forward";
-    e.viewTransition.finished.finally(function () { delete root.dataset.nav; });
-  });
+  }
+  themeColour();
+  new MutationObserver(themeColour).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
   // The page's one live region, written only when something changes for the person.
   window.weftSay = function (text) {
     var region = document.getElementById("live");
@@ -213,7 +252,26 @@ const EARLY = `
     region.textContent = "";
     setTimeout(function () { region.textContent = text; }, 60);
   };
-  // A field checked when it loses focus, then on every change while its error shows.
+  // A busy control (SYSTEM.md, Loading): aria-disabled at once, the loader
+  // only after wait-before-loader, and gone at once when the work ends.
+  var loaderTimers = new WeakMap();
+  window.weftBusy = function (button, busy) {
+    var pending = loaderTimers.get(button);
+    if (pending) { clearTimeout(pending); loaderTimers.delete(button); }
+    if (busy) {
+      button.setAttribute("aria-disabled", "true");
+      var wait = parseFloat(getComputedStyle(root).getPropertyValue("--weft-wait-before-loader")) || 300;
+      loaderTimers.set(button, setTimeout(function () {
+        loaderTimers.delete(button);
+        if (button.getAttribute("aria-disabled") === "true") button.classList.add("is-working");
+      }, wait));
+    } else {
+      button.removeAttribute("aria-disabled");
+      button.classList.remove("is-working");
+    }
+  };
+  // A field checked when it loses focus, then on every change while its error
+  // shows. The message goes into the field's reserved line (p.field__status).
   window.weftField = function (input, check) {
     var error = document.getElementById(input.id + "-error");
     var showing = input.getAttribute("aria-invalid") === "true";
@@ -225,8 +283,8 @@ const EARLY = `
     function run() {
       var message = check(input.value);
       showing = !!message;
-      error.querySelector("span").textContent = message || "";
-      error.hidden = !message;
+      error.textContent = message || "";
+      error.classList.toggle("field-error", !!message);
       if (message) input.setAttribute("aria-invalid", "true"); else input.removeAttribute("aria-invalid");
       describe(!!message);
       return !message;
@@ -271,47 +329,35 @@ document.addEventListener("copy", function (e) {
   e.preventDefault();
 });`;
 
-/** The theme control, the products menu and disclosures that close the way they opened. */
+/**
+ * The header's controls are the shared scripts; what is left here is the
+ * disclosure that closes the way it opened (motion.css details.disclosure:
+ * the content leaves before the native element shuts).
+ */
 const CHROME = `
+${HEADER_SCRIPTS}
 (function () {
-  var root = document.documentElement;
   var still = matchMedia("(prefers-reduced-motion: reduce)");
-  var buttons = document.querySelectorAll("[data-theme-choice]");
-  function mark(choice) { buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.themeChoice === choice)); }); }
-  mark(root.dataset.theme || "system");
-  buttons.forEach(function (b) {
-    b.addEventListener("click", function () {
-      var choice = b.dataset.themeChoice;
-      function apply() { if (choice === "system") delete root.dataset.theme; else root.dataset.theme = choice; mark(choice); weftThemeColour(); }
-      try { if (choice === "system") localStorage.removeItem("weft-theme"); else localStorage.setItem("weft-theme", choice); } catch (e) {}
-      if (document.startViewTransition && !still.matches) document.startViewTransition(apply); else apply();
-    });
-  });
-  // Closing plays the opening in reverse before the details element shuts.
   function close(details, done) {
     if (!details.open || details.classList.contains("is-closing")) return;
-    var panel = details.querySelector("[data-panel]");
-    if (!panel || still.matches || getComputedStyle(panel).animationName === "none") { details.open = false; if (done) done(); return; }
+    var content = Array.prototype.find.call(details.children, function (c) { return c.tagName !== "SUMMARY"; });
+    if (!content || still.matches || getComputedStyle(content).animationName === "none") { details.open = false; if (done) done(); return; }
     details.classList.add("is-closing");
-    panel.addEventListener("animationend", function end() {
-      panel.removeEventListener("animationend", end);
+    var timer = setTimeout(end, 300);
+    function end() {
+      clearTimeout(timer);
+      content.removeEventListener("animationend", end);
       details.classList.remove("is-closing");
       details.open = false;
       if (done) done();
-    });
+    }
+    content.addEventListener("animationend", end);
   }
-  document.querySelectorAll("details[data-animate]").forEach(function (details) {
+  document.querySelectorAll("details.disclosure").forEach(function (details) {
     details.querySelector("summary").addEventListener("click", function (e) {
       if (details.open) { e.preventDefault(); close(details); }
     });
   });
-  var switcher = document.querySelector("[data-switcher]");
-  if (switcher) {
-    document.addEventListener("click", function (e) { if (switcher.open && !switcher.contains(e.target)) close(switcher); });
-    switcher.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && switcher.open) close(switcher, function () { switcher.querySelector("summary").focus(); });
-    });
-  }
 })();`;
 
 const GITHUB = "https://github.com/ifeanyi-ugwu/weft";
@@ -337,37 +383,30 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
 <title>${title} | ${site.name}'s explorer</title>
 <script>${raw(EARLY)}</script>
 <link rel="stylesheet" href="/assets/tokens.css">
+<link rel="stylesheet" href="/assets/motion.css">
+<link rel="stylesheet" href="/assets/header.css">
 <link rel="stylesheet" href="/assets/explorer.css">
 <link rel="icon" type="image/svg+xml" href="/assets/mark.svg">
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
-<header class="top">
-  <div class="wrap top__inner">
-    <a class="brand" href="/">${MARK}<span class="brand__name">weft<span class="brand__sub"> explorer</span></span></a>
+<p class="sr" id="live" role="status"></p>
+<header class="shell-head">
+  <div class="shell-bar">
+    <a class="shell-lockup" href="/">${MARK}<span class="shell-word">weft<span class="shell-word__product"> explorer</span></span></a>
     <span class="org" title="Run by ${site.name}">${site.name}</span>
-    <form class="search" action="/search" role="search">
-      <svg class="search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
-      <input name="q" type="search" value="${options.query ?? ""}" placeholder="Transaction ID, block number or contract" aria-label="Search" spellcheck="false" autocomplete="off">
-    </form>
-    ${account(site, options.current === "me")}
-    <span class="top__break" aria-hidden="true"></span>
-    <div class="tools">
-      <details class="switcher" data-switcher data-animate>
-        <summary>${ICONS.grid}<span class="switcher__label">Products</span>${ICONS.chevron}</summary>
-        <ul class="switcher__menu" data-panel>
-          ${SITES.map((p) => html`<li><a href="${p.href}">${p.mark}<span><strong>${p.name}</strong><span>${p.summary}</span></span></a></li>`)}
-        </ul>
-      </details>
-      <div class="theme" role="group" aria-label="Theme">
-        <button type="button" data-theme-choice="system" aria-pressed="true" title="Match the system">${ICONS.system}<span class="sr">System</span></button>
-        <button type="button" data-theme-choice="light" aria-pressed="false" title="Light">${ICONS.light}<span class="sr">Light</span></button>
-        <button type="button" data-theme-choice="dark" aria-pressed="false" title="Dark">${ICONS.dark}<span class="sr">Dark</span></button>
-      </div>
+    <nav class="shell-nav" aria-label="Weft Explorer"></nav>
+    <div class="shell-tools">
+      <form class="shell-search" action="/search" role="search">
+        ${ICONS.search}
+        <input class="shell-search__input" name="q" type="search" value="${options.query ?? ""}" placeholder="Search the ledger" aria-label="Search by transaction ID, block number or contract" title="Transaction ID, block number or contract" spellcheck="false" autocomplete="off">
+      </form>
+      ${account(site, options.current === "me")}
+      ${productSwitcher()}
+      ${themeControl()}
     </div>
   </div>
 </header>
-<p class="sr" id="live" role="status"></p>
 <main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page isn't updating. It keeps trying.</p>` : ""}${body}</main>
 <footer class="foot">
   <div class="wrap foot__inner">
@@ -408,7 +447,7 @@ const WALLET_MARK = markSvg(products.wallet.markSmall, 16);
  * Sign-in: connect, get a nonce, ask Weft to sign in, send the result back.
  * The server checks the signature and that the certificate belongs to a
  * member organisation, then sets a session cookie. While it works the button
- * keeps its label and focus, shows Weft's loader and ignores presses.
+ * keeps its label and focus, shows Weft's loader after the wait and ignores presses.
  */
 function signInScript(name: string): string {
   const statement = JSON.stringify(`Sign in to ${name}'s explorer`).replace(/</g, "\\u003c");
@@ -446,8 +485,7 @@ function signInScript(name: string): string {
       hide(note, true);
       var weft = window.weft;
       if (!weft) { show(note, "info", "Install Weft to sign in. This explorer checks your organisation's identity, which Weft holds.", null, true); return; }
-      button.setAttribute("aria-disabled", "true");
-      button.classList.add("is-working");
+      weftBusy(button, true);
       weftSay("Waiting for Weft to sign you in.");
       try {
         await within(120000, weft.request({ method: "weft_connect" }), "weft");
@@ -466,8 +504,7 @@ function signInScript(name: string): string {
         else if (error instanceof TypeError) show(note, "error", "This explorer didn't answer. Check your connection and try again.", error.message);
         else show(note, "error", "Weft couldn't sign you in. Try again.", [error.code, error.message].filter(Boolean).join(": "));
       }
-      button.removeAttribute("aria-disabled");
-      button.classList.remove("is-working");
+      weftBusy(button, false);
     });
   });
 })();`;
@@ -525,7 +562,7 @@ const LIVE = `
   function update(next) {
     weftRelative(next);
     // What the person is reading stays where it is when rows arrive above it.
-    var top = document.querySelector(".top"), edge = top && getComputedStyle(top).position === "sticky" ? top.getBoundingClientRect().bottom : 0;
+    var top = document.querySelector(".shell-head"), edge = top && getComputedStyle(top).position === "sticky" ? top.getBoundingClientRect().bottom : 0;
     var anchor = Array.from(document.querySelectorAll("main h1, main h2, main .card, main tbody tr")).find(function (el) { return el.getBoundingClientRect().bottom > edge; });
     var before = anchor ? anchor.getBoundingClientRect().top : 0;
     var added = [];
@@ -623,16 +660,31 @@ function indexerState(site: Site, c: ChannelSummary, s: ChannelStatus | undefine
   }
   if (s?.state === "starting") return { pill: html`<span class="pill pill--quiet">starting</span>`, note: html`` };
   if (behind > 0) return { pill: html`<span class="pill pill--warn">catching up, ${behind} behind</span>`, note: html`` };
-  return { pill: html`<span class="pill pill--ok">live</span>`, note: html`` };
+  return { pill: LIVE_CHIP, note: html`` };
 }
 
-function channelCard(site: Site, c: ChannelSummary, s: ChannelStatus | undefined, onChannelPage = false): Html {
+/** "live", with a steady accent dot: this page updates as blocks arrive. */
+const LIVE_CHIP = html`<span class="pill pill--live"><span class="pill__dot" aria-hidden="true"></span>live</span>`;
+
+/** Whether the indexer is reading a channel and has caught up with its peer. */
+function isLive(c: ChannelSummary, s: ChannelStatus | undefined): boolean {
+  const behind = s?.peerHeight != null ? s.peerHeight - c.height : 0;
+  return !!s && s.state !== "stopped" && s.state !== "retrying" && s.state !== "starting" && behind <= 0;
+}
+
+/**
+ * One channel: a card among others, or, as the home's only channel, a row
+ * that uses the width (`row`). On the home the "live" state is said once,
+ * beside the heading, so a live row carries no chip of its own.
+ */
+function channelCard(site: Site, c: ChannelSummary, s: ChannelStatus | undefined, options: { onChannelPage?: boolean; row?: boolean; quietLive?: boolean } = {}): Html {
   const problems = c.brokenLinks + c.badDataHashes;
   const state = indexerState(site, c, s);
-  return html`<section class="card channel" data-live="channel-${c.channel}">
+  const pill = options.quietLive && isLive(c, s) ? html`` : state.pill;
+  return html`<section class="card channel${options.row ? " channel--row" : ""}" data-live="channel-${c.channel}">
   <div class="channel__head">
-    ${onChannelPage ? html`<h2 class="card__title">Ledger</h2>` : html`<a class="channel__name mono" href="${channelUrl(c.channel)}">${c.channel}</a>`}
-    ${state.pill}
+    ${options.onChannelPage ? html`<h2 class="card__title">Ledger</h2>` : html`<a class="channel__name mono" href="${channelUrl(c.channel)}">${c.channel}</a>`}
+    ${pill}
   </div>
   <dl class="stats">
     <div><dt>Blocks</dt><dd class="mono">${c.height.toLocaleString("en")}</dd></div>
@@ -759,14 +811,16 @@ export function homePage(site: Site, channels: ChannelSummary[], statuses: Chann
       html`<section class="hero"><h1>Nothing to show yet</h1><p class="lead">${lead}</p>${site.signIn && !site.viewer ? html`<div class="actions">${signInButton("page")}</div>` : ""}</section>`,
     );
   }
+  const one = channels.length === 1;
+  const allLive = channels.length > 0 && channels.every((c) => isLive(c, statuses.find((s) => s.channel === c.channel)));
   return layout(
     site,
     "Overview",
     html`<section class="hero">
-  <h1>${site.name}'s view of the ledger</h1>
+  <div class="title-row title-row--chip"><h1>${site.name}'s view of the ledger</h1>${allLive ? LIVE_CHIP : ""}</div>
   <p class="lead">Blocks and transactions as ${site.name}'s peers recorded them, checked block by block here.</p>
 </section>
-<div class="grid">${channels.map((c) => channelCard(site, c, statuses.find((s) => s.channel === c.channel)))}</div>
+<div class="grid${one ? " grid--one" : ""}">${channels.map((c) => channelCard(site, c, statuses.find((s) => s.channel === c.channel), { row: one, quietLive: one }))}</div>
 <div class="split">
   <section><h2>Latest blocks</h2><div data-live="blocks">${blockRows(site, latest, "No blocks indexed yet.")}</div></section>
   <section><h2>Latest transactions</h2><div data-live="transactions">${txRows(txs, { showBlock: false, empty: "No published transactions yet." })}</div></section>
@@ -801,7 +855,7 @@ export function channelPage(
     range ? `${range} on ${name}` : `Channel ${name}`,
     html`${range ? crumbs(["Overview", "/"], [name, channelUrl(name), true], range) : crumbs(["Overview", "/"], name)}
 <h1>Channel <span class="mono">${name}</span></h1>
-<div class="grid">${channelCard(site, channel, s, true)}
+<div class="grid">${channelCard(site, channel, s, { onChannelPage: true })}
   <section class="card" data-live="contracts">
     <h2 class="card__title">Contracts</h2>
     ${contracts.length === 0
@@ -984,7 +1038,7 @@ function configSection(config: NonNullable<TransactionRow["config"]>): Html {
   <dt>Organisations</dt><dd>${s.ordererOrganisations.length ? s.ordererOrganisations.map((o) => html`<div><span class="mono">${o.mspId}</span>${o.endpoints.length ? html` <span class="subtle mono">${o.endpoints.join(", ")}</span>` : ""}</div>`) : html`<span class="subtle">none</span>`}</dd>
   ${s.batch ? html`<dt>Blocks</dt><dd>Cut every ${s.batch.timeout || "?"}, or at ${s.batch.maxMessages} transactions, whichever comes first</dd>` : ""}
 </dl></div></section>
-<details class="card config-more" data-animate><summary>Capabilities and policies</summary><dl class="details" data-panel>
+<details class="card config-more disclosure"><summary>Capabilities and policies</summary><dl class="details">
   <dt>Capabilities</dt><dd>${names([...s.capabilities.channel.map((c) => `channel ${c}`), ...s.capabilities.application.map((c) => `application ${c}`), ...s.capabilities.orderer.map((c) => `orderer ${c}`)])}</dd>
   ${Object.entries(s.policies).map(([name, rule]) => html`<dt class="mono">${name}</dt><dd class="mono">${rule}</dd>`)}
 </dl></details>`;

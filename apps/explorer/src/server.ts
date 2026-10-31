@@ -47,6 +47,9 @@ function font(pkg: string, file: string) {
 
 const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
   "tokens.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/brand/tokens.css")) },
+  // The motion and the header every Weft product shares, served after the tokens.
+  "motion.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/motion.css")) },
+  "header.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/header.css")) },
   "explorer.css": { type: "text/css; charset=utf-8", body: () => asset("explorer.css") },
   "mark.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/products/explorer-small.svg")) },
   // The explorer's loader, and Weft's, for signing in: it's Weft that signs.

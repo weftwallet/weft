@@ -1,7 +1,10 @@
 /* Weft Explorer. Colours, type, space, radii and motion come from
-   @weftwallet/brand's tokens (served as /assets/tokens.css), so the explorer
-   follows the same roles as Weft's sites in both themes. Teal is the only
-   accent; warn and danger mark status. See packages/brand/SYSTEM.md. */
+   @weftwallet/brand's tokens (served as /assets/tokens.css), the motion from
+   @weftwallet/ui's motion.css and the header from its header.css (both served
+   as static files before this one), so the explorer follows the same roles,
+   moves the same way and wears the same header as Weft's sites in both
+   themes. Teal is the only accent; warn and danger mark status. See
+   packages/brand/SYSTEM.md. */
 
 @font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 400; font-display: swap; src: url("/assets/fonts/sans-400.woff2") format("woff2"); }
 @font-face { font-family: "Atkinson Hyperlegible Next"; font-weight: 500; font-display: swap; src: url("/assets/fonts/sans-500.woff2") format("woff2"); }
@@ -67,97 +70,17 @@ main { overflow-anchor: none; }
 }
 .skip:focus-visible { transform: none; }
 
-/* Moving between pages: the new page fades in from shift-md on the right,
-   or from the left when going back through history (data-nav is set on
-   pagereveal). Changing the theme crossfades, as on the sites. */
-@view-transition { navigation: auto; }
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--weft-duration-base); }
-html[data-nav]::view-transition-old(root) { animation: page-leave calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both; }
-html[data-nav="forward"]::view-transition-new(root) { animation: page-in-forward var(--weft-duration-base) var(--weft-ease-out) both; }
-html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(--weft-duration-base) var(--weft-ease-out) both; }
-@keyframes page-leave { to { opacity: 0; } }
-@keyframes page-in-forward { from { opacity: 0; transform: translateX(var(--weft-shift-md)); } }
-@keyframes page-in-back { from { opacity: 0; transform: translateX(calc(var(--weft-shift-md) * -1)); } }
-
-/* Header: the shell's bar, with the organisation, search and sign-in. */
-.top {
-  position: sticky; top: 0; z-index: 10;
-  background: color-mix(in srgb, var(--weft-bg) 88%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--weft-line);
-}
-.top__inner { position: relative; display: flex; align-items: center; gap: var(--weft-space-4); min-height: 60px; }
-.top__break { display: none; }
-.brand { display: flex; align-items: center; gap: var(--weft-space-2); color: var(--weft-text-strong); flex: none; }
-.brand svg { width: 28px; height: 28px; display: block; }
-.brand__name { font: 500 var(--weft-type-lg) / 1 var(--weft-font-mono); letter-spacing: -0.03em; }
-.brand__sub { color: var(--weft-text-subtle); }
+/* Header: the shell's bar (header.css), with the organisation's name after
+   the lockup and sign-in among the tools. The bar is the sign-in note's frame. */
+.shell-bar { position: relative; }
 .org {
   padding: 2px var(--weft-space-3);
   border: 1px solid var(--weft-line-strong); border-radius: var(--weft-radius-pill);
   font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); color: var(--weft-text-muted);
-  white-space: nowrap; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; flex: none;
+  white-space: nowrap; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;
+  margin-left: calc(var(--weft-space-6) * -1 + var(--weft-space-3));
 }
-.search { position: relative; margin-left: auto; flex: 0 1 380px; min-width: 0; }
-.search__icon { position: absolute; left: var(--weft-space-3); top: 50%; transform: translateY(-50%); color: var(--weft-text-subtle); pointer-events: none; }
-.search input {
-  width: 100%; height: 36px; padding: 0 var(--weft-space-3) 0 36px;
-  border-radius: var(--weft-radius-lg); border: 1px solid var(--weft-line);
-  background: var(--weft-bg-sunken); color: var(--weft-text);
-  font: var(--weft-type-md) var(--weft-font-sans);
-  text-overflow: ellipsis;
-  transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out);
-}
-.search input::placeholder { color: var(--weft-text-subtle); }
-.search input:focus { border-color: var(--weft-accent-line); background: var(--weft-bg-surface); }
-.search input:focus-visible { outline-offset: 0; }
-
-.tools { display: flex; align-items: center; gap: var(--weft-space-3); flex: none; }
-.switcher { position: relative; }
-.switcher summary {
-  list-style: none; display: flex; align-items: center; gap: var(--weft-space-1);
-  height: 36px; padding: 0 var(--weft-space-3);
-  border: 1px solid var(--weft-line); border-radius: var(--weft-radius-lg);
-  color: var(--weft-text-muted); font-size: var(--weft-type-md); cursor: pointer;
-  transition: border-color var(--weft-duration-fast) var(--weft-ease-out), color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
-}
-.switcher summary::-webkit-details-marker { display: none; }
-.switcher[open] summary { border-color: var(--weft-line-strong); color: var(--weft-text); }
-.switcher__chevron { transition: transform var(--weft-duration-base) var(--weft-ease-out); }
-.switcher[open]:not(.is-closing) .switcher__chevron { transform: rotate(180deg); }
-.switcher__grid { display: none; }
-.switcher__menu {
-  position: absolute; right: 0; top: calc(100% + var(--weft-space-2)); z-index: 2;
-  width: min(340px, calc(100vw - 2 * var(--weft-space-4)));
-  margin: 0; padding: var(--weft-space-2); list-style: none;
-  background: var(--weft-bg-overlay); border: 1px solid var(--weft-line-strong);
-  border-radius: var(--weft-radius-xl); box-shadow: var(--weft-shadow-3);
-  animation: arrive-down var(--weft-duration-base) var(--weft-ease-out) both;
-}
-/* Closing is the opening in reverse, in about 70% of the time. */
-.is-closing > [data-panel] { animation: leave-up calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both; }
-@keyframes arrive-down { from { opacity: 0; transform: translateY(calc(var(--weft-shift-md) * -1)); } }
-@keyframes leave-up { to { opacity: 0; transform: translateY(calc(var(--weft-shift-md) * -1)); } }
-@keyframes arrive-small { from { opacity: 0; transform: translateY(calc(var(--weft-shift-sm) * -1)); } }
-@keyframes leave-small { to { opacity: 0; transform: translateY(calc(var(--weft-shift-sm) * -1)); } }
-.switcher__menu a {
-  display: flex; gap: var(--weft-space-3); align-items: flex-start;
-  padding: var(--weft-space-3); border-radius: var(--weft-radius-lg);
-  color: var(--weft-text); text-decoration: none;
-  transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
-}
-.switcher__menu svg { width: 24px; height: 24px; flex: none; display: block; }
-.switcher__menu a > span { display: flex; flex-direction: column; gap: 2px; font-size: var(--weft-type-md); line-height: var(--weft-leading-md); }
-.switcher__menu strong { font-weight: 600; color: var(--weft-text-strong); }
-.switcher__menu a > span > span { color: var(--weft-text-muted); font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); }
-
-.theme { display: flex; padding: 2px; gap: 2px; border: 1px solid var(--weft-line); border-radius: var(--weft-radius-lg); }
-.theme button {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  border: 0; border-radius: var(--weft-radius-sm); background: transparent; color: var(--weft-text-subtle); cursor: pointer;
-  transition: color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
-}
-.theme button[aria-pressed="true"] { background: var(--weft-bg-raised); color: var(--weft-text-strong); }
+.shell-search__input { font-family: var(--weft-font-sans); }
 
 /* Sign-in with Weft: a secondary action, with the wallet's mark. */
 .signin {
@@ -167,7 +90,7 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
   background: var(--weft-bg-surface); color: var(--weft-text);
   font: 500 var(--weft-type-md) var(--weft-font-sans);
   cursor: pointer; white-space: nowrap; flex: none;
-  transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 .signin svg { display: block; flex: none; }
 .account { display: flex; align-items: center; gap: var(--weft-space-3); font-size: var(--weft-type-md); white-space: nowrap; flex: none; }
@@ -176,7 +99,7 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
 .account form { margin: 0; }
 .link-button {
   background: none; border: 0; padding: 0; color: var(--weft-accent-text); font: inherit; cursor: pointer; text-underline-offset: 0.18em;
-  transition: transform var(--weft-duration-instant) var(--weft-ease-out);
+  transition: transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 
 /* Where sign-in says what went wrong: under the header's button, over the
@@ -189,10 +112,10 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
   border-radius: var(--weft-radius-lg); border: 1px solid var(--weft-line-strong);
   background: var(--weft-bg-overlay); color: var(--weft-text); box-shadow: var(--weft-shadow-2);
   font-size: var(--weft-type-md); line-height: var(--weft-leading-md); white-space: normal;
-  animation: arrive-small var(--weft-duration-base) var(--weft-ease-out) both;
+  animation: weft-drop-in var(--weft-duration-base) var(--weft-ease-out) both;
 }
 .signin-note[hidden] { display: none; }
-.signin-note.is-leaving { animation: leave-small calc(var(--weft-duration-base) * 0.7) var(--weft-ease-in) both; }
+.signin-note.is-leaving { animation: weft-drop-out var(--weft-duration-base-out) var(--weft-ease-in) both; }
 .signin-note--inline { position: static; margin-top: var(--weft-space-3); box-shadow: none; }
 .signin-note--error { border-color: var(--weft-danger-line); }
 .signin-note--error .signin-note__text { color: var(--weft-danger-text); }
@@ -200,7 +123,7 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
 .signin-note__close {
   flex: none; width: 28px; height: 28px; margin: -4px -4px 0 0; display: flex; align-items: center; justify-content: center;
   border: 0; border-radius: var(--weft-radius-sm); background: none; color: var(--weft-text-subtle); cursor: pointer;
-  transition: color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
+  transition: color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 .actions { margin-top: var(--weft-space-5); }
 
@@ -218,6 +141,14 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
 
 /* Layout */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--weft-space-4); margin-top: var(--weft-space-6); }
+/* One channel takes the width as a row rather than a lone card. */
+.grid--one { grid-template-columns: minmax(0, 1fr); }
+.channel--row { display: grid; grid-template-columns: minmax(10rem, max-content) minmax(0, 1fr); column-gap: var(--weft-space-8); align-items: center; padding-block: var(--weft-space-4); }
+.channel--row .channel__head { justify-content: flex-start; }
+.channel--row .stats { grid-template-columns: repeat(3, max-content); gap: var(--weft-space-8); margin: 0; justify-content: start; }
+.channel--row .state, .channel--row .check, .channel--row .orgs { grid-column: 1 / -1; }
+.channel--row .check { margin-top: var(--weft-space-3); }
+.channel--row .state { margin: var(--weft-space-3) 0 0; }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--weft-space-8); }
 .split > section { min-width: 0; }
 
@@ -254,6 +185,12 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
 .pill--warn { background: var(--weft-warn-soft); color: var(--weft-warn-text); }
 .pill--bad { background: var(--weft-danger-soft); color: var(--weft-danger-text); }
 .pill--quiet { background: var(--weft-bg-surface); color: var(--weft-text-muted); border-color: var(--weft-line-strong); }
+/* "live": a steady accent dot, beside the heading or a channel's name. */
+.pill--live { display: inline-flex; align-items: center; gap: 6px; background: var(--weft-accent-soft); color: var(--weft-accent-text); font-family: var(--weft-font-mono); }
+.pill__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--weft-accent); flex: none; }
+.title-row.title-row--chip { align-items: center; justify-content: flex-start; gap: var(--weft-space-3); }
+.title-row--chip h1 { margin-bottom: 0; }
+.title-row--chip + .lead { margin-top: var(--weft-space-3); }
 .ok { color: var(--weft-accent-text); }
 .bad { color: var(--weft-danger-text); }
 .fn { color: var(--weft-text); }
@@ -263,7 +200,7 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
   display: flex; flex-direction: column; gap: var(--weft-space-1);
   margin: var(--weft-space-4) 0; padding: var(--weft-space-3) var(--weft-space-4);
   border: 1px solid; border-radius: var(--weft-radius-lg);
-  animation: arrive-small var(--weft-duration-base) var(--weft-ease-out) both;
+  animation: weft-drop-in var(--weft-duration-base) var(--weft-ease-out) both;
 }
 .banner > p:not(.banner__title) { color: var(--weft-text-muted); }
 .banner__title { font-weight: 500; }
@@ -290,6 +227,27 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
 .table td { padding: var(--weft-space-3); border-bottom: 1px solid var(--weft-line); vertical-align: top; }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .table tbody tr { position: relative; transition: background-color var(--weft-duration-fast) var(--weft-ease-out); }
+/* A row that arrived while you were looking comes in as a pick (motion.css
+   .is-new, on the tr). The rule is the first cell's, as motion.css draws it.
+   The pick would be too: but a cell's pseudo-element can only be as wide as
+   the cell, and a table row is no frame for one, so the row draws the thread
+   itself, as a background sized along the same keyframes' timing (crossing
+   on ease-tension to 70% of deliberate, gone by 100%). */
+.table tr.is-new > td:first-child::after { display: none; }
+@property --explorer-pick { syntax: "<color>"; inherits: false; initial-value: transparent; }
+.table tr.is-new {
+  --explorer-pick: transparent;
+  background-image: linear-gradient(var(--explorer-pick), var(--explorer-pick));
+  background-repeat: no-repeat;
+  background-position: 0 50%;
+  background-size: 0 2px;
+  animation: explorer-pick var(--weft-duration-deliberate) linear both;
+}
+@keyframes explorer-pick {
+  0% { background-size: 0 2px; --explorer-pick: var(--weft-accent); animation-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1); }
+  70% { background-size: 100% 2px; --explorer-pick: var(--weft-accent); animation-timing-function: cubic-bezier(0.4, 0, 1, 1); }
+  100% { background-size: 100% 2px; --explorer-pick: transparent; }
+}
 .table td a.mono, .table time, .table .pill, .table td.mono { white-space: nowrap; }
 .table td.mono .grouped { white-space: normal; }
 .table__note { margin-top: var(--weft-space-2); }
@@ -297,26 +255,6 @@ html[data-nav="back"]::view-transition-new(root) { animation: page-in-back var(-
    and the row's other links sit above the stretch. */
 .row-link::after { content: ""; position: absolute; inset: 0; }
 .table td a:not(.row-link), .table td [data-copy] { position: relative; z-index: 1; }
-/* A row that arrived while you were looking comes in as a pick (SYSTEM.md,
-   "Arriving"): a thread runs across its place and is gone before its words
-   follow it in, then a rule seats on its left, stays a few seconds and fades. */
-.table tr.is-new td:first-child::after {
-  content: ""; position: absolute; left: 0; top: calc(50% - 1px); height: 2px; width: 100%;
-  border-radius: 1px; background: var(--weft-accent); transform-origin: left; pointer-events: none;
-  animation: pick-through var(--weft-duration-deliberate) var(--weft-ease-tension) both;
-}
-.table tr.is-new td:first-child::before {
-  content: ""; position: absolute; left: 0; top: var(--weft-space-2); bottom: var(--weft-space-2); width: 3px;
-  border-radius: 2px; background: var(--weft-accent); transform-origin: top; pointer-events: none;
-  animation: rule-life 4s var(--weft-ease-out) 360ms both;
-}
-.table tr.is-new td:not(:first-child), .table tr.is-new td:first-child > * {
-  animation: row-in var(--weft-duration-base) var(--weft-ease-out) 380ms both;
-}
-@keyframes pick-through { 0% { transform: scaleX(0); opacity: 1; } 50% { transform: scaleX(1); opacity: 1; } 62%, 100% { transform: scaleX(1); opacity: 0; } }
-@keyframes rule-life { 0% { transform: scaleY(0); } 6% { transform: scaleY(1); opacity: 1; } 88% { opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
-@keyframes row-in { from { opacity: 0; transform: translateX(calc(var(--weft-shift-md) * -1)); } }
-
 /* Working: the explorer's loader before the words; signing in shows Weft's,
    in place of the wallet's mark, since it's Weft that signs. A busy control
    keeps its strength and focus, and ignores presses (aria-disabled). */
@@ -389,7 +327,7 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .field { display: flex; flex-direction: column; gap: var(--weft-space-2); min-width: 0; }
 .field label { font-size: var(--weft-type-md); line-height: var(--weft-leading-md); color: var(--weft-text-muted); }
 .receipt input, .receipt select {
-  height: 40px; padding: 0 var(--weft-space-3); min-width: 0;
+  height: 44px; padding: 0 var(--weft-space-3); min-width: 0;
   border-radius: var(--weft-radius-lg); border: 1px solid var(--weft-line-strong);
   background: var(--weft-bg-sunken); color: var(--weft-text);
   font: var(--weft-type-md) var(--weft-font-mono);
@@ -399,19 +337,23 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .receipt input[aria-invalid="true"] { border-color: var(--weft-danger); }
 /* The button lines up with the inputs, below the labels, whatever errors show. */
 .receipt > .button { margin-top: calc(var(--weft-leading-md) + var(--weft-space-2)); }
+/* The reserved error line (motion.css .field__status): an alert icon, then
+   the sentence, as base.css draws it for the sites. */
 .field-error {
-  display: flex; align-items: flex-start; gap: var(--weft-space-1); margin: calc(var(--weft-space-1) - var(--weft-space-2)) 0 0;
+  display: flex; align-items: flex-start; gap: var(--weft-space-1);
   font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); font-weight: 500; color: var(--weft-danger-text);
-  animation: arrive-small var(--weft-duration-fast) var(--weft-ease-out) both;
 }
-.field-error[hidden] { display: none; }
-.field-error svg { flex: none; margin-top: 1px; }
+.field-error::before {
+  content: ""; flex: none; width: 14px; height: 14px; margin-top: 1px; background: currentColor;
+  -webkit-mask: var(--weft-alert-icon) center / contain no-repeat; mask: var(--weft-alert-icon) center / contain no-repeat;
+}
+:root { --weft-alert-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.01'/%3E%3C/svg%3E"); }
 .button {
-  height: 40px; padding: 0 var(--weft-space-4);
+  height: 44px; padding: 0 var(--weft-space-4);
   border-radius: var(--weft-radius-lg); border: 1px solid transparent;
   background: var(--weft-accent); color: var(--weft-on-accent);
   font: 600 var(--weft-type-md) var(--weft-font-sans); cursor: pointer;
-  transition: background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
+  transition: background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 .button:disabled, .button[aria-disabled="true"]:not(.is-working) { opacity: var(--weft-disabled-opacity); cursor: not-allowed; transform: none; }
 .receipt--local { grid-template-columns: 180px minmax(0, 1fr) auto; }
@@ -421,7 +363,7 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .receipt--local .result { min-height: var(--weft-leading-xs); }
 .receipt--local p.result.ok { color: var(--weft-accent-text); }
 .receipt--local p.result.bad { color: var(--weft-danger-text); }
-.result.is-shown { animation: arrive-small var(--weft-duration-fast) var(--weft-ease-out) both; }
+.result.is-shown { animation: weft-drop-in var(--weft-duration-fast) var(--weft-ease-out) both; }
 #private .table, #private .receipt { margin-top: var(--weft-space-4); }
 
 /* Channel configuration */
@@ -430,7 +372,7 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .config-more summary {
   list-style: none; display: flex; align-items: center; gap: var(--weft-space-2); width: fit-content;
   cursor: pointer; color: var(--weft-accent-text); font-size: var(--weft-type-md); border-radius: var(--weft-radius-sm);
-  transition: color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-instant) var(--weft-ease-out);
+  transition: color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 .config-more summary::-webkit-details-marker { display: none; }
 .config-more summary::before {
@@ -439,7 +381,6 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 }
 .config-more[open]:not(.is-closing) summary::before { transform: rotate(45deg); }
 .config-more[open] summary { margin-bottom: var(--weft-space-4); }
-.config-more [data-panel] { animation: arrive-small var(--weft-duration-base) var(--weft-ease-out) both; }
 .config-more dt { overflow-wrap: anywhere; }
 
 /* Footer, as on the sites, with who runs this explorer. */
@@ -458,11 +399,7 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 /* Hover, only where there's a pointer that hovers. */
 @media (hover: hover) {
   a:hover { text-decoration: underline; }
-  .brand:hover, .switcher__menu a:hover, .foot__products a:hover { text-decoration: none; }
-  .search input:hover:not(:focus) { border-color: var(--weft-line-strong); }
-  .switcher summary:hover { border-color: var(--weft-line-strong); color: var(--weft-text); }
-  .switcher__menu a:hover { background: var(--weft-bg-raised); }
-  .theme button:hover { color: var(--weft-text); }
+  .shell-lockup:hover, .weft-switcher__menu a:hover, .foot__products a:hover { text-decoration: none; }
   .signin:hover:not([aria-disabled="true"]) { border-color: var(--weft-text-subtle); background: var(--weft-bg-raised); }
   .link-button:hover { text-decoration: underline; }
   .signin-note__close:hover, .error-details summary:hover { color: var(--weft-text); }
@@ -474,34 +411,31 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   .config-more summary:hover { color: var(--weft-text); }
   .pager__none:hover { text-decoration: none; }
 }
-/* Pressed: a short scale, never on a busy or disabled control. */
+/* Pressed: down in instant, back in fast (motion.css), never on a busy or disabled control. */
 .signin:active:not([aria-disabled="true"]), .button:active:not(:disabled):not([aria-disabled="true"]),
-.theme button:active, .switcher summary:active, .link-button:active, .signin-note__close:active, .config-more summary:active {
+.link-button:active, .signin-note__close:active, .config-more summary:active {
   transform: scale(var(--weft-press-scale));
+  transition-duration: var(--weft-duration-instant);
 }
 
 @media (max-width: 960px) {
   .split { grid-template-columns: minmax(0, 1fr); }
-  /* Search and sign-in move to a second row. */
-  .top__inner { flex-wrap: wrap; row-gap: var(--weft-space-3); padding-block: var(--weft-space-3); }
-  .top__break { display: block; flex-basis: 100%; order: 1; height: 0; }
-  .tools { margin-left: auto; }
-  .search { order: 2; margin-left: 0; flex: 1 1 0; }
-  .account, .signin { order: 3; }
+  .channel--row { grid-template-columns: minmax(0, 1fr); row-gap: var(--weft-space-3); }
+  .channel--row .stats { gap: var(--weft-space-6); }
+}
+@media (max-width: 900px) {
+  /* The search takes the row under the bar (header.css); the organisation's name stays by the lockup. */
+  .org { order: 1; margin-left: 0; }
+  .shell-tools .shell-search { order: 4; }
 }
 @media (min-width: 641px) {
   .config-more .details { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); }
   /* The header stays put while the page under it changes. */
-  .top { view-transition-name: top; }
+  .shell-head { view-transition-name: top; }
 }
 @media (max-width: 640px) {
-  /* Three rows are too tall to keep on screen: the header scrolls away. */
-  .top { position: static; }
-  [id] { scroll-margin-top: var(--weft-space-4); }
-  .top__inner { gap: var(--weft-space-3); }
-  .switcher__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .switcher__chevron { display: none; }
-  .switcher__grid { display: block; }
+  /* Sign-in and the account go to the search's row, where there is room for them. */
+  .shell-tools .signin, .shell-tools .account { order: 4; }
   .table thead { display: none; }
   /* Each row's cells flow as a line or two, not one cell to a line; the
      cells that need it say what they are, as the hidden headings did. */
@@ -518,11 +452,8 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   .receipt > .button { margin-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Pages change at once. */
-  @view-transition { navigation: none; }
-  .switcher__menu, .signin-note, .banner, .field-error, .result.is-shown, .config-more [data-panel] { animation: none; }
-  /* Nothing travels: the row fades in and its rule is simply there. */
-  .table tr.is-new td:first-child::after { animation: none; opacity: 0; }
-  .table tr.is-new td:not(:first-child), .table tr.is-new td:first-child > * { animation-delay: 0ms; }
-  .table tr.is-new td:first-child::before { animation-delay: 0ms; }
+  /* motion.css covers pages, rows, disclosures and the error line; these are the explorer's own arrivals. */
+  .signin-note, .signin-note.is-leaving, .banner, .result.is-shown { animation-duration: 0s; }
+  /* The pick is not drawn. */
+  .table tr.is-new { animation: none; }
 }
