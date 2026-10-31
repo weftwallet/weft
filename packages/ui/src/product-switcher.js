@@ -7,12 +7,17 @@
 // taking the class away closes it from wherever it is, so opening and
 // closing quickly never jumps. It closes on its button, on Escape (focus
 // returns to the button), on a click outside it, and when focus leaves it.
+//
+// Any other menu drawn like it works the same way: [data-weft-menu] on the
+// element that holds both its button ([data-weft-menu-button], with
+// aria-expanded and aria-controls) and the .reversible it opens (the
+// explorer's account menu, in the row under its header on a phone).
 (function () {
-  document.querySelectorAll("[data-weft-switcher]").forEach(function (switcher) {
+  document.querySelectorAll("[data-weft-switcher], [data-weft-menu]").forEach(function (switcher) {
     if (switcher.hasAttribute("data-ready")) return;
     switcher.setAttribute("data-ready", "");
-    var button = switcher.querySelector(".weft-switcher__button");
-    var menu = switcher.querySelector(".weft-switcher__menu");
+    var button = switcher.querySelector(".weft-switcher__button, [data-weft-menu-button]");
+    var menu = button && document.getElementById(button.getAttribute("aria-controls"));
     if (!button || !menu) return;
     var isOpen = function () {
       return button.getAttribute("aria-expanded") === "true";

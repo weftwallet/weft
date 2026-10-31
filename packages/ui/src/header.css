@@ -54,6 +54,30 @@
    field across the bar (header.js wires it). A product whose search is a
    dialog (the docs) styles its own.
 
+   The supporting row. On a phone (under 720px) the 60px bar may have a row
+   under it: the links on a row of their own, or a product's own row after
+   the bar, inside the header (the explorer's organisation and sign-in):
+
+   <header class="shell-head">
+     <div class="shell-bar">…</div>
+     <div class="shell-row">
+       <div class="shell-row__line">…what the row shows…</div>
+       …anything opened from it (a menu, a note), outside the line…
+     </div>
+   </header>
+
+   The row is the same in every product, and header.js runs it: past the
+   row's height from the top, 8px more down and it leaves (data-row="hidden"
+   on the header), 8px up and it comes back, so it is in reach anywhere on
+   the page. The header keeps the row's height in the page's flow, so
+   nothing below it moves; what changes is drawn over it. The header's
+   ground (its background and bottom border, drawn by ::before) rises from
+   under the row to under the bar, and the row's line lifts shift-sm, fades
+   and is clipped from below as it goes. Leaving is base-out on ease-in,
+   arriving base on ease-out, and each is a transition, so a change of
+   direction halfway turns it back from where it is. While it is hidden the
+   part of the header it leaves lets presses through to the page.
+
    The products grid (ProductSwitcher.astro renders this; its behaviour is
    product-switcher.js, a plain script the explorer inlines):
 
@@ -107,16 +131,27 @@
 
 /* The bar ------------------------------------------------------------- */
 
+/* The bar's ground is drawn by ::before, so that with a supporting row it
+   can rise to the bar alone while the header keeps its height. The header's
+   own border is transparent and keeps the 1px; the ground covers it. */
 .shell-head {
   position: sticky;
   top: 0;
   z-index: 10;
+  border-bottom: 1px solid transparent;
+}
+.shell-head::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -1px 0;
+  z-index: -1;
   background: color-mix(in srgb, var(--weft-bg) 88%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--weft-line);
 }
 /* An anchor scrolled to stops below the header, whatever its height
-   (header.js keeps --weft-head-height). */
+   (header.js keeps --weft-head-height: with a supporting row on a phone,
+   the bar alone, since a jump leaves the row hidden). */
 html:has(.shell-head) {
   scroll-padding-top: calc(var(--weft-head-height, 61px) + var(--weft-space-4));
 }
@@ -303,6 +338,63 @@ html:has(.shell-head) {
     min-height: 36px;
     margin: 0 calc(var(--weft-space-3) * -1) var(--weft-space-2);
   }
+}
+
+/* The supporting row ---------------------------------------------------- */
+
+/* A product's own row (the explorer's) is shown only on a phone; it lays
+   out its line itself. */
+.shell-row {
+  display: none;
+}
+@media (max-width: 719px) {
+  .shell-row {
+    position: relative;
+    display: block;
+  }
+}
+
+/* header.js sets data-row ("shown" or "hidden") on the header while a row
+   is under the bar on a phone, and --weft-row-height to the row's height.
+   The ground ends under the row, or under the bar; the line is drawn
+   whole, or lifted, faded and clipped to nothing from below. Its clip
+   reaches 8px past its edges while shown, so a focus ring is never cut. */
+.shell-head[data-row]::before {
+  transition: bottom var(--weft-duration-base) var(--weft-ease-out);
+}
+.shell-head[data-row="hidden"]::before {
+  bottom: calc(var(--weft-row-height, 0px) - 1px);
+  transition: bottom var(--weft-duration-base-out) var(--weft-ease-in);
+}
+.shell-head[data-row] :is(.shell-bar > .shell-nav, .shell-row__line) {
+  clip-path: inset(-8px);
+  transition:
+    opacity var(--weft-duration-base) var(--weft-ease-out),
+    transform var(--weft-duration-base) var(--weft-ease-out),
+    clip-path var(--weft-duration-base) var(--weft-ease-out);
+}
+.shell-head[data-row="hidden"] :is(.shell-bar > .shell-nav, .shell-row__line) {
+  opacity: 0;
+  transform: translateY(calc(var(--weft-shift-sm) * -1));
+  clip-path: inset(-8px -8px 100% -8px);
+  transition:
+    opacity var(--weft-duration-base-out) var(--weft-ease-in),
+    transform var(--weft-duration-base-out) var(--weft-ease-in),
+    clip-path var(--weft-duration-base-out) var(--weft-ease-in);
+}
+/* The header keeps the row's height, so where the row was, presses reach
+   the page while it is hidden. The ground and the bar's own items still
+   take them. Hidden, the row stays in the tab order: focus moving into it
+   brings it back (header.js). */
+.shell-head[data-row="hidden"],
+.shell-head[data-row="hidden"] > .shell-bar,
+.shell-head[data-row="hidden"] > .shell-bar > .shell-nav,
+.shell-head[data-row="hidden"] > .shell-row {
+  pointer-events: none;
+}
+.shell-head[data-row="hidden"]::before,
+.shell-head[data-row="hidden"] > .shell-bar > :not(.shell-nav) {
+  pointer-events: auto;
 }
 
 /* The tools ------------------------------------------------------------ */
@@ -633,6 +725,12 @@ html:has(.shell-head) {
   .weft-theme__rays,
   .weft-switcher__button,
   .shell-tool {
+    transition-duration: 0s;
+  }
+  /* The supporting row goes and comes back at once (the shift tokens are
+     already 0, so it does not lift). */
+  .shell-head[data-row]::before,
+  .shell-head[data-row] :is(.shell-bar > .shell-nav, .shell-row__line) {
     transition-duration: 0s;
   }
 }

@@ -259,6 +259,7 @@ const ICONS = {
   searchField: raw(`<svg class="shell-search__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4.75"></circle><path d="M10.5 10.5L14 14"></path></svg>`),
   shut: raw(`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 4l8 8M12 4l-8 8"></path></svg>`),
   close: raw(`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`),
+  chevron: raw(`<svg class="account-menu__chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6l4 4 4-4"></path></svg>`),
 };
 
 /** The theme toggle, as every Weft site renders it (header.css has the markup). */
@@ -271,9 +272,9 @@ function themeControl(): Html {
 
 /**
  * The products grid, as every Weft site renders it, with Weft Explorer last,
- * marked as current and run by this organisation (the header drops the
- * organisation's chip under 360px; this entry still names it). The menu is
- * a .reversible (motion.css).
+ * marked as current and run by this organisation (on a phone the
+ * organisation's chip leaves the bar for the row under it; this entry still
+ * names it). The menu is a .reversible (motion.css).
  */
 function productSwitcher(site: Site): Html {
   return html`<div class="weft-switcher" data-weft-switcher>
@@ -444,10 +445,22 @@ const CHROME = `
   });
 })();`;
 
-/** The sign-in button, with the note its errors appear in right after it. */
-function signInButton(where: "header" | "page"): Html {
-  return html`<button type="button" class="signin"${where === "header" ? raw(' id="signin"') : ""} data-signin>${WALLET_MARK}<span>Sign in<span class="signin__more"> with Weft</span></span></button>
-<div class="signin-note${where === "page" ? " signin-note--inline" : ""}" role="alert" hidden>
+/**
+ * The sign-in button, and the note its errors appear in, named by the
+ * button's data-signin. In the header and the page the note comes right
+ * after the button; in the row under the header on a phone it goes after
+ * the row's line (header.css .shell-row), so the line can be clipped as the
+ * row leaves while the note stays, and the row stays while it shows
+ * (data-row-keep).
+ */
+function signInButton(where: "header" | "row" | "page"): Html {
+  return html`${signInOnly(where)}${signInNote(where)}`;
+}
+function signInOnly(where: "header" | "row" | "page"): Html {
+  return html`<button type="button" class="signin"${where === "header" ? raw(' id="signin"') : ""} data-signin="signin-note-${where}">${WALLET_MARK}<span>Sign in with Weft</span></button>`;
+}
+function signInNote(where: "header" | "row" | "page"): Html {
+  return html`<div class="signin-note${where === "page" ? " signin-note--inline" : ""}" id="signin-note-${where}" role="alert"${where === "row" ? raw(" data-row-keep") : ""} hidden>
   <div class="signin-note__body"><p class="signin-note__text"></p><details class="error-details" hidden><summary>Details</summary><p></p></details></div>
   <button type="button" class="signin-note__close" aria-label="Close">${ICONS.close}</button>
 </div>`;
@@ -483,13 +496,13 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
     ${account(site, options.current === "me")}
     ${themeControl()}
   </div>
+  ${orgRow(site, options.current === "me")}
 </header>
 <script>${raw(HEADER_SCRIPTS)}</script>
 <main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page has stopped updating. It retries in the background.</p>` : ""}${body}</main>
 <footer class="foot">
   <div class="wrap foot__inner">
     <p class="foot__run">Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish. <a href="/api/v1/status">Read this data as JSON</a></p>
-    ${site.viewer ? footAccount(site, options.current === "me") : ""}
     <div class="foot__row">
       <ul class="foot__products">
         ${sites(site.products).map((p) => html`<li><a href="${p.href}">${p.small}${p.name}</a></li>`)}
@@ -510,27 +523,56 @@ ${signIn ? raw(signInScript(site.name, productAddress("site", site.products)!)) 
 }
 
 /**
- * Under 720px the header has no room for the account, so it is here: who is
- * signed in, their transactions, and signing out (explorer.css shows it
- * only there).
+ * The account in the bar, from 720px: the person's name, which opens their
+ * transactions, and Sign out. A long name ends in an ellipsis; its title has
+ * the whole name.
  */
-function footAccount(site: Site, current: boolean): Html {
-  const viewer = site.viewer!;
-  return html`<div class="foot__account">
-      <p>Signed in with Weft as <a href="/me"${current ? raw(' aria-current="page"') : ""}>${viewer.name ?? "an unnamed identity"} <span class="mono subtle">${viewer.mspId}</span></a>.</p>
-      <form method="post" action="/auth/sign-out"><button type="submit" class="link-button">Sign out</button></form>
-    </div>`;
-}
-
 function account(site: Site, current: boolean): Html {
   if (site.viewer) {
+    const name = site.viewer.name ?? "Signed in";
     return html`<div class="account">
-      <a href="/me" title="Your transactions"${current ? raw(' aria-current="page"') : ""}>${site.viewer.name ?? "Signed in"} <span class="mono subtle">${site.viewer.mspId}</span></a>
+      <a href="/me" title="${name}, ${site.viewer.mspId}. Your transactions"${current ? raw(' aria-current="page"') : ""}>${name} <span class="mono subtle">${site.viewer.mspId}</span></a>
       <form method="post" action="/auth/sign-out"><button type="submit" class="link-button">Sign out</button></form>
     </div>`;
   }
   if (!site.signIn) return html``;
   return signInButton("header");
+}
+
+/**
+ * Under 720px the organisation and the account leave the bar for a 40px row
+ * under it, in the header (header.css .shell-row: it leaves as the page
+ * scrolls down and comes back as it scrolls up). On the left, who runs this
+ * explorer; on the right, "Sign in with Weft", or the person's name as a
+ * button that opens a menu like the products grid's (product-switcher.js,
+ * [data-weft-menu]) with their transactions and Sign out.
+ */
+function orgRow(site: Site, current: boolean): Html {
+  const viewer = site.viewer;
+  const name = viewer ? viewer.name ?? "Signed in" : "";
+  const end = viewer
+    ? html`<button type="button" class="account-menu__button" aria-expanded="false" aria-controls="account-menu" title="${name}, ${viewer.mspId}" data-weft-menu-button><span class="account-menu__name">${name}</span>${ICONS.chevron}</button>`
+    : site.signIn
+      ? signInOnly("row")
+      : html``;
+  const after = viewer
+    ? html`<div class="account-menu reversible reversible--down" id="account-menu">
+      <p class="account-menu__who">Signed in with Weft as <span class="account-menu__person">${name}</span> <span class="account-menu__msp">${viewer.mspId}</span></p>
+      <ul>
+        <li><a class="account-menu__item" href="/me"${current ? raw(' aria-current="page"') : ""}>Your transactions</a></li>
+        <li><form method="post" action="/auth/sign-out"><button type="submit" class="account-menu__item">Sign out</button></form></li>
+      </ul>
+    </div>`
+    : site.signIn
+      ? signInNote("row")
+      : html``;
+  return html`<div class="shell-row org-row"${viewer ? raw(" data-weft-menu") : ""}>
+    <div class="shell-row__line org-row__line">
+      <p class="org-row__org" title="Run by ${site.name}">Run by <span>${site.name}</span></p>
+      ${end}
+    </div>
+    ${after}
+  </div>`;
 }
 
 /** The wallet's mark, on "Sign in with Weft": it's Weft that signs, not the explorer. */
@@ -570,7 +612,7 @@ function signInScript(name: string, getWeft: string): string {
     note.hidden = false;
   }
   document.querySelectorAll("[data-signin]").forEach(function (button) {
-    var note = button.nextElementSibling;
+    var note = document.getElementById(button.getAttribute("data-signin"));
     note.querySelector(".signin-note__close").addEventListener("click", function () { hide(note); button.focus(); });
     note.addEventListener("keydown", function (e) { if (e.key === "Escape") { hide(note); button.focus(); } });
     button.addEventListener("click", async function () {
@@ -677,7 +719,8 @@ const LIVE = `
     });
     if (anchor && anchor.isConnected && scrollY > 0) {
       var moved = anchor.getBoundingClientRect().top - before;
-      if (moved) scrollBy(0, moved);
+      // The page moved itself, so the header's row (header.js) takes it as no scroll.
+      if (moved) { scrollBy(0, moved); if (window.weftHeaderSkipScroll) weftHeaderSkipScroll(); }
     }
     weftRelative();
     announce(added);

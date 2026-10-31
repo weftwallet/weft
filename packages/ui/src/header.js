@@ -19,7 +19,18 @@
 //    it close it, and focus returns to the button where it was in the field.
 // 4. The header's height, as --weft-head-height on <html>, for the scroll
 //    padding that keeps an anchor clear of the sticky header (and, in the
-//    docs, Starlight's --sl-nav-height).
+//    docs, Starlight's --sl-nav-height). With a supporting row on a phone it
+//    is the bar's alone: a jump leaves the row hidden.
+// 5. The supporting row on a phone (header.css): the links on a row of
+//    their own, or the header's .shell-row. It goes by the direction of
+//    scrolling. Within the row's height of the top it is always shown. Past
+//    that, once the page has moved 8px further down it leaves; 8px up and it
+//    comes back. A jump (a link to an anchor, a change of the hash) is not a
+//    direction: when it ends past the row's height the row is hidden, and
+//    the next 8px up brings it back. A page that moves itself to keep what
+//    is being read in place calls window.weftHeaderSkipScroll() right after,
+//    so that move counts for nothing. Focus moving into the row brings it
+//    back, and it stays while a menu or note opened from it is showing.
 (function () {
   var root = document.documentElement;
   var bars = Array.prototype.slice.call(document.querySelectorAll(".shell-bar"));
@@ -76,11 +87,129 @@
     if (focused && focused !== document.activeElement && bar.contains(focused)) focused.focus({ preventScroll: true });
   }
 
+  // The supporting row ------------------------------------------------------
+  var head = bars[0].closest(".shell-head");
+  var phone = matchMedia("(max-width: 719px)");
+  var STEP = 8;
+  var row = null;
+  var rowTop = 0;
+  var rowHeight = 0;
+  var hidden = false;
+  var last = 0;
+  var travel = 0;
+  var jumping = false;
+  var jumpTimer = 0;
+
+  function position() {
+    var max = Math.max(0, root.scrollHeight - innerHeight);
+    return Math.min(Math.max(0, scrollY), max);
+  }
+  function findRow() {
+    if (!head || !phone.matches) return null;
+    var own = head.querySelector(":scope > .shell-row");
+    if (own && own.getClientRects().length) return own;
+    var bar = head.querySelector(":scope > .shell-bar");
+    var links = bar && bar.getAttribute("data-links");
+    if (links === "row" || links === "short" || links === "wrap") return bar.querySelector(":scope > .shell-nav");
+    return null;
+  }
+  function hide(on) {
+    if (on && row && row.querySelector(".is-open, [data-row-keep]:not([hidden])")) on = false;
+    if (on === hidden) return;
+    hidden = on;
+    if (row) head.setAttribute("data-row", on ? "hidden" : "shown");
+  }
+  function measureRow() {
+    row = findRow();
+    if (!row) {
+      if (head) {
+        head.removeAttribute("data-row");
+        head.style.removeProperty("--weft-row-height");
+      }
+      hidden = false;
+      return;
+    }
+    // By offsets, which leave out the lift of a row that is hidden.
+    rowTop = 0;
+    for (var el = row; el && el !== head; el = el.offsetParent) rowTop += el.offsetTop;
+    rowHeight = Math.max(0, head.clientHeight - rowTop);
+    head.style.setProperty("--weft-row-height", rowHeight + "px");
+    if (!head.hasAttribute("data-row")) {
+      last = position();
+      hidden = false;
+      head.setAttribute("data-row", "shown");
+      onScroll();
+    }
+  }
+  function endJump() {
+    jumping = false;
+    clearTimeout(jumpTimer);
+  }
+  function onScroll() {
+    var s = position();
+    var moved = s - last;
+    last = s;
+    if (!row) return;
+    if (s <= rowHeight) {
+      travel = 0;
+      hide(false);
+      return;
+    }
+    if (jumping) {
+      travel = 0;
+      hide(true);
+      // A smooth jump is many scroll events; it has ended once they stop.
+      clearTimeout(jumpTimer);
+      jumpTimer = setTimeout(endJump, 150);
+      return;
+    }
+    if (!moved) return;
+    if (moved > 0 !== travel > 0) travel = 0;
+    travel += moved;
+    if (travel >= STEP) hide(true);
+    else if (travel <= -STEP) hide(false);
+  }
+  function startJump() {
+    jumping = true;
+    clearTimeout(jumpTimer);
+    jumpTimer = setTimeout(endJump, 400);
+  }
+  if (head) {
+    addEventListener("scroll", onScroll, { passive: true });
+    if ("onscrollend" in window) addEventListener("scrollend", function () { if (jumping) endJump(); });
+    // A link to a place on this page.
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest("a[href*='#']");
+      if (!a || e.defaultPrevented || a.target) return;
+      var url = new URL(a.href, location.href);
+      if (url.origin === location.origin && url.pathname === location.pathname && url.search === location.search && url.hash) startJump();
+    });
+    addEventListener("hashchange", function () {
+      startJump();
+      onScroll();
+    });
+    head.addEventListener("focusin", function (e) {
+      if (row && row.contains(e.target)) {
+        travel = 0;
+        hide(false);
+      }
+    });
+    window.weftHeaderSkipScroll = function () {
+      last = position();
+      travel = 0;
+    };
+    var follow = function () {
+      measureRow();
+      height();
+    };
+    if (phone.addEventListener) phone.addEventListener("change", follow);
+  }
+
   function height() {
     var bar = bars[0];
     var head = bar.closest("header");
     var border = head ? parseFloat(getComputedStyle(head).borderBottomWidth) || 0 : 0;
-    root.style.setProperty("--weft-head-height", bar.offsetHeight + border + "px");
+    root.style.setProperty("--weft-head-height", (row ? rowTop : bar.offsetHeight) + border + "px");
   }
 
   function search(bar) {
@@ -138,14 +267,17 @@
         layout(bar);
         if (bar.weftCloseSearch) bar.weftCloseSearch();
       }
+      measureRow();
       height();
     }).observe(bar);
   });
+  measureRow();
   height();
   // The fonts change what the links need.
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(function () {
       bars.forEach(layout);
+      measureRow();
       height();
     });
   }

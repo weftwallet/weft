@@ -74,9 +74,8 @@ main { overflow-anchor: none; }
    name after the lockup and sign-in among the tools. The bar (position:
    relative in header.css) is the sign-in note's frame. */
 /* The name sits by the lockup (order 1, header.css) and takes the free room
-   after it in the lockup's place, so the tools stay at the end. It shrinks
-   with an ellipsis (its title has the whole name), and under 360px leaves
-   the bar: the products menu's Weft Explorer entry names it. */
+   after it in the lockup's place, so the tools stay at the end. A long name
+   ends in an ellipsis at 16ch (its title has the whole name). */
 .shell-bar > .shell-lockup { margin-inline-end: 0; }
 .shell-bar > .org {
   order: 1;
@@ -89,17 +88,82 @@ main { overflow-anchor: none; }
   font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); color: var(--weft-text-muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* Under 720px search is the 36px button (header.css), and sign-in and the
-   account leave the header: the pages that need sign-in offer it, and the
-   footer has the account. */
+/* Search takes the free room up to 240px and gives it up first, down to
+   its 160px minimum (header.css). Then the account shrinks, and the chip
+   only where there is no account, so a short organisation and a short name
+   are never cut at 720px. A very long name ends in an ellipsis rather than
+   widening the bar. */
+.shell-bar > .shell-search { flex: 1 1 0; max-width: 240px; }
+.shell-bar:has(> .account) > .org { flex-shrink: 0; }
+.shell-bar > .account { flex: 0 1 auto; min-width: 0; }
+/* Under 720px search is the 36px button (header.css), and the organisation
+   and the account leave the bar for the row under it. */
 @media (max-width: 719px) {
-  .shell-bar > .signin, .shell-bar > .account { display: none; }
-}
-@media (max-width: 359px) {
-  .shell-bar > .org { display: none; }
+  .shell-bar > :is(.org, .signin, .signin-note, .account) { display: none; }
   .shell-bar > .shell-lockup { margin-inline-end: auto; }
 }
 .shell-search__input { font-family: var(--weft-font-sans); }
+
+/* The row under the bar on a phone (header.css .shell-row, which shows it
+   only under 720px and takes it away as the page scrolls down). On the
+   left, who runs this explorer, the name ending in an ellipsis with the
+   whole of it in the title; on the right, sign-in or the account at its
+   own width, up to 62% of the row. The organisation takes what is left. The row is the frame of the sign-in note and the account
+   menu, which sit outside its line. */
+.org-row__line {
+  display: flex; align-items: center; gap: var(--weft-space-3);
+  max-width: 1200px; height: 40px; margin: 0 auto;
+  padding-inline: max(var(--weft-space-4), env(safe-area-inset-left, 0px)) max(var(--weft-space-4), env(safe-area-inset-right, 0px));
+  font-size: var(--weft-type-md); line-height: var(--weft-leading-md);
+}
+.org-row__org { flex: 1 1 0; min-width: 0; color: var(--weft-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.org-row__org span { color: var(--weft-text-strong); font-weight: 500; }
+.org-row__line > .signin, .org-row__line > .account-menu__button { flex: 0 1 auto; min-width: 0; max-width: 62%; }
+.org-row__line > .signin > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* The account on a phone: the name as a 36px button, cut with an ellipsis,
+   its chevron turning over while the menu is open; the menu is drawn like
+   the products grid's (header.css .weft-switcher__menu). */
+.account-menu__button {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 36px; padding: 0 var(--weft-space-2) 0 var(--weft-space-3);
+  border: 1px solid var(--weft-line-strong); border-radius: var(--weft-radius-lg);
+  background: var(--weft-bg-surface); color: var(--weft-text);
+  font: 500 var(--weft-type-md) / 1 var(--weft-font-sans); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out), transform var(--weft-duration-fast) var(--weft-ease-out);
+}
+.account-menu__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu__chevron { width: 16px; height: 16px; display: block; flex: none; color: var(--weft-text-subtle); transition: transform var(--weft-duration-base) var(--weft-ease-out), color var(--weft-duration-fast) var(--weft-ease-out); }
+.account-menu__button[aria-expanded="true"] { border-color: var(--weft-text-subtle); background: var(--weft-bg-raised); }
+.account-menu__button[aria-expanded="true"] .account-menu__chevron { transform: rotate(180deg); color: var(--weft-text); }
+.account-menu {
+  position: absolute; z-index: 30;
+  right: max(var(--weft-space-4), env(safe-area-inset-right, 0px)); top: calc(100% + var(--weft-space-2));
+  width: min(300px, calc(100% - 2 * var(--weft-space-4)));
+  padding: var(--weft-space-2);
+  background: var(--weft-bg-overlay); border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-xl); box-shadow: var(--weft-shadow-3);
+  transform-origin: top right;
+}
+.account-menu__who {
+  padding: var(--weft-space-2) var(--weft-space-3) var(--weft-space-3); margin-bottom: var(--weft-space-1);
+  border-bottom: 1px solid var(--weft-line);
+  font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); color: var(--weft-text-muted); overflow-wrap: anywhere;
+}
+.account-menu__person { display: block; margin-top: 2px; font-size: var(--weft-type-md); line-height: var(--weft-leading-md); font-weight: 600; color: var(--weft-text-strong); }
+.account-menu__msp { display: block; font-family: var(--weft-font-mono); color: var(--weft-text-subtle); }
+.account-menu ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.account-menu form { margin: 0; }
+.account-menu__item {
+  display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 var(--weft-space-3);
+  border: 0; border-radius: var(--weft-radius-lg); background: transparent;
+  color: var(--weft-text); font: var(--weft-type-md) / var(--weft-leading-md) var(--weft-font-sans); text-align: left; text-decoration: none; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.account-menu__item:focus-visible { outline-offset: calc(var(--weft-focus-offset) * -1); }
+.account-menu__item[aria-current="page"] { background: var(--weft-accent-soft); color: var(--weft-text-strong); }
 
 /* Sign-in with Weft: a secondary action, with the wallet's mark. */
 .signin {
@@ -113,7 +177,8 @@ main { overflow-anchor: none; }
 }
 .signin svg { display: block; flex: none; }
 .account { display: flex; align-items: center; gap: var(--weft-space-3); font-size: var(--weft-type-md); white-space: nowrap; flex: none; }
-.account a { color: var(--weft-text); }
+.account a { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--weft-text); }
+.account form { flex: none; }
 .account a[aria-current="page"] { text-decoration: underline; text-decoration-color: var(--weft-accent); text-decoration-thickness: 2px; text-underline-offset: 0.4em; }
 .account form { margin: 0; }
 .link-button {
@@ -475,12 +540,6 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
    back by the margin, so the names stay where they were. */
 .foot__products a { padding: var(--weft-space-1) var(--weft-space-2); margin: calc(var(--weft-space-1) * -1) calc(var(--weft-space-2) * -1); border-radius: var(--weft-radius-sm); transition: color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out); }
 .foot__products a[aria-current="page"] { background: var(--weft-accent-soft); color: var(--weft-text-strong); }
-/* The account, where the header has no room for it (under 720px). */
-.foot__account { display: none; flex-wrap: wrap; align-items: baseline; gap: var(--weft-space-1) var(--weft-space-4); color: var(--weft-text-muted); }
-.foot__account a { color: var(--weft-text); }
-.foot__account a[aria-current="page"] { text-decoration: underline; text-decoration-color: var(--weft-accent); text-decoration-thickness: 2px; text-underline-offset: 0.3em; }
-.foot__account form { margin: 0; }
-@media (max-width: 719px) { .foot__account { display: flex; } }
 .foot__products svg { width: 16px; height: 16px; display: block; }
 
 /* A value that is a card's only content takes the card as its frame. */
@@ -490,8 +549,10 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 /* Hover, only where there's a pointer that hovers. */
 @media (hover: hover) {
   a:hover { text-decoration: underline; }
-  .shell-lockup:hover, .weft-switcher__menu a:hover, .foot__products a:hover { text-decoration: none; }
-  .signin:hover:not([aria-disabled="true"]) { border-color: var(--weft-text-subtle); background: var(--weft-bg-raised); }
+  .shell-lockup:hover, .weft-switcher__menu a:hover, .foot__products a:hover, .account-menu__item:hover { text-decoration: none; }
+  .signin:hover:not([aria-disabled="true"]), .account-menu__button:hover { border-color: var(--weft-text-subtle); background: var(--weft-bg-raised); }
+  .account-menu__button:hover .account-menu__chevron { color: var(--weft-text); }
+  .account-menu__item:not([aria-current]):hover { background: var(--weft-bg-raised); }
   .link-button:hover { text-decoration: underline; }
   .signin-note__close:hover, .error-details summary:hover { color: var(--weft-text); }
   .foot__products a:not([aria-current]):hover { color: var(--weft-text); }
@@ -503,7 +564,7 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   .pager__none:hover { text-decoration: none; }
 }
 /* Pressed: down in instant, back in fast (motion.css), never on a busy or disabled control. */
-.signin:active:not([aria-disabled="true"]), .button:active:not(:disabled):not([aria-disabled="true"]),
+.signin:active:not([aria-disabled="true"]), .account-menu__button:active, .button:active:not(:disabled):not([aria-disabled="true"]),
 .link-button:active, .signin-note__close:active, .config-more summary:active {
   transform: scale(var(--weft-press-scale));
   transition-duration: var(--weft-duration-instant);
@@ -548,7 +609,6 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   .table td.agree-none { display: none; }
   .table td[data-label]::before { content: attr(data-label) " "; color: var(--weft-text-subtle); font-family: var(--weft-font-sans); }
   .table--plain td + td { flex-basis: 100%; }
-  .signin__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: pre; }
   .details { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .details dd { margin-bottom: var(--weft-space-3); }
   .receipt, .receipt--local, .receipt--single { grid-template-columns: minmax(0, 1fr); }
@@ -557,6 +617,8 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 @media (prefers-reduced-motion: reduce) {
   /* motion.css covers pages, rows, disclosures and the error line; these are the explorer's own arrivals. */
   .signin-note, .signin-note.is-leaving, .banner, .result.is-shown { animation-duration: 0s; }
+  /* The account menu's chevron turns over at once, as the menu opens. */
+  .account-menu__chevron { transition-duration: 0s; }
   /* A long value is cut and shown whole at once. */
   .value-cap > pre.value, .value-cap > pre.value.is-open { transition-duration: 0s; }
   /* The pick is not drawn. */
