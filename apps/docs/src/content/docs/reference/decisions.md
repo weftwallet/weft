@@ -34,3 +34,11 @@ All four phases are built: one organisation's explorer, `public` and `members` l
 A random vault key encrypts every private key. Your password (PBKDF2) and any passkeys you add (WebAuthn PRF) each encrypt a copy of the vault key. Unlocking puts the vault key in the browser's in-memory session storage, so the background worker survives restarts; locking clears it. Weft locks after a period without use, on request, and when the browser closes.
 
 The trade-off: a forgotten password with no passkey means enrolling again. Keys saved before this change can't be encrypted after the fact, so Weft asks you to re-enrol them.
+
+## 0006: Weft keeps ballot receipts, when the voter asks
+
+A voting web app sends the receipt with the vote: `receipt` on `weft_submit`, with the election, the choice and the salt, or `"generate"` for Weft to choose the salt. Weft checks it against the private input being signed before any window opens. **Keep the receipt in Weft** starts off on every request, and only the voter can turn it on. The choice and salt are encrypted at signing with a key derived from the vault key, so Weft locking while the vote commits loses nothing, and kept until the voter removes the receipt, removes the identity or resets Weft. The app gets the finished receipt either way, and whether Weft kept it.
+
+The explorer's receipt check gets the choice and salt by message from the page that opened it, never in its address, which the browser's history would keep. See [Run an election](/guides/elections/).
+
+The trade-off: the app learns whether the voter kept the receipt in Weft. Copy and Download still leave a copy outside Weft, and say so.

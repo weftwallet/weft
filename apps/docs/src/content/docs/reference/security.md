@@ -49,6 +49,14 @@ Connecting a web app doesn't authorise signing. Each read and each write opens a
 
 `weft_signIn` signs a message Weft writes from fixed fields: the web app's origin as the browser reports it, the MSP ID, the web app's nonce, and five minutes of validity. A web app can add one line of text and nothing else. The message is text starting `weft-sign-in:v1`, so its signature can't be used as a signature over a Fabric proposal or transaction, which are protobuf bytes. The approval window says it doesn't sign a transaction.
 
+### Ballot receipts are kept only when you ask
+
+A voting web app can send a ballot receipt with a vote. Weft checks it against what you sign: the choice and salt in it must be the ones in a private input of the transaction, so a site can't have Weft keep anything else. Weft keeps it only if you turn on **Keep the receipt in Weft** in the approval window, which starts off on every request. ([ADR 0006](/reference/decisions/))
+
+The choice and salt are the secret part: with them anyone can show which way you voted. Weft encrypts them (AES-GCM) when you press **Sign and submit**, with a key derived from the vault key, so they open only while Weft is unlocked and the encrypted value can't be moved onto another receipt. The election, transaction, block and commitment stay readable, since your activity and the ledger already show them. No site can read a kept receipt back. Removing the identity, or resetting Weft, deletes its receipts.
+
+Copy receipt puts the salt on the clipboard, where clipboard history may keep it, and Download receipt writes a plain file. **Check in the explorer** doesn't put the choice or salt in an address, where the browser's history would keep them: a small window of Weft's opens the network's explorer with the transaction and commitment only, and gives the explorer's page the choice and salt by message once it asks, at its exact origin. The explorer takes them only from pages it trusts, and only to check them in your browser; it sends nothing back.
+
 ### Hosts are granted one by one
 
 The extension's manifest asks for no host access up front. When you add a network, the browser asks you to allow its CA and relay hosts.

@@ -12,48 +12,64 @@ The [ballot contract](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/ba
 
 ## Try it
 
-`pnpm playground:up` deploys the ballot contract with two elections: `team-lunch`, already counted, and `board-2026`, open. In the [playground](weft:playground/), vote in `board-2026` as a demo user, or start an election of your own, then follow the link on your receipt to check it in the explorer. See [Local test network](/dapps/test-network/).
+`pnpm playground:up` deploys the ballot contract with two elections: `team-lunch`, already counted, and `board-2026`, open. In the [playground](weft:playground/), vote in `board-2026` as a demo user, or start an election of your own. Turn on **Keep the receipt in Weft** in the approval window if you'd like Weft to keep it, then follow the link on your receipt to check it in the explorer. See [Local test network](/dapps/test-network/).
 
 ## How a ballot stays private
 
 A ballot is sent as transient data, which never reaches the shared ledger. The contract writes it to a private data collection and puts a commitment on the ledger: SHA-256 of the election ID, the choice and a random salt the voter's web app picks. Only someone who knows the choice and the salt can tell which choice a commitment is for.
 
-The voter keeps a receipt: the transaction ID, the commitment, their choice and the salt. Weft Playground offers it as a JSON file to download and as text to copy, and the explorer's receipt check reads either back. The playground doesn't keep it, and neither does Weft yet: keeping a receipt with its transaction in Weft, as an option the web app asks for and the voter approves for each request, is planned.
+The voter keeps a receipt: the transaction ID, the commitment, their choice and the salt. Weft Playground offers it as a JSON file to download and as text to copy, and the explorer's receipt check reads either back. The playground doesn't keep it. Weft can: the web app sends the receipt with the vote, and the voter turns on **Keep the receipt in Weft** in the approval window. Weft then keeps it with the transaction, the choice and salt encrypted with a key derived from Weft's vault key, until the voter removes it, removes the identity or resets Weft. ([ADR 0006](/reference/decisions/))
 
 Every member's ledger also keeps a hash of each private ballot. The contract stores the salt with the choice, so that hash can't be matched by hashing each option in turn either.
 
 ## Voting from a web app
 
+Send the receipt with the vote. Weft checks it against the ballot, offers the voter to keep it, and returns it finished, with the transaction ID, the block and the commitment, whether or not the voter kept it. With `"generate"` as the salt, in the receipt and in the ballot, Weft chooses the salt and returns it in the receipt.
+
 ```ts
 const weft = await getWeft();
 await weft.connect();
 
-const salt = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+// Weft 0.2.0 and later choose the salt. An older Weft would send
+// "generate" to the contract, so choose it yourself there.
+const salt = weft.supportsReceipts()
+  ? "generate"
+  : Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 const result = await weft.submit({
   channel: "elections",
   chaincode: "ballot",
   fn: "CastVote",
   args: ["board-2026"],
   transient: { ballot: JSON.stringify({ option: "Ada", salt }) },
+  receipt: { type: "weft-ballot-receipt", version: 1, channel: "elections", electionId: "board-2026", option: "Ada", salt },
 });
 
-// Give this to the voter to keep, as a file and as text to copy. The
-// explorer's receipt check reads it back.
-const { electionId, txId, commitment } = JSON.parse(result.text!);
-const receipt = {
-  type: "weft-ballot-receipt",
-  version: 1,
-  channel: "elections",
-  electionId,
-  txId,
-  blockNumber: Number(result.blockNumber),
-  commitment,
-  option: "Ada",
-  salt,
-};
+// Give this to the voter to keep, as a file and as text to copy, even when
+// Weft kept it too. The explorer's receipt check reads it back.
+let receipt;
+if (result.receipt) {
+  receipt = result.receipt.receipt;
+} else {
+  // Weft from before receipts.
+  const { electionId, txId, commitment } = JSON.parse(result.text!);
+  receipt = { type: "weft-ballot-receipt", version: 1, channel: "elections", electionId, txId, blockNumber: Number(result.blockNumber), commitment, option: "Ada", salt };
+}
+const keptInWeft = result.receipt?.kept === true;
 ```
 
-Weft's approval window lists `ballot` as a private input with its value hidden until the voter chooses **Show**, so also show the voter their choice in your web app before they sign. Weft checks the value it signs is the one your web app sent, and doesn't keep it in its activity list.
+Weft's approval window lists `ballot` as a private input with its value hidden until the voter chooses **Show**, so also show the voter their choice in your web app before they sign. Weft checks the value it signs is the one your web app sent, and doesn't keep it in its activity list. A receipt that doesn't match the ballot fails with `-32602` before any window opens; the [Provider API](/dapps/provider-api/#ballot-receipts) lists the checks.
+
+Say where the receipt is. When `keptInWeft` is true, say Weft kept it and offer the file and the copy anyway; otherwise say your page doesn't keep it, and ask the voter to save it. `result.receipt.reason` says why Weft didn't: the voter left it off (`declined`), the browser refused to store it (`storage`), or the contract's commitment wasn't the one for the choice and salt (`mismatch`).
+
+The relay builds the proposal, so it sees the `ballot` private input, choice and salt included, as the endorsing peers do. It never sees `receipt`.
+
+## Checking a receipt in the explorer
+
+Link the voter to the election page with the transaction ID and the commitment only, and hand the page the choice and salt by message once it asks. The browser's history records a page's whole address, so never put them in it, not even after `#`. `checkReceiptInExplorer(explorerUrl, receipt)` in `@weftwallet/sdk` does both; the [Provider API](/dapps/provider-api/#checking-a-receipt-in-the-explorer) describes the messages.
+
+The explorer takes the choice and salt only from pages it trusts: Weft Playground, Weft itself, and the origins its operator lists in `WEFT_EXPLORER_RECEIPT_ORIGINS`. Ask the organisation running the explorer to add your web app's origin. Without that, the page still finds the ballot, and the voter chooses, drops or pastes their receipt there.
+
+In Weft, **Check in the explorer** under a kept receipt does the same from a small window of Weft's own, which closes once the explorer has the choice and salt.
 
 ## Showing it in the explorer
 
@@ -71,7 +87,7 @@ The explorer then has an **Elections** page per channel. Each election shows:
 
 - how many ballots it counts on the ledger;
 - the published result, and whether its total matches those ballots;
-- a receipt check. A voter chooses, drops or pastes their receipt, or enters the transaction ID, and optionally the commitment, to see that their ballot is in a valid block. To confirm it's a vote for their choice, they enter the choice and the salt, which the page checks in the browser without sending them anywhere.
+- a receipt check. A voter chooses, drops or pastes their receipt, or enters the transaction ID, and optionally the commitment, to see that their ballot is in a valid block. To confirm it's a vote for their choice, they enter the choice and the salt, which the page checks in the browser without sending them anywhere. A receipt file fills them, and a web app or Weft can hand them over by message.
 
 ## What it can't do
 
