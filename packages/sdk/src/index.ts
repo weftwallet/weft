@@ -9,14 +9,19 @@
 
 import {
   ErrorCode,
+  RECEIPT_HANDOFF,
   WeftError,
   isWeftErrorShape,
   type AddNetworkResult,
+  type BallotReceipt,
+  type BallotReceiptRequest,
   type ContractCall,
   type EvaluateResult,
   type IdentitySummary,
   type NetworkSummary,
+  type ReceiptHandoff,
   type SignInResult,
+  type SubmitParams,
   type SubmitResult,
   type WeftEvent,
   type WeftEvents,
@@ -69,6 +74,8 @@ export interface ContractRef {
 export interface CallOptions {
   transient?: Record<string, string>;
   endorsingOrganizations?: string[];
+  /** A ballot receipt for Weft to make and offer to keep (submit only). See SubmitParams. */
+  receipt?: BallotReceiptRequest;
 }
 
 /** A typed, ergonomic wrapper around the raw provider. */
@@ -103,9 +110,24 @@ export class WeftClient {
     return this.provider.request({ method: "weft_evaluate", params: call }).catch(rethrow);
   }
 
-  /** Ledger write. The user approves it; resolves once committed as VALID. */
-  async submit(call: ContractCall): Promise<SubmitResult> {
+  /**
+   * Ledger write. The user approves it; resolves once committed as VALID.
+   * With `receipt`, Weft checks it against the call, offers the voter to keep
+   * it, and returns the finished receipt as `result.receipt` (Weft 0.2.0 and
+   * later; see supportsReceipts).
+   */
+  async submit(call: SubmitParams): Promise<SubmitResult> {
     return this.provider.request({ method: "weft_submit", params: call }).catch(rethrow);
+  }
+
+  /**
+   * Whether this Weft makes ballot receipts, and fills in `salt: "generate"`.
+   * An older Weft ignores `receipt` and would send "generate" to the contract
+   * as the salt, so choose the salt yourself when this is false.
+   */
+  supportsReceipts(): boolean {
+    const [major = 0, minor = 0] = this.provider.version.split(".").map(Number);
+    return major > 0 || minor >= 2;
   }
 
   /**
@@ -151,6 +173,50 @@ export class WeftClient {
     this.provider.on(event, listener);
     return () => this.provider.off(event, listener);
   }
+}
+
+/**
+ * Opens the explorer's election page to check a ballot receipt, and gives the
+ * page the choice and salt once it asks, by postMessage to that window at the
+ * explorer's origin. The address carries only the transaction ID and the
+ * commitment, so the browser's history never records the choice or salt.
+ *
+ * Call it from a click. The explorer accepts the choice and salt only from
+ * origins its operator lists (WEFT_EXPLORER_RECEIPT_ORIGINS); from any other
+ * page the voter enters them on the page. Returns the window, or null when
+ * the browser blocked it.
+ */
+export function checkReceiptInExplorer(explorerUrl: string, receipt: BallotReceipt): Window | null {
+  const page = new URL(
+    `${explorerUrl.replace(/\/+$/, "")}/channels/${encodeURIComponent(receipt.channel)}/elections/${encodeURIComponent(receipt.electionId)}`,
+  );
+  page.search = new URLSearchParams({ tx: receipt.txId, commitment: receipt.commitment }).toString();
+  page.hash = "receipt";
+  // Not noopener: the page asks its opener for the choice and salt.
+  const win = window.open(page.toString(), "_blank");
+  if (!win) return null;
+  const onMessage = (e: MessageEvent) => {
+    if (e.source !== win || e.origin !== page.origin) return;
+    const data = e.data as { type?: unknown; version?: unknown } | null;
+    if (data?.type !== RECEIPT_HANDOFF.ready || data.version !== 1) return;
+    const handoff: ReceiptHandoff = {
+      type: RECEIPT_HANDOFF.receipt,
+      version: 1,
+      electionId: receipt.electionId,
+      txId: receipt.txId,
+      option: receipt.option,
+      salt: receipt.salt,
+    };
+    win.postMessage(handoff, page.origin);
+  };
+  window.addEventListener("message", onMessage);
+  // Stop listening once the page has gone.
+  const watch = setInterval(() => {
+    if (!win.closed) return;
+    clearInterval(watch);
+    window.removeEventListener("message", onMessage);
+  }, 1000);
+  return win;
 }
 
 /** Finds the wallet and returns a client for it. */
