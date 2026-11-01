@@ -38,7 +38,7 @@ Constraints:
 
 ## Consequences
 
-- `PROVIDER_VERSION` is 0.2.0. Older Weft ignores `receipt`, so an app checks the version before sending `salt: "generate"`, which older Weft would pass to the contract as the salt.
+- Receipts are part of Weft 0.1.0, the first release. Weft lists `"receipts"` in `window.weft.features`, so a page checks for a feature rather than comparing versions.
 - The voting app learns whether the voter kept the receipt in Weft, and why not: one bit about a choice made in Weft, which it needs to word its notice.
 - The relay never sees `receipt`; it saw the private input already, as the endorsing peers do.
 - Copy receipt puts the salt on the clipboard, where clipboard history may keep it, and Download receipt writes a plain file. Both say what they did.

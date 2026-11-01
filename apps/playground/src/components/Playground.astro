@@ -924,16 +924,6 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     }
   }
 
-  function hex(bytes: Uint8Array) {
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  }
-
-  /** Weft 0.2.0 and later make the receipt, choose the salt when asked, and offer to keep it. */
-  function makesReceipts(): boolean {
-    const [major = 0, minor = 0] = String(weft?.version ?? "").split(".").map(Number);
-    return major > 0 || minor >= 2;
-  }
-
   async function castVote() {
     const option = chosen();
     const button = $<HTMLButtonElement>("pg-el-vote");
@@ -942,10 +932,8 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     clearError($("pg-vote-error"));
     // The salt is the voter's secret: without it, no one can tell which choice
     // the commitment is for. Weft chooses it, and puts it in both the ballot
-    // and the receipt, when this page sends "generate" in both. An older
-    // Weft would send "generate" to the contract, so this page chooses then.
-    const generate = makesReceipts();
-    const salt = generate ? "generate" : hex(crypto.getRandomValues(new Uint8Array(16)));
+    // and the receipt, when this page sends "generate" in both.
+    const salt = "generate";
     const channel = electionChannel();
     try {
       electionMessage(`You're voting for ${option}. Weft lists it as a private input called "ballot", hidden until you choose Show.`);
@@ -954,14 +942,8 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
         // Weft checks this against the ballot, and offers to keep it.
         receipt: { type: "weft-ballot-receipt", version: 1, channel, electionId: election.id, option, salt },
       });
-      let receipt: Receipt;
-      if (result.receipt?.receipt) {
-        receipt = result.receipt.receipt;
-      } else {
-        // Weft from before receipts: this page makes it from what the contract returned.
-        const cast = JSON.parse(result.text) as { electionId: string; txId: string; commitment: string };
-        receipt = { type: "weft-ballot-receipt", version: 1, channel, electionId: cast.electionId, txId: cast.txId, blockNumber: Number(result.blockNumber), commitment: cast.commitment, option, salt };
-      }
+      // Weft returns the finished receipt whether or not the voter kept it.
+      const receipt: Receipt = result.receipt!.receipt;
       votedIn.add(election.id);
       showReceipt(receipt, result.receipt ?? null);
       electionMessage(`Your ballot is in block ${result.blockNumber}. Your receipt is below.`);

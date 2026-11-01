@@ -9,6 +9,7 @@ The extension injects `window.weft` into HTTPS pages and `localhost`. The types 
 interface WeftProvider {
   readonly isWeft: true;
   readonly version: string;
+  readonly features: readonly string[];  // for example ["receipts"]
   request(args: { method: string; params?: unknown }): Promise<unknown>;
   on(event: string, listener: (payload: unknown) => void): void;
   off(event: string, listener: (payload: unknown) => void): void;
@@ -100,7 +101,7 @@ interface SubmitResult extends EvaluateResult {
   transactionId: string;
   blockNumber: string;                  // a string, because Fabric block numbers are 64-bit
   status: string;                       // "VALID"
-  receipt?: ReceiptResult;              // when the request had a receipt, from Weft 0.2.0
+  receipt?: ReceiptResult;              // when the request had a receipt
 }
 ```
 
@@ -137,8 +138,7 @@ type ReceiptResult =
 
 ```ts
 const weft = await getWeft();
-const ask = weft.supportsReceipts();    // Weft 0.2.0 and later
-const salt = ask ? "generate" : randomHex(16);
+const salt = "generate";               // Weft chooses it
 const result = await weft.submit({
   channel: "mychannel",
   chaincode: "ballot",
@@ -155,8 +155,6 @@ showReceipt(receipt, { keptInWeft: kept });
 ### Letting Weft choose the salt
 
 Send `"generate"` as the salt in two places: the receipt, and the JSON of exactly one private input, with the receipt's `option` beside it. Weft draws 16 random bytes with `crypto.getRandomValues`, as 32 lowercase hex characters, and puts them in both before the approval window opens. That private input is written again with `JSON.stringify`, its keys in their order, so the contract reads the same object with the salt filled in. The user approves, and Weft signs, that value, and Weft checks the relay's proposal against it as it checks any private input. The salt comes back in `result.receipt.receipt.salt`.
-
-An older Weft ignores `receipt` and would send `"generate"` to the contract as the salt, which the ballot contract refuses. Check `weft.supportsReceipts()` (or `window.weft.version` is at least `0.2.0`) and choose the salt yourself when it is false.
 
 ### What Weft checks
 

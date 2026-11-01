@@ -5,6 +5,7 @@
 
 import {
   MESSAGE_TARGET,
+  PROVIDER_FEATURES,
   PROVIDER_VERSION,
   WeftError,
   type PageToWalletMessage,
@@ -46,6 +47,7 @@ export default defineContentScript({
     const provider: WeftProvider = Object.freeze({
       isWeft: true as const,
       version: PROVIDER_VERSION,
+      features: Object.freeze([...PROVIDER_FEATURES]),
       request<M extends WeftMethod>(args: RequestArgs<M>): Promise<WeftMethods[M]["result"]> {
         const id = crypto.randomUUID();
         const message: PageToWalletMessage = { target: MESSAGE_TARGET.toWallet, id, method: args.method, params: args.params };

@@ -6,7 +6,15 @@
  * that boundary is described here, so the extension, the SDK and the docs agree.
  */
 
-export const PROVIDER_VERSION = "0.2.0";
+export const PROVIDER_VERSION = "0.1.0";
+
+/**
+ * What this Weft can do, beyond the methods every Weft has. A page checks
+ * `window.weft.features` for a feature rather than comparing versions.
+ * Experimental builds add their own entries.
+ */
+export const PROVIDER_FEATURES = ["receipts"] as const;
+export type WeftFeature = (typeof PROVIDER_FEATURES)[number];
 
 /* ------------------------------------------------------------------ */
 /* Identities and networks                                             */
@@ -116,7 +124,6 @@ export interface SubmitResult extends EvaluateResult {
   status: string;
   /**
    * The ballot receipt, when the request had one (see SubmitParams.receipt).
-   * Absent from Weft before 0.2.0, which ignores the request's receipt.
    */
   receipt?: ReceiptResult;
 }
@@ -320,6 +327,8 @@ export type WeftEvent = keyof WeftEvents;
 export interface WeftProvider {
   readonly isWeft: true;
   readonly version: string;
+  /** Features this Weft offers, for example "receipts". See PROVIDER_FEATURES. */
+  readonly features: readonly string[];
   request<M extends WeftMethod>(args: RequestArgs<M>): Promise<WeftMethods[M]["result"]>;
   on<E extends WeftEvent>(event: E, listener: (payload: WeftEvents[E]) => void): void;
   off<E extends WeftEvent>(event: E, listener: (payload: WeftEvents[E]) => void): void;

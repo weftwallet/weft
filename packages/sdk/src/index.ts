@@ -113,21 +113,15 @@ export class WeftClient {
   /**
    * Ledger write. The user approves it; resolves once committed as VALID.
    * With `receipt`, Weft checks it against the call, offers the voter to keep
-   * it, and returns the finished receipt as `result.receipt` (Weft 0.2.0 and
-   * later; see supportsReceipts).
+   * it, and returns the finished receipt as `result.receipt`.
    */
   async submit(call: SubmitParams): Promise<SubmitResult> {
     return this.provider.request({ method: "weft_submit", params: call }).catch(rethrow);
   }
 
-  /**
-   * Whether this Weft makes ballot receipts, and fills in `salt: "generate"`.
-   * An older Weft ignores `receipt` and would send "generate" to the contract
-   * as the salt, so choose the salt yourself when this is false.
-   */
-  supportsReceipts(): boolean {
-    const [major = 0, minor = 0] = this.provider.version.split(".").map(Number);
-    return major > 0 || minor >= 2;
+  /** Whether this Weft offers a feature, for example "receipts". */
+  supports(feature: string): boolean {
+    return this.provider.features?.includes(feature) ?? false;
   }
 
   /**

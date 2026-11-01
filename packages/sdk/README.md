@@ -13,10 +13,10 @@ const assets = await basic.evaluateJson("GetAllAssets");
 await basic.submit("TransferAsset", "asset6", "Christopher");
 ```
 
-A voting app can send a ballot receipt with the vote. Weft checks it against the ballot, offers the voter to keep it, and returns it finished; with `"generate"` as the salt, Weft chooses the salt (Weft 0.2.0 and later, see `supportsReceipts()`):
+A voting app can send a ballot receipt with the vote. Weft checks it against the ballot, offers the voter to keep it, and returns it finished; with `"generate"` as the salt, Weft chooses the salt:
 
 ```ts
-const salt = weft.supportsReceipts() ? "generate" : mySalt();
+const salt = "generate";
 const result = await weft.submit({
   channel: "elections", chaincode: "ballot", fn: "CastVote", args: ["board-2026"],
   transient: { ballot: JSON.stringify({ option: "Ada", salt }) },

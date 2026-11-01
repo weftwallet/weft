@@ -30,11 +30,8 @@ Send the receipt with the vote. Weft checks it against the ballot, offers the vo
 const weft = await getWeft();
 await weft.connect();
 
-// Weft 0.2.0 and later choose the salt. An older Weft would send
-// "generate" to the contract, so choose it yourself there.
-const salt = weft.supportsReceipts()
-  ? "generate"
-  : Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+// Weft chooses the salt and puts it in both places.
+const salt = "generate";
 const result = await weft.submit({
   channel: "elections",
   chaincode: "ballot",
@@ -46,15 +43,7 @@ const result = await weft.submit({
 
 // Give this to the voter to keep, as a file and as text to copy, even when
 // Weft kept it too. The explorer's receipt check reads it back.
-let receipt;
-if (result.receipt) {
-  receipt = result.receipt.receipt;
-} else {
-  // Weft from before receipts.
-  const { electionId, txId, commitment } = JSON.parse(result.text!);
-  receipt = { type: "weft-ballot-receipt", version: 1, channel: "elections", electionId, txId, blockNumber: Number(result.blockNumber), commitment, option: "Ada", salt };
-}
-const keptInWeft = result.receipt?.kept === true;
+const { receipt, kept: keptInWeft } = result.receipt!;
 ```
 
 Weft's approval window lists `ballot` as a private input with its value hidden until the voter chooses **Show**, so also show the voter their choice in your web app before they sign. Weft checks the value it signs is the one your web app sent, and doesn't keep it in its activity list. A receipt that doesn't match the ballot fails with `-32602` before any window opens; the [Provider API](/dapps/provider-api/#ballot-receipts) lists the checks.
