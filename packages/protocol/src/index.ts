@@ -6,7 +6,7 @@
  * that boundary is described here, so the extension, the SDK and the docs agree.
  */
 
-export const PROVIDER_VERSION = "0.1.0";
+export const PROVIDER_VERSION = "0.2.0";
 
 /* ------------------------------------------------------------------ */
 /* Identities and networks                                             */
@@ -114,6 +114,119 @@ export interface SubmitResult extends EvaluateResult {
   blockNumber: string;
   /** Fabric validation code name, for example "VALID". */
   status: string;
+  /**
+   * The ballot receipt, when the request had one (see SubmitParams.receipt).
+   * Absent from Weft before 0.2.0, which ignores the request's receipt.
+   */
+  receipt?: ReceiptResult;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ballot receipts (docs/adr/0006)                                     */
+/* ------------------------------------------------------------------ */
+
+/** The `type` of a ballot receipt, as the explorer's receipt check reads it. */
+export const RECEIPT_TYPE = "weft-ballot-receipt";
+
+/**
+ * A receipt's `salt` that asks Weft to choose the salt. The private input
+ * the ballot is in must have the same placeholder (see BallotReceiptRequest).
+ */
+export const GENERATE_SALT = "generate";
+
+/**
+ * What a voting dApp sends with weft_submit to have Weft make the voter's
+ * receipt, and offer to keep it. Exactly these six fields.
+ *
+ * Weft checks it against the call before any window opens: `channel` is the
+ * call's channel, `electionId` is one of the call's arguments, and one
+ * private input, read as JSON, has this `option` and `salt`. Failing any
+ * check fails the request with -32602 InvalidParams.
+ *
+ * With `salt: "generate"`, exactly one private input must be a JSON object
+ * with this `option` and `"salt": "generate"`. Weft replaces that salt with
+ * 16 random bytes as 32 lowercase hex characters before the approval window
+ * opens, so the voter approves and signs the value the contract gets, and
+ * returns the same salt in the receipt.
+ */
+export interface BallotReceiptRequest {
+  type: typeof RECEIPT_TYPE;
+  version: 1;
+  /** The call's channel. */
+  channel: string;
+  /** One of the call's arguments. */
+  electionId: string;
+  /** 1 to 200 characters, as in the private input. */
+  option: string;
+  /** 32 to 128 lowercase hex characters, as in the private input, or "generate". */
+  salt: string;
+}
+
+/**
+ * A finished ballot receipt: what the voter keeps, and what the explorer's
+ * receipt check reads from a file, a paste or Weft.
+ */
+export interface BallotReceipt {
+  type: typeof RECEIPT_TYPE;
+  version: 1;
+  channel: string;
+  electionId: string;
+  txId: string;
+  blockNumber: number;
+  /** SHA-256 of the election ID, the option and the salt, joined by newlines, as hex. */
+  commitment: string;
+  option: string;
+  salt: string;
+}
+
+/**
+ * Why Weft didn't keep a receipt: the voter left "Keep the receipt in Weft"
+ * off, the browser refused to store it, or the commitment the contract
+ * returned isn't SHA-256 of the election ID, option and salt.
+ */
+export type ReceiptNotKeptReason = "declined" | "storage" | "mismatch";
+
+/** What happened to a ballot receipt. `receipt` is the finished receipt either way. */
+export type ReceiptResult =
+  | { kept: true; receipt: BallotReceipt }
+  | { kept: false; reason: ReceiptNotKeptReason; receipt: BallotReceipt };
+
+/** Params for weft_submit: a contract call, with an optional ballot receipt. */
+export interface SubmitParams extends ContractCall {
+  receipt?: BallotReceiptRequest;
+}
+
+/* ------------------------------------------------------------------ */
+/* Checking a receipt in the explorer (docs/adr/0006)                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The messages that hand a receipt's choice and salt to the explorer's
+ * election page without putting them in an address. The page that holds the
+ * receipt opens the election page with window.open (without noopener), its
+ * address carrying only `tx` and `commitment`. The election page posts
+ * `ready` to window.opener, with no data; the opener answers with a
+ * ReceiptHandoff, posted to the explorer's exact origin. The explorer posts
+ * nothing else back.
+ */
+export const RECEIPT_HANDOFF = {
+  ready: "weft-receipt-check:ready",
+  receipt: "weft-receipt-check:receipt",
+} as const;
+
+export interface ReceiptHandoffReady {
+  type: typeof RECEIPT_HANDOFF.ready;
+  version: 1;
+}
+
+export interface ReceiptHandoff {
+  type: typeof RECEIPT_HANDOFF.receipt;
+  version: 1;
+  /** Must be the election and transaction the page is checking. */
+  electionId: string;
+  txId: string;
+  option: string;
+  salt: string;
 }
 
 /** Every method the provider accepts, with its params and result types. */
@@ -122,7 +235,7 @@ export interface WeftMethods {
   weft_identity: { params: undefined; result: IdentitySummary | null };
   weft_networks: { params: undefined; result: NetworkSummary[] };
   weft_evaluate: { params: ContractCall; result: EvaluateResult };
-  weft_submit: { params: ContractCall; result: SubmitResult };
+  weft_submit: { params: SubmitParams; result: SubmitResult };
   weft_addNetwork: { params: AddNetworkParams; result: AddNetworkResult };
   /** Disconnects this site. It must call weft_connect again to use the wallet. */
   weft_disconnect: { params: undefined; result: null };
