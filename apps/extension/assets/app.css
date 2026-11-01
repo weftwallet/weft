@@ -2401,3 +2401,174 @@ p.flat {
   margin-top: -4px;
   margin-bottom: -4px;
 }
+
+/* Ballot receipts (docs/adr/0006) ------------------------------------ */
+
+/* "receipt": on the private input a kept receipt comes from, in the
+   approval window, and on the activity row of a vote whose receipt is kept. */
+.in-receipt {
+  display: inline-block;
+  font-family: var(--weft-font-sans);
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: var(--weft-radius-sm);
+  background: var(--weft-accent-soft);
+  color: var(--weft-accent-text);
+  border: 1px solid var(--weft-accent-line);
+  vertical-align: 1px;
+  white-space: nowrap;
+  flex: none;
+}
+
+/* "Keep the receipt in Weft": a card with a switch, off until turned on. */
+.keep {
+  border-radius: var(--weft-radius-lg);
+  border: 1px solid var(--weft-line);
+  background: var(--weft-bg-raised);
+  transition:
+    border-color var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+.keep--on {
+  border-color: var(--weft-accent-line);
+  background: var(--weft-accent-soft);
+}
+
+.keep__row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.keep__row:has(.switch:disabled) {
+  cursor: default;
+}
+
+.keep__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.keep__detail {
+  margin: 0;
+  padding: 0 12px 10px;
+  color: var(--weft-text-muted);
+}
+
+.switch {
+  appearance: none;
+  margin: 0;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border-radius: var(--weft-radius-pill);
+  background: var(--weft-line-strong);
+  position: relative;
+  cursor: pointer;
+  transition: background-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--weft-text-strong);
+  transition:
+    transform var(--weft-duration-fast) var(--weft-ease-out),
+    background-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+.switch:checked {
+  background: var(--weft-accent);
+}
+
+.switch:checked::after {
+  transform: translateX(16px);
+  background: var(--weft-on-accent);
+}
+
+.switch:disabled {
+  opacity: var(--weft-disabled-opacity);
+  cursor: default;
+}
+
+/* The status line's word for a kept receipt. */
+.kept-line {
+  color: var(--weft-accent-text);
+}
+
+.receipt-problem__title {
+  color: var(--weft-warn-text);
+}
+
+/* Download, Copy, and Check in the explorer under them. */
+.receipt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.receipt-actions__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.btn--sm {
+  height: 36px;
+  padding: 0 10px;
+}
+
+/* Inside a receipt card, the actions sit under a line like the rows do. */
+.args .receipt-actions {
+  padding: 12px;
+  border-top: 1px solid var(--weft-line);
+}
+
+.args .receipt-status {
+  padding: 0 12px 8px;
+}
+
+/* In the amber notice, which lines its children up at the start: the pair
+   takes the notice's width, as it does in a receipt card. Brought into view
+   with the page's own padding above it. */
+.receipt-problem {
+  scroll-margin-top: var(--weft-space-4);
+}
+
+.receipt-problem .receipt-actions,
+.receipt-problem .receipt-status {
+  align-self: stretch;
+}
+
+.receipt-problem .receipt-actions {
+  margin-top: 4px;
+}
+
+/* A salt in groups of four. */
+.grouped {
+  display: inline-flex;
+  flex-wrap: wrap;
+  column-gap: 0.6ch;
+  justify-content: flex-end;
+}
+
+/* An activity row's title with its tag. */
+.list-item__titlerow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}

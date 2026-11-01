@@ -49,8 +49,10 @@ web page ──window.weft──▶ inpage.content.ts   (main world, no privileg
 | `lib/provider.ts` | Connect checks, approval windows, evaluate/submit through the relay, activity records. |
 | `lib/wallet.ts` | Identities and networks: enrol, import, CSR, re-enrol, signing. |
 | `lib/db.ts` | IndexedDB. Private keys are non-extractable `CryptoKey`s. |
+| `lib/receipts.ts` | Ballot receipts kept at the user's request, their choice and salt sealed with a key derived from the vault key (ADR 0006). |
 | `entrypoints/popup/` | Home, identities, add-identity flows, transaction detail. |
-| `entrypoints/approve/` | Connect and signature approval screens. |
+| `entrypoints/approve/` | Connect and signature approval screens, with "Keep the receipt in Weft" for a vote. |
+| `entrypoints/receipt/` | A small window that opens the explorer for a kept receipt and hands it the choice and salt by message. |
 
 ## Permissions
 

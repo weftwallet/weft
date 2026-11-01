@@ -1,6 +1,6 @@
 // Must load before @peculiar/x509 (via @weftwallet/core), whatever the import order.
 import "reflect-metadata";
-import { StrictMode, useEffect, useRef, useState } from "react";
+import { StrictMode, useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "../../assets/app.css";
 import { qualifiedFunctionName } from "@weftwallet/core";
@@ -11,6 +11,7 @@ import { FeedbackProvider } from "../../components/feedback";
 import { useChecks } from "../../components/form";
 import { CreatePassword, Unlock } from "../../components/lock";
 import { useAction } from "../../components/popup/state";
+import { SaveReceipt } from "../../components/receipt";
 import {
   ActionError,
   Brand,
@@ -25,12 +26,13 @@ import {
   clockTime,
   fromWorker,
   healthView,
+  shorten,
   toErrorInfo,
   tokenMs,
   useFocusOnArrival,
   type ErrorInfo,
 } from "../../components/ui";
-import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView } from "../../lib/messages";
+import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView, type ReceiptOutcome } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import * as check from "../../lib/validate";
 import type { VaultStatus } from "../../lib/vault";
@@ -98,7 +100,8 @@ function Approve() {
     };
   }, []);
 
-  const decide = async (approved: boolean) => {
+  /** keepReceipt: "Keep the receipt in Weft", as the user left it. Nothing else sets it. */
+  const decide = async (approved: boolean, keepReceipt = false) => {
     if (deciding) return; // one decision per request, however fast the presses
     setDeciding(true);
     if (!approved) {
@@ -108,7 +111,7 @@ function Approve() {
     }
     setPhase("working");
     try {
-      const result = await ui("approvalDecide", { id, approved: true });
+      const result = await ui("approvalDecide", { id, approved: true, keepReceipt });
       setOutcome(result);
       setPhase("done");
     } catch (error) {
@@ -125,9 +128,11 @@ function Approve() {
     }
   };
 
-  // A success state stays hold-after-done, then the window closes (SYSTEM.md, Errors).
+  // A success state stays hold-after-done, then the window closes (SYSTEM.md,
+  // Errors). Not when Weft couldn't keep a receipt the user asked it to: the
+  // window says why, and for a refused write it holds the only copy.
   useEffect(() => {
-    if (phase !== "done" || outcome?.status !== "approved") return;
+    if (phase !== "done" || outcome?.status !== "approved" || receiptTrouble(outcome.receipt)) return;
     const t = setTimeout(() => window.close(), tokenMs("--weft-hold-after-done", 1400));
     return () => clearTimeout(t);
   }, [phase, outcome]);
@@ -305,9 +310,15 @@ function Origin({ origin, subtitle }: { origin: string; subtitle: string }) {
 /** What was done, for the status line once a request has succeeded. */
 interface Done {
   headline: string;
-  detail: string;
+  detail: ReactNode;
   link?: { href: string; label: string };
+  /** The window stays open with Close: something above needs reading first. */
+  stays?: boolean;
 }
+
+/** A receipt the user asked Weft to keep, and it couldn't. */
+const receiptTrouble = (receipt: ReceiptOutcome | undefined) =>
+  receipt?.kept === false && (receipt.reason === "storage" || receipt.reason === "mismatch");
 
 /**
  * The footer: Reject and the action while the request is reviewed, the
@@ -353,6 +364,11 @@ function Footer({
             </span>
           </div>
         </div>
+        {done.stays && (
+          <button type="button" className="btn" onClick={() => window.close()}>
+            Close
+          </button>
+        )}
       </footer>
     );
   }
@@ -443,7 +459,7 @@ function IdentityLine({ identity }: { identity: IdentityView | null }) {
 
 interface RequestProps {
   view: ApprovalView;
-  onDecide: (approved: boolean) => void;
+  onDecide: (approved: boolean, keepReceipt?: boolean) => void;
   deciding: boolean;
   progress: Progress;
 }
@@ -566,6 +582,11 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
   // Private inputs are part of what the user signs, so they can always see
   // them, but they start hidden from anyone glancing at the screen.
   const [showPrivate, setShowPrivate] = useState(false);
+  // "Keep the receipt in Weft" starts off on every request, and only this
+  // switch turns it on: the request can't, and Weft remembers nothing.
+  const [keep, setKeep] = useState(false);
+  const receipt = submit ? view.receipt : undefined;
+  const hidden = (value: string) => (showPrivate ? value : "hidden");
 
   return (
     <>
@@ -579,6 +600,7 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
       />
       <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
         <FailureOutcome progress={progress} view={view} />
+        <ReceiptProblem progress={progress} electionId={view.receipt?.request.electionId ?? ""} />
         <div className={`notice ${submit ? "notice--amber" : "notice--thread"}`}>
           <span className="tag" style={{ background: submit ? "var(--weft-warn)" : "var(--weft-accent)" }}>
             {submit ? "Submit" : "Evaluate"}
@@ -647,7 +669,15 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
               </div>
               {transient.map(([key, value]) => (
                 <div key={key} className="args__row">
-                  <span className="subtle args__key">{key}</span>
+                  <span className="subtle args__key">
+                    {key}
+                    {keep && receipt?.input === key && (
+                      <>
+                        {" "}
+                        <span className="in-receipt arrive">receipt</span>
+                      </>
+                    )}
+                  </span>
                   {showPrivate ? (
                     <span className="args__value">{value}</span>
                   ) : (
@@ -670,12 +700,23 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
                 ...call,
                 fn: qualifiedFunctionName(call),
                 transient: transient.length ? (showPrivate ? call.transient : transientKeys) : undefined,
+                ...(receipt ? { receipt: { ...receipt.request, option: hidden(receipt.request.option), salt: hidden(receipt.request.salt) } } : {}),
               },
               null,
               2,
             )}
           </pre>
         </section>
+
+        {receipt && (
+          <KeepReceipt
+            host={new URL(view.origin).host}
+            receipt={receipt}
+            keep={keep}
+            onKeep={setKeep}
+            locked={progress.phase !== "review" || deciding}
+          />
+        )}
 
         {submit &&
           (call.endorsingOrganizations?.length ? (
@@ -695,7 +736,7 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
         <p className="subtle type-xs flat">Before signing, Weft checks that the relay's messages match what is shown here.</p>
       </main>
       <Footer
-        onDecide={onDecide}
+        onDecide={(approved) => onDecide(approved, approved && keep)}
         cta={submit ? "Sign and submit" : "Sign and read"}
         ctaClass={submit ? "btn--amber" : "btn--primary"}
         deciding={deciding}
@@ -721,14 +762,134 @@ function signDone(view: ApprovalView, outcome: ApprovalOutcome | null): Done {
   const detail = `${callLine(view)}${signer}.`;
   if (view.method !== "weft_submit") return { headline: "Read from the ledger.", detail: `${detail} Closing.` };
   const block = approved?.blockNumber ? ` in block ${Number(approved.blockNumber).toLocaleString()}` : "";
+  const receipt = approved?.receipt;
+  const trouble = receiptTrouble(receipt);
   const link =
-    approved?.explorerUrl && approved.transactionId
+    approved?.explorerUrl && approved.transactionId && !trouble
       ? {
           href: `${approved.explorerUrl}/channels/${encodeURIComponent(view.call!.channel)}/transactions/${encodeURIComponent(approved.transactionId)}`,
           label: "View in the explorer",
         }
       : undefined;
-  return { headline: `Committed${block}.`, detail, ...(link ? { link } : {}) };
+  // What became of the receipt, after the call, in the same line.
+  const said: ReactNode =
+    receipt?.kept === true ? (
+      receipt.locked ? (
+        <>
+          {" "}
+          <span className="kept-line">Weft kept your receipt.</span> It locked while it waited, so unlock Weft to see it.
+        </>
+      ) : (
+        <>
+          {" "}
+          <span className="kept-line">Weft kept your receipt</span> with it in your activity.
+        </>
+      )
+    ) : receipt?.kept === false && receipt.reason === "storage" ? (
+      " Weft couldn't keep your receipt. Save it above before you close this window."
+    ) : receipt?.kept === false && receipt.reason === "mismatch" ? (
+      " Weft didn't keep your receipt. The reason is above."
+    ) : null;
+  return {
+    headline: `Committed${block}.`,
+    detail: (
+      <>
+        {detail}
+        {said}
+      </>
+    ),
+    ...(link ? { link } : {}),
+    ...(trouble ? { stays: true } : {}),
+  };
+}
+
+/**
+ * "Keep the receipt in Weft", under the arguments: who asks, and what Weft
+ * keeps. Off until the user turns it on; it can't change once signing starts.
+ */
+function KeepReceipt({
+  host,
+  receipt,
+  keep,
+  onKeep,
+  locked,
+}: {
+  host: string;
+  receipt: NonNullable<ApprovalView["receipt"]>;
+  keep: boolean;
+  onKeep: (keep: boolean) => void;
+  locked: boolean;
+}) {
+  return (
+    <section className={`keep${keep ? " keep--on" : ""}`} aria-labelledby="keep-title">
+      <label className="keep__row">
+        <span className="keep__text">
+          <span className="strong" id="keep-title">
+            Keep the receipt in Weft
+          </span>
+          <span className="subtle type-xs">
+            {host} asks for this vote in <span className="mono">{receipt.request.electionId}</span>.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          className="switch"
+          checked={keep}
+          disabled={locked}
+          aria-describedby="keep-detail"
+          onChange={(e) => onKeep(e.target.checked)}
+        />
+      </label>
+      <p className="keep__detail type-xs" id="keep-detail">
+        {receipt.generated && "Weft chose the salt at random. The site gets the receipt whether or not Weft keeps it. "}
+        Weft keeps your choice and salt from <span className="mono">{receipt.input}</span>, encrypted with your password, and adds the
+        transaction ID, block and commitment once it commits. You'll find it under this transaction in your activity.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * At the top of a committed vote's body, when Weft couldn't keep the receipt
+ * the user asked it to: the browser refused the write, so this window offers
+ * the only copy Weft has, or the contract's commitment wasn't the one for the
+ * choice and salt, so a receipt with it wouldn't check out.
+ */
+function ReceiptProblem({ progress, electionId }: { progress: Progress; electionId: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  const outcome = progress.phase === "done" && progress.outcome?.status === "approved" ? progress.outcome.receipt : undefined;
+  const trouble = receiptTrouble(outcome);
+  useEffect(() => {
+    if (trouble) box.current?.scrollIntoView({ block: "nearest" });
+  }, [trouble]);
+  if (!outcome || outcome.kept || !trouble) return null;
+  return (
+    <div ref={box} className="notice notice--amber notice--column receipt-problem arrive" role="alert">
+      <div className="inline strong receipt-problem__title">
+        <Icon name="alert" size={18} />
+        {outcome.reason === "storage" ? "Weft couldn't keep your receipt" : "Weft didn't keep the receipt"}
+      </div>
+      {outcome.reason === "storage" ? (
+        <>
+          <div>Your vote is committed, but this browser refused to store the receipt. Save it now: Weft has a copy only while this window is open.</div>
+          <SaveReceipt receipt={outcome.receipt} copied="Copied. Paste it somewhere you'll keep it." />
+          <ErrorDetails>{outcome.error}</ErrorDetails>
+        </>
+      ) : outcome.reason === "mismatch" ? (
+        <>
+          <div>
+            Your vote is committed, but the commitment the contract returned isn't the one for your choice and salt. A receipt with it
+            wouldn't check out in the explorer, so Weft kept nothing. Tell the site's owner.
+          </div>
+          <ErrorDetails>
+            Expected {shorten(outcome.expected)}, SHA-256 of {electionId}, the choice and the salt.{" "}
+            {outcome.returned ? `The contract returned ${shorten(outcome.returned)}.` : "The contract returned no commitment."}
+          </ErrorDetails>
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 function AddNetworkRequest({ view, onDecide, deciding, progress }: RequestProps) {

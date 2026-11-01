@@ -11,11 +11,14 @@ import {
   PASSWORD_ITERATIONS,
   VaultLockedError,
   deriveKeyFromPassword,
+  deriveReceiptKey,
   deriveKeyFromPrf,
   importVaultKey,
   open,
+  openBound,
   randomBytes,
   seal,
+  sealBound,
   unwrapSigningKey,
   wrapSigningKey,
   type Sealed,
@@ -62,6 +65,8 @@ const SESSION_LOCK_AT = "lockAt";
 /** Decrypted signing keys, by identity or CSR id. Cleared on lock. */
 const cache = new Map<string, CryptoKey>();
 let vaultKeyCache: CryptoKey | null = null;
+/** The key for kept ballot receipts, derived from the vault key (docs/adr/0006). Cleared on lock. */
+let receiptKeyCache: CryptoKey | null = null;
 
 async function record(): Promise<VaultRecord | undefined> {
   return db.get<VaultRecord>("settings", "vault");
@@ -94,6 +99,7 @@ async function sealWithPassword(password: string, raw: Uint8Array) {
 
 async function becomeUnlocked(raw: Uint8Array, minutes: number): Promise<void> {
   vaultKeyCache = await importVaultKey(raw);
+  receiptKeyCache = null;
   await browser.storage.session.set({ [SESSION_KEY]: Array.from(raw) });
   await touch(minutes);
 }
@@ -136,6 +142,7 @@ export async function unlockWithPasskey(credentialId: string, prfOutput: Uint8Ar
 
 export async function lock(): Promise<void> {
   vaultKeyCache = null;
+  receiptKeyCache = null;
   cache.clear();
   await browser.storage.session.remove([SESSION_KEY, SESSION_LOCK_AT]);
   await browser.alarms.clear(ALARM);
@@ -171,11 +178,32 @@ async function vaultKey(): Promise<CryptoKey> {
   const raw = await sessionKey();
   if (!raw) {
     vaultKeyCache = null;
+    receiptKeyCache = null;
     cache.clear();
     throw new VaultLockedError();
   }
   vaultKeyCache ??= await importVaultKey(raw);
   return vaultKeyCache;
+}
+
+async function receiptKey(): Promise<CryptoKey> {
+  await vaultKey(); // throws, and clears the caches, when locked
+  const raw = await sessionKey();
+  if (!raw) throw new VaultLockedError();
+  receiptKeyCache ??= await deriveReceiptKey(raw);
+  return receiptKeyCache;
+}
+
+/**
+ * Encrypts a receipt's choice and salt for the record `id`, which must be
+ * given again to open them. Throws VaultLockedError when locked.
+ */
+export async function sealReceipt(id: string, secret: Uint8Array): Promise<Sealed> {
+  return sealBound(await receiptKey(), secret, id);
+}
+
+export async function openReceipt(id: string, sealed: Sealed): Promise<Uint8Array> {
+  return openBound(await receiptKey(), sealed, id);
 }
 
 /** Fails unless Weft is unlocked. */

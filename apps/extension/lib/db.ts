@@ -3,11 +3,13 @@
  *
  * Private keys are stored encrypted with the vault key (docs/adr/0005).
  * Records saved before the lock hold a non-extractable CryptoKey instead
- * (docs/adr/0002), which still works but isn't encrypted at rest.
+ * (docs/adr/0002), which still works but isn't encrypted at rest. A kept
+ * ballot receipt's choice and salt are encrypted with a key derived from the
+ * vault key (docs/adr/0006).
  */
 
-import type { WrappedKey } from "@weftwallet/core";
-import type { ContractCall } from "@weftwallet/protocol";
+import type { Sealed, WrappedKey } from "@weftwallet/core";
+import type { ContractCall, RECEIPT_TYPE } from "@weftwallet/protocol";
 
 export interface NetworkRecord {
   id: string;
@@ -81,6 +83,31 @@ export interface ActivityRecord {
   endorsers?: { mspId?: string; address?: string; message: string }[];
   /** The network's own words about a failure, shown behind "Details". */
   raw?: string;
+  /** True while a ballot receipt is kept for this transaction (the receipts store). */
+  receipt?: true;
+}
+
+/**
+ * A ballot receipt kept at the user's request (docs/adr/0006). Everything but
+ * the choice and salt is public already, on the ledger or in the activity
+ * record, so it stays readable while Weft is locked.
+ */
+export interface ReceiptRecord {
+  /** The activity record's ID: one receipt per transaction. */
+  id: string;
+  /** Indexed, so removing the identity removes its receipts. */
+  identityId: string;
+  origin: string;
+  type: typeof RECEIPT_TYPE;
+  version: 1;
+  channel: string;
+  electionId: string;
+  txId: string;
+  blockNumber: number;
+  commitment: string;
+  /** { option, salt } as JSON, sealed with the receipt key, `id` as additional data. */
+  sealed: Sealed;
+  keptAt: number;
 }
 
 export interface Settings {
@@ -89,8 +116,9 @@ export interface Settings {
 }
 
 const DB_NAME = "weft";
-const DB_VERSION = 1;
-const STORES = ["networks", "identities", "pendingCsrs", "sites", "activity", "settings"] as const;
+// 2: the receipts store.
+const DB_VERSION = 2;
+const STORES = ["networks", "identities", "pendingCsrs", "sites", "activity", "settings", "receipts"] as const;
 type StoreName = (typeof STORES)[number];
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -105,6 +133,7 @@ function open(): Promise<IDBDatabase> {
         const keyPath = name === "sites" ? "origin" : name === "settings" ? "key" : "id";
         const store = db.createObjectStore(name, { keyPath });
         if (name === "activity") store.createIndex("at", "at");
+        if (name === "receipts") store.createIndex("identityId", "identityId");
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -137,10 +166,13 @@ export const db = {
   async delete(name: StoreName, key: string): Promise<void> {
     await promisify((await store(name, "readwrite")).delete(key));
   },
-  /** Most recent activity first. */
+  /**
+   * Most recent activity first: the `limit` most recent, and every record
+   * with a kept receipt however old, since a receipt is kept until removed.
+   */
   async recentActivity(limit = 50): Promise<ActivityRecord[]> {
     const index = (await store("activity")).index("at");
-    return new Promise((resolve, reject) => {
+    const recent = await new Promise<ActivityRecord[]>((resolve, reject) => {
       const out: ActivityRecord[] = [];
       const cursor = index.openCursor(null, "prev");
       cursor.onsuccess = () => {
@@ -150,6 +182,45 @@ export const db = {
         c.continue();
       };
       cursor.onerror = () => reject(cursor.error);
+    });
+    const have = new Set(recent.map((a) => a.id));
+    const kept = (await promisify((await store("receipts")).getAllKeys())) as string[];
+    const older = await Promise.all(kept.filter((id) => !have.has(id)).map((id) => this.get<ActivityRecord>("activity", id)));
+    const all = [...recent, ...older.filter((a): a is ActivityRecord => !!a)];
+    return all.sort((a, b) => b.at - a.at);
+  },
+  /** The receipts kept for an identity's transactions. */
+  async receiptsOf(identityId: string): Promise<ReceiptRecord[]> {
+    return promisify((await store("receipts")).index("identityId").getAll(identityId)) as Promise<ReceiptRecord[]>;
+  },
+  /** Saves an activity record and its receipt together: both are written, or neither. */
+  async putWithReceipt(activity: ActivityRecord, receipt: ReceiptRecord): Promise<void> {
+    const tx = (await open()).transaction(["activity", "receipts"], "readwrite");
+    tx.objectStore("activity").put(activity);
+    tx.objectStore("receipts").put(receipt);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onabort = tx.onerror = () => reject(tx.error ?? new Error("The browser stopped the write."));
+    });
+  },
+  /** Deletes receipts and clears their activity records' flag, together. */
+  async removeReceipts(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const tx = (await open()).transaction(["activity", "receipts"], "readwrite");
+    const activity = tx.objectStore("activity");
+    for (const id of ids) {
+      tx.objectStore("receipts").delete(id);
+      const read = activity.get(id);
+      read.onsuccess = () => {
+        const record = read.result as ActivityRecord | undefined;
+        if (!record?.receipt) return;
+        const { receipt: _flag, ...rest } = record;
+        activity.put(rest);
+      };
+    }
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onabort = tx.onerror = () => reject(tx.error ?? new Error("The browser stopped the write."));
     });
   },
   async settings(): Promise<Settings> {

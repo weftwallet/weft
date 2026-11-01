@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { browser } from "wxt/browser";
 import type { ActivityRecord } from "../../lib/db";
 import { ui, type WalletState } from "../../lib/messages";
-import { CopyButton, useCopy } from "../feedback";
+import type { ReceiptView } from "../../lib/receipts";
+import { CopyButton, useCopy, useFeedback } from "../feedback";
+import { GroupedHex, SaveReceipt } from "../receipt";
 import { ActionError, BackHeader, Button, Empty, ErrorDetails, Icon, Splash, shorten, timeAgo, toErrorInfo, type ErrorInfo } from "../ui";
 import type { Navigate } from "./state";
 
@@ -82,6 +85,8 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           <div className="mono card__title wrap-anywhere">{item.call.fn}</div>
         </div>
 
+        {item.receipt && <ReceiptCard key={item.id} item={item} state={state} onRemoved={load} />}
+
         {item.status === "failed" && (
           <section className="notice notice--signal notice--column">
             <div className="strong">{item.title}</div>
@@ -138,7 +143,8 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
             <>
               <dt>Private</dt>
               <dd>
-                <span className="mono">{item.privateInputs.join(", ")}</span> <span className="subtle">(values not kept)</span>
+                <span className="mono">{item.privateInputs.join(", ")}</span>{" "}
+                <span className="subtle">{item.receipt ? "(kept in the receipt)" : "(values not kept)"}</span>
               </dd>
             </>
           )}
@@ -177,3 +183,145 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
   );
 }
 
+/** "10:42 today", or the date for an earlier day. */
+function keptSince(at: number): string {
+  const d = new Date(at);
+  const today = new Date().toDateString() === d.toDateString();
+  return today
+    ? `${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} today`
+    : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/**
+ * A vote's kept receipt (docs/adr/0006), first under the headline, since it
+ * is why someone opens the transaction. The election and commitment are
+ * public; the choice and salt are hidden until Show, as private inputs are
+ * in the approval window, and hidden again whenever Weft locks.
+ */
+function ReceiptCard({ item, state, onRemoved }: { item: ActivityRecord; state: WalletState; onRemoved: () => void }) {
+  const { confirm, toast } = useFeedback();
+  const [view, setView] = useState<ReceiptView | null | undefined>(undefined);
+  const [error, setError] = useState<ErrorInfo | null>(null);
+  const [show, setShow] = useState(false);
+  const unlocked = state.vault.state === "unlocked";
+
+  const load = () => {
+    setError(null);
+    ui("receiptGet", { id: item.id }).then(setView, (e: unknown) => setError(toErrorInfo(e)));
+  };
+  // Opened while Weft is unlocked; dropped, and hidden again, when it locks.
+  useEffect(() => {
+    if (!unlocked) {
+      setView(undefined);
+      setShow(false);
+      return;
+    }
+    load();
+  }, [unlocked, item.id]);
+
+  const remove = async () => {
+    if (!view) return;
+    const ok = await confirm({
+      title: "Remove this receipt?",
+      body: (
+        <>
+          <p className="sheet__para">
+            Weft deletes your choice and salt for <span className="mono">{view.receipt.electionId}</span> from this browser. Your vote
+            stays on the ledger.
+          </p>
+          <p className="flat muted">Without the receipt, or a copy you saved, you can't show that this commitment is your vote.</p>
+        </>
+      ),
+      confirmLabel: "Remove",
+      icon: "trash",
+    });
+    if (!ok) return;
+    try {
+      await ui("receiptRemove", { id: item.id });
+      toast("Receipt removed");
+      onRemoved();
+      requestAnimationFrame(() => document.querySelector<HTMLElement>(".screen h1")?.focus({ preventScroll: true }));
+    } catch (e) {
+      toast(`Couldn't remove the receipt. ${toErrorInfo(e).message}`, "error");
+    }
+  };
+
+  if (error) {
+    return (
+      <ActionError error={{ ...error, message: "Weft couldn't open this receipt." }}>
+        <button type="button" className="link-btn link-btn--inline" onClick={load}>
+          Try again
+        </button>
+      </ActionError>
+    );
+  }
+  if (!view) return null;
+  const r = view.receipt;
+  const hidden = (
+    <span className="subtle">
+      <span aria-hidden="true">••••••</span>
+      <span className="visually-hidden">Hidden</span>
+    </span>
+  );
+  // A small window of Weft's opens the explorer and hands it the choice and
+  // salt by message, so they never go in an address (entrypoints/receipt).
+  // The popup would close before the explorer could ask, as for passkeys.
+  const check = () =>
+    void browser.windows.create({
+      url: browser.runtime.getURL(`/receipt.html?id=${encodeURIComponent(item.id)}`),
+      type: "popup",
+      width: 380,
+      height: 520,
+      focused: true,
+    });
+  return (
+    <div className="stack arrive">
+      <section className="args" aria-labelledby="receipt-heading">
+        <div className="args__heading row-between">
+          <h2 id="receipt-heading" className="eyebrow">
+            Receipt
+          </h2>
+          <span className="subtle type-xs">Ballot receipt, version 1</span>
+        </div>
+        <div className="args__row">
+          <span className="subtle args__key">Election</span>
+          <span className="args__value">{r.electionId}</span>
+        </div>
+        <div className="args__row">
+          <span className="subtle args__key">Commitment</span>
+          <span className="args__value" title={r.commitment}>
+            {shorten(r.commitment)}
+          </span>
+        </div>
+        <div className="args__row args__private">
+          <span className="subtle">Private, only you can see these</span>
+          <button type="button" className="args__reveal" aria-pressed={show} onClick={() => setShow(!show)}>
+            <Icon name={show ? "eyeOff" : "eye"} size={16} />
+            {show ? "Hide" : "Show"}
+          </button>
+        </div>
+        <div className="args__row">
+          <span className="subtle args__key">Choice</span>
+          {show ? <span className="args__value">{r.option}</span> : hidden}
+        </div>
+        <div className="args__row">
+          <span className="subtle args__key">Salt</span>
+          {show ? <GroupedHex value={r.salt} /> : hidden}
+        </div>
+        <SaveReceipt receipt={r} copied="Copied. It includes your choice and salt.">
+          {view.explorerUrl && (
+            <Button className="btn btn--sm" icon="external" iconSize={16} onClick={check}>
+              Check in the explorer
+            </Button>
+          )}
+        </SaveReceipt>
+      </section>
+      <div className="row-between type-xs">
+        <span className="subtle">Kept since {keptSince(view.keptAt)}.</span>
+        <button type="button" className="link-btn link-btn--inline danger-text" onClick={() => void remove()}>
+          Remove receipt
+        </button>
+      </div>
+    </div>
+  );
+}

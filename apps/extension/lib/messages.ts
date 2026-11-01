@@ -4,9 +4,11 @@
  * goes through the bridge content script.
  */
 
-import type { ContractCall, IdentitySummary, OrgInvite, WeftErrorShape, WeftMethod } from "@weftwallet/protocol";
+import type { BallotReceipt, ContractCall, IdentitySummary, OrgInvite, WeftErrorShape, WeftMethod } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import type { ActivityRecord, NetworkRecord, Settings, SiteRecord } from "./db";
+import type { ReceiptAsked } from "./receipt-request";
+import type { ReceiptView } from "./receipts";
 import type { VaultStatus } from "./vault";
 
 export interface IdentityView extends IdentitySummary {
@@ -49,7 +51,21 @@ export interface ApprovalView {
   inviteUrl?: string;
   /** weft_signIn only: the site's one-line statement. */
   statement?: string;
+  /**
+   * weft_submit with a ballot receipt (docs/adr/0006), already checked
+   * against `call`. `request.salt` is the real salt: one Weft generated is
+   * already in `call` too, so the window shows what is signed.
+   */
+  receipt?: ReceiptAsked;
 }
+
+/** What became of a ballot receipt, for the approval window's status line. */
+export type ReceiptOutcome =
+  | { kept: true; /** Weft locked while it waited for the block. */ locked: boolean }
+  | { kept: false; reason: "declined" }
+  /** The browser refused the write. The window holds this copy so the user can save it. */
+  | { kept: false; reason: "storage"; receipt: BallotReceipt; error: string }
+  | { kept: false; reason: "mismatch"; expected: string; returned: string | null };
 
 export type ApprovalOutcome =
   | {
@@ -60,6 +76,8 @@ export type ApprovalOutcome =
       transactionId?: string;
       /** The network's explorer, from the invite, when it has one. */
       explorerUrl?: string;
+      /** A vote sent with a receipt: whether Weft kept it. */
+      receipt?: ReceiptOutcome;
     }
   | {
       status: "failed";
@@ -94,7 +112,13 @@ export interface UiApi {
   removeIdentity: [{ identityId: string }, WalletState];
   disconnectSite: [{ origin: string }, WalletState];
   approvalGet: [{ id: string }, ApprovalView | null];
-  approvalDecide: [{ id: string; approved: boolean }, ApprovalOutcome];
+  /** keepReceipt: the user turned on "Keep the receipt in Weft". Only this window can set it. */
+  approvalDecide: [{ id: string; approved: boolean; keepReceipt?: boolean }, ApprovalOutcome];
+  /** A kept receipt with its choice and salt. Needs Weft unlocked. */
+  receiptGet: [{ id: string }, ReceiptView | null];
+  receiptRemove: [{ id: string }, null];
+  /** How many receipts an identity's activity keeps, for the sheet that removes it. */
+  receiptsOf: [{ identityId: string }, { count: number; elections: string[] }];
   /** The requests waiting in open approval windows, so the popup can say so. */
   approvalsPending: [undefined, ApprovalView["method"][]];
   /** Changes where Weft reaches a network, or its channels. */

@@ -16,6 +16,7 @@ import {
   summarizeIdentity,
 } from "@weftwallet/core";
 import type { IdentitySummary, OrgInvite } from "@weftwallet/protocol";
+import { removeReceiptsOf } from "./receipts";
 import * as vault from "./vault";
 import { db, newId, type IdentityRecord, type NetworkRecord, type PendingCsrRecord, type SiteRecord } from "./db";
 import type { IdentityView, NetworkInput, PendingCsrView, WalletState } from "./messages";
@@ -308,11 +309,11 @@ export async function refreshInvite(networkId: string): Promise<OrgInvite> {
 }
 
 /**
- * Deletes every identity, pending request, connection and activity record,
- * and the vault. Networks stay, so enrolling again is quick.
+ * Deletes every identity, pending request, connection, activity record and
+ * ballot receipt, and the vault. Networks stay, so enrolling again is quick.
  */
 export async function resetWallet(): Promise<string[]> {
-  for (const store of ["identities", "pendingCsrs", "activity"] as const) {
+  for (const store of ["identities", "pendingCsrs", "activity", "receipts"] as const) {
     for (const row of await db.all<{ id: string }>(store)) await db.delete(store, row.id);
   }
   const origins = (await db.all<SiteRecord>("sites")).map((s) => s.origin);
@@ -321,7 +322,9 @@ export async function resetWallet(): Promise<string[]> {
   return origins;
 }
 
+/** Deletes the identity and the ballot receipts kept with its activity. */
 export async function removeIdentity(identityId: string): Promise<void> {
+  await removeReceiptsOf(identityId);
   await db.delete("identities", identityId);
   const settings = await db.settings();
   if (settings.activeIdentityId === identityId) {

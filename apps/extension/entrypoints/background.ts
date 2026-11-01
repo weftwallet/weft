@@ -22,6 +22,7 @@ import {
   withActiveChange,
 } from "../lib/sites";
 import { checkCertificates, registerCertificateWatch } from "../lib/certificate-watch";
+import * as receipts from "../lib/receipts";
 import * as vault from "../lib/vault";
 import * as wallet from "../lib/wallet";
 
@@ -82,7 +83,10 @@ const handlers: Handlers = {
   checkEndpoints: ({ relayUrl, caUrl, caName }) => wallet.checkEndpoints(relayUrl, caUrl, caName),
   refreshInvite: ({ networkId }) => wallet.refreshInvite(networkId),
   approvalGet: async ({ id }) => getApproval(id),
-  approvalDecide: ({ id, approved }) => decideApproval(id, approved),
+  approvalDecide: ({ id, approved, keepReceipt }) => decideApproval(id, approved, keepReceipt === true),
+  receiptGet: ({ id }) => receipts.receiptView(id),
+  receiptRemove: async ({ id }) => (await receipts.removeReceipt(id), null),
+  receiptsOf: ({ identityId }) => receipts.receiptsOf(identityId),
   approvalsPending: async () => pendingApprovals(),
   keepAlive: async () => null,
   vaultStatus: () => vault.status(),

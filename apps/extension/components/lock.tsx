@@ -274,7 +274,7 @@ function ResetWeft({ onCancel, onDone }: { onCancel: () => void; onDone: () => v
         </div>
         <p className="muted flat">
           Weft can't recover a forgotten password, because it never stores it. Resetting deletes every identity and private
-          key in this browser, your activity and your site connections.
+          key in this browser, your activity, your ballot receipts and your site connections.
         </p>
         <div className="notice notice--signal">
           <Icon name="alert" size={18} color="var(--weft-danger-text)" />

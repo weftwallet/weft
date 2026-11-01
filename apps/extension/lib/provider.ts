@@ -19,6 +19,7 @@ import {
   VerificationError,
   certificateHealth,
   evaluateCall,
+  finishReceipt,
   submitCall,
   summarizeIdentity,
 } from "@weftwallet/core";
@@ -26,14 +27,19 @@ import {
   ErrorCode,
   WeftError,
   isWeftMethod,
+  type BallotReceiptRequest,
   type ContractCall,
   type NetworkSummary,
+  type ReceiptResult,
   type WeftMethod,
 } from "@weftwallet/protocol";
 import { certificateProblem, type MemberCas } from "@weftwallet/core/chain";
 import { browser } from "wxt/browser";
 import { db, newId, type ActivityRecord, type NetworkRecord } from "./db";
-import type { ApprovalOutcome, ApprovalView, UiEvent } from "./messages";
+import type { ApprovalOutcome, ApprovalView, ReceiptOutcome, UiEvent } from "./messages";
+import { parseReceipt, receiptSecret } from "./receipt-request";
+import { receiptRecord } from "./receipts";
+import * as vault from "./vault";
 import { connectSite, connectedIdentityIds, disconnectSites, isConnected } from "./sites";
 import { activeIdentity, activeSummary, identityView, signerFor } from "./wallet";
 
@@ -52,9 +58,15 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve };
 }
 
+/** What the user decided in the window. Only the window sets keepReceipt. */
+interface Decision {
+  approved: boolean;
+  keepReceipt: boolean;
+}
+
 interface PendingApproval {
   view: ApprovalView;
-  decision: Deferred<boolean>;
+  decision: Deferred<Decision>;
   outcome: Deferred<ApprovalOutcome>;
   windowId?: number;
 }
@@ -65,7 +77,7 @@ const approvals = new Map<string, PendingApproval>();
 export function registerApprovalListeners(): void {
   browser.windows.onRemoved.addListener((windowId) => {
     for (const approval of approvals.values()) {
-      if (approval.windowId === windowId) approval.decision.resolve(false);
+      if (approval.windowId === windowId) approval.decision.resolve({ approved: false, keepReceipt: false });
     }
   });
 }
@@ -85,10 +97,11 @@ function announceApprovals(): void {
 }
 
 /** Called by the approval window. Resolves once the request has finished running. */
-export async function decideApproval(id: string, approved: boolean): Promise<ApprovalOutcome> {
+export async function decideApproval(id: string, approved: boolean, keepReceipt = false): Promise<ApprovalOutcome> {
   const approval = approvals.get(id);
   if (!approval) return { status: "rejected" };
-  approval.decision.resolve(approved);
+  // Only a request that came with a receipt can keep one.
+  approval.decision.resolve({ approved, keepReceipt: approved && keepReceipt && !!approval.view.receipt });
   return approval.outcome.promise;
 }
 
@@ -194,7 +207,7 @@ async function connect(origin: string) {
     identity: await identityView(active.record.id),
   };
   const approval = await openApproval(view);
-  if (!(await approval.decision.promise)) {
+  if (!(await approval.decision.promise).approved) {
     finish(approval, { status: "rejected" });
     throw new WeftError(ErrorCode.UserRejected, "The user rejected the connection request.");
   }
@@ -205,7 +218,7 @@ async function connect(origin: string) {
 
 async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", params: unknown) {
   await requireConnected(origin);
-  const call = parseCall(params);
+  const { call, receipt } = parseReceipt(method, parseCall(params), params);
   const active = await requireUsableIdentity();
 
   const view: ApprovalView = {
@@ -214,6 +227,7 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
     method,
     call,
     identity: await identityView(active.record.id),
+    ...(receipt ? { receipt } : {}),
   };
   const approval = await openApproval(view);
   const kind = method === "weft_submit" ? "submit" : "evaluate";
@@ -230,7 +244,8 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
     ...(transient ? { privateInputs: Object.keys(transient) } : {}),
   } as const;
 
-  if (!(await approval.decision.promise)) {
+  const decision = await approval.decision.promise;
+  if (!decision.approved) {
     finish(approval, { status: "rejected" });
     throw new WeftError(ErrorCode.UserRejected, "The user rejected the request.");
   }
@@ -241,6 +256,9 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
   let stage: string | null = null;
   const progress = { onStage: (s: string) => void (stage = s) };
   try {
+    // The choice and salt are sealed now, while the vault key is in hand, so
+    // Weft locking during the commit loses nothing: writing needs no key.
+    const sealed = receipt && decision.keepReceipt ? await vault.sealReceipt(base.id, receiptSecret(receipt.request)) : null;
     const sign = await signerFor(active.record);
     if (method === "weft_evaluate") {
       const result = await evaluateCall(relay, signer, call, sign, progress);
@@ -249,21 +267,24 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
       return result;
     }
     const result = await submitCall(relay, signer, call, sign, progress);
-    await saveActivity({
+    const committed: ActivityRecord = {
       ...base,
       status: "committed",
       transactionId: result.transactionId,
       blockNumber: result.blockNumber,
       code: result.status,
-    });
+    };
+    const kept = receipt ? await keepReceipt(committed, receipt.request, result, sealed) : null;
+    if (!kept?.outcome.kept) await saveActivity(committed, kept?.outcome.kept === false && kept.outcome.reason === "storage");
     finish(approval, {
       status: "approved",
       activityId: base.id,
       blockNumber: result.blockNumber,
       transactionId: result.transactionId,
       ...(active.network.explorerUrl ? { explorerUrl: active.network.explorerUrl } : {}),
+      ...(kept ? { receipt: kept.outcome } : {}),
     });
-    return result;
+    return kept ? { ...result, receipt: kept.result } : result;
   } catch (error) {
     let failure = describeFailure(error);
     // Peers say only "access denied" for a revoked certificate. The network's
@@ -304,10 +325,57 @@ function mayHaveCommitted(stage: string | null, error: unknown): boolean {
   return !(error instanceof RelayError) || error.kind === "unreachable" || error.kind === "timeout";
 }
 
-/** Saves an activity record and tells any open popup, so the row arrives while it's looked at. */
-async function saveActivity(record: ActivityRecord): Promise<void> {
-  await db.put<ActivityRecord>("activity", record);
+/**
+ * Saves an activity record and tells any open popup, so the row arrives while
+ * it's looked at. `quiet`: a failure to save is let go, for a committed vote
+ * whose receipt the browser just refused, so the commit is still reported.
+ */
+async function saveActivity(record: ActivityRecord, quiet = false): Promise<void> {
+  try {
+    await db.put<ActivityRecord>("activity", record);
+  } catch (error) {
+    if (!quiet) throw error;
+  }
+  announceActivity();
+}
+
+function announceActivity(): void {
   void browser.runtime.sendMessage({ channel: "weft-ui-event", event: "activity" } satisfies UiEvent).catch(() => {});
+}
+
+/**
+ * After a vote commits: finishes its receipt with the transaction, the block
+ * and Weft's own commitment, and keeps it when the user asked and the
+ * contract's commitment is the same. A kept receipt is written with its
+ * activity record, both or neither. The site gets the finished receipt
+ * whatever happens; the window gets what happened.
+ */
+async function keepReceipt(
+  committed: ActivityRecord,
+  request: BallotReceiptRequest,
+  result: { transactionId: string; blockNumber: string; text: string | null },
+  sealed: Awaited<ReturnType<typeof vault.sealReceipt>> | null,
+): Promise<{ result: ReceiptResult; outcome: ReceiptOutcome }> {
+  const done = await finishReceipt(request, result);
+  if (!sealed) return { result: { kept: false, reason: "declined", receipt: done.receipt }, outcome: { kept: false, reason: "declined" } };
+  if (!done.matches) {
+    return {
+      result: { kept: false, reason: "mismatch", receipt: done.receipt },
+      outcome: { kept: false, reason: "mismatch", expected: done.receipt.commitment, returned: done.returned },
+    };
+  }
+  try {
+    await db.putWithReceipt({ ...committed, receipt: true }, receiptRecord(committed, done.receipt, sealed));
+  } catch (error) {
+    const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    return {
+      result: { kept: false, reason: "storage", receipt: done.receipt },
+      outcome: { kept: false, reason: "storage", receipt: done.receipt, error: message },
+    };
+  }
+  announceActivity();
+  const locked = await vault.status().then((v) => v.state !== "unlocked", () => false);
+  return { result: { kept: true, receipt: done.receipt }, outcome: { kept: true, locked } };
 }
 
 /**
@@ -429,7 +497,7 @@ async function addNetwork(origin: string, params: unknown) {
   const approval = await openApproval(view);
   // The window enrols through the joinInvite UI call, which tells sites about
   // any change of active identity.
-  if (!(await approval.decision.promise)) {
+  if (!(await approval.decision.promise).approved) {
     finish(approval, { status: "rejected" });
     throw new WeftError(ErrorCode.UserRejected, "The user rejected the request to add the network.");
   }
@@ -460,7 +528,7 @@ async function signIn(origin: string, params: unknown) {
     ...(checked.statement ? { statement: checked.statement } : {}),
   };
   const approval = await openApproval(view);
-  if (!(await approval.decision.promise)) {
+  if (!(await approval.decision.promise).approved) {
     finish(approval, { status: "rejected" });
     throw new WeftError(ErrorCode.UserRejected, "The user rejected the sign-in request.");
   }

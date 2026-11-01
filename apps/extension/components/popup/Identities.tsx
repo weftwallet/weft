@@ -19,6 +19,9 @@ export function Identities({
   const leaving = useLeaving();
   const remove = async (identityId: string, name: string, mspId: string, row: Element | null) => {
     const last = state.identities.length === 1;
+    // Its kept receipts go with it, so the sheet says how many, in time to
+    // cancel and download them first.
+    const kept = await ui("receiptsOf", { identityId }).catch(() => null);
     const ok = await confirm({
       title: `Remove ${name}?`,
       body: (
@@ -27,6 +30,16 @@ export function Identities({
             The private key for <span className="mono">{name}</span> ({mspId}) is deleted from this browser. It can't be
             recovered, not even by Weft.
           </p>
+          {kept && kept.count > 0 && (
+            <p className="sheet__para">
+              Weft also deletes the{" "}
+              <span className="strong">
+                {kept.count === 1 ? "1 ballot receipt" : `${kept.count} ballot receipts`}
+              </span>{" "}
+              kept with {name}'s activity, for {listOf(kept.elections)}. To keep a copy, cancel and download{" "}
+              {kept.count === 1 ? "it" : "them"} from the transaction first.
+            </p>
+          )}
           <p className="flat">
             {last
               ? "It's your only identity, so connected sites are disconnected too. You can enrol again with your CA."
@@ -230,4 +243,9 @@ export function AddIdentityOptions({
       </div>
     </div>
   );
+}
+
+/** "a", "a and b", "a, b and c". */
+function listOf(items: string[]): string {
+  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }

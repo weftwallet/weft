@@ -363,7 +363,9 @@ function ActivityList({ navigate }: { navigate: Navigate }) {
         </section>
       ))}
       {items.length >= 50 && (
-        <p className="subtle type-xs centre list-note">Showing the 50 most recent.</p>
+        <p className="subtle type-xs centre list-note">
+          {items.some((i) => i.receipt) ? "Showing the 50 most recent, and every transaction with a kept receipt." : "Showing the 50 most recent."}
+        </p>
       )}
     </div>
   );
@@ -398,8 +400,18 @@ function ActivityRow({ item, isNew, navigate }: { item: ActivityRecord; isNew: b
         <Icon name={s.icon} size={16} />
       </span>
       <span className="list-item__body">
-        <span className="list-item__title" title={item.call.fn}>
-          {item.call.fn}
+        <span className="list-item__titlerow">
+          <span className="list-item__title" title={item.call.fn}>
+            {item.call.fn}
+          </span>
+          {item.receipt && (
+            <>
+              <span className="in-receipt" aria-hidden="true">
+                receipt
+              </span>
+              <span className="visually-hidden">, receipt kept</span>
+            </>
+          )}
         </span>
         {item.status === "failed" ? (
           <span className="one-line type-xs danger-text">{item.title}</span>
