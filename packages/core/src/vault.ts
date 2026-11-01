@@ -90,6 +90,38 @@ export async function importVaultKey(raw: Uint8Array): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", toArrayBuffer(raw), { name: "AES-GCM", length: 256 }, false, ["wrapKey", "unwrapKey"]);
 }
 
+/**
+ * A key for ballot receipts (docs/adr/0006), derived from the raw vault key
+ * with HKDF-SHA-256. The vault key itself is imported for key wrapping only,
+ * so receipts get a key of their own rather than widening it. Non-extractable.
+ */
+export async function deriveReceiptKey(rawVaultKey: Uint8Array): Promise<CryptoKey> {
+  const material = await crypto.subtle.importKey("raw", toArrayBuffer(rawVaultKey), "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: new ArrayBuffer(0), info: toArrayBuffer(encoder.encode("weft receipts v1")) },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+/**
+ * AES-GCM with additional data: `bound` (a record's ID) must be given again
+ * to open it, so a sealed value can't be moved onto another record.
+ */
+export async function sealBound(key: CryptoKey, bytes: Uint8Array, bound: string): Promise<Sealed> {
+  const iv = randomBytes(12);
+  const params = { name: "AES-GCM", iv: toArrayBuffer(iv), additionalData: toArrayBuffer(encoder.encode(bound)) };
+  return { iv, data: new Uint8Array(await crypto.subtle.encrypt(params, key, toArrayBuffer(bytes))) };
+}
+
+/** Opens what sealBound sealed with the same `bound`. Throws when the key or `bound` differ. */
+export async function openBound(key: CryptoKey, sealed: Sealed, bound: string): Promise<Uint8Array> {
+  const params = { name: "AES-GCM", iv: toArrayBuffer(sealed.iv), additionalData: toArrayBuffer(encoder.encode(bound)) };
+  return new Uint8Array(await crypto.subtle.decrypt(params, key, toArrayBuffer(sealed.data)));
+}
+
 /** Encrypts an (extractable) private key with the vault key. */
 export async function wrapSigningKey(vaultKey: CryptoKey, privateKey: CryptoKey): Promise<WrappedKey> {
   if (!privateKey.extractable) throw new Error("Only extractable keys can be wrapped.");

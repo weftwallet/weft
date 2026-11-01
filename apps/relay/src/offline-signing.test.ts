@@ -11,6 +11,8 @@ import {
   decodePreparedTransaction,
   decodeProposedTransaction,
   decodeSignedCommitStatusRequest,
+  checkReceiptRequest,
+  fillGeneratedSalt,
   isLowS,
   signForFabric,
   summarizeIdentity,
@@ -100,6 +102,27 @@ describe("proposal round trip", () => {
     );
     const same = newProposal(approved).proposal;
     expect(() => verifyProposal(approved, { mspId, certificate }, decodeProposedTransaction(same.getBytes()))).not.toThrow();
+  });
+
+  it("verifyProposal checks a salt Weft filled in against the bytes the relay built", () => {
+    const vote: ContractCall = {
+      channel: "mychannel",
+      chaincode: "ballot",
+      fn: "CastVote",
+      args: ["board-2026"],
+      transient: { ballot: JSON.stringify({ option: "Ada", salt: "generate" }) },
+    };
+    const asked = checkReceiptRequest(vote, { type: "weft-ballot-receipt", version: 1, channel: "mychannel", electionId: "board-2026", option: "Ada", salt: "generate" });
+    const { call: filled, receipt } = fillGeneratedSalt(vote, asked);
+    expect(JSON.parse(filled.transient!.ballot!)).toEqual({ option: "Ada", salt: receipt.salt });
+    // The relay builds the proposal from the filled-in call it is sent.
+    const built = newProposal(filled).proposal;
+    expect(() => verifyProposal(filled, { mspId, certificate }, decodeProposedTransaction(built.getBytes()))).not.toThrow();
+    // One built from the placeholder, or from another salt, is refused.
+    for (const ballot of [vote.transient!.ballot!, JSON.stringify({ option: "Ada", salt: "0".repeat(32) })]) {
+      const swapped = newProposal({ ...filled, transient: { ballot } }).proposal;
+      expect(() => verifyProposal(filled, { mspId, certificate }, decodeProposedTransaction(swapped.getBytes()))).toThrow(/private input "ballot"/);
+    }
   });
 
   it("signs exactly what fabric-gateway would sign", async () => {

@@ -11,3 +11,4 @@ export { Message, ProtobufError, readFields } from "./protobuf.ts";
 export * from "./connection-profile.ts";
 export * from "./vault.ts";
 export * from "./sign-in.ts";
+export * from "./receipt.ts";
