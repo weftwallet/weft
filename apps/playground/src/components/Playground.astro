@@ -112,8 +112,10 @@ const { demoInvite = null } = Astro.props;
     <p class="pg-hint" id="pg-suggest" hidden></p>
     <div id="pg-result-wrap" class="pg-stack" hidden>
       <h3>Result</h3>
-      <div class="action-error" id="pg-result-error" role="alert" hidden></div>
-      <pre id="pg-result" class="pg-out"></pre>
+      <div class="pg-result-slot">
+        <div class="action-error" id="pg-result-error" role="alert" hidden></div>
+        <pre id="pg-result" class="pg-out pg-out--result"></pre>
+      </div>
       <a id="pg-result-explorer" class="pg-out-link" target="_blank" rel="noreferrer" hidden>View in the explorer</a>
       <h3>The same call in code</h3>
       <pre id="pg-code" class="pg-out"></pre>
@@ -730,15 +732,20 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     const other = $<HTMLButtonElement>(kind === "submit" ? "pg-evaluate" : "pg-submit");
     if (isBusy(pressed) || isBusy(other) || !callFields.checkAll()) return;
     const c = currentCall();
+    // One wait, one loader: the pressed button's (setBusy). The result box
+    // says what it is waiting for, in words, in a space kept for the result,
+    // and a commit's explorer link has its line kept too, so nothing below
+    // moves when the answer arrives.
     reveal($("pg-result-wrap"));
-    $("pg-result-explorer").hidden = true;
+    const link = $<HTMLAnchorElement>("pg-result-explorer");
+    link.hidden = !(kind === "submit" && explorerBase);
+    link.dataset.waiting = "";
     clearError($("pg-result-error"));
     $("pg-code").textContent = codeFor(kind, c);
     const result$ = $("pg-result");
     result$.hidden = false;
     result$.textContent = kind === "submit" ? "Waiting for approval, endorsement and commit…" : "Waiting for approval…";
     result$.dataset.tone = "pending";
-    result$.classList.add("is-working");
     setBusy(pressed, true);
     other.disabled = true;
     try {
@@ -752,14 +759,14 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       const meta = kind === "submit" ? `Committed in block ${result.blockNumber}, transaction ${shortened(String(result.transactionId))}\n\n` : "";
       result$.textContent = `${meta}${pretty ?? `(binary result, base64) ${result.base64}`}` || "(empty result)";
       result$.dataset.tone = "ok";
-      showTxLink($<HTMLAnchorElement>("pg-result-explorer"), kind === "submit" ? c.channel : null, result.transactionId);
+      showTxLink(link, kind === "submit" ? c.channel : null, result.transactionId);
+      delete link.dataset.waiting;
       announce(kind === "submit" ? `Committed in block ${result.blockNumber}. The result is below.` : "The result is below.");
       if (kind === "submit") void loadExplorers();
     } catch (error) {
       result$.hidden = true;
       showError($("pg-result-error"), walletProblem(error, kind === "submit" ? "The transaction wasn't committed." : "The call didn't return a result."), technical(error));
     } finally {
-      result$.classList.remove("is-working");
       setBusy(pressed, false);
       updateButtons();
     }
@@ -884,9 +891,13 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     { field: $<HTMLInputElement>("pg-el-id"), after: $("pg-el-row"), check: () => ($<HTMLInputElement>("pg-el-id").value.trim() ? null : "Enter the election's ID, for example board-2026.") },
   ]);
 
-  async function loadElection(id = $<HTMLInputElement>("pg-el-id").value.trim()) {
+  /**
+   * Loads an election. The busy control is Load election, or, when another
+   * action ends by loading (Create election), that action's button, which
+   * stays busy through the load: one wait, one loader.
+   */
+  async function loadElection(id = $<HTMLInputElement>("pg-el-id").value.trim(), button = $("pg-el-load")) {
     if (!id) return;
-    const button = $("pg-el-load");
     setBusy(button, true);
     clearError($("pg-el-error"));
     $("pg-el-message").textContent = "";
@@ -1073,10 +1084,10 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     try {
       await call("weft_submit", ballot("CreateElection", [id, title, JSON.stringify(options), closesAt]));
       $<HTMLInputElement>("pg-el-id").value = id;
+      conceal($("pg-receipt"));
+      await loadElection(id, button);
       setBusy(button, false);
       closeNew();
-      conceal($("pg-receipt"));
-      await loadElection(id);
       $("pg-el-id").focus();
       electionMessage(`Created ${id}. Vote now; once voting closes, come back and close it to count.`);
     } catch (error) {
@@ -1090,7 +1101,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
 
   $("pg-el-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    if (isBusy($("pg-el-load")) || $<HTMLButtonElement>("pg-el-load").disabled || !electionField.checkAll()) return;
+    if (isBusy($("pg-el-load")) || isBusy($("pg-new-create")) || $<HTMLButtonElement>("pg-el-load").disabled || !electionField.checkAll()) return;
     void loadElection();
   });
   $("pg-el-vote").addEventListener("click", () => void castVote());
@@ -1175,7 +1186,12 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     return li;
   }
 
-  async function loadExplorers() {
+  /**
+   * Reads the explorers. Busy only on a press of Refresh: after a commit or
+   * an invite, the pressed control has had its loader for that wait, and the
+   * rows update in place without another.
+   */
+  async function loadExplorers(pressed = false) {
     const card = $("pg-explorers");
     if (!explorerBase) {
       conceal(card);
@@ -1183,7 +1199,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     }
     reveal(card);
     const button = $("pg-ex-refresh");
-    setBusy(button, true);
+    if (pressed) setBusy(button, true);
     clearError($("pg-ex-error"));
     const channel = electionChannel();
     // The invite names this organisation's explorer; it knows the others.
@@ -1259,9 +1275,9 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
         }),
       );
     }
-    setBusy(button, false);
+    if (pressed) setBusy(button, false);
   }
-  $("pg-ex-refresh").addEventListener("click", () => !isBusy($("pg-ex-refresh")) && void loadExplorers());
+  $("pg-ex-refresh").addEventListener("click", () => !isBusy($("pg-ex-refresh")) && void loadExplorers(true));
 </script>
 
 <style is:global>
@@ -1519,6 +1535,22 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-out-link {
     font-size: var(--weft-type-md);
     align-self: flex-start;
+  }
+  /* A call's result has its space kept from the press: the box is one
+     height whatever it holds (a long result scrolls inside it), and a
+     failure takes the same space, so the code below never moves. */
+  .pg-result-slot {
+    display: flex;
+    flex-direction: column;
+    min-height: 16rem;
+  }
+  .pg-out--result {
+    height: 16rem;
+    max-height: none;
+  }
+  /* A commit's explorer link keeps its line while the call is out. */
+  .pg-out-link[data-waiting] {
+    visibility: hidden;
   }
   .pg-log {
     list-style: none;
