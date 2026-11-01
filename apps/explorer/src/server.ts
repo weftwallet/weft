@@ -12,7 +12,7 @@ import { channelLevel, contractLevel, viewTransaction, type Policy } from "./pol
 import type { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
 import { requesterIsMember, verifyExplorerRequest } from "./checkpoints.ts";
 import { checkReceipt, elections } from "./elections.ts";
-import { PUBLIC_PRODUCTS, type ProductAddresses } from "./config.ts";
+import { PUBLIC_PRODUCTS, receiptOrigins, type ProductAddresses } from "./config.ts";
 
 export interface ServerOptions {
   name: string;
@@ -34,6 +34,8 @@ export interface ServerOptions {
   networkPage?: string;
   /** Where the other Weft products are. Defaults to products.json's public addresses. */
   products?: ProductAddresses;
+  /** Who may hand an election page a receipt's choice and salt. Defaults to Weft Playground where the products are. */
+  receiptOrigins?: string[];
   logger?: boolean;
 }
 
@@ -101,6 +103,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     route.logLevel = "warn";
   });
   const statusOf = (channel: string) => options.status().find((s) => s.channel === channel);
+  const trustedOpeners = options.receiptOrigins ?? receiptOrigins(options.products ?? PUBLIC_PRODUCTS, undefined);
   // Sign-in only matters when something is published to members.
   const membersLevelExists = channels.some(
     (c) => channelLevel(policy, c) === "members" || Object.values(policy.channels[c]?.contracts ?? {}).includes("members"),
@@ -129,6 +132,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       peers: (channel) => options.crossCheck?.peersFor(channel) ?? [],
       ...(options.networkPage ? { networkPage: options.networkPage } : {}),
       products: options.products ?? PUBLIC_PRODUCTS,
+      receiptOrigins: trustedOpeners,
       elections: (channel) => {
         const contract = policy.channels[channel]?.elections;
         return !!contract && visible.includes(channel) && canSeeContract(channel, contract);
@@ -572,7 +576,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     try {
       site = scope(request).site;
     } catch {
-      site = { name: options.name, channels: [], viewer: null, signIn: false, peers: () => [], elections: () => false, products: options.products ?? PUBLIC_PRODUCTS };
+      site = { name: options.name, channels: [], viewer: null, signIn: false, peers: () => [], elections: () => false, products: options.products ?? PUBLIC_PRODUCTS, receiptOrigins: [] };
     }
     return send(reply, pages.errorPage(site, code, message, { method: request.method, path: request.url, address: asked(request).value, at: Date.now() }), code);
   };

@@ -16,7 +16,7 @@ import { agreementFor, type PeerStatus } from "./checkpoints.ts";
 import { splitKey, type ElectionView, type ReceiptCheck } from "./elections.ts";
 import type { PublishedParty, ShownValue } from "./policy.ts";
 import { productAddress, type ProductAddresses } from "./config.ts";
-import { readReceipt } from "./receipt.ts";
+import { acceptHandoff, readReceipt } from "./receipt.ts";
 
 export interface Site {
   name: string;
@@ -33,6 +33,8 @@ export interface Site {
   networkPage?: string;
   /** Where the other Weft products are (WEFT_EXPLORER_PRODUCTS_DOMAIN). */
   products: ProductAddresses;
+  /** Who may hand an election page a receipt's choice and salt (receipt.ts, acceptHandoff). */
+  receiptOrigins: string[];
 }
 
 const require = createRequire(import.meta.url);
@@ -1697,11 +1699,15 @@ ${e.tally
 
   var expected = ${raw(JSON.stringify(lookedUp?.result.commitment ?? null))};
   var electionId = ${raw(JSON.stringify(e.id).replace(/</g, "\\u003c"))};
+  var checkedTx = ${raw(JSON.stringify(lookedUp?.txId ?? null).replace(/</g, "\\u003c"))};
+  var trusted = ${raw(JSON.stringify(site.receiptOrigins).replace(/</g, "\\u003c"))};
 
   // A receipt file, chosen, dropped on the form or pasted into it, fills the
-  // transaction ID and commitment; it doesn't submit. Its choice and salt go
-  // in the address's fragment when the form is sent, as the voting app's link
-  // puts them, so they never reach this explorer's server.
+  // transaction ID and commitment; it doesn't submit. Its choice and salt
+  // wait in this tab's session storage while the form is sent, never in the
+  // address, so they reach neither this explorer's server nor the history.
+  var STASH = "weft-receipt-check";
+  var stash = null;
   var readReceipt = ${raw(readReceipt.toString())};
   var receiptForm = document.getElementById("receipt-form");
   var txInput = document.getElementById("receipt-tx"), cmInput = document.getElementById("receipt-commitment");
@@ -1721,7 +1727,7 @@ ${e.tally
     [txInput, cmInput].forEach(function (input) { input.classList.add("is-filled"); });
     tx.run();
     commitment.run();
-    receiptForm.action = r.option && r.salt ? "#" + new URLSearchParams({ option: r.option, salt: r.salt }) : "#receipt";
+    stash = r.option && r.salt ? { txId: r.txId, option: r.option, salt: r.salt } : null;
     var from = name || "the pasted receipt";
     fileSays("ok", "Filled from " + from + ". Your choice and salt stay in this browser.");
   }
@@ -1738,8 +1744,15 @@ ${e.tally
   [txInput, cmInput].forEach(function (input) {
     input.addEventListener("input", function () {
       input.classList.remove("is-filled");
-      if (input === txInput) receiptForm.action = "#receipt";
+      if (input === txInput) stash = null;
     });
+  });
+  receiptForm.addEventListener("submit", function (e) {
+    if (e.defaultPrevented) return;
+    try {
+      if (stash && txInput.value.trim() === stash.txId) sessionStorage.setItem(STASH, JSON.stringify(stash));
+      else sessionStorage.removeItem(STASH);
+    } catch (error) { /* without storage, the choice and salt are entered by hand */ }
   });
   receiptForm.addEventListener("dragover", function (e) {
     var types = Array.from(e.dataTransfer ? e.dataTransfer.types : []);
@@ -1779,16 +1792,41 @@ ${e.tally
     out.className = "small result is-shown " + (hash === expected ? "ok" : "bad");
     weftSay(out.textContent);
   });
-  // A voting app can link here with the choice and salt in the fragment,
-  // which browsers never send to the server. Check them, then drop them from
-  // the address bar.
-  var given = new URLSearchParams(location.hash.slice(1));
-  if (given.get("salt") && expected) {
-    document.getElementById("local-option").value = given.get("option") || "";
-    document.getElementById("local-salt").value = given.get("salt");
-    history.replaceState(null, "", location.pathname + location.search + "#receipt");
+  function checkHere(option, salt) {
+    var select = document.getElementById("local-option");
+    if (!Array.from(select.options).some(function (o) { return o.value === option; })) return;
+    select.value = option;
+    document.getElementById("local-salt").value = salt;
     document.getElementById("receipt").scrollIntoView();
     form.requestSubmit(document.getElementById("local-check"));
+  }
+  // An address from before receipts were handed over by message may still
+  // carry a choice and salt in its fragment. They aren't read; they're
+  // dropped from the address bar.
+  if (/(^#|&)salt=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search + "#receipt");
+  if (expected && checkedTx) {
+    // A receipt file chosen before the form was sent.
+    var kept = null;
+    try {
+      kept = JSON.parse(sessionStorage.getItem(STASH) || "null");
+      sessionStorage.removeItem(STASH);
+    } catch (error) { kept = null; }
+    if (kept && kept.txId === checkedTx && typeof kept.option === "string" && typeof kept.salt === "string") checkHere(kept.option, kept.salt);
+    // The page that opened this one (a voting app, or Weft) hands over the
+    // choice and salt by message once asked (receipt.ts, acceptHandoff). The
+    // ask carries nothing, and nothing else is sent back.
+    else if (window.opener) {
+      var acceptHandoff = ${raw(acceptHandoff.toString())};
+      var handedOver = false;
+      window.addEventListener("message", function (e) {
+        if (handedOver || e.source !== window.opener) return;
+        var got = acceptHandoff({ origin: e.origin, data: e.data }, { electionId: electionId, txId: checkedTx, trusted: trusted });
+        if (!got) return;
+        handedOver = true;
+        checkHere(got.option, got.salt);
+      });
+      try { window.opener.postMessage({ type: "weft-receipt-check:ready", version: 1 }, "*"); } catch (error) { /* the opener has gone */ }
+    }
   }
 })();
 </script>`,

@@ -9,7 +9,8 @@
  *
  * Receipts copied before type, version and channel were added are read too.
  * readReceipt runs in the browser: the election page inlines its source
- * (pages.ts), so it refers to nothing outside itself.
+ * (pages.ts), so it refers to nothing outside itself. Weft returns the same
+ * receipt to a voting app, and keeps it when the voter asks (docs/adr/0006).
  */
 
 export const RECEIPT_TYPE = "weft-ballot-receipt";
@@ -50,4 +51,53 @@ export function readReceipt(text: string, electionId: string): ReceiptRead {
     return { ok: false, message: `That receipt is for ${election}, not this election. Open ${election}'s page to check it.` };
   }
   return { ok: true, txId, commitment, option: given(r.option), salt: given(r.salt) };
+}
+
+/**
+ * A receipt's choice and salt handed to the election page by the page that
+ * opened it (docs/adr/0006), instead of in the address, which the browser's
+ * history would keep. The opener opens this page with only `tx` and
+ * `commitment` in the address; this page posts a "ready", which carries
+ * nothing, to window.opener; the opener answers with
+ *
+ *   { "type": "weft-receipt-check:receipt", "version": 1,
+ *     "electionId": "board-2026", "txId": "…", "option": "Ada", "salt": "…" }
+ *
+ * posted to this explorer's exact origin. acceptHandoff says whether to use
+ * an answer: the choice and salt from it, or null to ignore it.
+ *
+ * Who may answer: the origins in `trusted` (Weft Playground where the Weft
+ * products are, and any the operator adds with WEFT_EXPLORER_RECEIPT_ORIGINS),
+ * and any browser extension's page. An extension's origin can't be known in
+ * advance: Firefox gives each installation of an add-on its own random
+ * moz-extension:// address, and a build loaded by hand has its own Chrome ID.
+ * Accepting any extension adds nothing an extension couldn't do already,
+ * since one with access to this site can script the page itself. And what
+ * an answer can do is small: it fills the local check's two fields, which
+ * hash them in the browser and compare with the commitment the ledger holds,
+ * so it can't make a wrong receipt check out, and nothing goes back. The
+ * list keeps other web pages from opening this one with a choice and salt
+ * of their own, to show a voter a result that doesn't match.
+ *
+ * Only data shaped as this receipt's answer is used: for this election and
+ * this transaction, with a choice and a salt as the ballot contract takes
+ * them, and nothing else. Like readReceipt, the election page inlines its
+ * source (pages.ts), so it refers to nothing outside itself.
+ */
+export function acceptHandoff(
+  message: { origin: string; data: unknown },
+  page: { electionId: string; txId: string; trusted: string[] },
+): { option: string; salt: string } | null {
+  const extension = /^(chrome|moz)-extension:\/\/[a-z0-9-]+$/.test(message.origin);
+  if (!extension && page.trusted.indexOf(message.origin) < 0) return null;
+  const d: any = message.data;
+  if (!d || typeof d !== "object" || Array.isArray(d)) return null;
+  const keys = Object.keys(d).sort().join(",");
+  if (keys !== "electionId,option,salt,txId,type,version") return null;
+  if (d.type !== "weft-receipt-check:receipt" || d.version !== 1) return null;
+  if (d.electionId !== page.electionId) return null;
+  if (typeof d.txId !== "string" || d.txId.trim().toLowerCase() !== page.txId.trim().toLowerCase()) return null;
+  if (typeof d.option !== "string" || d.option.length < 1 || d.option.length > 200) return null;
+  if (typeof d.salt !== "string" || !/^[0-9a-f]{32,128}$/.test(d.salt)) return null;
+  return { option: d.option, salt: d.salt };
 }

@@ -28,6 +28,13 @@ export interface ExplorerConfig {
   networkPage: string | undefined;
   /** Where the other Weft products are, for the switcher, the footer and "Get Weft". */
   products: ProductAddresses;
+  /**
+   * The web pages that may hand an election page a receipt's choice and
+   * salt (receipt.ts, acceptHandoff): Weft Playground where the products
+   * are, and WEFT_EXPLORER_RECEIPT_ORIGINS. Weft's own pages are accepted as
+   * a browser extension's.
+   */
+  receiptOrigins: string[];
 }
 
 /**
@@ -61,6 +68,33 @@ export function parseProductAddresses(value: string | undefined): ProductAddress
 /** A product's address, wherever the products are. Null for one with no site (the explorer, the wallet). */
 export function productAddress(id: ProductId, where: ProductAddresses, path = "/"): string | null {
   return where.local ? productUrl(id, { dev: true, path }) : productUrl(id, { domain: where.domain, path });
+}
+
+/**
+ * Who may hand an election page a receipt's choice and salt: Weft Playground,
+ * where the products are, and the origins in WEFT_EXPLORER_RECEIPT_ORIGINS
+ * (comma-separated, for an organisation's own voting app).
+ */
+export function receiptOrigins(where: ProductAddresses, extra: string | undefined): string[] {
+  const playground = productAddress("playground", where);
+  const given = (extra ?? "")
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean)
+    .map((u) => {
+      let url: URL;
+      try {
+        url = new URL(u);
+      } catch {
+        throw new Error(`WEFT_EXPLORER_RECEIPT_ORIGINS: ${u} isn't an address. Give origins such as https://vote.example.org, separated by commas.`);
+      }
+      const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+      if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) {
+        throw new Error(`WEFT_EXPLORER_RECEIPT_ORIGINS: ${u} must use https://. Plain http:// works only for localhost.`);
+      }
+      return url.origin;
+    });
+  return [...new Set([...(playground ? [new URL(playground).origin] : []), ...given])];
 }
 
 function required(env: NodeJS.ProcessEnv, name: string, example: string): string {
@@ -108,6 +142,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
         ? undefined
         : new URL(env.WEFT_EXPLORER_NETWORK_PAGE || productAddress("network", products)!).toString(),
     products,
+    receiptOrigins: receiptOrigins(products, env.WEFT_EXPLORER_RECEIPT_ORIGINS),
     peers: (env.WEFT_EXPLORER_PEERS ?? "")
       .split(",")
       .map((u) => u.trim().replace(/\/+$/, ""))

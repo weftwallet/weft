@@ -19,6 +19,7 @@ const app = buildServer({
   mspId: config.mspId,
   ...(config.networkPage ? { networkPage: config.networkPage } : {}),
   products: config.products,
+  receiptOrigins: config.receiptOrigins,
   channels,
   policy: config.policy,
   db,
