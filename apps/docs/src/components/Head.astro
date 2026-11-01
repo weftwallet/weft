@@ -1,0 +1,16 @@
+---
+/**
+ * Starlight's head, then what every Weft site adds to it: the preloads for
+ * the fonts above the fold (FontPreloads.astro), so the first paint is in
+ * them, and a first paint that waits for the page's title. Otherwise, on a
+ * slow connection, the browser paints what it has, and the header's last
+ * controls, the page list and the contents move as the rest arrives. What
+ * follows the title only adds below it.
+ */
+import Default from "@astrojs/starlight/components/Head.astro";
+import FontPreloads from "@weftwallet/ui/FontPreloads.astro";
+---
+
+<Default />
+<FontPreloads />
+<link rel="expect" href="#_top" blocking="render" />

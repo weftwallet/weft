@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { products, type ProductId } from "@weftwallet/brand/products";
 import { productHref, siteProducts } from "./links";
+import FontPreloads from "./FontPreloads.astro";
 import ProductSwitcher from "./ProductSwitcher.astro";
 import ThemeControl from "./ThemeControl.astro";
 import "./base.css";
@@ -61,6 +62,14 @@ const headerScripts = ["theme-control.js", "product-switcher.js", "header.js"].m
     <title>{pageTitle}</title>
     {description && <meta name="description" content={description} />}
     <link rel="icon" type="image/svg+xml" href={icon} />
+    <FontPreloads />
+    {/* The first paint waits until the page's content has arrived, that
+         is until the footer starts. Otherwise, on a slow connection, the
+         browser paints what it has: a header without its last controls or
+         the layout header.js gives it, a hero without its picture, each
+         moving as the rest arrives. The pages are small, so the wait is
+         short; a browser without rel=expect paints as before. */}
+    <link rel="expect" href="#shell-foot" blocking="render" />
     <script is:inline data-theme-key="weft-theme" set:html={early}></script>
   </head>
   <body style={loader}>
@@ -84,7 +93,7 @@ const headerScripts = ["theme-control.js", "product-switcher.js", "header.js"].m
       <slot />
     </main>
 
-    <footer class="shell-foot">
+    <footer class="shell-foot" id="shell-foot">
       <div class="shell-foot__inner">
         <ul class="shell-foot__products">
           {

@@ -60,6 +60,8 @@ export default defineConfig({
       // toggle; the phone's page list button at the end of its row, and the
       // sections at the top of the page list on a phone.
       components: {
+        // Starlight's head with the fonts' preloads.
+        Head: "./src/components/Head.astro",
         Header: "./src/components/Header.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
         Sidebar: "./src/components/Sidebar.astro",

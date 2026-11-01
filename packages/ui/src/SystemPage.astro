@@ -1,0 +1,91 @@
+---
+/**
+ * A system page: a 404, an error or an empty state, in one layout for every
+ * product (system-page.css has the markup). Put it in the product's own page,
+ * the Shell on the sites, the docs' 404.mdx in the docs; the explorer renders
+ * the same markup from pages.ts. The address that was asked for and Go back
+ * are filled in the browser (system-page.js, inlined after the section).
+ *
+ * The default slot goes after the address: the docs' closest page, say.
+ */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { products, type ProductId } from "@weftwallet/brand/products";
+import "./system-page.css";
+
+export interface SystemAction {
+  label: string;
+  /** A link; without one the action is a button, for a script to wire. */
+  href?: string;
+  /** primary: the first next step; text: a quiet one, such as Go back. */
+  kind?: "primary" | "secondary" | "text";
+  /** Extra attributes, such as data-open-search for the docs' search. */
+  attrs?: Record<string, string>;
+}
+
+interface Props {
+  product: ProductId;
+  /** The code, when there is one: "Error 404". */
+  eyebrow?: string;
+  /** What happened, as a plain sentence about this request. */
+  heading: string;
+  /** One or two sentences: what it means and what to do. */
+  lead?: string[];
+  /** Shows the address that was asked for, read from the page's location. */
+  address?: boolean;
+  actions?: SystemAction[];
+  /** Ends the actions with Go back, shown only when the page before was on this site. */
+  back?: boolean;
+}
+
+const { product, eyebrow, heading, lead = [], address = false, actions = [], back = false } = Astro.props;
+const require = createRequire(import.meta.url);
+const mark = readFileSync(require.resolve(`@weftwallet/brand/${products[product].mark}`), "utf8")
+  .replace(/<!--[\s\S]*?-->\s*/g, "")
+  .replace(/<svg /, '<svg aria-hidden="true" focusable="false" ')
+  .replace(/\s+role="img"/, "")
+  .replace(/\s+aria-label="[^"]*"/, "");
+const script = readFileSync(require.resolve("@weftwallet/ui/system-page.js"), "utf8");
+const cls = (a: SystemAction) => (a.kind === "primary" ? "btn btn--primary" : a.kind === "text" ? "btn btn--text" : "btn");
+---
+
+<section class="sys">
+  <div class="sys__mark"><Fragment set:html={mark} /></div>
+  {eyebrow && <p class="sys__eyebrow">{eyebrow}</p>}
+  <h1 tabindex="-1">{heading}</h1>
+  {lead.map((l) => <p class="sys__lead">{l}</p>)}
+  {
+    address && (
+      <p class="sys__addr" hidden>
+        <span>Address</span>
+        <code data-sys-address />
+      </p>
+    )
+  }
+  <slot />
+  {
+    (actions.length > 0 || back) && (
+      <div class="sys__actions">
+        {actions.map((a) =>
+          a.href ? (
+            <a class={cls(a)} href={a.href} {...a.attrs}>
+              {a.label}
+            </a>
+          ) : (
+            <button type="button" class={cls(a)} {...a.attrs}>
+              {a.label}
+            </button>
+          ),
+        )}
+        {
+          back && (
+            <button type="button" class="btn btn--text" data-sys-back hidden>
+              Go back
+            </button>
+          )
+        }
+      </div>
+    )
+  }
+</section>
+<script is:inline set:html={script}></script>

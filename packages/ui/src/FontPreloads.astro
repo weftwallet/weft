@@ -1,0 +1,17 @@
+---
+/**
+ * Preloads for the font files every Weft page shows above the fold: the
+ * sans at 400 (text) and 600 (headings), and the mono at 500 (the
+ * wordmark). Without them the browser finds a font only once the CSS that
+ * names it has been read and a line needs it, which on a slow connection is
+ * well after the first paint. The other weights (sans 500, mono 400) load
+ * when used; until then their fallback, drawn to the same measure
+ * (tokens.css), holds their place. Put this in <head>: the Shell does, and
+ * so do the docs (Head.astro). The explorer links its own copies.
+ */
+import mono500 from "@fontsource/atkinson-hyperlegible-mono/files/atkinson-hyperlegible-mono-latin-500-normal.woff2?url";
+import sans400 from "@fontsource/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-400-normal.woff2?url";
+import sans600 from "@fontsource/atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-600-normal.woff2?url";
+---
+
+{[sans400, sans600, mono500].map((href) => <link rel="preload" href={href} as="font" type="font/woff2" crossorigin />)}

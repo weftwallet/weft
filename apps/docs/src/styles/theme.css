@@ -497,3 +497,14 @@ site-search dialog {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M9 7h8v8'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M9 7h8v8'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+
+/* The table of contents comes before the page in Starlight's markup, and
+   order moves it after. A browser paints a page as it arrives, so on a slow
+   connection the contents would stand where the page goes until the page
+   arrives, then jump right. Held to the end of its row, it starts where it
+   ends up; with the page there the row has no room left for the margin. */
+@media (min-width: 72rem) {
+  .right-sidebar-container {
+    margin-inline-start: auto;
+  }
+}

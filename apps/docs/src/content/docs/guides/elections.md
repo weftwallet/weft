@@ -18,7 +18,7 @@ The [ballot contract](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/ba
 
 A ballot is sent as transient data, which never reaches the shared ledger. The contract writes it to a private data collection and puts a commitment on the ledger: SHA-256 of the election ID, the choice and a random salt the voter's web app picks. Only someone who knows the choice and the salt can tell which choice a commitment is for.
 
-The voter keeps a receipt: the transaction ID, the commitment, their choice and the salt.
+The voter keeps a receipt: the transaction ID, the commitment, their choice and the salt. Weft Playground offers it as a JSON file to download and as text to copy, and the explorer's receipt check reads either back. The playground doesn't keep it, and neither does Weft yet: keeping a receipt with its transaction in Weft, as an option the web app asks for and the voter approves for each request, is planned.
 
 Every member's ledger also keeps a hash of each private ballot. The contract stores the salt with the choice, so that hash can't be matched by hashing each option in turn either.
 
@@ -37,8 +37,20 @@ const result = await weft.submit({
   transient: { ballot: JSON.stringify({ option: "Ada", salt }) },
 });
 
-// Give this to the voter to keep.
-const receipt = { ...JSON.parse(result.text!), option: "Ada", salt };
+// Give this to the voter to keep, as a file and as text to copy. The
+// explorer's receipt check reads it back.
+const { electionId, txId, commitment } = JSON.parse(result.text!);
+const receipt = {
+  type: "weft-ballot-receipt",
+  version: 1,
+  channel: "elections",
+  electionId,
+  txId,
+  blockNumber: Number(result.blockNumber),
+  commitment,
+  option: "Ada",
+  salt,
+};
 ```
 
 Weft's approval window lists `ballot` as a private input with its value hidden until the voter chooses **Show**, so also show the voter their choice in your web app before they sign. Weft checks the value it signs is the one your web app sent, and doesn't keep it in its activity list.
@@ -59,7 +71,7 @@ The explorer then has an **Elections** page per channel. Each election shows:
 
 - how many ballots it counts on the ledger;
 - the published result, and whether its total matches those ballots;
-- a receipt check. A voter enters the transaction ID, and optionally the commitment, to see that their ballot is in a valid block. To confirm it's a vote for their choice, they enter the choice and the salt, which the page checks in the browser without sending them anywhere.
+- a receipt check. A voter chooses, drops or pastes their receipt, or enters the transaction ID, and optionally the commitment, to see that their ballot is in a valid block. To confirm it's a vote for their choice, they enter the choice and the salt, which the page checks in the browser without sending them anywhere.
 
 ## What it can't do
 

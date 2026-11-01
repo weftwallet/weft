@@ -77,7 +77,8 @@
         </div>
 
       With a message the element also carries .field-error (the icon and the
-      colour are in base.css) and fades in over fast from shift-sm above.
+      colour are in base.css) and fades in over fast from shift-sm above. A
+      line that confirms instead (a file read, say) carries .field-ok.
 
    7. Reduced motion, one block at the end for all of the above. Loaders are
       not in this file and keep turning.
@@ -365,7 +366,8 @@ details.disclosure.is-closing > :not(summary) {
     opacity var(--weft-duration-fast-out) var(--weft-ease-in),
     transform var(--weft-duration-fast-out) var(--weft-ease-in);
 }
-.field__status.field-error {
+.field__status.field-error,
+.field__status.field-ok {
   opacity: 1;
   transform: none;
   transition:
@@ -373,7 +375,8 @@ details.disclosure.is-closing > :not(summary) {
     transform var(--weft-duration-fast) var(--weft-ease-out);
 }
 @starting-style {
-  .field__status.field-error {
+  .field__status.field-error,
+  .field__status.field-ok {
     opacity: 0;
     transform: translateY(calc(var(--weft-shift-sm) * -1));
   }
@@ -410,7 +413,8 @@ details.disclosure.is-closing > :not(summary) {
   .reversible.is-open,
   .reversible:popover-open,
   .field__status,
-  .field__status.field-error {
+  .field__status.field-error,
+  .field__status.field-ok {
     transition-duration: 0s;
     transition-delay: 0s;
   }

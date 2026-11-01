@@ -1,0 +1,96 @@
+---
+/**
+ * The docs' 404, in the layout every Weft product's 404 has
+ * (@weftwallet/ui SystemPage.astro), with one step more: the closest page in
+ * the sidebar's list, when one is close. Most 404s are typos, and the
+ * address shows the typo. Search opens the same dialog as the header's.
+ */
+import SystemPage from "@weftwallet/ui/SystemPage.astro";
+import "@weftwallet/ui/buttons.css";
+
+type Entry = { type: "link"; href: string; label: string } | { type: "group"; entries: Entry[] };
+const flatten = (entries: Entry[]): { href: string; label: string }[] =>
+  entries.flatMap((e) => (e.type === "group" ? flatten(e.entries) : [{ href: e.href, label: e.label }]));
+// The docs' own pages, not the links out to the other products.
+const pages = flatten(Astro.locals.starlightRoute.sidebar as Entry[]).filter((p) => p.href.startsWith("/"));
+---
+
+<div class="not-content">
+  <SystemPage
+    product="docs"
+    eyebrow="Error 404"
+    heading="There's no page at this address"
+    lead={["The address may be mistyped, or the page may have moved."]}
+    address
+    actions={[
+      { label: "Search the docs", kind: "primary", attrs: { "data-open-search": "" } },
+      { label: "Go to the docs home", href: "/" },
+    ]}
+    back
+  >
+    <p class="sys__suggest" id="docs-closest" hidden>The closest page in the docs is <a href="/"></a>.</p>
+  </SystemPage>
+</div>
+
+{/* Before the first paint, like the address above it: the closest page by
+     the number of characters to change, in the whole address or, when the
+     address is one word, in the page's last part. */}
+<script is:inline define:vars={{ pages }}>
+  (function () {
+    var line = document.getElementById("docs-closest");
+    if (!line) return;
+    var want = location.pathname.toLowerCase().replace(/\/*$/, "/");
+    var last = function (path) { var parts = path.split("/").filter(Boolean); return parts[parts.length - 1] || ""; };
+    function distance(a, b) {
+      var row = [];
+      for (var j = 0; j <= b.length; j++) row[j] = j;
+      for (var i = 1; i <= a.length; i++) {
+        var diagonal = row[0];
+        row[0] = i;
+        for (var k = 1; k <= b.length; k++) {
+          var up = row[k];
+          row[k] = Math.min(row[k] + 1, row[k - 1] + 1, diagonal + (a[i - 1] === b[k - 1] ? 0 : 1));
+          diagonal = up;
+        }
+      }
+      return row[b.length];
+    }
+    var best = null, bestDistance = Infinity;
+    pages.forEach(function (page) {
+      var d = Math.min(distance(want, page.href), distance(last(want), last(page.href)));
+      if (d < bestDistance) { best = page; bestDistance = d; }
+    });
+    // Close: a few characters, and no more than a third of the word.
+    if (!best || bestDistance > Math.max(2, Math.floor(last(want).length / 3))) return;
+    var link = line.querySelector("a");
+    link.href = best.href;
+    link.textContent = best.label;
+    line.hidden = false;
+  })();
+</script>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-open-search]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      // Search closes on a click outside its dialog, which this one would
+      // reach once it bubbled to the window.
+      event.stopPropagation();
+      document.querySelector<HTMLButtonElement>("site-search button[data-open-modal]")?.click();
+    });
+  });
+</script>
+
+<style is:global>
+  /* Starlight's own title and its panel give way to the page's heading, and
+     the page has the width and space it has on every Weft site. */
+  main:has(.sys) .content-panel:has(#_top) {
+    display: none;
+  }
+  main:has(.sys) .content-panel {
+    padding: 0;
+    border: 0;
+  }
+  main:has(.sys) .content-panel .sl-container {
+    max-width: none;
+  }
+</style>

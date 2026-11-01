@@ -1,0 +1,208 @@
+/* The system page: one layout for every product's 404, error and empty
+   state, inside that product's own header and footer. The product's 48px
+   mark, the code as an eyebrow when there is one, what happened as the
+   heading, one or two plain sentences, the address that was asked for, then
+   the next steps as buttons, and anything technical behind Details. Plain CSS
+   with no imports: it needs tokens.css, motion.css and buttons.css before
+   it. SystemPage.astro renders it on the sites and the docs; the explorer
+   renders the same markup from pages.ts and serves this file. The two lines
+   that depend on the browser, the address and Go back, are filled by
+   system-page.js. Markup:
+
+   <section class="sys">
+     <div class="sys__mark"><svg aria-hidden="true" …>the product's mark</svg></div>
+     <p class="sys__eyebrow">Error 404</p>                         (optional)
+     <h1 tabindex="-1">There's no page at this address</h1>
+     <p class="sys__lead">The address may be mistyped, or the page may have moved.</p>
+     <p class="sys__addr" hidden><span>Address</span><code data-sys-address></code></p>
+     <p class="sys__suggest">The closest page in the docs is <a …>…</a>.</p>   (optional)
+     <form class="sys__search" role="search">…</form>               (optional)
+     <div class="sys__actions">
+       <a class="btn btn--primary" href="/">Go to the home page</a>
+       <button type="button" class="btn btn--text" data-sys-back hidden>Go back</button>
+     </div>
+     <p class="sys__retry" role="status"></p>                       (with Try again)
+     <details class="error-details">…</details>                     (errors)
+   </section> */
+
+.sys {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--weft-space-24) var(--weft-space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--weft-space-3);
+}
+.sys [hidden] {
+  display: none !important;
+}
+.sys__mark {
+  width: 48px;
+  height: 48px;
+  margin: 0 0 var(--weft-space-5) -2px;
+}
+.sys__mark svg {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+.sys__eyebrow {
+  margin: 0;
+  font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--weft-text-subtle);
+}
+.sys h1 {
+  max-width: 22ch;
+  margin: 0;
+  font-size: var(--weft-type-3xl);
+  line-height: var(--weft-leading-3xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--weft-text-strong);
+  text-wrap: balance;
+}
+.sys h1:focus {
+  outline: none;
+}
+.sys p {
+  margin: 0;
+}
+.sys__lead {
+  max-width: 60ch;
+  color: var(--weft-text-muted);
+}
+.sys__addr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--weft-space-2);
+  align-items: baseline;
+  max-width: 100%;
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+  color: var(--weft-text-subtle);
+}
+.sys__addr code {
+  min-width: 0;
+  font-family: var(--weft-font-mono);
+  font-size: var(--weft-type-md);
+  color: var(--weft-text);
+  overflow-wrap: anywhere;
+}
+.sys__suggest {
+  color: var(--weft-text);
+}
+.sys a:not(.btn) {
+  color: var(--weft-accent-text);
+  text-underline-offset: 0.18em;
+}
+.sys__sub {
+  max-width: 60ch;
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+  color: var(--weft-text-muted);
+}
+.sys__sub code {
+  color: var(--weft-text);
+}
+.sys__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--weft-space-3);
+  align-items: center;
+  margin-top: var(--weft-space-3);
+}
+.sys__actions form {
+  display: contents;
+}
+.sys__search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--weft-space-1);
+  width: min(100%, 520px);
+  margin: var(--weft-space-3) 0 0;
+}
+.sys__search label {
+  color: var(--weft-text-muted);
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+}
+.sys__search div {
+  display: flex;
+  gap: var(--weft-space-2);
+}
+.sys__search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: var(--weft-space-2) var(--weft-space-3);
+  border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-lg);
+  background: var(--weft-bg-sunken);
+  color: var(--weft-text-strong);
+  font: var(--weft-type-md) / var(--weft-leading-md) var(--weft-font-mono);
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.sys__search input::placeholder {
+  color: var(--weft-text-subtle);
+}
+.sys__search input:focus {
+  border-color: var(--weft-accent-line);
+}
+@media (hover: hover) {
+  .sys__search input:hover {
+    border-color: var(--weft-text-subtle);
+  }
+}
+/* When Try again last ran, and how it went. The line is reserved, so
+   nothing moves when it is written. */
+.sys__retry {
+  min-height: var(--weft-leading-md);
+  font-size: var(--weft-type-md);
+  line-height: var(--weft-leading-md);
+  color: var(--weft-text-muted);
+}
+.sys .error-details {
+  max-width: 70ch;
+  margin-top: var(--weft-space-2);
+}
+
+/* On a phone the heading steps down and the buttons take the width, one to
+   a row; a text button stays a link-sized press at the start. */
+@media (max-width: 719px) {
+  .sys {
+    padding-top: var(--weft-space-12);
+    padding-bottom: var(--weft-space-16);
+  }
+  .sys h1 {
+    font-size: var(--weft-type-2xl);
+    line-height: var(--weft-leading-2xl);
+  }
+  .sys__actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .sys__actions > * {
+    justify-content: center;
+  }
+  .sys__actions .btn--text {
+    align-self: flex-start;
+  }
+}
+
+/* In the sites' Shell, whose main already has the column's width and its
+   own padding: together they give the page the same space as above. */
+.shell-main > .sys {
+  max-width: none;
+  padding: var(--weft-space-12) 0 0;
+}
+@media (max-width: 719px) {
+  .shell-main > .sys {
+    padding-top: 0;
+  }
+}

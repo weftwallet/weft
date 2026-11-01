@@ -1,0 +1,30 @@
+---
+/**
+ * The page a host serves for an address the Weft site has no page for
+ * (SystemPage.astro: one layout for every product's 404).
+ */
+import Shell from "@weftwallet/ui/Shell.astro";
+import SystemPage from "@weftwallet/ui/SystemPage.astro";
+import { productHref } from "@weftwallet/ui/links";
+---
+
+<Shell product="site" title="Page not found" description="There's no page at this address on the Weft site.">
+  <Fragment slot="nav">
+    <a href={productHref("docs")}>Docs</a>
+    <a href={productHref("playground")}>Playground</a>
+    <a href={productHref("network")}>Network</a>
+  </Fragment>
+
+  <SystemPage
+    product="site"
+    eyebrow="Error 404"
+    heading="There's no page at this address"
+    lead={["The address may be mistyped, or the page may have moved."]}
+    address
+    actions={[
+      { label: "Go to the home page", kind: "primary", href: productHref("site") },
+      { label: "Read the docs", href: productHref("docs") },
+    ]}
+    back
+  />
+</Shell>
