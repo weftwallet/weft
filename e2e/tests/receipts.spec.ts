@@ -86,7 +86,7 @@ async function keepReceipt(wallet: Wallet, identityId: string, at = Date.now()) 
   await wallet.worker.evaluate(
     async ({ id, identityId, at, SALT, TX, COMMITMENT }) => {
       const enc = new TextEncoder();
-      const raw = new Uint8Array(((await chrome.storage.session.get("vaultKey")) as { vaultKey: number[] }).vaultKey);
+      const raw = new Uint8Array(((await (globalThis as any).chrome.storage.session.get("vaultKey")) as { vaultKey: number[] }).vaultKey);
       const material = await crypto.subtle.importKey("raw", raw, "HKDF", false, ["deriveKey"]);
       const key = await crypto.subtle.deriveKey(
         { name: "HKDF", hash: "SHA-256", salt: new ArrayBuffer(0), info: enc.encode("weft receipts v1") },

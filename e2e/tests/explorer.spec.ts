@@ -1,11 +1,23 @@
 import type { Page } from "@playwright/test";
 import { expect, stack, test, type Wallet } from "../support/fixtures.ts";
 
-/** Members-only transactions the page's viewer gets back from the API. */
+/**
+ * Members-only transactions the page's viewer gets back from the API, across
+ * every page, since the elections tests add more than a page of votes.
+ */
 const membersOnly = (page: Page) =>
   page.evaluate(async () => {
-    const txs = await (await fetch("/api/v1/channels/mychannel/transactions?limit=100")).json();
-    return txs.filter((t: { membersOnly?: boolean }) => t.membersOnly).length;
+    let count = 0;
+    let before: number | undefined;
+    for (;;) {
+      const query = before === undefined ? "limit=100" : `limit=100&before=${before}`;
+      const txs: { membersOnly?: boolean; blockNumber: string | number }[] = await (
+        await fetch(`/api/v1/channels/mychannel/transactions?${query}`)
+      ).json();
+      count += txs.filter((t) => t.membersOnly).length;
+      if (txs.length < 100) return count;
+      before = Math.min(...txs.map((t) => Number(t.blockNumber)));
+    }
   });
 
 /** Clicks "Sign in with Weft" and approves the connect and sign-in windows. */
