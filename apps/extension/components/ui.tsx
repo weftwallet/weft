@@ -403,6 +403,25 @@ export function Splash({ label }: { label: string }) {
   );
 }
 
+/**
+ * How long a screen waits for the background worker before it gives up and
+ * says so: a request that may never answer needs a time limit (SYSTEM.md,
+ * Errors). A splash never shows for longer.
+ */
+export const WORKER_TIMEOUT_MS = 10_000;
+
+/** The background worker's answer, or an error once WORKER_TIMEOUT_MS has passed without one. */
+export function fromWorker<T>(request: Promise<T>): Promise<T> {
+  let timer = 0;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => reject(new Error(`The background worker didn't answer within ${WORKER_TIMEOUT_MS / 1000} seconds.`)), WORKER_TIMEOUT_MS);
+  });
+  return Promise.race([request, timeout]).finally(() => clearTimeout(timer));
+}
+
+/** The time of day, as a status line says when something last ran: 14:03. */
+export const clockTime = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
 /** A motion token's value in milliseconds. A minifier may write 1400ms as 1.4s. */
 export function tokenMs(name: string, fallback: number): number {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();

@@ -1608,6 +1608,18 @@ details.error-details[open] summary::before {
   gap: 8px;
   width: 100%;
   max-width: 280px;
+  text-align: left;
+}
+
+/* After Try again: when it last tried, and what to do if it still fails.
+   The line is reserved, so nothing above it moves when it is written. */
+.status-screen__retry {
+  min-height: 40px;
+  max-width: 280px;
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+  color: var(--weft-text-muted);
+  text-align: center;
 }
 
 /* Confirmation sheet ------------------------------------------------ */

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { browser } from "wxt/browser";
 import { ui, type UiApi, type UiEvent, type WalletState } from "../../lib/messages";
-import { toErrorInfo, type ErrorInfo } from "../ui";
+import { fromWorker, toErrorInfo, type ErrorInfo } from "../ui";
 
 /** Where an add-identity form goes back to: the screen it was opened from. */
 export type AddFrom = "home" | "identities" | "add";
@@ -25,12 +25,15 @@ export function useWallet() {
   const [state, setState] = useState<WalletState | null>(null);
   const [error, setError] = useState<ErrorInfo | null>(null);
 
-  const refresh = useCallback(async () => {
+  /** Reads the wallet's state again; says whether it could. Gives up after WORKER_TIMEOUT_MS. */
+  const refresh = useCallback(async (): Promise<boolean> => {
     try {
-      setState(await ui("state"));
+      setState(await fromWorker(ui("state")));
       setError(null);
+      return true;
     } catch (e) {
       setError(toErrorInfo(e));
+      return false;
     }
   }, []);
 

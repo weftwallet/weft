@@ -9,7 +9,7 @@ import { CreatePassword, Unlock } from "../../components/lock";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { usePendingApproval, useUiEvents, useWallet, type Route } from "../../components/popup/state";
 import { FeedbackProvider, useFeedback } from "../../components/feedback";
-import { Button, ErrorDetails, ReplayMark, Spinner, Splash, StatusScreen, WeaveMark, tokenMs, useFocusOnArrival } from "../../components/ui";
+import { Button, ErrorDetails, ReplayMark, Spinner, Splash, StatusScreen, WeaveMark, clockTime, tokenMs, useFocusOnArrival } from "../../components/ui";
 
 /** How deep each screen sits, so moving deeper slides one way and back the other. */
 const DEPTH: Record<Route["name"], number> = {
@@ -52,6 +52,8 @@ function Screens() {
   // Home's tab and scroll position, kept while a deeper screen is open.
   const homeMemory = useRef<HomeMemory>({ tab: "activity", scrollTop: 0, fresh: [] });
   const [retrying, setRetrying] = useState(false);
+  // When Try again last ran without Weft opening, for the line under it.
+  const [triedAt, setTriedAt] = useState<string | null>(null);
   // The screen being left, drawn over the new one while it goes (SYSTEM.md,
   // Navigation: the old screen leaves in base-out against the direction of
   // travel, then unmounts).
@@ -116,26 +118,35 @@ function Screens() {
     knownIds.current = new Set(ids);
   }
 
+  // The worker didn't answer, or not within WORKER_TIMEOUT_MS (the splash
+  // gives up then). Try again asks again in place: the button keeps focus,
+  // and the line under it says when it last tried.
   if (error) {
     return (
       <StatusScreen
         mark={<WeaveMark size={56} mode="still" />}
         title="Weft couldn't open"
-        detail="Its background worker didn't answer. Try again, or close the popup and open it again."
+        detail="Its background worker didn't answer. Try again, or close this popup and open it again."
       >
         <div className="status-screen__actions">
           <Button
+            className="btn btn--primary"
             busy={retrying}
             onClick={async () => {
               setRetrying(true);
-              await refresh();
+              setTriedAt(null);
+              const opened = await refresh();
               setRetrying(false);
+              if (!opened) setTriedAt(clockTime());
             }}
           >
             Try again
           </Button>
           {error.message && <ErrorDetails>{[error.message, error.detail].filter(Boolean).join(" ")}</ErrorDetails>}
         </div>
+        <p className="status-screen__retry" role="status">
+          {triedAt && `Tried again at ${triedAt}. If it still doesn't open, restart your browser. Your identities stay saved in Weft.`}
+        </p>
       </StatusScreen>
     );
   }

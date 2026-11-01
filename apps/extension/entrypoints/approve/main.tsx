@@ -22,6 +22,8 @@ import {
   Splash,
   StatusScreen,
   WeaveMark,
+  clockTime,
+  fromWorker,
   healthView,
   toErrorInfo,
   tokenMs,
@@ -56,18 +58,27 @@ function Approve() {
   // A load that failed, as opposed to a request that's gone.
   const [loadError, setLoadError] = useState<ErrorInfo | null>(null);
   const [reloading, setReloading] = useState(false);
+  // When Try again last ran without the request opening, for the line under it.
+  const [triedAt, setTriedAt] = useState<string | null>(null);
   // The lock screen stays up while it holds (its loader seating after the
   // unlock), even once the vault reads as unlocked.
   const [unlockHeld, setUnlockHeld] = useState(false);
 
-  const load = async () => {
-    setLoadError(null);
+  /**
+   * Reads the request and the vault; says whether it could. Gives up after
+   * WORKER_TIMEOUT_MS, so the splash never waits for ever. The error screen
+   * stays up while it tries again, so Try again keeps focus.
+   */
+  const load = async (): Promise<boolean> => {
     try {
-      const [loaded, status] = await Promise.all([ui("approvalGet", { id }), ui("vaultStatus")]);
+      const [loaded, status] = await fromWorker(Promise.all([ui("approvalGet", { id }), ui("vaultStatus")]));
       setView(loaded);
       setVault(status);
+      setLoadError(null);
+      return true;
     } catch (error) {
       setLoadError(toErrorInfo(error));
+      return false;
     }
   };
 
@@ -141,15 +152,17 @@ function Approve() {
 
   if (loadError) {
     return (
-      <StatusScreen mark={<WeaveMark size={64} mode="still" />} title="Weft couldn't open this request" detail="Its background worker didn't answer.">
+      <StatusScreen mark={<WeaveMark size={64} mode="still" />} title="Weft couldn't open this request" detail="Its background worker didn't answer. Nothing has been signed.">
         <div className="status-screen__actions">
           <Button
             className="btn btn--primary"
             busy={reloading}
             onClick={async () => {
               setReloading(true);
-              await load();
+              setTriedAt(null);
+              const opened = await load();
               setReloading(false);
+              if (!opened) setTriedAt(clockTime());
             }}
           >
             Try again
@@ -159,6 +172,9 @@ function Approve() {
           </button>
           {loadError.detail || loadError.message ? <ErrorDetails>{[loadError.message, loadError.detail].filter(Boolean).join(" ")}</ErrorDetails> : null}
         </div>
+        <p className="status-screen__retry" role="status">
+          {triedAt && `Tried again at ${triedAt}. The background worker still didn't answer.`}
+        </p>
       </StatusScreen>
     );
   }
