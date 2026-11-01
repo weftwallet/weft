@@ -224,12 +224,20 @@ main { overflow-anchor: none; }
 @media (max-width: 719px) {
   .wrap > .sys { padding-bottom: 0; }
 }
+/* A live page that has stopped updating: when, how often it checks, and
+   Check now. It comes and goes as a .reversible (motion.css). */
 .live-note {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--weft-space-2) var(--weft-space-4);
   margin-top: var(--weft-space-4); padding: var(--weft-space-2) var(--weft-space-3);
   border: 1px solid var(--weft-warn-line); border-radius: var(--weft-radius-lg); background: var(--weft-warn-soft); color: var(--weft-warn-text);
   font-size: var(--weft-type-md); line-height: var(--weft-leading-md);
 }
 .live-note[hidden] { display: none; }
+.live-note p { flex: 1 1 20rem; min-width: 0; margin: 0; }
+.live-note .btn { color: var(--weft-warn-text); border-color: var(--weft-warn-line); }
+@media (hover: hover) {
+  .live-note .btn:hover:not(:disabled, [aria-disabled="true"]) { border-color: var(--weft-warn-text); }
+}
 
 /* Layout */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: var(--weft-space-4); margin-top: var(--weft-space-6); }

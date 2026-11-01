@@ -508,7 +508,7 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
   ${orgRow(site, options.current === "me")}
 </header>
 <script>${raw(HEADER_SCRIPTS)}</script>
-<main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page has stopped updating. It retries in the background.</p>` : ""}${body}</main>
+<main class="wrap" id="main">${options.live ? LIVE_NOTE : ""}${body}</main>
 <footer class="foot" id="foot">
   <div class="wrap foot__inner">
     <p class="foot__run">Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish. <a href="/api/v1/status">Read this data as JSON</a></p>
@@ -662,10 +662,20 @@ function signInScript(name: string, getWeft: string): string {
  * pick, and the page's live region says what arrived. Pages of older blocks
  * don't update.
  */
-const LIVE = `
+/**
+ * What a live page shows after three failed checks: when it stopped, how
+ * often it checks, and Check now, which checks at once. The LIVE script
+ * writes the times. A reversible (motion.css), so it leaves the way it came.
+ */
+const LIVE_NOTE = html`<div class="live-note reversible reversible--down" id="live-note" hidden><p id="live-note-text">This page has stopped updating. It checks again every 4 seconds.</p><button type="button" class="btn btn--small" id="live-check">Check now</button></div>`;
+
+export const LIVE = `
 (function () {
   if (/[?&]before=/.test(location.search)) return;
-  var seen = null, failures = 0, note = document.getElementById("live-note");
+  var seen = null, failures = 0, stoppedAt = null, resumed = false, every = 4000;
+  var note = document.getElementById("live-note"), noteText = document.getElementById("live-note-text"), checkNow = document.getElementById("live-check");
+  var clock = function () { return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); };
+  var checksAgain = "It checks again every " + every / 1000 + " seconds.";
   var rowKey = function (row) { var a = row.querySelector("a[href]"); return a ? a.getAttribute("href") : null; };
   // Replace one element, keeping focus on the same link or field inside it.
   function swap(old, fresh) {
@@ -735,6 +745,8 @@ const LIVE = `
     announce(added);
   }
   function announce(added) {
+    var again = resumed;
+    resumed = false;
     var blocks = [], txs = 0, elections = 0, seenHref = {};
     added.forEach(function (row) {
       var href = rowKey(row);
@@ -750,33 +762,74 @@ const LIVE = `
     else if (blocks.length > 1) said.push(blocks.length + " new blocks arrived, up to #" + Math.max.apply(null, blocks) + ".");
     if (txs) said.push(txs === 1 ? "1 new transaction." : txs + " new transactions.");
     if (elections) said.push(elections === 1 ? "1 new election." : elections + " new elections.");
+    if (again) said.unshift("This page is updating again.");
     if (said.length) weftSay(said.join(" "));
   }
   function failed() {
     failures++;
-    if (failures === 3 && note) { note.hidden = false; weftSay("This page has stopped updating. It retries in the background."); }
+    if (failures === 1) stoppedAt = clock();
+    if (failures === 3 && note) {
+      noteText.textContent = "This page stopped updating at " + stoppedAt + ". " + checksAgain;
+      note.hidden = false;
+      note.classList.add("is-open");
+      weftSay("This page has stopped updating. " + checksAgain);
+    }
+  }
+  // The note leaves, and the page fetches itself again to catch up on what it missed.
+  function recovered() {
+    if (note && !note.hidden) {
+      var hadFocus = note.contains(document.activeElement);
+      note.classList.remove("is-open");
+      note.hidden = true;
+      // Focus moves to what takes the note's place: the page's heading.
+      var h1 = hadFocus && document.querySelector("main h1");
+      if (h1) { if (!h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1"); h1.focus({ preventScroll: true }); }
+    }
+    resumed = true;
+    refresh();
   }
   function refresh() {
     fetch(location.href, { headers: { accept: "text/html" }, signal: AbortSignal.timeout(15000) })
       .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.text(); })
       .then(function (text) { update(new DOMParser().parseFromString(text, "text/html")); })
-      .catch(failed);
+      .catch(function () {
+        if (resumed) { resumed = false; weftSay("This page is updating again."); }
+        failed();
+      });
   }
-  function check() {
-    if (document.hidden) return;
+  function check(done) {
+    if (document.hidden && !done) return;
     fetch("/api/v1/status", { signal: AbortSignal.timeout(10000) })
       .then(function (r) { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(function (s) {
-        if (failures >= 3 && note) { note.hidden = true; weftSay("This page is updating again."); }
+        var wasDown = failures >= 3;
         failures = 0;
         var now = s.channels.map(function (c) { return [c.channel, c.height, c.state, c.peerHeight].join(":"); }).join(" ");
-        if (seen !== null && now !== seen) refresh();
+        if (wasDown) recovered();
+        else if (seen !== null && now !== seen) refresh();
         seen = now;
+        if (done) done(true);
       })
-      .catch(failed);
+      .catch(function () {
+        failed();
+        if (done) done(false);
+      });
   }
+  // Check now: busy while it tries (the loader only after wait-before-loader).
+  // When the explorer still doesn't answer, the note stays and says so.
+  if (checkNow) checkNow.addEventListener("click", function () {
+    if (checkNow.getAttribute("aria-disabled") === "true") return;
+    weftBusy(checkNow, true);
+    check(function (ok) {
+      weftBusy(checkNow, false);
+      if (ok) return;
+      var text = "This page stopped updating at " + stoppedAt + ". Checked again at " + clock() + " and the explorer didn't answer. " + checksAgain;
+      noteText.textContent = text;
+      weftSay(text);
+    });
+  });
   check();
-  setInterval(check, 4000);
+  setInterval(check, every);
   document.addEventListener("visibilitychange", function () { if (!document.hidden) check(); });
 })();`;
 
