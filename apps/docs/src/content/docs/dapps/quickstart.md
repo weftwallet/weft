@@ -3,7 +3,7 @@ title: Quickstart
 description: Connect a web app to Weft and call a Fabric contract in a few lines with @weftwallet/sdk.
 ---
 
-`@weftwallet/sdk` is a typed wrapper around the `window.weft` provider the extension injects.
+In these guides a dApp is a web app that asks the user's own Weft to sign, on a network that several organisations run, so the ledger records the user who approved each transaction rather than your server. `@weftwallet/sdk` is a typed wrapper around the `window.weft` provider the extension injects.
 
 ## Install
 
