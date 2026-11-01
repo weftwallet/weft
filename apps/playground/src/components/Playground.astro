@@ -14,12 +14,17 @@ const { demoInvite = null } = Astro.props;
 <div class="pg" data-docs={productHref("docs")} data-network={productHref("network")} data-demo-invite={demoInvite ?? undefined}>
   <div class="pg-main">
   <section class="pg-card" aria-labelledby="pg-net-heading">
-    <div class="pg-head">
+    <div class="pg-head pg-head--status">
       <h2 id="pg-net-heading">1. Network</h2>
-      <span class="pg-chips">
-        <span class="pg-pill" id="pg-demo" data-state="pending" hidden>Demo network</span>
+      <span class="pg-chips" data-demo={demoInvite ? "" : undefined}>
         <span class="pg-pill" id="pg-weft" data-state="pending">Looking for Weft…</span>
+        <span class="pg-pill" id="pg-demo" data-state="pending" hidden={!demoInvite}>Demo network</span>
       </span>
+      <script is:inline>
+        // An invite in the address opens the page on that network, not the
+        // demo's: before the first paint, so the chip is never shown.
+        if (new URLSearchParams(location.search).get("invite")) document.getElementById("pg-demo").hidden = true;
+      </script>
     </div>
     <form class="field" id="pg-invite-form" novalidate>
       <label for="pg-invite">Invite URL</label>
@@ -41,7 +46,7 @@ const { demoInvite = null } = Astro.props;
   </section>
 
   <section class="pg-card" aria-labelledby="pg-id-heading">
-    <div class="pg-head">
+    <div class="pg-head pg-head--status">
       <h2 id="pg-id-heading">2. Identity</h2>
       <span class="pg-pill" id="pg-conn" data-state="pending">Not connected</span>
     </div>
@@ -50,7 +55,7 @@ const { demoInvite = null } = Astro.props;
       <button type="button" id="pg-connect" class="btn btn--primary" disabled>Connect</button>
       <button type="button" id="pg-disconnect" class="btn" hidden>Disconnect</button>
     </div>
-    <p class="pg-hint pg-why" id="pg-id-why" hidden></p>
+    <p class="pg-hint pg-why" id="pg-id-why" data-looking><a href={docs("/start/install/")}>Install Weft</a> in this browser, then reload this page to join and connect.</p>
     <div class="action-error" id="pg-id-error" role="alert" hidden></div>
     <p class="pg-hint">
       Join once to enrol (local demo users: <code>alice</code>/<code>alicepw</code>, <code>bob</code>/<code>bobpw</code>),
@@ -103,7 +108,7 @@ const { demoInvite = null } = Astro.props;
       <button type="button" id="pg-evaluate" class="btn btn--primary" disabled>Evaluate (read)</button>
       <button type="button" id="pg-submit" class="btn btn--write" disabled>Submit (write)</button>
     </div>
-    <p class="pg-hint pg-why" id="pg-call-why" hidden></p>
+    <p class="pg-hint pg-why" id="pg-call-why" data-looking>Calls go through Weft, which isn't installed in this browser.</p>
     <p class="pg-hint" id="pg-suggest" hidden></p>
     <div id="pg-result-wrap" class="pg-stack" hidden>
       <h3>Result</h3>
@@ -116,7 +121,7 @@ const { demoInvite = null } = Astro.props;
   </section>
 
   <section class="pg-card" aria-labelledby="pg-el-heading">
-    <div class="pg-head">
+    <div class="pg-head pg-head--status">
       <h2 id="pg-el-heading">4. Vote in an election</h2>
       <span class="pg-pill" id="pg-el-state" data-state="pending">Connect first</span>
     </div>
@@ -132,7 +137,7 @@ const { demoInvite = null } = Astro.props;
       </div>
       <p class="field__status" id="pg-el-id-error"></p>
     </form>
-    <p class="pg-hint pg-why" id="pg-el-why" hidden></p>
+    <p class="pg-hint pg-why" id="pg-el-why" data-looking>Calls go through Weft, which isn't installed in this browser.</p>
     <div class="action-error" id="pg-el-error" role="alert" hidden></div>
     <div id="pg-el" class="pg-stack" hidden>
       <dl class="pg-details">
@@ -151,10 +156,12 @@ const { demoInvite = null } = Astro.props;
     <div id="pg-receipt" class="pg-stack" hidden>
       <h3>Your receipt</h3>
       <p class="pg-hint">Keep it. With the choice and the salt, anyone can check this commitment is your vote; without them, no one can tell.</p>
+      <p class="pg-receipt-line pg-receipt-line--unsaved" id="pg-receipt-saved">This page doesn't keep your receipt. Save it before you leave.</p>
       <pre id="pg-receipt-json" class="pg-out" data-tone="ok"></pre>
       <div class="pg-row pg-wrap">
-        <a id="pg-receipt-check" class="btn btn--primary" target="_blank" rel="noreferrer" hidden>Check your receipt in the explorer</a>
+        <button type="button" id="pg-receipt-download" class="btn btn--primary">Download receipt</button>
         <button type="button" id="pg-receipt-copy" class="btn">Copy receipt</button>
+        <a id="pg-receipt-check" class="btn" target="_blank" rel="noreferrer" hidden>Check your receipt in the explorer</a>
       </div>
       <div class="action-error" id="pg-receipt-error" role="alert" hidden></div>
     </div>
@@ -465,9 +472,15 @@ const { demoInvite = null } = Astro.props;
     reveal($("pg-identity"));
   }
 
-  /** Says why a control is unavailable, next to it (SYSTEM.md, Disabled). */
+  /**
+   * Says why a control is unavailable, next to it (SYSTEM.md, Disabled).
+   * While the page looks for Weft each line holds its place, unseen, with
+   * the words it shows if Weft isn't found (data-looking), so the answer
+   * never moves what is below it.
+   */
   function why(id: string, text: string | Node[] | null) {
     const p = $(id);
+    delete p.dataset.looking;
     if (!text) {
       p.hidden = true;
       return;
@@ -490,13 +503,15 @@ const { demoInvite = null } = Astro.props;
       const b = $<HTMLButtonElement>(id);
       if (!isBusy(b)) b.disabled = !weft || !connected;
     }
-    if (looking) why("pg-id-why", null);
-    else if (!weft) why("pg-id-why", [installLink(), document.createTextNode(" in this browser, then reload this page to join and connect.")]);
-    else if (!haveInvite && !connected) why("pg-id-why", "To join, load an invite in step 1 first. Connect works once you've joined.");
-    else why("pg-id-why", null);
-    const callWhy = looking ? null : !weft ? "Calls go through Weft, which isn't installed in this browser." : !connected ? "Connect in step 2 to call the contract." : null;
-    why("pg-call-why", callWhy);
-    why("pg-el-why", callWhy && callWhy.replace("call the contract", "load an election"));
+    // While looking, the lines keep their reserved place (why()).
+    if (!looking) {
+      if (!weft) why("pg-id-why", [installLink(), document.createTextNode(" in this browser, then reload this page to join and connect.")]);
+      else if (!haveInvite && !connected) why("pg-id-why", "To join, load an invite in step 1 first. Connect works once you've joined.");
+      else why("pg-id-why", null);
+      const callWhy = !weft ? "Calls go through Weft, which isn't installed in this browser." : !connected ? "Connect in step 2 to call the contract." : null;
+      why("pg-call-why", callWhy);
+      why("pg-el-why", callWhy && callWhy.replace("call the contract", "load an election"));
+    }
     updateElectionButtons();
     if (!connected) setElectionState("pending", weft ? "Connect first" : "Install Weft");
     else if ($("pg-el-state").textContent === "Connect first") setElectionState("pending", "Not loaded");
@@ -911,10 +926,22 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     // The salt is the voter's secret: without it, no one can tell which choice
     // the commitment is for.
     const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+    const channel = electionChannel();
     try {
       electionMessage(`You're voting for ${option}. Weft lists it as a private input called "ballot", hidden until you choose Show.`);
       const result = await call("weft_submit", ballot("CastVote", [election.id], { ballot: JSON.stringify({ option, salt }) }));
-      const receipt = { ...JSON.parse(result.text), option, salt, blockNumber: result.blockNumber };
+      const cast = JSON.parse(result.text) as { electionId: string; txId: string; commitment: string };
+      const receipt: Receipt = {
+        type: "weft-ballot-receipt",
+        version: 1,
+        channel,
+        electionId: cast.electionId,
+        txId: cast.txId,
+        blockNumber: Number(result.blockNumber),
+        commitment: cast.commitment,
+        option,
+        salt,
+      };
       votedIn.add(election.id);
       showReceipt(receipt);
       electionMessage(`Your ballot is in block ${result.blockNumber}. Your receipt is below.`);
@@ -929,7 +956,32 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     }
   }
 
-  function showReceipt(r: { electionId: string; txId: string; commitment: string; option: string; salt: string }) {
+  /**
+   * A ballot receipt: what the voter needs to check their ballot later. The
+   * file Download receipt saves and the text Copy receipt copies are the same
+   * JSON, which the explorer's Check your receipt form reads back.
+   */
+  type Receipt = {
+    type: "weft-ballot-receipt";
+    version: 1;
+    channel: string;
+    electionId: string;
+    txId: string;
+    blockNumber: number;
+    commitment: string;
+    option: string;
+    salt: string;
+  };
+  let shownReceipt: Receipt | null = null;
+  const receiptFileName = (r: Receipt) => `weft-receipt-${r.electionId.replace(/[^A-Za-z0-9_-]/g, "-")}-block-${r.blockNumber}.json`;
+
+  function showReceipt(r: Receipt) {
+    shownReceipt = r;
+    // This page keeps nothing, so until the receipt is saved, it says so.
+    const line = $("pg-receipt-saved");
+    line.className = "pg-receipt-line pg-receipt-line--unsaved";
+    line.textContent = "This page doesn't keep your receipt. Save it before you leave.";
+    clearError($("pg-receipt-error"));
     reveal($("pg-receipt"));
     $("pg-receipt-json").textContent = JSON.stringify(r, null, 2);
     const link = $<HTMLAnchorElement>("pg-receipt-check");
@@ -938,11 +990,33 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
       // to the explorer's server; the explorer's page checks them locally.
       const query = new URLSearchParams({ tx: r.txId, commitment: r.commitment });
       const local = new URLSearchParams({ option: r.option, salt: r.salt });
-      link.href = `${explorerBase}/channels/${encodeURIComponent(electionChannel())}/elections/${encodeURIComponent(r.electionId)}?${query}#${local}`;
+      link.href = `${explorerBase}/channels/${encodeURIComponent(r.channel)}/elections/${encodeURIComponent(r.electionId)}?${query}#${local}`;
       link.hidden = false;
     } else {
       link.hidden = true;
     }
+  }
+
+  /** The notice is replaced, in its place, by where the receipt went, so nothing below it moves. */
+  function receiptSaved(text: string) {
+    const line = $("pg-receipt-saved");
+    line.textContent = text;
+    line.className = "pg-receipt-line pg-receipt-line--saved arrive";
+    announce(text);
+  }
+
+  function downloadReceipt() {
+    if (!shownReceipt) return;
+    const name = receiptFileName(shownReceipt);
+    const url = URL.createObjectURL(new Blob([$("pg-receipt-json").textContent ?? ""], { type: "application/json" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    a.hidden = true;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    clearError($("pg-receipt-error"));
+    receiptSaved(`Downloaded as ${name}.`);
   }
 
   async function closeElection() {
@@ -1025,13 +1099,14 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     e.preventDefault();
     if (!$<HTMLButtonElement>("pg-new-create").disabled) void createElection();
   });
+  $("pg-receipt-download").addEventListener("click", downloadReceipt);
   $("pg-receipt-copy").addEventListener("click", async () => {
     const button = $("pg-receipt-copy");
     clearError($("pg-receipt-error"));
     try {
       await navigator.clipboard.writeText($("pg-receipt-json").textContent ?? "");
       button.textContent = "Copied";
-      announce("Receipt copied.");
+      receiptSaved("Copied. Paste it somewhere you'll keep it.");
       setTimeout(() => (button.textContent = "Copy receipt"), 2000);
     } catch {
       getSelection()?.selectAllChildren($("pg-receipt-json"));
@@ -1201,6 +1276,8 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
   .pg {
     margin-top: var(--weft-space-6);
+    /* A chip's height: its line, its padding and its border. */
+    --pg-chip-height: calc(var(--weft-leading-xs) + var(--weft-space-1) * 2 + 2px);
   }
   /* At desktop widths the provider log sits beside the form and stays in
      view, so a request and its decoded form can be read together. */
@@ -1226,6 +1303,34 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     display: flex;
     flex-wrap: wrap;
     gap: var(--weft-space-2);
+  }
+  /* A card's status: its own line under the heading, with the chips from
+     its start, so a chip that changes (Looking for Weft…, then Weft not
+     found, or Connected) grows into empty space and never moves anything.
+     The line is a chip tall even before a chip shows. In a card too narrow
+     for Weft's chip and the demo network's side by side they stack, and
+     with a demo network the line keeps room for both, since the demo chip
+     goes when another invite is typed. */
+  .pg-head.pg-head--status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--weft-space-2);
+    container-type: inline-size;
+  }
+  .pg-head--status .pg-pill {
+    max-width: 100%;
+  }
+  .pg-head--status .pg-chips {
+    min-height: var(--pg-chip-height);
+  }
+  @container (max-width: 359px) {
+    .pg-head--status .pg-chips {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .pg-head--status .pg-chips[data-demo] {
+      min-height: calc(var(--pg-chip-height) * 2 + var(--weft-space-2));
+    }
   }
   .pg-card {
     border: 1px solid var(--weft-line-strong);
@@ -1339,6 +1444,9 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-why {
     color: var(--weft-text-muted);
   }
+  .pg-why[data-looking] {
+    visibility: hidden;
+  }
   .pg-details {
     display: grid;
     grid-template-columns: 7.5rem minmax(0, 1fr);
@@ -1371,6 +1479,42 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   }
   .pg-out[data-tone="pending"] {
     color: var(--weft-text-subtle);
+  }
+  /* The receipt's notice: amber words with no fill, since it warns and
+     doesn't block. Once the receipt is saved, where it went takes its place,
+     on the same line, so nothing below moves. */
+  .pg-receipt-line {
+    display: flex;
+    gap: var(--weft-space-2);
+    align-items: flex-start;
+    min-height: var(--weft-leading-md);
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+  }
+  .pg-receipt-line::before {
+    content: "";
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    background: currentColor;
+    -webkit-mask: var(--weft-alert-icon) center / contain no-repeat;
+    mask: var(--weft-alert-icon) center / contain no-repeat;
+  }
+  .pg-receipt-line--unsaved {
+    color: var(--weft-warn-text);
+    font-weight: 500;
+  }
+  .pg-receipt-line--saved {
+    color: var(--weft-text-muted);
+  }
+  .pg-receipt-line--saved::before {
+    background: var(--weft-accent-text);
+    -webkit-mask-image: var(--pg-saved-icon);
+    mask-image: var(--pg-saved-icon);
+  }
+  .pg {
+    --pg-saved-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
   }
   .pg-out-link {
     font-size: var(--weft-type-md);

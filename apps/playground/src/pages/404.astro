@@ -1,0 +1,33 @@
+---
+/**
+ * The page a host serves for an address Weft Playground has no page for
+ * (SystemPage.astro: one layout for every product's 404). The playground is
+ * one page, so the first step is back to it.
+ */
+import Shell from "@weftwallet/ui/Shell.astro";
+import SystemPage from "@weftwallet/ui/SystemPage.astro";
+import { productHref } from "@weftwallet/ui/links";
+
+const docs = (path: string) => productHref("docs", path);
+---
+
+<Shell product="playground" title="Page not found" description="There's no page at this address in Weft Playground.">
+  <Fragment slot="nav">
+    <a href={productHref("playground")}>Try it</a>
+    <a href={docs("/dapps/test-network/")}><span class="shell-nav__full">Local test network</span><span class="shell-nav__short">Test network</span></a>
+    <a href={docs("/dapps/provider-api/")}>Provider API</a>
+  </Fragment>
+
+  <SystemPage
+    product="playground"
+    eyebrow="Error 404"
+    heading="There's no page at this address"
+    lead={["The address may be mistyped, or the page may have moved."]}
+    address
+    actions={[
+      { label: "Go to the playground", kind: "primary", href: productHref("playground") },
+      { label: "Read the docs", href: docs("/dapps/quickstart/") },
+    ]}
+    back
+  />
+</Shell>

@@ -63,7 +63,7 @@ const { demoExplorers = [] } = Astro.props;
 
 <script>
   import type { BlockHeader, MemberCas, SignedCheckpoint } from "@weftwallet/core/chain";
-  import { announce, clearError, closesInReverse, conceal, fetchProblem, grouped, isBusy, isWebUrl, reveal, setBusy, setFieldError, showError, technical, watchFields } from "@weftwallet/ui/ui";
+  import { announce, clearError, closesInReverse, conceal, fetchProblem, grouped, isBusy, isWebUrl, reveal, setBusy, setFieldError, showError, technical, tokenMs, watchFields } from "@weftwallet/ui/ui";
 
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
   /** The public demo network's explorers, when one is hosted (products.json, "demo"). */
@@ -119,11 +119,20 @@ const { demoExplorers = [] } = Astro.props;
     return response.json();
   }
 
-  /** The hint under the address: what the page found. Not a live region; announce() says what changed. */
+  /**
+   * The hint under the address: what the page found. Not a live region;
+   * announce() says what changed. While it says what the page is waiting
+   * for, it has the loader, after wait-before-loader. Only when nothing was
+   * pressed: a press puts the loader on the button, and one wait has one
+   * loader (SYSTEM.md, Loading).
+   */
+  let statusLoader = 0;
   function setStatus(value: string, working = false) {
     const p = $("nw-status");
     p.textContent = value;
-    p.classList.toggle("is-working", working);
+    clearTimeout(statusLoader);
+    p.classList.remove("is-working");
+    if (working) statusLoader = window.setTimeout(() => p.classList.add("is-working"), tokenMs("--weft-wait-before-loader", 300));
   }
 
   /** Reads one explorer: its status, and for each channel who it compares with. */
@@ -499,7 +508,8 @@ const { demoExplorers = [] } = Astro.props;
       const explorersHere = membersOf(channel);
       setBusy(button, true);
       clearError(failed);
-      out.replaceChildren(el("li", { className: "nw-hint is-working", textContent: `Checking block ${n} in ${explorersHere.length} explorers…` }));
+      // The loader is on Check, the button that was pressed.
+      out.replaceChildren(el("li", { className: "nw-hint", textContent: `Checking block ${n} in ${explorersHere.length} explorers…` }));
       try {
         const { members, differing } = await channelMembers(channel, explorersHere);
         const checks = await Promise.all(explorersHere.map((e) => checkExplorer(e, channel, n, members)));
@@ -700,13 +710,18 @@ const { demoExplorers = [] } = Astro.props;
   });
   window.addEventListener("weft#initialized", showSignIn, { once: true });
 
-  async function load(from: string[], quiet = false) {
+  /**
+   * Finds the explorers. `quiet` is the demo network, opened by default;
+   * `pressed` is Find explorers, which then carries the loader. Otherwise the
+   * page opened on an address and the status line carries it.
+   */
+  async function load(from: string[], quiet = false, pressed = false) {
     const mine = ++generation;
     starts = from;
     const button = $("nw-load");
-    setBusy(button, true);
+    if (pressed) setBusy(button, true);
     clearError($("nw-error"));
-    if (!quiet) setStatus("Looking for explorers…", true);
+    setStatus(quiet ? "Opening the demo network…" : "Looking for explorers…", !pressed);
     try {
       const found = await discover(from);
       if (mine !== generation) return;
@@ -730,7 +745,7 @@ const { demoExplorers = [] } = Astro.props;
       announce(`${ok} ${ok === 1 ? "explorer" : "explorers"} found.`);
       schedule();
     } finally {
-      if (mine === generation) setBusy(button, false);
+      if (mine === generation && pressed) setBusy(button, false);
     }
   }
 
@@ -770,7 +785,7 @@ const { demoExplorers = [] } = Astro.props;
       const from = await resolve($<HTMLInputElement>("nw-input").value);
       history.replaceState(null, "", `?explorer=${encodeURIComponent(from[0]!)}`);
       $("nw-demo").hidden = true;
-      await load(from);
+      await load(from, false, true);
     } catch (error: any) {
       showError($("nw-error"), error?.message ?? String(error), error?.details);
     }

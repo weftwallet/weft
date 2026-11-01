@@ -16,6 +16,7 @@ import { agreementFor, type PeerStatus } from "./checkpoints.ts";
 import { splitKey, type ElectionView, type ReceiptCheck } from "./elections.ts";
 import type { PublishedParty, ShownValue } from "./policy.ts";
 import { productAddress, type ProductAddresses } from "./config.ts";
+import { readReceipt } from "./receipt.ts";
 
 export interface Site {
   name: string;
@@ -48,6 +49,8 @@ const markSvg = (file: string, size: number) =>
 const MARK = markSvg(products.explorer.markSmall, 28);
 /** The same mark at 24px and 16px, for its own entry in the products menu and the footer. */
 const EXPLORER_MARKS = { mark: markSvg(products.explorer.markSmall, 24), small: markSvg(products.explorer.markSmall, 16) };
+/** The full drawing at 48px, for the system pages: a 404, an error, nothing to show. */
+const SYSTEM_MARK = markSvg(products.explorer.mark, 48);
 
 /**
  * The other Weft products, as the sites' switcher lists them, at the
@@ -88,6 +91,8 @@ const REPOSITORY = repositoryUrl(JSON.parse(readFileSync(new URL("../package.jso
 const shared = (file: string) => readFileSync(require.resolve(`@weftwallet/ui/${file}`), "utf8");
 const EARLY_SHARED = shared("early.js");
 const HEADER_SCRIPTS = shared("theme-control.js") + "\n" + shared("product-switcher.js") + "\n" + shared("header.js");
+/** The system page's address and Go back (system-page.js), inlined after the page's .sys section. */
+const SYSTEM_PAGE_SCRIPT = shared("system-page.js");
 
 /** The page ground in each theme, for the browser's own chrome (theme-color). */
 const TOKENS = readFileSync(require.resolve("@weftwallet/brand/tokens.css"), "utf8");
@@ -477,6 +482,10 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
 <meta name="theme-color" content="${BG.light}" media="(prefers-color-scheme: light)">
 <title>${title} | ${site.name}'s explorer</title>
 <script>${raw(EARLY)}</script>
+<link rel="expect" href="#foot" blocking="render">
+<link rel="preload" href="/assets/fonts/sans-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/sans-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/mono-500.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/tokens.css">
 <link rel="stylesheet" href="/assets/motion.css">
 <link rel="stylesheet" href="/assets/select.css">
@@ -500,7 +509,7 @@ export function layout(site: Site, title: string, body: Html, options: { query?:
 </header>
 <script>${raw(HEADER_SCRIPTS)}</script>
 <main class="wrap" id="main">${options.live ? html`<p class="live-note" id="live-note" hidden>This page has stopped updating. It retries in the background.</p>` : ""}${body}</main>
-<footer class="foot">
+<footer class="foot" id="foot">
   <div class="wrap foot__inner">
     <p class="foot__run">Run by ${site.name}, from its own peers. It shows only what ${site.name} chose to publish. <a href="/api/v1/status">Read this data as JSON</a></p>
     <div class="foot__row">
@@ -952,16 +961,35 @@ function pager(label: string, newer: [string, string | null], older: [string, st
 
 export function homePage(site: Site, channels: ChannelSummary[], statuses: ChannelStatus[], latest: BlockRow[], txs: TransactionRow[]): string {
   if (site.channels.length === 0) {
-    const lead = site.signIn && !site.viewer
-      ? html`${site.name} publishes its channels to members only. Sign in with Weft, with an identity from a member organisation, to see them.`
-      : site.viewer
-        ? html`None of the channels ${site.name} publishes lists ${site.viewer.mspId} as a member.`
-        : html`${site.name} hasn't published any channel. Operators: set <code>level: public</code> or <code>level: members</code> for a channel in the explorer's policy file and restart it.`;
-    return layout(
-      site,
-      "Nothing to show",
-      html`<section class="hero"><h1>Nothing to show yet</h1><p class="lead">${lead}</p>${site.signIn && !site.viewer ? html`<div class="actions">${signInButton("page")}</div>` : ""}</section>`,
-    );
+    // Not an error, so no code and no Details: what would be here, and how
+    // to get it here (SYSTEM.md, Errors).
+    const howTo = `${productAddress("docs", site.products, "/operators/explorer/")}`;
+    const parts: SystemPageParts =
+      site.signIn && !site.viewer
+        ? {
+            heading: "Nothing to show yet",
+            lead: [html`${site.name} publishes its channels to members only. Sign in with Weft, with an identity from a member organisation, to see them.`],
+            actions: [signInOnly("page"), sysLink("How explorers publish channels", howTo, "text")],
+            after: signInNote("page"),
+          }
+        : site.viewer
+          ? {
+              heading: "Nothing to show yet",
+              lead: [
+                html`None of the channels ${site.name} publishes lists ${site.viewer.mspId} as a member. Ask ${site.name}'s operator to add ${site.viewer.mspId} to a channel, or sign in with an identity from another organisation.`,
+              ],
+              actions: [
+                html`<form method="post" action="/auth/sign-out"><button type="submit" class="btn">Sign out</button></form>`,
+                sysLink("How explorers publish channels", howTo, "text"),
+              ],
+            }
+          : {
+              heading: "Nothing to show yet",
+              lead: [html`${site.name} hasn't published any channel.`],
+              sub: html`If you run this explorer, set <code>level: public</code> or <code>level: members</code> for a channel in its policy file, then restart it.`,
+              actions: [sysLink("Read how to publish a channel", howTo)],
+            };
+    return layout(site, "Nothing to show", systemPage(parts));
   }
   const one = channels.length === 1;
   const allLive = channels.length > 0 && channels.every((c) => isLive(c, statuses.find((s) => s.channel === c.channel)));
@@ -1295,28 +1323,190 @@ ${results.txs.length ? html`<section><h2>Transactions</h2>${txRows(results.txs, 
   );
 }
 
-/** A page that isn't here. `title` names what wasn't found. */
-export function notFoundPage(site: Site, what: string, options: { title?: string; signIn?: boolean } = {}): string {
-  const title = options.title ?? "Page not found";
-  const offerSignIn = options.signIn && site.signIn && !site.viewer;
+/* System pages ----------------------------------------------------------- */
+
+/**
+ * A 404, an error or an empty state, in the layout every Weft product uses
+ * for them (@weftwallet/ui system-page.css, served as part of explorer.css):
+ * the explorer's 48px mark, the code as an eyebrow when there is one, what
+ * happened as the heading, one or two sentences, what was asked for, the next
+ * steps as buttons, and anything technical behind Details. SystemPage.astro
+ * renders the same markup on the sites.
+ */
+interface SystemPageParts {
+  eyebrow?: string;
+  heading: string;
+  lead: (Html | string)[];
+  /** What was asked for: the address, or the transaction ID. */
+  asked?: { label: string; value: string };
+  /** A note for whoever runs this explorer, after the lead. */
+  sub?: Html;
+  /** A search field, for an address that matches no page at all. */
+  search?: boolean;
+  actions: Html[];
+  /** Anything that goes after the buttons, such as sign-in's note. */
+  after?: Html;
+  /** With Try again: what the line under the buttons says when the page still fails. */
+  retry?: string;
+  details?: string;
+}
+
+function systemPage(p: SystemPageParts): Html {
+  return html`<section class="sys">
+  <div class="sys__mark">${SYSTEM_MARK}</div>
+  ${p.eyebrow ? html`<p class="sys__eyebrow">${p.eyebrow}</p>` : ""}
+  <h1 tabindex="-1">${p.heading}</h1>
+  ${p.lead.map((l) => html`<p class="sys__lead">${l}</p>`)}
+  ${p.asked ? html`<p class="sys__addr"><span>${p.asked.label}</span><code data-sys-address>${p.asked.value}</code></p>` : ""}
+  ${p.sub ? html`<p class="sys__sub">${p.sub}</p>` : ""}
+  ${p.search
+    ? html`<form class="sys__search" action="/search" role="search"><label for="sys-q">Search this explorer</label><div><input id="sys-q" name="q" type="search" placeholder="Transaction ID, block number or contract" spellcheck="false" autocomplete="off"><button type="submit" class="btn btn--primary">Search</button></div></form>`
+    : ""}
+  <div class="sys__actions">${p.actions}</div>
+  ${p.after ?? ""}
+  ${p.retry ? html`<p class="sys__retry" id="sys-retry" role="status"></p>` : ""}
+  ${errorDetails(p.details)}
+</section>
+<script>${raw(SYSTEM_PAGE_SCRIPT)}</script>
+${p.retry ? html`<script>${raw(retryScript(p.retry))}</script>` : ""}`;
+}
+
+/** A next step that goes somewhere. */
+function sysLink(label: string, href: string, kind?: "primary" | "text"): Html {
+  return html`<a class="btn${kind ? ` btn--${kind}` : ""}" href="${href}">${label}</a>`;
+}
+
+/** Go back, shown only when the page before was on this explorer (system-page.js). */
+const SYS_BACK = html`<button type="button" class="btn btn--text" data-sys-back hidden>Go back</button>`;
+
+/**
+ * Try again: fetches the page again in place, so the button keeps focus and
+ * shows the explorer's loader after the wait, as any busy control does. When
+ * the page answers, it is shown; when it still fails, the line under the
+ * buttons says when it last tried and what happened.
+ */
+function retryScript(still: string): string {
+  return `
+(function () {
+  var button = document.querySelector("[data-sys-retry]"), line = document.getElementById("sys-retry");
+  if (!button || !line) return;
+  button.addEventListener("click", function () {
+    if (button.getAttribute("aria-disabled") === "true") return;
+    weftBusy(button, true);
+    line.textContent = "";
+    fetch(location.href, { headers: { accept: "text/html" }, cache: "no-store", signal: AbortSignal.timeout(15000) })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        location.reload();
+      })
+      .catch(function () {
+        weftBusy(button, false);
+        var at = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        line.textContent = "Tried again at " + at + ". " + ${JSON.stringify(still)};
+      });
+  });
+})();`;
+}
+
+const TRY_AGAIN = html`<button type="button" class="btn btn--primary" data-sys-retry>Try again</button>`;
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** 1 November 2026, 14:02:11 UTC */
+function utcStamp(at: number): string {
+  const d = new Date(at);
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${two(d.getUTCHours())}:${two(d.getUTCMinutes())}:${two(d.getUTCSeconds())} UTC`;
+}
+
+export interface NotFound {
+  /** The tab's title: "Page not found", "Transaction not found". */
+  title: string;
+  /** What wasn't found, as a plain sentence about this request. */
+  heading: string;
+  lead?: string[];
+  /** What was asked for: the address, or the transaction ID. */
+  asked: { label: string; value: string };
+  /** When what was asked for may be published to members only: the sentence that offers signing in. */
+  signIn?: string;
+  /** A search field on the page, for an address that matches no page at all. */
+  search?: boolean;
+}
+
+/** Something that isn't here. */
+export function notFoundPage(site: Site, page: NotFound): string {
+  const offerSignIn = !!page.signIn && site.signIn && !site.viewer;
+  const actions: Html[] = [];
+  if (offerSignIn) actions.push(signInOnly("page"));
+  actions.push(sysLink("Go to the overview", "/", offerSignIn || page.search ? undefined : "primary"), SYS_BACK);
   return layout(
     site,
-    title,
-    html`<h1>${title}</h1><p class="lead">${what}</p>${
-      offerSignIn ? html`<p class="lead">If your organisation is a member, sign in with Weft to see it.</p><div class="actions">${signInButton("page")}</div>` : ""
-    }<p class="next"><a href="/">Go to the overview</a>, or search for a transaction ID, block number or contract at the top of the page.</p>`,
+    page.title,
+    systemPage({
+      eyebrow: "Error 404",
+      heading: page.heading,
+      lead: [...(page.lead ?? []), ...(offerSignIn ? [page.signIn!] : [])],
+      asked: page.asked,
+      ...(page.search ? { search: true } : {}),
+      actions,
+      ...(offerSignIn ? { after: signInNote("page") } : {}),
+    }),
   );
 }
 
-/** A request that went wrong: a bad address or a fault in this explorer. */
-export function errorPage(site: Site, statusCode: number, detail: string): string {
-  const bad = statusCode < 500;
+/** Where a failed request came from, for the address line and Details. */
+export interface FailedRequest {
+  method: string;
+  /** The path asked for, with its query. */
+  path: string;
+  /** The address as the person typed it: host and path. */
+  address: string;
+  at: number;
+}
+
+/**
+ * A request that went wrong: an address this explorer can't read (4xx), a
+ * peer that didn't answer (503), or a fault in this explorer (5xx).
+ */
+export function errorPage(site: Site, statusCode: number, detail: string, request?: FailedRequest): string {
+  if (statusCode < 500) {
+    return layout(
+      site,
+      "Address not valid",
+      systemPage({
+        eyebrow: `Error ${statusCode}`,
+        heading: "That address isn't valid",
+        lead: ["This explorer couldn't read that address. Check it, or start again from the overview."],
+        ...(request ? { asked: { label: "Address", value: request.address } } : {}),
+        actions: [sysLink("Go to the overview", "/", "primary"), SYS_BACK],
+        details: `${statusCode}: ${detail}`,
+      }),
+    );
+  }
+  if (statusCode === 503) {
+    return layout(
+      site,
+      "Peer unreachable",
+      systemPage({
+        eyebrow: "Error 503",
+        heading: `This explorer can't reach ${site.name}'s peer`,
+        lead: [`This page needs an answer from ${site.name}'s peer, and the peer didn't answer within 10 seconds. The overview still shows the blocks indexed so far.`],
+        actions: [TRY_AGAIN, sysLink("Go to the overview", "/")],
+        retry: "The peer still didn't answer.",
+        details: `503: ${detail}`,
+      }),
+    );
+  }
   return layout(
     site,
-    bad ? "Address not valid" : "Something went wrong",
-    html`<h1>${bad ? "That address isn't valid" : "Something went wrong"}</h1><p class="lead bad">${
-      bad ? "This explorer couldn't read that address. Check it, or start again from the overview." : "This explorer couldn't build this page. Try again in a moment."
-    }</p>${errorDetails(`${statusCode}: ${detail}`)}<p class="next"><a href="/">Go to the overview</a></p>`,
+    "Something went wrong",
+    systemPage({
+      eyebrow: `Error ${statusCode}`,
+      heading: "This explorer couldn't build this page",
+      lead: [`Something went wrong inside ${site.name}'s explorer. Try again in a moment. If it happens again, send the details below to ${site.name}'s operator.`],
+      actions: [TRY_AGAIN, sysLink("Go to the overview", "/")],
+      retry: "The explorer still couldn't build this page.",
+      details: [`${statusCode}: ${detail}`, ...(request ? [`${request.method} ${request.path}`, utcStamp(request.at)] : [])].join("\n"),
+    }),
   );
 }
 
@@ -1419,7 +1609,13 @@ ${e.tally
   : html`<section><h2>Result</h2><p class="empty">${closed ? `Voting has closed. ${e.creatorMsp} publishes the count.` : "Voting is open. The count is published when it closes."}</p></section>`}
 <section id="receipt">
   <h2>Check your receipt</h2>
-  <form class="card receipt" method="get" action="#receipt" id="receipt-form" novalidate>
+  <form class="card receipt" method="get" action="#receipt" id="receipt-form" novalidate tabindex="-1" aria-describedby="receipt-file-hint">
+    <div class="xr-file" id="receipt-file-row" hidden>
+      <input type="file" accept=".json,application/json" id="receipt-file" tabindex="-1" aria-hidden="true">
+      <button type="button" class="btn btn--small" id="receipt-choose">Choose receipt file</button>
+      <p id="receipt-file-hint">or drop it on this form, or paste the copied receipt. It fills the fields below.</p>
+      <p class="field__status" id="receipt-file-status" role="status"></p>
+    </div>
     <div class="field"><label for="receipt-tx">Transaction ID</label><input id="receipt-tx" name="tx" value="${receipt?.txId ?? ""}" class="mono" spellcheck="false" autocomplete="off"${invalid(txWrong ? "receipt-result" : null)}>${fieldError("receipt-tx-error")}</div>
     <div class="field"><label for="receipt-commitment">Commitment (optional)</label><input id="receipt-commitment" name="commitment" value="${receipt?.commitment ?? ""}" class="mono" spellcheck="false" autocomplete="off"${invalid(commitmentError ? "receipt-commitment-error" : null)}>${fieldError("receipt-commitment-error", commitmentError)}</div>
     <button type="submit" class="button">Check</button>
@@ -1448,6 +1644,77 @@ ${e.tally
 
   var expected = ${raw(JSON.stringify(lookedUp?.result.commitment ?? null))};
   var electionId = ${raw(JSON.stringify(e.id).replace(/</g, "\\u003c"))};
+
+  // A receipt file, chosen, dropped on the form or pasted into it, fills the
+  // transaction ID and commitment; it doesn't submit. Its choice and salt go
+  // in the address's fragment when the form is sent, as the voting app's link
+  // puts them, so they never reach this explorer's server.
+  var readReceipt = ${raw(readReceipt.toString())};
+  var receiptForm = document.getElementById("receipt-form");
+  var txInput = document.getElementById("receipt-tx"), cmInput = document.getElementById("receipt-commitment");
+  var fileInput = document.getElementById("receipt-file"), fileStatus = document.getElementById("receipt-file-status");
+  var unreadable = "Weft Explorer couldn't read that file. Choose the receipt your voting app saved, a .json file.";
+  document.getElementById("receipt-file-row").hidden = false;
+  function fileSays(kind, message) {
+    fileStatus.textContent = message || "";
+    fileStatus.classList.toggle("field-ok", kind === "ok" && !!message);
+    fileStatus.classList.toggle("field-error", kind === "error" && !!message);
+  }
+  function fill(text, name) {
+    var r = readReceipt(text, electionId);
+    if (!r.ok) { fileSays("error", r.message); return; }
+    txInput.value = r.txId;
+    cmInput.value = r.commitment;
+    [txInput, cmInput].forEach(function (input) { input.classList.add("is-filled"); });
+    tx.run();
+    commitment.run();
+    receiptForm.action = r.option && r.salt ? "#" + new URLSearchParams({ option: r.option, salt: r.salt }) : "#receipt";
+    var from = name || "the pasted receipt";
+    fileSays("ok", "Filled from " + from + ". Your choice and salt stay in this browser.");
+  }
+  function readFile(file) {
+    if (file.size > 64 * 1024) { fileSays("error", "That file is too large to be a receipt. A receipt is under 1 KB."); return; }
+    file.text().then(function (text) { fill(text, file.name); }, function () { fileSays("error", unreadable); });
+  }
+  document.getElementById("receipt-choose").addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function () {
+    if (fileInput.files && fileInput.files[0]) readFile(fileInput.files[0]);
+    fileInput.value = "";
+  });
+  // Typing over a filled field makes it the person's own again.
+  [txInput, cmInput].forEach(function (input) {
+    input.addEventListener("input", function () {
+      input.classList.remove("is-filled");
+      if (input === txInput) receiptForm.action = "#receipt";
+    });
+  });
+  receiptForm.addEventListener("dragover", function (e) {
+    var types = Array.from(e.dataTransfer ? e.dataTransfer.types : []);
+    if (types.indexOf("Files") < 0 && types.indexOf("text/plain") < 0) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    receiptForm.classList.add("is-dragging");
+  });
+  receiptForm.addEventListener("dragleave", function (e) {
+    if (!receiptForm.contains(e.relatedTarget)) receiptForm.classList.remove("is-dragging");
+  });
+  receiptForm.addEventListener("drop", function (e) {
+    e.preventDefault();
+    receiptForm.classList.remove("is-dragging");
+    var files = e.dataTransfer.files;
+    if (files && files.length > 1) { fileSays("error", "Drop one receipt at a time."); return; }
+    if (files && files.length === 1) { readFile(files[0]); return; }
+    var text = e.dataTransfer.getData("text/plain");
+    if (text) fill(text, null);
+  });
+  receiptForm.addEventListener("paste", function (e) {
+    var text = e.clipboardData ? e.clipboardData.getData("text/plain") : "";
+    if (!text) return;
+    // A plain value pasted into a field is just that.
+    if (e.target.matches("input") && !/^\\s*\\{/.test(text)) return;
+    e.preventDefault();
+    fill(text, null);
+  });
   var form = document.getElementById("local");
   var salt = weftField(document.getElementById("local-salt"), function (v) { return v.trim() === "" ? "Enter the salt from your receipt." : ""; });
   weftForm(form, [salt], async function () {

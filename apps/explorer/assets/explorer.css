@@ -215,7 +215,15 @@ main { overflow-anchor: none; }
 .hero { padding: var(--weft-space-2) 0 var(--weft-space-1); }
 .lead { color: var(--weft-text-muted); max-width: 68ch; }
 .lead + .lead { margin-top: var(--weft-space-3); }
-.next { margin-top: var(--weft-space-5); max-width: 68ch; }
+/* A 404, an error or nothing to show (@weftwallet/ui system-page.css, served
+   at the top of this file), in the explorer's column: the same width and
+   space as on the sites, with main's own padding below it. */
+.wrap > .sys { max-width: 848px; padding-inline: 0; padding-bottom: var(--weft-space-8); }
+.sys .error-details p { margin-top: var(--weft-space-1); }
+.sys .signin-note--inline { width: min(100%, 520px); margin-top: 0; }
+@media (max-width: 719px) {
+  .wrap > .sys { padding-bottom: 0; }
+}
 .live-note {
   margin-top: var(--weft-space-4); padding: var(--weft-space-2) var(--weft-space-3);
   border: 1px solid var(--weft-warn-line); border-radius: var(--weft-radius-lg); background: var(--weft-warn-soft); color: var(--weft-warn-text);
@@ -478,6 +486,25 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .receipt input { padding-right: var(--weft-space-3); }
 .receipt input:focus, .receipt select:focus { border-color: var(--weft-accent-line); }
 .receipt input[aria-invalid="true"] { border-color: var(--weft-danger); }
+/* Filled from a receipt file, until the person types over it. */
+.receipt input.is-filled { background: var(--weft-accent-soft); border-color: var(--weft-accent-line); }
+/* The receipt file: choose it, or drop it anywhere on the form. */
+.xr-file {
+  grid-column: 1 / -1; position: relative;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--weft-space-2) var(--weft-space-3);
+  padding: var(--weft-space-3); border: 1px dashed var(--weft-line-strong); border-radius: var(--weft-radius-lg);
+  background: var(--weft-bg-surface); font-size: var(--weft-type-md); line-height: var(--weft-leading-md);
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.xr-file[hidden] { display: none; }
+.xr-file p { min-width: 0; flex: 1 1 14rem; color: var(--weft-text-muted); }
+.xr-file input[type="file"] { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
+.xr-file p.field__status { flex-basis: 100%; padding-top: 0; }
+.receipt:focus { outline: none; }
+.receipt.is-dragging { outline: 2px dashed var(--weft-accent); outline-offset: 4px; }
+.receipt.is-dragging .xr-file { border-color: var(--weft-accent); background: var(--weft-accent-soft); }
+/* A line that confirms: the file was read. */
+.field-ok { display: flex; align-items: flex-start; gap: var(--weft-space-1); font-size: var(--weft-type-xs); line-height: var(--weft-leading-xs); font-weight: 500; color: var(--weft-accent-text); }
 /* The button lines up with the inputs, below the labels, whatever errors show. */
 .receipt > .button { margin-top: calc(var(--weft-leading-md) + var(--weft-space-2)); }
 /* The reserved error line (motion.css .field__status): an alert icon, then

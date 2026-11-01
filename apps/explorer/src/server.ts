@@ -57,7 +57,13 @@ const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
   "select.css": { type: "text/css; charset=utf-8", body: () => readFileSync(require.resolve("@weftwallet/ui/select.css")) },
   "icons/chevron.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/ui/icons/chevron.svg")) },
   "icons/check.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/ui/icons/check.svg")) },
-  "explorer.css": { type: "text/css; charset=utf-8", body: () => asset("explorer.css") },
+  // The buttons and the system page every Weft product shares, then the
+  // explorer's own rules, which may refine them: one file, so the page's
+  // head is unchanged.
+  "explorer.css": {
+    type: "text/css; charset=utf-8",
+    body: () => Buffer.concat([readFileSync(require.resolve("@weftwallet/ui/buttons.css")), readFileSync(require.resolve("@weftwallet/ui/system-page.css")), asset("explorer.css")]),
+  },
   // The field error's icon, a mask: a file, since the CSP refuses data: images.
   "alert.svg": { type: "image/svg+xml", body: () => asset("alert.svg") },
   "mark.svg": { type: "image/svg+xml", body: () => readFileSync(require.resolve("@weftwallet/brand/logo/products/explorer-small.svg")) },
@@ -133,8 +139,23 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   const send = (reply: FastifyReply, body: string, code = 200) =>
     reply.code(code).header("content-type", "text/html; charset=utf-8").header("cache-control", "no-store").send(body);
-  const notFound = (reply: FastifyReply, site: pages.Site, what: string, options: { title?: string; signIn?: boolean } = {}) =>
-    send(reply, pages.notFoundPage(site, what, options), 404);
+  const notFound = (reply: FastifyReply, site: pages.Site, page: pages.NotFound) => send(reply, pages.notFoundPage(site, page), 404);
+  /** The address that was asked for, as the person typed it: host and path. */
+  const asked = (request: FastifyRequest) => {
+    let path = request.url;
+    try {
+      path = decodeURI(path);
+    } catch {
+      /* keep it encoded */
+    }
+    return { label: "Address", value: `${request.host}${path}` };
+  };
+  /** How far this explorer has read a channel, for a block or transaction it doesn't have. */
+  const indexedUpTo = (channel: string) => {
+    const [summary] = db.channels([channel]);
+    return summary && summary.height > 0 ? ` ${options.name}'s explorer has indexed ${channel} up to block #${summary.height - 1}.` : "";
+  };
+  const MEMBERS = "If your organisation is a member, sign in with Weft to see it.";
   /** Why a sign-in failed, for the person, with any technical reason apart. */
   const signInFailure = (error: unknown) =>
     error instanceof UnreadableSignIn
@@ -252,7 +273,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const s = scope(request);
     const { channel } = request.params;
     if (!s.canSee(channel)) {
-      return notFound(reply, s.site, "That channel isn't published here, or only its members can see it.", { title: "Channel not found", signIn: true });
+      return notFound(reply, s.site, {
+        title: "Channel not found",
+        heading: "That channel isn't published here",
+        lead: ["It may be published to its members only."],
+        asked: asked(request),
+        signIn: MEMBERS,
+      });
     }
     const [summary] = db.channels([channel]);
     const before = int(request.query.before);
@@ -267,8 +294,19 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const s = scope(request);
     const { channel } = request.params;
     const number = int(request.params.number);
-    const found = s.canSee(channel) && number !== undefined ? db.block(channel, number) : null;
-    if (!found) return notFound(reply, s.site, "That block isn't here. It may not be indexed yet.", { title: "Block not found", signIn: !s.canSee(channel) });
+    if (number === undefined) {
+      throw Object.assign(new Error(`A block number is a whole number, and "${request.params.number}" isn't one.`), { statusCode: 400 });
+    }
+    const found = s.canSee(channel) ? db.block(channel, number) : null;
+    if (!found) {
+      return notFound(reply, s.site, {
+        title: "Block not found",
+        heading: "That block isn't here",
+        lead: [`It may not be indexed yet.${s.canSee(channel) ? indexedUpTo(channel) : ""}`],
+        asked: asked(request),
+        ...(s.canSee(channel) ? {} : { signIn: MEMBERS }),
+      });
+    }
     const hasNext = db.block(channel, number! + 1) !== null;
     return send(reply, pages.blockPage(s.site, found.block, found.transactions.map(s.view), hasNext));
   });
@@ -278,7 +316,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const { channel, txId } = request.params;
     const tx = s.canSee(channel) ? db.transaction(channel, txId) : null;
     if (!tx) {
-      return notFound(reply, s.site, "No published transaction has that ID. It may be in a block this explorer hasn't indexed yet.", { title: "Transaction not found", signIn: !s.canSee(channel) });
+      return notFound(reply, s.site, {
+        title: "Transaction not found",
+        heading: "No published transaction has that ID",
+        lead: [`It may be in a block this explorer hasn't indexed yet.${s.canSee(channel) ? indexedUpTo(channel) : ""}`],
+        asked: { label: "Transaction", value: pages.cut(txId) },
+        signIn: `If your organisation is a member of ${channel}, sign in with Weft to see its members-only transactions.`,
+      });
     }
     return send(reply, pages.transactionPage(s.site, s.view(tx)));
   });
@@ -288,7 +332,8 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     async (request, reply) => {
       const s = scope(request);
       const { channel, name } = request.params;
-      const missing = () => notFound(reply, s.site, "No published transactions call that contract.", { title: "Contract not found", signIn: true });
+      const missing = () =>
+        notFound(reply, s.site, { title: "Contract not found", heading: "No published transactions call that contract", asked: asked(request), signIn: MEMBERS });
       if (!s.canSee(channel) || !s.canSeeContract(channel, name)) return missing();
       const before = int(request.query.before);
       const txs = db.transactions(s.visible, { channel, chaincode: name, before, limit: CONTRACT_PAGE }).map(s.view);
@@ -358,7 +403,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.get<{ Params: { channel: string } }>("/channels/:channel/elections", async (request, reply) => {
     const data = electionData(request, request.params.channel);
-    if (!data) return notFound(reply, scope(request).site, "This channel has no published elections.", { title: "Elections not found", signIn: true });
+    if (!data) {
+      return notFound(reply, scope(request).site, { title: "Elections not found", heading: "This channel has no published elections", asked: asked(request), signIn: MEMBERS });
+    }
     return send(reply, pages.electionsPage(data.s.site, request.params.channel, data.list));
   });
 
@@ -368,7 +415,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       const { channel, id } = request.params;
       const data = electionData(request, channel);
       const election = data?.list.find((e) => e.id === id);
-      if (!data || !election) return notFound(reply, scope(request).site, "No published election has that ID.", { title: "Election not found", signIn: true });
+      if (!data || !election) {
+        return notFound(reply, scope(request).site, { title: "Election not found", heading: "No published election has that ID", asked: asked(request), signIn: MEMBERS });
+      }
       const txId = (request.query.tx ?? "").trim().toLowerCase();
       const receipt = txId
         ? { txId, commitment: request.query.commitment ?? "", result: checkReceipt(id, (() => { const t = db.transaction(channel, txId); return t ? data.s.view(t) : null; })()) }
@@ -501,13 +550,22 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   });
 
   app.setNotFoundHandler((request, reply) =>
-    request.url.startsWith("/api/") ? reply.code(404).send({ error: "Nothing was found at this address." }) : notFound(reply, scope(request).site, "There's no page at this address."),
+    request.url.startsWith("/api/")
+      ? reply.code(404).send({ error: "Nothing was found at this address." })
+      : notFound(reply, scope(request).site, {
+          title: "Page not found",
+          heading: "There's no page at this address",
+          lead: ["The address may be mistyped, or the page may have moved."],
+          asked: asked(request),
+          search: true,
+        }),
   );
 
   // Pages get a page when something goes wrong; the API gets JSON.
   onError = (error, request, reply) => {
     const code = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500;
-    const message = code >= 500 ? "Internal error" : (error.message ?? "Bad request");
+    // A peer that didn't answer says which and how; any other fault stays inside.
+    const message = code === 503 ? (error.message ?? "Service unavailable") : code >= 500 ? "Internal error" : (error.message ?? "Bad request");
     if (code >= 500) request.log.error(error);
     if (request.url.startsWith("/api/") || request.url.startsWith("/auth/")) return reply.code(code).send({ error: message });
     let site: pages.Site;
@@ -516,7 +574,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     } catch {
       site = { name: options.name, channels: [], viewer: null, signIn: false, peers: () => [], elections: () => false, products: options.products ?? PUBLIC_PRODUCTS };
     }
-    return send(reply, pages.errorPage(site, code, message), code);
+    return send(reply, pages.errorPage(site, code, message, { method: request.method, path: request.url, address: asked(request).value, at: Date.now() }), code);
   };
   app.setErrorHandler((error: { statusCode?: number; message?: string }, request, reply) => onError(error, request, reply));
 
