@@ -22,6 +22,7 @@ export function stack(): StackInfo {
 export class Site {
   readonly origin = `http://localhost:${PORTS.site}`;
   private docs = new Map<string, unknown>();
+  private pages = new Map<string, string>();
   private server: Server;
 
   constructor() {
@@ -33,7 +34,7 @@ export class Site {
         return res.end(JSON.stringify(this.docs.get(path)));
       }
       res.setHeader("content-type", "text/html");
-      res.end("<!doctype html><title>Test app</title>");
+      res.end(this.pages.get(path) ?? "<!doctype html><title>Test app</title>");
     });
   }
 
@@ -43,6 +44,12 @@ export class Site {
 
   close(): Promise<void> {
     return new Promise((r) => this.server.close(() => r()));
+  }
+
+  /** Serves an HTML page at `path`. */
+  page(path: string, html: string): string {
+    this.pages.set(path, html);
+    return `${this.origin}${path}`;
   }
 
   /** Serves `body` as JSON at `path`. */

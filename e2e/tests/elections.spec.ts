@@ -1,5 +1,23 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, stack, test } from "../support/fixtures.ts";
+
+/** Pictures of `part` at 1440 and 360 wide, light and dark, for checking by eye (test-results). */
+async function look(page: Page, part: Locator, name: string) {
+  const size = page.viewportSize();
+  for (const width of [1440, 360]) {
+    await page.setViewportSize({ width, height: 900 });
+    // No page is wider than its window.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${name} at ${width}`).toBeLessThanOrEqual(0);
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await part.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      await part.screenshot({ path: test.info().outputPath(`${name}-${width}-${scheme}.png`) });
+    }
+  }
+  await page.emulateMedia({ colorScheme: null });
+  if (size) await page.setViewportSize(size);
+}
 
 // Needs the playground: the ballot contract, and explorers named in the invite.
 test("vote from the docs playground and check the receipt in the explorer", { tag: "@fabric" }, async ({ wallet }) => {
@@ -41,6 +59,7 @@ test("vote from the docs playground and check the receipt in the explorer", { ta
   await expect(page.locator("#pg-el-state")).toHaveText("Open");
 
   await page.getByLabel("Amber").check();
+  let windowSalt = "";
   await wallet.approve(
     () => page.locator("#pg-el-vote").click(),
     async (win) => {
@@ -49,32 +68,66 @@ test("vote from the docs playground and check the receipt in the explorer", { ta
       await expect(win.getByText("Amber")).toHaveCount(0);
       await win.getByRole("button", { name: "Show" }).click();
       await expect(win.getByText(/"option":"Amber"/)).toBeVisible();
+      // Weft chose the salt: the window shows the value it signs.
+      windowSalt = JSON.parse((await win.getByText(/"option":"Amber"/).textContent())!).salt;
+      expect(windowSalt).toMatch(/^[0-9a-f]{32}$/);
+      // Keeping the receipt is off until the voter turns it on.
+      const keep = win.getByRole("switch", { name: "Keep the receipt in Weft" });
+      await expect(keep).not.toBeChecked();
+      await keep.check();
       await win.getByRole("button", { name: "Sign and submit" }).click();
+      await expect(win.locator(".kept-line")).toHaveText("Weft kept your receipt", { timeout: 30_000 });
+      // It closes after a moment; the picture is for checking by eye.
+      await win.screenshot({ path: test.info().outputPath("approve-kept.png") }).catch(() => {});
     },
   );
   await expect(page.locator("#pg-receipt")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("#pg-receipt-saved")).toHaveText(/^Weft kept your receipt\./);
   const receipt = JSON.parse((await page.locator("#pg-receipt-json").textContent())!);
-  expect(receipt).toMatchObject({ electionId: id, option: "Amber" });
+  expect(receipt).toMatchObject({ electionId: id, option: "Amber", salt: windowSalt });
 
-  // Weft's activity keeps the input's name, not the vote.
+  // Weft's activity keeps the input's name, not the vote; the vote is in its
+  // receipt, sealed.
   const vote = (await wallet.ui("activity")).find((a: any) => a.call.fn === "CastVote");
   expect(vote.privateInputs).toEqual(["ballot"]);
+  expect(vote.receipt).toBe(true);
   expect(JSON.stringify(vote)).not.toContain("Amber");
+  expect((await wallet.ui("receiptGet", { id: vote.id })).receipt).toEqual(receipt);
+  await look(page, page.locator("#pg-receipt"), "playground-kept");
 
-  // The link carries the choice and salt in the fragment, and the explorer's
-  // page checks them in the browser.
-  const href = (await page.locator("#pg-receipt-check").getAttribute("href"))!;
-  expect(href.split("#")[0]).not.toContain(receipt.salt);
-  const explorer = await wallet.context.newPage();
-  // Until the explorer has indexed the block, it can't find the ballot.
+  // The link carries only the transaction and the commitment. The explorer's
+  // page asks this one for the choice and salt, and checks them in the browser.
+  const check = page.locator("#pg-receipt-check");
+  const href = (await check.getAttribute("href"))!;
+  expect(href).not.toContain(receipt.salt);
+  expect(href).not.toContain("Amber");
+  const opened = wallet.context.waitForEvent("page");
+  await check.click();
+  const explorer = await opened;
+  // Until the explorer has indexed the block, it can't find the ballot, and
+  // doesn't ask. Reloading keeps its opener.
   await expect
     .poll(async () => {
-      await explorer.goto(href);
-      return explorer.locator("#local").isVisible();
-    }, { timeout: 20_000 })
+      if (await explorer.locator("#local").isVisible()) return true;
+      await explorer.reload();
+      return false;
+    }, { timeout: 30_000 })
     .toBe(true);
   await expect(explorer.locator("#local-result")).toHaveText("It matches: this commitment is a vote for Amber.");
   expect(explorer.url()).not.toContain(receipt.salt);
+  await expect(page.locator("#pg-receipt-saved")).toHaveText(/^The explorer asked for your choice and salt/);
+  await look(page, page.locator("#pg-receipt"), "playground-receipt");
+  await look(explorer, explorer.locator("#receipt"), "explorer-receipt");
+
+  // From Weft: the receipt is with the vote, and Check in the explorer hands
+  // it over the same way, from Weft's own window.
+  const popup = await wallet.popup();
+  await popup.getByRole("button", { name: /^CastVote\s*, receipt kept/ }).first().click();
+  const fromWeft = wallet.context.waitForEvent("page", (p) => p.url().startsWith(`${s.explorerUrl}/channels/mychannel/elections/`));
+  await popup.getByRole("button", { name: "Check in the explorer" }).click();
+  const weftExplorer = await fromWeft;
+  await expect(weftExplorer.locator("#local-result")).toHaveText("It matches: this commitment is a vote for Amber.");
+  expect(weftExplorer.url()).not.toContain(receipt.salt);
 
   // Org1's explorer publishes the ballot's private data hash, and the voter,
   // holding the value, can check it's the one recorded.
