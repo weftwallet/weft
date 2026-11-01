@@ -928,6 +928,12 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   }
 
+  /** Weft 0.2.0 and later make the receipt, choose the salt when asked, and offer to keep it. */
+  function makesReceipts(): boolean {
+    const [major = 0, minor = 0] = String(weft?.version ?? "").split(".").map(Number);
+    return major > 0 || minor >= 2;
+  }
+
   async function castVote() {
     const option = chosen();
     const button = $<HTMLButtonElement>("pg-el-vote");
@@ -935,32 +941,40 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     setBusy(button, true);
     clearError($("pg-vote-error"));
     // The salt is the voter's secret: without it, no one can tell which choice
-    // the commitment is for.
-    const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+    // the commitment is for. Weft chooses it, and puts it in both the ballot
+    // and the receipt, when this page sends "generate" in both. An older
+    // Weft would send "generate" to the contract, so this page chooses then.
+    const generate = makesReceipts();
+    const salt = generate ? "generate" : hex(crypto.getRandomValues(new Uint8Array(16)));
     const channel = electionChannel();
     try {
       electionMessage(`You're voting for ${option}. Weft lists it as a private input called "ballot", hidden until you choose Show.`);
-      const result = await call("weft_submit", ballot("CastVote", [election.id], { ballot: JSON.stringify({ option, salt }) }));
-      const cast = JSON.parse(result.text) as { electionId: string; txId: string; commitment: string };
-      const receipt: Receipt = {
-        type: "weft-ballot-receipt",
-        version: 1,
-        channel,
-        electionId: cast.electionId,
-        txId: cast.txId,
-        blockNumber: Number(result.blockNumber),
-        commitment: cast.commitment,
-        option,
-        salt,
-      };
+      const result = await call("weft_submit", {
+        ...ballot("CastVote", [election.id], { ballot: JSON.stringify({ option, salt }) }),
+        // Weft checks this against the ballot, and offers to keep it.
+        receipt: { type: "weft-ballot-receipt", version: 1, channel, electionId: election.id, option, salt },
+      });
+      let receipt: Receipt;
+      if (result.receipt?.receipt) {
+        receipt = result.receipt.receipt;
+      } else {
+        // Weft from before receipts: this page makes it from what the contract returned.
+        const cast = JSON.parse(result.text) as { electionId: string; txId: string; commitment: string };
+        receipt = { type: "weft-ballot-receipt", version: 1, channel, electionId: cast.electionId, txId: cast.txId, blockNumber: Number(result.blockNumber), commitment: cast.commitment, option, salt };
+      }
       votedIn.add(election.id);
-      showReceipt(receipt);
+      showReceipt(receipt, result.receipt ?? null);
       electionMessage(`Your ballot is in block ${result.blockNumber}. Your receipt is below.`);
       void loadExplorers();
-    } catch (error) {
+    } catch (error: any) {
       if (/already voted/.test(contractSays(error) ?? "")) votedIn.add(election.id);
       $("pg-el-message").textContent = "";
-      electionError("pg-vote-error", error, "Your vote wasn't committed.");
+      if (error?.code === -32602) {
+        // Weft checks the receipt before it opens a window.
+        showError($("pg-vote-error"), "Weft refused the request because of the receipt this page sent. Nothing was signed.", technical(error));
+      } else {
+        electionError("pg-vote-error", error, "Your vote wasn't committed.");
+      }
     } finally {
       setBusy(button, false);
       updateElectionButtons();
@@ -984,29 +998,66 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     salt: string;
   };
   let shownReceipt: Receipt | null = null;
+  /** Whether Weft kept the receipt shown, so the saved line can say it has a copy too. */
+  let keptInWeft = false;
   const receiptFileName = (r: Receipt) => `weft-receipt-${r.electionId.replace(/[^A-Za-z0-9_-]/g, "-")}-block-${r.blockNumber}.json`;
 
-  function showReceipt(r: Receipt) {
+  /** What Weft said about the receipt: null from a Weft that doesn't make receipts. */
+  type ReceiptResult = { kept: true; receipt: Receipt } | { kept: false; reason: "declined" | "storage" | "mismatch"; receipt: Receipt };
+
+  function showReceipt(r: Receipt, weftSays: ReceiptResult | null) {
     shownReceipt = r;
-    // This page keeps nothing, so until the receipt is saved, it says so.
+    keptInWeft = weftSays?.kept === true;
+    // This page keeps nothing, so until the receipt is saved somewhere, it
+    // says so. When Weft kept it, the same line says that instead.
     const line = $("pg-receipt-saved");
-    line.className = "pg-receipt-line pg-receipt-line--unsaved";
-    line.textContent = "This page doesn't keep your receipt. Save it before you leave.";
+    const [tone, text] = keptInWeft
+      ? ["kept", "Weft kept your receipt. It's with this vote in your Weft activity, and you can still download or copy it here."]
+      : weftSays?.kept === false && weftSays.reason === "storage"
+        ? ["unsaved", "Weft couldn't keep your receipt. Save it before you leave."]
+        : weftSays?.kept === false && weftSays.reason === "mismatch"
+          ? ["unsaved", "Weft didn't keep your receipt. Save it before you leave."]
+          : ["unsaved", "This page doesn't keep your receipt. Save it before you leave."];
+    line.className = `pg-receipt-line pg-receipt-line--${tone}`;
+    line.textContent = text;
     clearError($("pg-receipt-error"));
     reveal($("pg-receipt"));
     $("pg-receipt-json").textContent = JSON.stringify(r, null, 2);
     const link = $<HTMLAnchorElement>("pg-receipt-check");
     if (explorerBase) {
-      // The choice and salt go in the fragment, which the browser never sends
-      // to the explorer's server; the explorer's page checks them locally.
+      // Only the public part goes in the address. The choice and salt go to
+      // the explorer's page by message once it asks (checkInExplorer).
       const query = new URLSearchParams({ tx: r.txId, commitment: r.commitment });
-      const local = new URLSearchParams({ option: r.option, salt: r.salt });
-      link.href = `${explorerBase}/channels/${encodeURIComponent(r.channel)}/elections/${encodeURIComponent(r.electionId)}?${query}#${local}`;
+      link.href = `${explorerBase}/channels/${encodeURIComponent(r.channel)}/elections/${encodeURIComponent(r.electionId)}?${query}#receipt`;
       link.hidden = false;
     } else {
       link.hidden = true;
     }
   }
+
+  /**
+   * Opens the explorer's election page and, once it asks, gives it the
+   * choice and salt by postMessage, to that window and the explorer's exact
+   * origin only, so they never go in an address the browser's history keeps.
+   * The page asks with a message that carries nothing, and sends nothing
+   * back. Without noopener, or it couldn't ask.
+   */
+  let handoff: { win: Window; origin: string; receipt: Receipt } | null = null;
+  function checkInExplorer(e: MouseEvent) {
+    const link = e.currentTarget as HTMLAnchorElement;
+    if (!shownReceipt || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const win = window.open(link.href, "_blank");
+    if (!win) return; // the link opens it, and the voter enters the choice and salt there
+    e.preventDefault();
+    handoff = { win, origin: new URL(link.href).origin, receipt: shownReceipt };
+  }
+  window.addEventListener("message", (e) => {
+    if (!handoff || e.source !== handoff.win || e.origin !== handoff.origin) return;
+    if (e.data?.type !== "weft-receipt-check:ready" || e.data.version !== 1) return;
+    const r = handoff.receipt;
+    handoff.win.postMessage({ type: "weft-receipt-check:receipt", version: 1, electionId: r.electionId, txId: r.txId, option: r.option, salt: r.salt }, handoff.origin);
+    if (r === shownReceipt) receiptSaved("The explorer asked for your choice and salt, and this page gave them to it. It checks them in your browser.");
+  });
 
   /** The notice is replaced, in its place, by where the receipt went, so nothing below it moves. */
   function receiptSaved(text: string) {
@@ -1027,7 +1078,7 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     clearError($("pg-receipt-error"));
-    receiptSaved(`Downloaded as ${name}.`);
+    receiptSaved(`Downloaded as ${name}.${keptInWeft ? " Weft has a copy too." : ""}`);
   }
 
   async function closeElection() {
@@ -1111,13 +1162,14 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     if (!$<HTMLButtonElement>("pg-new-create").disabled) void createElection();
   });
   $("pg-receipt-download").addEventListener("click", downloadReceipt);
+  $<HTMLAnchorElement>("pg-receipt-check").addEventListener("click", checkInExplorer);
   $("pg-receipt-copy").addEventListener("click", async () => {
     const button = $("pg-receipt-copy");
     clearError($("pg-receipt-error"));
     try {
       await navigator.clipboard.writeText($("pg-receipt-json").textContent ?? "");
       button.textContent = "Copied";
-      receiptSaved("Copied. Paste it somewhere you'll keep it.");
+      receiptSaved(keptInWeft ? "Copied. Weft has a copy too." : "Copied. Paste it somewhere you'll keep it.");
       setTimeout(() => (button.textContent = "Copy receipt"), 2000);
     } catch {
       getSelection()?.selectAllChildren($("pg-receipt-json"));
@@ -1524,10 +1576,16 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
   .pg-receipt-line--saved {
     color: var(--weft-text-muted);
   }
-  .pg-receipt-line--saved::before {
+  .pg-receipt-line--saved::before,
+  .pg-receipt-line--kept::before {
     background: var(--weft-accent-text);
     -webkit-mask-image: var(--pg-saved-icon);
     mask-image: var(--pg-saved-icon);
+  }
+  /* Weft kept it: said in the same place, in the text's colour. */
+  .pg-receipt-line--kept {
+    color: var(--weft-text);
+    font-weight: 500;
   }
   .pg {
     --pg-saved-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
