@@ -1,0 +1,13 @@
+---
+// Experimental (docs/adr/0009): the "Private election" section, for
+// weft_castBallot (docs/adr/0007). It is hidden until Playground.astro finds
+// "castBallot" in window.weft.features, which only Weft Experimental lists,
+// and no build lists it yet. The section has no content until castBallot is
+// built.
+---
+
+<section class="pg-card" id="pg-private" aria-labelledby="pg-private-heading" data-feature="castBallot" hidden>
+  <div class="pg-head">
+    <h2 id="pg-private-heading">Private election</h2>
+  </div>
+</section>

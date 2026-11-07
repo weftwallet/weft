@@ -3,6 +3,7 @@
 // invite: the public demo network when one is hosted (products.json, "demo"),
 // the local playground stack, or your own.
 import { productHref } from "@weftwallet/ui/links";
+import PrivateElection from "./PrivateElection.astro";
 const docs = (path: string) => productHref("docs", path);
 interface Props {
   /** The demo network's invite URL, when one is hosted; the page opens on it. */
@@ -201,6 +202,8 @@ const { demoInvite = null } = Astro.props;
     </details>
   </section>
 
+  <PrivateElection />
+
   <section class="pg-card" id="pg-explorers" aria-labelledby="pg-ex-heading" hidden>
     <div class="pg-head">
       <h2 id="pg-ex-heading">5. Compare the explorers</h2>
@@ -382,11 +385,23 @@ const { demoInvite = null } = Astro.props;
   // The chip says it is looking; the loader joins it only if the look takes a while.
   const lookingLoader = window.setTimeout(() => $("pg-weft").dataset.state === "pending" && $("pg-weft").classList.add("is-working"), 300);
 
+  /**
+   * Sections for a feature only some Weft builds have, marked data-feature
+   * (PrivateElection.astro): shown only when window.weft.features lists it.
+   */
+  function showFeatureSections() {
+    const features: unknown[] = Array.isArray(weft?.features) ? weft.features : [];
+    for (const section of document.querySelectorAll<HTMLElement>("[data-feature]")) {
+      section.hidden = !features.includes(section.dataset.feature);
+    }
+  }
+
   function detect() {
     if (w.weft?.isWeft) {
       if (weft) return;
       weft = w.weft;
       setWeftPill("ok");
+      showFeatureSections();
       weft.on("identityChanged", (identity: any) => {
         log("•", "event identityChanged", identity);
         showIdentity(identity);
