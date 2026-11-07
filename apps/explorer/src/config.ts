@@ -35,6 +35,11 @@ export interface ExplorerConfig {
    * a browser extension's.
    */
   receiptOrigins: string[];
+  /**
+   * Experimental (docs/adr/0009): WEFT_EXPERIMENTAL=1. Off by default. Only
+   * then may the policy name a channel's privateElections.
+   */
+  experimental: boolean;
 }
 
 /**
@@ -121,6 +126,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
   const policyPath = required(env, "WEFT_EXPLORER_POLICY", "explorer.yaml");
   const tls = env.WEFT_PEER_TLS_CA_CERT;
   const policy = loadPolicy(policyPath);
+  const experimental = env.WEFT_EXPERIMENTAL === "1";
+  const privateChannel = Object.entries(policy.channels).find(([, c]) => c.privateElections)?.[0];
+  if (privateChannel && !experimental) {
+    throw new Error(
+      `channels.${privateChannel}.privateElections is set in ${policyPath}, but the explorer shows private elections only when it's started with WEFT_EXPERIMENTAL=1. Set WEFT_EXPERIMENTAL=1, or remove privateElections from the policy.`,
+    );
+  }
   const products = parseProductAddresses(env.WEFT_EXPLORER_PRODUCTS_DOMAIN);
   return {
     port: Number(env.PORT ?? env.WEFT_EXPLORER_PORT ?? 8790),
@@ -143,6 +155,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
         : new URL(env.WEFT_EXPLORER_NETWORK_PAGE || productAddress("network", products)!).toString(),
     products,
     receiptOrigins: receiptOrigins(products, env.WEFT_EXPLORER_RECEIPT_ORIGINS),
+    experimental,
     peers: (env.WEFT_EXPLORER_PEERS ?? "")
       .split(",")
       .map((u) => u.trim().replace(/\/+$/, ""))

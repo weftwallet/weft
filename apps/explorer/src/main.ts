@@ -48,6 +48,10 @@ if (channels.length === 0) {
 } else {
   app.log.info(`Publishing ${channels.join(", ")} as ${config.name}, read with ${config.mspId}`);
 }
+if (config.experimental) {
+  // docs/adr/0009: the switch is parsed, and nothing experimental is shown yet.
+  app.log.warn("Started with WEFT_EXPERIMENTAL=1, for Weft Experimental. Private election pages aren't built yet, so channels with privateElections show as ordinary channels.");
+}
 if (rebuilt) app.log.info("The policy changed since the last run, so the index is being rebuilt from block 0.");
 indexer.start();
 crossCheck.start();

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { domain } from "@weftwallet/brand/products";
 import { loadConfig, parseProductAddresses, productAddress, PUBLIC_PRODUCTS } from "./config.ts";
 import { ExplorerDb } from "./db.ts";
-import { parsePolicy, publishedChannels } from "./policy.ts";
+import { parsePolicy, policyFingerprint, publishedChannels } from "./policy.ts";
 import { repositoryUrl } from "./pages.ts";
 import { buildServer } from "./server.ts";
 
@@ -74,6 +74,44 @@ describe("loading the products setting at startup", () => {
 
   it("stops at startup on a value that isn't a domain", () => {
     expect(() => loadConfig(env({ WEFT_EXPLORER_PRODUCTS_DOMAIN: "https://weft.example.org" }))).toThrow(/WEFT_EXPLORER_PRODUCTS_DOMAIN/);
+  });
+});
+
+describe("the experimental switch (docs/adr/0009)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "weft-explorer-experimental-"));
+  writeFileSync(join(dir, "cert.pem"), "cert");
+  writeFileSync(join(dir, "key.pem"), "key");
+  writeFileSync(join(dir, "plain.yaml"), "channels:\n  mychannel:\n    level: public\n");
+  writeFileSync(join(dir, "private.yaml"), "channels:\n  privatevote-chair-2027:\n    level: public\n    privateElections: private-ballot\n");
+  const env = (policy: string, extra: Record<string, string> = {}) => ({
+    WEFT_PEER_ENDPOINT: "localhost:7051",
+    WEFT_EXPLORER_MSP_ID: "Org1MSP",
+    WEFT_EXPLORER_CERT: join(dir, "cert.pem"),
+    WEFT_EXPLORER_KEY: join(dir, "key.pem"),
+    WEFT_EXPLORER_POLICY: join(dir, policy),
+    ...extra,
+  });
+
+  it("is off by default", () => {
+    expect(loadConfig(env("plain.yaml")).experimental).toBe(false);
+  });
+
+  it("allows privateElections only with WEFT_EXPERIMENTAL=1", () => {
+    expect(() => loadConfig(env("private.yaml"))).toThrow(/channels\.privatevote-chair-2027\.privateElections is set in .*, but the explorer shows private elections only when it's started with WEFT_EXPERIMENTAL=1/);
+    const config = loadConfig(env("private.yaml", { WEFT_EXPERIMENTAL: "1" }));
+    expect(config.experimental).toBe(true);
+    expect(config.policy.channels["privatevote-chair-2027"]?.privateElections).toBe("private-ballot");
+  });
+
+  it("refuses a privateElections that isn't a contract name", () => {
+    expect(() => parsePolicy({ channels: { "privatevote-chair-2027": { level: "public", privateElections: true } } })).toThrow(/privateElections must be the private-ballot contract's name/);
+  });
+
+  it("leaves the fingerprint of a policy without privateElections unchanged", () => {
+    const plain = parsePolicy({ channels: { mychannel: { level: "public", elections: "ballot" } } });
+    const withPrivate = parsePolicy({ channels: { mychannel: { level: "public", elections: "ballot", privateElections: "private-ballot" } } });
+    expect(policyFingerprint(plain)).toBe("07d48a3421ad314dde36ae96237777c73c5c49f1ff65486fd7f68cc8c824f650");
+    expect(policyFingerprint(withPrivate)).not.toBe(policyFingerprint(plain));
   });
 });
 

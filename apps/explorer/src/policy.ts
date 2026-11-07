@@ -14,6 +14,10 @@
  *       elections: ballot      # optional: the ballot contract, for election pages
  *       privateData: names     # names | hashes: private data collections by name and
  *                              # count only, or with each key's and value's SHA-256
+ *       privateElections: private-ballot
+ *                              # experimental, needs WEFT_EXPERIMENTAL=1: the
+ *                              # private-ballot contract (docs/adr/0007). Parsed
+ *                              # only; private election pages aren't built yet.
  */
 
 import { createHash } from "node:crypto";
@@ -32,6 +36,12 @@ export interface ChannelPolicy {
   contracts: Record<string, Level>;
   /** The ballot contract on this channel (examples/ballot-contract), whose elections the explorer shows. */
   elections?: string;
+  /**
+   * Experimental (docs/adr/0009): the private-ballot contract on this channel
+   * (examples/private-ballot-contract). Allowed only when the explorer is
+   * started with WEFT_EXPERIMENTAL=1 (config.ts). Nothing reads it yet.
+   */
+  privateElections?: string;
   /**
    * Private data collections are always named, with how many keys a
    * transaction read and wrote. "hashes" also publishes each key's and value's
@@ -71,6 +81,9 @@ export function parsePolicy(source: unknown): Policy {
     if (c.elections !== undefined && (typeof c.elections !== "string" || !c.elections)) {
       throw new Error(`channels.${name}.elections must be the ballot contract's name.`);
     }
+    if (c.privateElections !== undefined && (typeof c.privateElections !== "string" || !c.privateElections)) {
+      throw new Error(`channels.${name}.privateElections must be the private-ballot contract's name.`);
+    }
     channels[name] = {
       level: level(c.level, `channels.${name}.level`),
       values,
@@ -78,6 +91,7 @@ export function parsePolicy(source: unknown): Policy {
       privateData,
       contracts,
       ...(typeof c.elections === "string" ? { elections: c.elections } : {}),
+      ...(typeof c.privateElections === "string" ? { privateElections: c.privateElections } : {}),
     };
   }
   return { organisation: typeof root.organisation === "string" ? root.organisation : null, channels };
@@ -89,7 +103,10 @@ export function policyFingerprint(policy: Policy): string {
     .sort()
     .map((name) => {
       const c = policy.channels[name]!;
-      return [name, c.level, c.values, c.submitter, Object.entries(c.contracts).sort(), c.elections ?? null, c.privateData];
+      const entry: unknown[] = [name, c.level, c.values, c.submitter, Object.entries(c.contracts).sort(), c.elections ?? null, c.privateData];
+      // Added only when set, so every policy without it keeps its fingerprint.
+      if (c.privateElections) entry.push({ privateElections: c.privateElections });
+      return entry;
     });
   return createHash("sha256").update(JSON.stringify(sorted)).digest("hex");
 }
