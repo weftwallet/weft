@@ -44,6 +44,7 @@ channels:
 | `values: hash` | Arguments, written values, return values and event payloads are shown as SHA-256 hashes. Keys are still shown. |
 | `submitter: hide` | Transactions show no submitter. Endorsing organisations are still shown, since they're peers, not people. |
 | `privateData: hashes` | Transactions list the SHA-256 of each private data key and value, with a check for anyone holding a value to confirm it's the one recorded. Without it, private data is shown by collection and count only. |
+| `privateElections: private-ballot` | Experimental: the channel's [private-ballot contract](/experimental/contract-api/). Needs `WEFT_EXPERIMENTAL=1` and `values: show`. See [Private elections](#private-elections). |
 
 A contract can be more private than its channel, never less: `members` contracts on a `public` channel show their transactions to everyone as "members only", with the ID, time and status, and the details to signed-in members.
 
@@ -78,6 +79,7 @@ Config blocks hold the channel's whole configuration. The explorer compares each
 | `WEFT_EXPLORER_NETWORK_PAGE` | No | The [network page](/operators/network/) that block pages link to, for checking a block without relying on this explorer. It's also the only page whose Weft sign-ins this explorer accepts, for members-only channels. Defaults to [Weft Network](weft:network/); set it to your own copy, or `off`. |
 | `WEFT_EXPLORER_PRODUCTS_DOMAIN` | No | Where the other Weft products are, for the products menu, the footer and the "Get Weft" link: the domain the Weft sites are under, such as `weft.example.org`, which puts the docs at `docs.weft.example.org`. `dev` links to the local sites instead; `pnpm dev:explorer` and the playground set it. Defaults to the domain in `packages/brand/products.json`. The default network page is under it too. |
 | `WEFT_EXPLORER_RECEIPT_ORIGINS` | No | Your voting web apps' origins, comma-separated, for example `https://vote.example.org`: an election page they open takes a receipt's choice and salt from them by message, so the voter doesn't enter them. HTTPS, except `localhost`. Weft Playground, where the products are, and Weft itself are always accepted. See [Run an election](/guides/elections/#checking-a-receipt-in-the-explorer). |
+| `WEFT_EXPERIMENTAL` | No | `1` turns on the experimental private election pages for channels whose policy names `privateElections` ([ADR 0009](/reference/decisions/)). Off by default. |
 | `PORT` | No | Default `8790`. |
 
 Register a client identity for the explorer with your CA rather than reusing a person's. It needs to satisfy the channel's `Readers` policy, which a client of a member organisation does.
@@ -145,6 +147,54 @@ List the other organisations' explorers in `WEFT_EXPLORER_PEERS`. Every 15 secon
 Pages then say how many organisations agree: each block shows "3 of 4 organisations report this block", and the channel card lists each organisation as agreeing, still catching up, unreachable, or disagreeing from a given block. When a checkpoint disagrees, the explorer searches the other explorer's public block hashes for the first block that differs.
 
 Members-only channels are cross-checked too. A members-only channel's checkpoint and blocks are for its members, so each explorer signs its requests to the others with its own identity: a statement of the path it asks for, when, and its MSP ID. The other explorer serves it only if the signature matches, the request is under five minutes old, and the certificate was issued by the CA of an organisation in that channel's configuration. Serve each explorer at the root of its address, since the signature covers the path.
+
+## Private elections
+
+:::caution[Experimental]
+This section describes the explorer started with `WEFT_EXPERIMENTAL=1`, for Weft Experimental. It isn't part of the main product, and no one outside the project has reviewed the cryptography it checks.
+:::
+
+A channel whose policy names `privateElections` gets pages for the elections of the [private-ballot contract](/experimental/contract-api/), when the explorer is started with `WEFT_EXPERIMENTAL=1`:
+
+```yaml
+channels:
+  privatevote-budget-2027:
+    level: public
+    values: show                     # required: the pages are made from the contract's arguments and writes
+    submitter: hide                  # each ballot's voter tag is published either way
+    privateElections: private-ballot
+```
+
+The explorer refuses to start with `privateElections` and without `WEFT_EXPERIMENTAL=1`, or with `privateElections` and `values: hash` on the same channel. Channels without `privateElections` are unchanged, and without the switch the explorer serves none of what this section describes.
+
+| Setting | Effect |
+|---|---|
+| `privateElections` with `submitter: show` | Each ballot's submitter is shown, as on any channel, and the API publishes each ballot's certificate, so the browser works out each voter tag again itself. |
+| `privateElections` with `submitter: hide` | The submitter's certificate, name and MSP ID stay hidden, and each ballot's voter tag is still published, because every ballot proof is bound to it. The explorer's server works out each tag from the transaction's creator as it reads the block, and the browser checks every proof against the published tag. See [What the explorer publishes](/experimental/cast-ballot/#what-the-explorer-publishes). |
+
+As it reads each block, the explorer checks each private-ballot transaction as the contract did: every ceremony post, the key and fingerprint when the election opens, each ballot's proofs, voter tag and tracking code, the totals when voting closes, each decryption share and the tally. It decodes each argument and written value the way the Go contract does, so a byte that isn't UTF-8 becomes U+FFFD exactly where it did on the endorsing peers. Checking ballots costs about 23 ms of one core per three-option ballot, so a backlog of 10,000 ballots takes about 4.5 minutes to index ([Prototype results](/experimental/prototype-results/#the-explorer-version-1)).
+
+`/channels/<channel>/elections` lists the channel's private elections, and each election's page shows:
+
+- its state: the key ceremony's round, open, open past its planned closing time, counting, counted, failed (naming the trustee organisation that reported a bad share) or cancelled;
+- the election fingerprint in five groups of four, as Weft shows it before each vote;
+- the planned closing time and, once voting has closed, the block it closed in, which says when the trustees closed it before that time;
+- the key ceremony, with each trustee's posts and this explorer's check of each;
+- the result: the encrypted totals, each trustee's decryption share with its proofs, and the counts;
+- Check every ballot, which re-checks the whole election in up to four Web Workers in the browser, from the published data only, and reports either that everything checks out or the first failure, by ballot and transaction;
+- the tracking code check that Weft links to, `?tracking=<tracking>#receipt`, which also takes a ballot's transaction ID or a version 2 receipt file;
+- every ballot, with its tracking code, voter tag, block and proof status, 50 to a page.
+
+The content security policy adds `worker-src 'self'` for the full check's worker, `/assets/full-check.js`, which `pnpm --filter @weftwallet/explorer build` bundles from `@weftwallet/tally` into `dist/worker/full-check.js`. The explorer refuses to start with the switch and a channel that names `privateElections` if that file isn't built.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/v1/channels/:channel/private-elections` | The channel's private elections, newest first. |
+| `GET /api/v1/channels/:channel/private-elections/:id` | One election: the record's fields, its state, each trustee's ceremony posts, close request and decryption share, with the blocks they are in and this explorer's check of each, the closing block, the totals and the tally. |
+| `GET /api/v1/channels/:channel/private-elections/:id/ballots?offset=&limit=` | Its ballots in ledger order, up to 1,000 at a time, each with its transaction, block, tracking code, voter tag, the ballot as the contract stored it and this explorer's check, and with `submitter: show` its submitter's MSP ID and certificate. |
+| `GET /api/v1/channels/:channel/private-elections/:id/tracking/:code` | The ballot with that tracking code or transaction ID, and whether it is in the totals and the count. |
+
+`GET /api/v1/status` adds `privateElections: true` and `voterTags: true` to a channel's `publishes` when it has private elections.
 
 ## In the playground
 

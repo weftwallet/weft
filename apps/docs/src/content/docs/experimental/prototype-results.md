@@ -4,7 +4,7 @@ description: What the private tally and voter credential prototypes of 1 Novembe
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The results on this page come from the studies' prototypes, except [version 1's timings](#version-1-measured), which come from `@weftwallet/tally` and the contract's `internal/tally`.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The results on this page come from the studies' prototypes, except [version 1's timings](#version-1-measured), which come from `@weftwallet/tally` and the contract's `internal/tally`, and [the explorer's](#the-explorer-version-1).
 :::
 
 The studies behind [ADR 0007](/reference/decisions/) and [ADR 0008](/reference/decisions/) each built a prototype on 1 November 2026. Where version 1 differs from a prototype, the [specification](/experimental/private-tally-spec/) says so.
@@ -64,7 +64,23 @@ The study's estimate, made before any Go ristretto255 library could be fetched, 
 
 ### The explorer's full check
 
-The explorer's full check costs about 24 ms per three-option ballot in one browser thread: about 4 minutes for 10,000 ballots, and about 1 minute across four Web Workers. Batch verification, which folds all the proof equations into one large multi-scalar multiplication, is left for later.
+The prototype's estimate was about 24 ms per three-option ballot in one browser thread: about 4 minutes for 10,000 ballots, and about 1 minute across four Web Workers. Batch verification, which folds all the proof equations into one large multi-scalar multiplication, is left for later.
+
+### The explorer, version 1
+
+The explorer's private election pages were timed on 8 November 2026 on a 2.1 GHz Intel Xeon with two cores: Node 22.22.0 for the indexer, and headless Chromium 141 for the full check, with `@weftwallet/tally` and noble 2.4.0, for three-option ballots in a 2 of 2 election. The browser had two cores, so the full check ran in two workers.
+
+| Step | Measured |
+|---|---|
+| Indexing: checking one ballot as the block is read (decoding, the voter tag, the proofs, the tracking code and the repeat checks) | 23.7 ms |
+| Indexing: one ballot in all, with decoding the block and storing it | 26.5 ms |
+| Indexing 10,000 ballots from block 0 | 265 s, about 4.5 minutes |
+| Full check, 13 ballots, as in the playground | 0.5 to 0.6 s in two workers, from pressing Check every ballot to the result |
+| Full check, 10,000 ballots | 134 s, about 2.2 minutes, in two workers, including reading the ballots from the explorer |
+| Full check, stopping at a changed ballot, 7th of 13 | 0.3 to 0.4 s |
+| The full check's worker, minified | 53 KB, 20 KB gzipped |
+
+The full check spends about 27 ms per ballot in each worker, so four workers would take about 1.1 minutes for 10,000 ballots, as the prototype estimated. On the native network, both organisations' explorers indexed every election the earlier steps had seeded and counted, and one seeded, voted in by eight voters and counted for this step, and found every ceremony post, key, ballot, total, decryption share and tally to check out. Batch verification, left for later, would cut both the indexing and the full check.
 
 ## Voter credentials
 

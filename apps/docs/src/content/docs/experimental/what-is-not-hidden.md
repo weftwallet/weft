@@ -58,7 +58,7 @@ Voting ends when k trustees close the election on the ledger, not at `closesAt`,
 
 ### Throughput
 
-Verification limits how many ballots a second an endorsing peer accepts: checking a three-option ballot takes about 0.7 ms of one core in Go, about 1,400 a second before the contract's ledger reads and writes, against about 65 in Node on the same machine. The explorer's full check takes about 4 minutes for 10,000 three-option ballots in one browser thread, and about 1 minute across four workers. [Prototype results](/experimental/prototype-results/#timings) has the measurements.
+Verification limits how many ballots a second an endorsing peer accepts: checking a three-option ballot takes about 0.7 ms of one core in Go, about 1,400 a second before the contract's ledger reads and writes, against about 65 in Node on the same machine. The explorer's full check takes about 27 ms per three-option ballot in each browser worker: 2.2 minutes for 10,000 ballots in the two workers of a two-core machine, about 4.5 minutes in one, and about 1.1 minutes in four. [Prototype results](/experimental/prototype-results/#timings) has the measurements.
 
 ## Fabric's limits
 
