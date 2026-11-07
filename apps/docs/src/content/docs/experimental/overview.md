@@ -4,7 +4,7 @@ description: Weft Experimental, a separate build with a private tally and anonym
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. Only the build switch and the experimental channels are built so far. The two features aren't built yet, and the page describes their planned design.
 :::
 
 ## The experimental track
@@ -18,7 +18,7 @@ A page detects the experimental build from `window.weft.features`:
 | Build | `features` |
 |---|---|
 | Weft | `["receipts"]` |
-| Weft Experimental | `["receipts", "castBallot", "voterCredentials"]` |
+| Weft Experimental | `["receipts", "castBallot", "voterCredentials"]`, each once it's built. Today it lists `["receipts"]`. |
 
 Both report `version` 0.1.0, so a page checks `features` to tell them apart. See [Casting a ballot](/experimental/cast-ballot/#detecting-support).
 
@@ -59,29 +59,43 @@ Once both apply, the relay sees only ciphertext, and the organisations see neith
 
 ## Run it
 
-You need everything [the local test network](/dapps/test-network/) needs, and Go for the contract.
+You need everything [the local test network](/dapps/test-network/) needs, and Go for the contract. `pnpm playground:up --experimental` checks for Go and stops before starting anything if `go` isn't on your `PATH` (macOS: `brew install go`; others: [go.dev/dl](https://go.dev/dl/)).
 
 ```sh
 pnpm install
-WEFT_EXPERIMENTAL=1 pnpm --filter @weftwallet/extension build   # Weft Experimental
-pnpm playground:up --experimental                               # the network, plus the experimental channel
-pnpm dev                                                        # the sites, in another terminal
+pnpm --filter @weftwallet/extension build:experimental   # Weft Experimental, in apps/extension/.output-experimental
+pnpm playground:up --experimental                         # the network, plus the experimental channels
+pnpm dev                                                  # the sites, in another terminal
 ```
 
-Load Weft Experimental into a browser profile that doesn't have normal Weft. Both define `window.weft`, and the first to load on a page provides it.
+Load `apps/extension/.output-experimental/chrome-mv3` into a browser profile that doesn't have normal Weft, from `chrome://extensions` with Developer mode and Load unpacked. Both builds define `window.weft`, and the first to load on a page provides it. `pnpm dev:extension:experimental` instead opens its own Chrome with Weft Experimental loaded, in a profile of its own, and reloads it as you edit. The [extension's README](https://github.com/ifeanyi-ugwu/weft/tree/main/apps/extension) has the Firefox commands.
+
+Weft Experimental's popup and windows say "Weft Experimental", and its welcome says it is a separate build. It has its own extension ID (in Firefox, `experimental@weft.ifeanyiugwu.dev`), so you enrol in it separately.
 
 `--experimental` adds, on top of everything `playground:up` runs:
 
-| What | Planned value |
-|---|---|
-| Channel | `privatevote`, with Org1MSP and Org2MSP as endorsers and trustees, and VotersMSP, an idemix organisation |
-| Contract | `private-ballot`, from `examples/private-ballot-contract`, endorsed by Org1 and Org2 |
-| Key ceremony | Run with `weft trustee` for Org1 and Org2, 2 of 2 |
-| Elections | `budget-2027`, with X.509 voters from Org1 and Org2 (private tally only), and `chair-2027`, with voter credentials from VotersMSP (both features) |
-| Voters' CA | A CA of its own for `chair-2027`, with demo voters `voter1` to `voter5` |
-| Explorers | Both organisations' explorers, started with `WEFT_EXPERIMENTAL=1`, with election pages for `privatevote` |
+| What | Value | Now |
+|---|---|---|
+| Channels | One per election, `privatevote-<election id>`, each with Org1MSP and Org2MSP as endorsers, administrators and trustees. An election with voter credentials adds its own idemix organisation: `privatevote-chair-2027` has ChairVoters2027MSP for `chair-2027` | `privatevote-chair-2027` created |
+| Voters' CA | A Fabric CA for each such election, each with its own issuer key, in Docker like test-network's CAs. For `chair-2027`, the CA `ca-chair-2027` on `https://localhost:7058`, whose idemix issuer key is ChairVoters2027MSP's, with demo voters `voter1` to `voter5` (secret `voter1pw` and so on), each registered with affiliation `voters` and one enrolment | Running. No CA proxy for the browser yet. |
+| Contract | `private-ballot`, from `examples/private-ballot-contract`, endorsed by Org1 and Org2 | Not built yet |
+| Key ceremony | Run with `weft trustee` for Org1 and Org2, 2 of 2 | Not built yet |
+| Elections | `budget-2027` on `privatevote-budget-2027`, with X.509 voters from Org1 and Org2 (private tally only), and `chair-2027` on `privatevote-chair-2027`, with voter credentials from ChairVoters2027MSP (both features) | Not built yet |
+| Relay | Started with `WEFT_EXPERIMENTAL=1` and `WEFT_IDEMIX_MSP_IDS=ChairVoters2027MSP`, and its invite lists every election's channel | Running. It accepts no idemix signers yet. |
+| Explorers | Both organisations' explorers, started with `WEFT_EXPERIMENTAL=1`, with `privateElections: private-ballot` for every election's channel in their policies | Running. They show those channels as ordinary channels until election pages are built. |
 
-Weft Playground shows a "Private election" section only when Weft Experimental is present. Both trustees run on your machine, so the playground hides nothing from whoever runs it.
+`pnpm playground:down` removes the experimental channels and the voters' CAs with everything else. Another election with voter credentials is one more entry in the playground's list of elections, and the next `pnpm playground:up --experimental` starts its CA and creates its channel. The [playground's README](https://github.com/ifeanyi-ugwu/weft/tree/main/playground#adding-an-election) has the details. Run `pnpm playground:up` without `--experimental` to go back to the normal relay and explorers on the same network.
+
+Weft Playground shows a "Private election" section only when `window.weft.features` includes `"castBallot"`, which no build lists yet. Both trustees run on your machine, so the playground hides nothing from whoever runs it.
+
+### The switches
+
+| Part | Switch | Off by default |
+|---|---|---|
+| Extension | `WEFT_EXPERIMENTAL=1` at build time, which `dev:experimental`, `build:experimental` and `build:e2e:experimental` set. It changes the name, the extension ID, the output folder and `features`, and the normal build contains none of the experimental code. | Yes |
+| Relay | `WEFT_EXPERIMENTAL=1`, and `WEFT_IDEMIX_MSP_IDS` for the voter MSPs. It refuses to start with `WEFT_IDEMIX_MSP_IDS` and without `WEFT_EXPERIMENTAL=1`. | Yes |
+| Explorer | `WEFT_EXPERIMENTAL=1`, and a channel's `privateElections` in the policy. It refuses to start with `privateElections` and without `WEFT_EXPERIMENTAL=1`. | Yes |
+| Playground stack | `pnpm playground:up --experimental` | Yes |
 
 ## Pages
 

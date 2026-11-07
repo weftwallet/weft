@@ -15,8 +15,8 @@ Weft never connects a voter credential to a site, `weft_identity` never returns 
 
 Each election gets its own issuer key, because Fabric's idemix has no revocation and its credentials don't expire. A leaked credential under a standing issuer key could vote in every later election.
 
-1. Add a CA for the election to the voters' Fabric CA server, with its own CA name, for example `ca-chair-2027`. Its `fabric-ca-server init` writes the idemix `IssuerPublicKey` and `IssuerRevocationPublicKey`.
-2. Add an idemix organisation for it to the channel, with a channel configuration update: an MSP of type idemix, for example `ChairVoters2027MSP`, whose MSP folder holds those two keys. Fabric recommends one idemix MSP per channel, because the MSP ID tells idemix organisations apart.
+1. Run a Fabric CA server for the election, with its own CA name, for example `ca-chair-2027`. Its `fabric-ca-server init` writes the idemix `IssuerPublicKey` and `IssuerRevocationPublicKey`. Each election has its own CA server, as in the playground.
+2. Create a channel for the election, for example `privatevote-chair-2027`, with the trustee organisations and one idemix organisation: an MSP of type idemix, for example `ChairVoters2027MSP`, whose MSP folder holds those two keys. Fabric recommends one idemix MSP per channel, because the MSP ID tells idemix organisations apart. A channel per election also keeps elections apart: one election's voters can't read another's ballots, and closing one election changes no other channel.
 3. Register every voter with the same affiliation, for example `voters`, and `maxenrollments 1`:
 
    ```sh
@@ -46,7 +46,7 @@ A voter invite is a JSON document, served over HTTPS and shared as a link, like 
   "caUrl": "https://ca.voters.example.org",
   "caName": "ca-chair-2027",
   "relayUrl": "https://relay.election.example.org",
-  "channel": "privatevote",
+  "channel": "privatevote-chair-2027",
   "chaincode": "private-ballot",
   "electionId": "chair-2027",
   "issuerKeyHash": "<64 hex characters>",

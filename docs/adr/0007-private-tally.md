@@ -2,7 +2,7 @@
 
 Proposed on 1 November 2026 as an experiment. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channel and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Nothing in this record is built yet.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Nothing in this record is built yet.
 
 ## Context and problem
 

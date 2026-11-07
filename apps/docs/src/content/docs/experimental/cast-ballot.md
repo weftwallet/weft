@@ -35,7 +35,7 @@ Weft Playground shows its "Private election" section only when `castBallot` is p
 
 ```ts
 interface CastBallotParams {
-  channel: string;     // for example "privatevote"
+  channel: string;     // the election's channel, for example "privatevote-budget-2027"
   chaincode: string;   // the private-ballot contract, for example "private-ballot"
   electionId: string;  // 1 to 64 letters, digits, - or _
 }
@@ -44,9 +44,11 @@ interface CastBallotParams {
 ```ts
 const result = await window.weft.request({
   method: "weft_castBallot",
-  params: { channel: "privatevote", chaincode: "private-ballot", electionId: "budget-2027" },
+  params: { channel: "privatevote-budget-2027", chaincode: "private-ballot", electionId: "budget-2027" },
 });
 ```
+
+Each election has its own channel, `privatevote-budget-2027` for `budget-2027` and `privatevote-chair-2027` for `chair-2027`. An election with X.509 voters gets its own channel too, for the same reason as one with voter credentials: other elections' voters aren't members of its channel and can't read its ballots, and closing it changes no other channel.
 
 The request carries no choice, no key and no ballot. The web app can't preselect an option. A helper in `@weftwallet/sdk` is planned.
 

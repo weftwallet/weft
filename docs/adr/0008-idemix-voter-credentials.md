@@ -2,7 +2,7 @@
 
 Proposed on 1 November 2026 as an experiment. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channel and `examples/private-ballot-contract`, which it shares with ADR 0007. ADR 0004 and ADR 0006 remain the main product's decisions. Nothing in this record is built yet.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`, which it shares with ADR 0007. ADR 0004 and ADR 0006 remain the main product's decisions. Nothing in this record is built yet.
 
 ## Context and problem
 
@@ -57,7 +57,7 @@ A limit on idemix credentials per enrolment ID in Fabric CA itself would be bett
 
 ### A new issuer key per election
 
-Revocation doesn't work in Fabric's idemix and credentials don't expire, so a leaked credential could vote in every election under the same issuer key. Each election gets its own issuer key, from its own CA in the voters' Fabric CA server, and its own idemix MSP in the channel, added by a channel configuration update. `CreateElection` runs as an X.509 identity of a trustee organisation and pins the issuer public key. The contract can't read the channel configuration, and the explorer compares the pinned key's hash with the configuration block.
+Revocation doesn't work in Fabric's idemix and credentials don't expire, so a leaked credential could vote in every election under the same issuer key. Each election gets its own issuer key, from its own voters' Fabric CA server, and its own channel, whose only idemix MSP is the election's. Fabric recommends one idemix MSP per channel, and a channel per election keeps one election's voters from reading another's ballots. `CreateElection` runs as an X.509 identity of a trustee organisation and pins the issuer public key. The contract can't read the channel configuration, and the explorer compares the pinned key's hash with the configuration block.
 
 ### The contract
 
@@ -88,7 +88,7 @@ Weft doesn't fix Fabric's limits for now, and upstream changes are left for late
 - Member organisations, the CA and the public see an anonymous member of the voter MSP. With ADR 0007 as well, they see neither who voted nor the choice.
 - One vote per person rests on the CA's configuration and the operator's check as well as on cryptography. A mistake in that configuration allows several votes per person, as the prototype showed.
 - The voters' CA operator decides who is a voter and can register extra IDs, and nothing on the ledger shows that.
-- Each election costs a CA, an issuer key and a channel configuration update.
+- Each election costs a CA server, an issuer key and a channel.
 - A leaked credential can vote, and can't be cancelled within its election.
 - The experimental build carries 13 MB of compiled code that has to be pinned, rebuilt reproducibly and reviewed, and a content security policy that allows WebAssembly.
 - A raw secret key sits in WebAssembly memory while Weft is unlocked and signing, and Go's garbage collector doesn't guarantee those bytes are wiped afterwards.

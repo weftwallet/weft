@@ -38,7 +38,7 @@ Both builds define `window.weft`, and the first to load on a page provides it, a
 
 ### The rest of the switch
 
-- `pnpm playground:up --experimental` starts everything `playground:up` does, plus a second channel with a voters' idemix organisation and `examples/private-ballot-contract`, with a key ceremony already run and seeded elections.
+- `pnpm playground:up --experimental` starts everything `playground:up` does, plus a channel for each election, with the election's idemix organisation when its voters have credentials, and `examples/private-ballot-contract`, with a key ceremony already run and seeded elections.
 - Weft Playground shows a "Private election" section only when `window.weft.features` includes `"castBallot"`.
 - The relay accepts idemix signers, and the explorer shows private elections, only when each is started with `WEFT_EXPERIMENTAL=1`.
 - The docs site has an Experimental section. Every page in it starts by saying it is experimental, not externally reviewed, and not part of the main product.
