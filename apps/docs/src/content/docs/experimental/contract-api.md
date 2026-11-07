@@ -29,7 +29,7 @@ Everything on this page is built, in `examples/private-ballot-contract`, except 
 - `CreateElection` refuses `voters.kind` `"idemix"` with "Elections with voter credentials aren't supported by this version of the contract."
 - `CastAnonymousBallot` checks the election and its state, then refuses every call, since no election with voter credentials can exist. It doesn't check the pseudonym proof yet.
 
-The playground deploys it on every election's channel. The key ceremony and the seeded elections wait for `weft-trustee`.
+The playground deploys it on every election's channel, and seeds `budget-2027` with [`weft-trustee`](/experimental/key-ceremony/#the-trustee-tool).
 
 ## Election states
 
