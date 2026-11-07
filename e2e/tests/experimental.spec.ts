@@ -7,7 +7,7 @@
 import { chromium, type Worker } from "@playwright/test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { BUILDS, expect, stack, test, type Wallet } from "../support/fixtures.ts";
+import { BUILDS, PASSWORD, expect, stack, test, type Wallet } from "../support/fixtures.ts";
 
 const built = existsSync(join(BUILDS.experimental, "manifest.json"));
 const needsExperimental = "Build Weft Experimental's test build first (pnpm --filter @weftwallet/extension build:e2e:experimental).";
@@ -44,8 +44,19 @@ test.describe("Weft", () => {
   });
 
   test("contains none of Weft Experimental's code", () => {
-    const found = files(BUILDS.normal).filter((f) => /Weft Experimental|castBallot|voterCredentials|experimental@weft/.test(f.text));
+    // The names, the ballot window and handler, and @weftwallet/tally with noble's ristretto255.
+    const marks = /Weft Experimental|castBallot|voterCredentials|experimental@weft|ballotRead|Sign and vote|ballot-option|weft-ballot-v1|weft-election-fingerprint|ristretto255/;
+    const found = files(BUILDS.normal).filter((f) => marks.test(f.text));
     expect(found.map((f) => f.path)).toEqual([]);
+  });
+
+  test("answers weft_castBallot with 4200, without a window", async ({ wallet }) => {
+    const dapp = await wallet.dapp();
+    let opened = false;
+    wallet.context.on("page", () => (opened = true));
+    const result = await dapp.request("weft_castBallot", { channel: "privatevote-budget-2027", chaincode: "private-ballot", electionId: "budget-2027" });
+    expect(result).toMatchObject({ code: 4200 });
+    expect(opened).toBe(false);
   });
 });
 
@@ -57,7 +68,7 @@ test.describe("Weft Experimental", () => {
     expect(await wallet.worker.evaluate(() => (globalThis as any).chrome.runtime.getManifest().name)).toBe("Weft Experimental");
     const dapp = await wallet.dapp();
     // Each experimental feature adds its name here when it's built.
-    expect(await dapp.page.evaluate(() => (window as any).weft.features)).toEqual(["receipts"]);
+    expect(await dapp.page.evaluate(() => (window as any).weft.features)).toEqual(["receipts", "castBallot"]);
     expect(await dapp.page.evaluate(() => (window as any).weft.version)).toBe("0.1.0");
 
     const welcome = await wallet.popup();
@@ -80,8 +91,42 @@ test.describe("Weft Experimental", () => {
     const popup = await wallet.popup();
     await expect(popup.getByRole("heading", { name: "Weft Experimental" })).toBeAttached();
     await expect(popup.locator(".header .build-tag")).toHaveText("Experimental");
-    // No build lists castBallot yet, so the Playground keeps the section hidden.
-    expect(await privateElectionShown(wallet)).not.toBe(true);
+    // It lists castBallot, so the Playground shows the section (null when the Playground isn't built).
+    expect(await privateElectionShown(wallet)).not.toBe(false);
+  });
+
+  test("checks weft_castBallot's params before any window opens", async ({ wallet }) => {
+    const dapp = await wallet.dapp();
+    let opened = false;
+    wallet.context.on("page", (p) => p.url().includes("approve.html") && (opened = true));
+    const params = { channel: "privatevote-budget-2027", chaincode: "private-ballot", electionId: "budget-2027" };
+    expect(await dapp.request("weft_castBallot", { ...params, electionId: "budget 2027" })).toMatchObject({ code: -32602 });
+    expect(await dapp.request("weft_castBallot", { ...params, choice: 1 })).toMatchObject({ code: -32602, message: expect.stringContaining('not "choice"') });
+    expect(opened).toBe(false);
+  });
+
+  test("opens the window first, unlocks there, and waits for Try again when the network doesn't answer", async ({ wallet }) => {
+    test.skip(stack().mode !== "ca", "Needs the relay without peers (the default stack).");
+    await wallet.enroll("alice", stack().users.alice!, { channels: ["mychannel", "privatevote-budget-2027"] });
+    await wallet.lock();
+    const dapp = await wallet.dapp();
+    const params = { channel: "privatevote-budget-2027", chaincode: "private-ballot", electionId: "budget-2027" };
+    const result = await wallet.approve(
+      () => dapp.request("weft_castBallot", params),
+      async (win) => {
+        await expect(win).toHaveTitle("Weft Experimental · Approve request");
+        // Reading the election is signed, so a locked Weft asks for the password first.
+        await expect(win.getByRole("heading", { name: "Weft Experimental is locked" })).toBeVisible();
+        await win.locator("input[type=password]").fill(PASSWORD);
+        await win.getByRole("button", { name: "Unlock" }).click();
+        await expect(win.getByRole("button", { name: "Try again" })).toBeVisible({ timeout: 40_000 });
+        await expect(win.getByText(/couldn't read budget-2027 from the ledger/)).toBeVisible();
+        // A second request from the site waits for this one.
+        expect(await dapp.request("weft_castBallot", params)).toMatchObject({ code: -32002 });
+        await win.getByRole("button", { name: "Reject" }).click();
+      },
+    );
+    expect(result).toMatchObject({ code: 5002 });
   });
 
   test("installs alongside Weft, with its own ID and storage", async ({}, testInfo) => {
