@@ -1,6 +1,6 @@
 // Must load before @peculiar/x509 (via @weftwallet/core), whatever the import order.
 import "reflect-metadata";
-import { StrictMode, useEffect, useRef, useState, type ReactNode } from "react";
+import { StrictMode, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "../../assets/app.css";
 import { qualifiedFunctionName } from "@weftwallet/core";
@@ -32,12 +32,20 @@ import {
   useFocusOnArrival,
   type ErrorInfo,
 } from "../../components/ui";
+import { EXPERIMENTAL } from "../../lib/experimental";
 import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView, type ReceiptOutcome } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import * as check from "../../lib/validate";
 import type { VaultStatus } from "../../lib/vault";
 
 const id = new URLSearchParams(location.search).get("id") ?? "";
+
+/**
+ * Weft Experimental's weft_castBallot window (docs/adr/0007). The test is on
+ * the build constant itself, which wxt.config.ts replaces with false in the
+ * normal build, so the bundler never emits the window's chunk there.
+ */
+const CastBallotRequest = import.meta.env.WEFT_EXPERIMENTAL === true ? lazy(() => import("./cast-ballot")) : null;
 
 type Phase = "review" | "working" | "done";
 
@@ -100,8 +108,8 @@ function Approve() {
     };
   }, []);
 
-  /** keepReceipt: "Keep the receipt in Weft", as the user left it. Nothing else sets it. */
-  const decide = async (approved: boolean, keepReceipt = false) => {
+  /** keepReceipt: "Keep the receipt in Weft", as the user left it. Nothing else sets it. choice: weft_castBallot's option. */
+  const decide = async (approved: boolean, keepReceipt = false, choice?: number) => {
     if (deciding) return; // one decision per request, however fast the presses
     setDeciding(true);
     if (!approved) {
@@ -111,7 +119,7 @@ function Approve() {
     }
     setPhase("working");
     try {
-      const result = await ui("approvalDecide", { id, approved: true, keepReceipt });
+      const result = await ui("approvalDecide", { id, approved: true, keepReceipt, ...(choice !== undefined ? { choice } : {}) });
       setOutcome(result);
       setPhase("done");
     } catch (error) {
@@ -121,8 +129,8 @@ function Approve() {
         title: "Weft stopped responding",
         detail: "Weft's background worker stopped before it could say how the request went.",
         raw: toErrorInfo(error).message,
-        // A submit may have gone out before the worker stopped.
-        uncertain: view?.method === "weft_submit",
+        // A submit, or a ballot, may have gone out before the worker stopped.
+        uncertain: view?.method === "weft_submit" || (EXPERIMENTAL && view?.method === "weft_castBallot"),
       });
       setPhase("done");
     }
@@ -228,6 +236,12 @@ function Approve() {
         onCancel={() => void decide(false)}
         cancelLabel="Reject"
       />
+    );
+  } else if (EXPERIMENTAL && CastBallotRequest && view.method === "weft_castBallot") {
+    screen = (
+      <Suspense fallback={<Splash label="Loading the request" />}>
+        <CastBallotRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />
+      </Suspense>
     );
   } else if (view.method === "weft_addNetwork") screen = <AddNetworkRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />;
   else if (view.method === "weft_connect") screen = <ConnectRequest view={view} onDecide={decide} deciding={deciding} progress={progress} />;

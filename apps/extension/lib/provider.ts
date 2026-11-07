@@ -35,7 +35,9 @@ import {
 } from "@weftwallet/protocol";
 import { certificateProblem, type MemberCas } from "@weftwallet/core/chain";
 import { browser } from "wxt/browser";
+import { castBallot } from "./ballot/handler";
 import { db, newId, type ActivityRecord, type NetworkRecord } from "./db";
+import { EXPERIMENTAL } from "./experimental";
 import type { ApprovalOutcome, ApprovalView, ReceiptOutcome, UiEvent } from "./messages";
 import { parseReceipt, receiptSecret } from "./receipt-request";
 import { receiptRecord } from "./receipts";
@@ -58,10 +60,11 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve };
 }
 
-/** What the user decided in the window. Only the window sets keepReceipt. */
+/** What the user decided in the window. Only the window sets keepReceipt, and choice (weft_castBallot). */
 interface Decision {
   approved: boolean;
   keepReceipt: boolean;
+  choice?: number;
 }
 
 interface PendingApproval {
@@ -97,9 +100,14 @@ function announceApprovals(): void {
 }
 
 /** Called by the approval window. Resolves once the request has finished running. */
-export async function decideApproval(id: string, approved: boolean, keepReceipt = false): Promise<ApprovalOutcome> {
+export async function decideApproval(id: string, approved: boolean, keepReceipt = false, choice?: number): Promise<ApprovalOutcome> {
   const approval = approvals.get(id);
   if (!approval) return { status: "rejected" };
+  if (EXPERIMENTAL && approval.view.method === "weft_castBallot") {
+    // A ballot always offers its receipt (docs/adr/0007).
+    approval.decision.resolve({ approved, keepReceipt: approved && keepReceipt, ...(approved && choice !== undefined ? { choice } : {}) });
+    return approval.outcome.promise;
+  }
   // Only a request that came with a receipt can keep one.
   approval.decision.resolve({ approved, keepReceipt: approved && keepReceipt && !!approval.view.receipt });
   return approval.outcome.promise;
@@ -562,6 +570,11 @@ async function signIn(origin: string, params: unknown) {
 }
 
 export async function handleProviderRequest(origin: string, method: unknown, params: unknown): Promise<unknown> {
+  // Weft Experimental only (docs/adr/0007). Normal Weft answers 4200 below.
+  // The test is on the build constant itself (lib/experimental.ts explains why).
+  if (import.meta.env.WEFT_EXPERIMENTAL === true && method === "weft_castBallot") {
+    return castBallot(origin, params, { open: openApproval, finish, saveActivity, announceActivity });
+  }
   if (!isWeftMethod(method)) {
     throw new WeftError(ErrorCode.UnsupportedMethod, `Weft does not support the method ${String(method)}.`);
   }

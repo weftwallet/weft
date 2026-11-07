@@ -1871,6 +1871,46 @@ details.error-details[open] summary::before {
   white-space: nowrap;
 }
 
+/* The picker's content at its natural width, measured to decide whether it
+   fits in the bar (Home.tsx). A select adds its chevron's 40px. */
+.channel-picker__probe {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+  flex: none;
+  width: max-content;
+}
+
+.channel-picker__probe .channel-picker__msp {
+  max-width: none;
+}
+
+.channel-picker__probe.channel-picker--choice {
+  padding-right: 40px;
+}
+
+/* When the channel doesn't fit beside the mark (and Weft Experimental's tag),
+   the picker takes a row of its own under the bar: the bar's items keep their
+   places, and the row lines up with the page's 16px edge. */
+.header--picker-row {
+  height: auto;
+  flex-wrap: wrap;
+  padding-block: 12px;
+  row-gap: 12px;
+}
+
+.header--picker-row .header__actions {
+  margin-left: auto;
+}
+
+.header--picker-row > .channel-picker:not(.channel-picker__probe) {
+  order: 1;
+  flex: 1 0 100%;
+  margin-right: 8px;
+}
+
 .filter {
   display: flex;
   align-items: center;

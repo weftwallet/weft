@@ -1,0 +1,104 @@
+/* Weft Experimental only (docs/adr/0007): the weft_castBallot window's
+   options, the vote being confirmed and the election fingerprint. Loaded with
+   cast-ballot.tsx, which only the experimental build imports. */
+
+.ballot-options {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ballot-options legend {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.ballot-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-lg);
+  background: var(--weft-bg-surface);
+  cursor: pointer;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  transition:
+    background-color var(--weft-duration-fast) var(--weft-ease-out),
+    border-color var(--weft-duration-fast) var(--weft-ease-out);
+}
+
+.ballot-option input {
+  accent-color: var(--weft-accent);
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.ballot-option:has(input:checked) {
+  background: var(--weft-accent-soft);
+  border-color: var(--weft-accent-line);
+}
+
+.ballot-option:has(input:focus-visible) {
+  outline: var(--weft-focus-ring) solid var(--weft-focus);
+  outline-offset: var(--weft-focus-offset);
+}
+
+.ballot-option input:focus-visible {
+  outline: none;
+}
+
+@media (hover: hover) {
+  .ballot-option:hover:not(:has(input:checked)) {
+    border-color: var(--weft-text-subtle);
+  }
+}
+
+/* The line under the options reserves its height, so choosing never moves anything. */
+.choose-hint {
+  min-height: 16px;
+  margin: -4px 0 0;
+}
+
+.choice-card {
+  border-radius: var(--weft-radius-lg);
+  border: 1px solid var(--weft-accent-line);
+  background: var(--weft-accent-soft);
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.choice-card .link-btn {
+  white-space: nowrap;
+}
+
+.choice-card__option {
+  font-size: var(--weft-type-lg);
+  line-height: var(--weft-leading-lg);
+  font-weight: 600;
+  color: var(--weft-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.fingerprint {
+  font-family: var(--weft-font-mono);
+  font-weight: 500;
+  display: inline-flex;
+  flex-wrap: wrap;
+  column-gap: 0.6ch;
+  color: var(--weft-text-strong);
+}
+
+.warn-line {
+  color: var(--weft-warn-text);
+}

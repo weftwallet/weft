@@ -8,6 +8,12 @@
  * so in the normal build every `if (EXPERIMENTAL)` branch is dead code and the
  * bundler drops it. Experimental code is only ever reached through it. The
  * e2e tests check that the normal build contains none of it.
+ *
+ * A branch that imports a whole experimental module (the ballot handler with
+ * @weftwallet/tally, the ballot window) tests import.meta.env.WEFT_EXPERIMENTAL
+ * itself, in the importing file. The bundler folds a constant from another
+ * module only after it has chosen the modules, so with EXPERIMENTAL there it
+ * would drop the branch but keep the module's top-level code.
  */
 
 import { PROVIDER_FEATURES, type ExperimentalFeature, type WeftFeature } from "@weftwallet/protocol";
@@ -27,10 +33,10 @@ export const PRODUCT_NAME: string = EXPERIMENTAL ? "Weft Experimental" : "Weft";
 
 /**
  * The experimental features this build offers. Each feature adds its name
- * here when its code lands: "castBallot" (ADR 0007), then
+ * here when its code lands: "castBallot" (ADR 0007), and later
  * "voterCredentials" (ADR 0008). Nothing else lists them.
  */
-const EXPERIMENTAL_FEATURES: readonly ExperimentalFeature[] = [];
+const EXPERIMENTAL_FEATURES: readonly ExperimentalFeature[] = ["castBallot"];
 
 /** `window.weft.features`: ["receipts"] in Weft, plus EXPERIMENTAL_FEATURES in Weft Experimental. */
 export const FEATURES: readonly (WeftFeature | ExperimentalFeature)[] = EXPERIMENTAL

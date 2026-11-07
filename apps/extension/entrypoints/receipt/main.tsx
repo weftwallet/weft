@@ -21,7 +21,10 @@ import { Unlock } from "../../components/lock";
 import { SaveReceipt } from "../../components/receipt";
 import { ActionError, Button, Splash, StatusScreen, WeaveMark, toErrorInfo, tokenMs, type ErrorInfo } from "../../components/ui";
 import { ui } from "../../lib/messages";
-import type { ReceiptView } from "../../lib/receipts";
+import type { ReceiptView as AnyReceiptView } from "../../lib/receipts";
+
+/** A version 1 receipt: the only kind whose choice and salt this window hands over. */
+type ReceiptView = Extract<AnyReceiptView, { receipt: { version: 1 } }>;
 import type { VaultStatus } from "../../lib/vault";
 
 const id = new URLSearchParams(location.search).get("id") ?? "";
@@ -64,7 +67,7 @@ function CheckReceipt() {
   const unlocked = vault?.state === "unlocked" && !unlockHeld;
   useEffect(() => {
     if (!unlocked) return setView(undefined);
-    ui("receiptGet", { id }).then(setView, (e: unknown) => setError(toErrorInfo(e)));
+    ui("receiptGet", { id }).then((v) => setView(v && v.receipt.version === 1 ? (v as ReceiptView) : null), (e: unknown) => setError(toErrorInfo(e)));
   }, [unlocked]);
 
   const page = view?.explorerUrl ? electionPage(view) : null;

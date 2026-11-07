@@ -6,6 +6,7 @@ import type { ReceiptView } from "../../lib/receipts";
 import { CopyButton, useCopy, useFeedback } from "../feedback";
 import { GroupedHex, SaveReceipt } from "../receipt";
 import { ActionError, BackHeader, Button, Empty, ErrorDetails, Icon, Splash, shorten, timeAgo, toErrorInfo, type ErrorInfo } from "../ui";
+import { BallotReceiptCard } from "./BallotReceipt";
 import type { Navigate } from "./state";
 
 const HEADLINE = {
@@ -256,6 +257,19 @@ function ReceiptCard({ item, state, onRemoved }: { item: ActivityRecord; state: 
     );
   }
   if (!view) return null;
+  if (import.meta.env.WEFT_EXPERIMENTAL === true && "choice" in view) {
+    return (
+      <BallotReceiptCard
+        id={item.id}
+        receipt={view.receipt}
+        choice={view.choice}
+        {...(view.explorerUrl ? { explorerUrl: view.explorerUrl } : {})}
+        keptSince={keptSince(view.keptAt)}
+        onRemoved={onRemoved}
+      />
+    );
+  }
+  if ("choice" in view) return null;
   const r = view.receipt;
   const hidden = (
     <span className="subtle">

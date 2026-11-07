@@ -4,7 +4,17 @@
  * goes through the bridge content script.
  */
 
-import type { BallotReceipt, ContractCall, IdentitySummary, OrgInvite, WeftErrorShape, WeftMethod } from "@weftwallet/protocol";
+import type {
+  AnyMethod,
+  BallotReceipt,
+  BallotReceiptV2,
+  CastBallotParams,
+  ContractCall,
+  IdentitySummary,
+  OrgInvite,
+  WeftErrorShape,
+  WeftMethod,
+} from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import type { ActivityRecord, NetworkRecord, Settings, SiteRecord } from "./db";
 import type { ReceiptAsked } from "./receipt-request";
@@ -44,7 +54,7 @@ export type NetworkInput = Omit<NetworkRecord, "id">;
 export interface ApprovalView {
   id: string;
   origin: string;
-  method: Extract<WeftMethod, "weft_connect" | "weft_evaluate" | "weft_submit" | "weft_addNetwork" | "weft_signIn">;
+  method: Extract<WeftMethod, "weft_connect" | "weft_evaluate" | "weft_submit" | "weft_addNetwork" | "weft_signIn"> | "weft_castBallot";
   call: ContractCall | null;
   identity: IdentityView | null;
   /** weft_addNetwork only: the resolved HTTPS URL of the invite. */
@@ -57,6 +67,8 @@ export interface ApprovalView {
    * already in `call` too, so the window shows what is signed.
    */
   receipt?: ReceiptAsked;
+  /** Weft Experimental's weft_castBallot only: the election the site named (docs/adr/0007). */
+  ballot?: CastBallotParams;
 }
 
 /** What became of a ballot receipt, for the approval window's status line. */
@@ -64,7 +76,8 @@ export type ReceiptOutcome =
   | { kept: true; /** Weft locked while it waited for the block. */ locked: boolean }
   | { kept: false; reason: "declined" }
   /** The browser refused the write. The window holds this copy so the user can save it. */
-  | { kept: false; reason: "storage"; receipt: BallotReceipt; error: string }
+  | { kept: false; reason: "storage"; receipt: BallotReceipt | BallotReceiptV2; error: string }
+  /** The contract's commitment, or for a version 2 receipt its tracking code, isn't the one Weft computed. */
   | { kept: false; reason: "mismatch"; expected: string; returned: string | null };
 
 export type ApprovalOutcome =
@@ -78,6 +91,8 @@ export type ApprovalOutcome =
       explorerUrl?: string;
       /** A vote sent with a receipt: whether Weft kept it. */
       receipt?: ReceiptOutcome;
+      /** weft_castBallot: the tracking code Weft computed for the ballot. */
+      tracking?: string;
     }
   | {
       status: "failed";
@@ -91,8 +106,56 @@ export type ApprovalOutcome =
       retryable?: boolean;
       /** It was sent to the network, but Weft didn't learn whether it committed. */
       uncertain?: boolean;
+      /** weft_castBallot: what happened to the ledger and what to do next, after `detail`. */
+      next?: string;
     }
   | { status: "rejected" };
+
+/**
+ * Weft Experimental (docs/adr/0007): the election a weft_castBallot window
+ * shows, as Weft read and checked it.
+ */
+export interface BallotElectionView {
+  title: string;
+  electionId: string;
+  channel: string;
+  chaincode: string;
+  options: string[];
+  /** ISO 8601, the planned closing time. */
+  closesAt: string;
+  /** The planned closing time has passed, and the trustees haven't closed the election. */
+  pastClosing: boolean;
+  /** The trustees' MSP IDs, in the order of the trustee list. */
+  trustees: string[];
+  threshold: number;
+  /** 20 lowercase hex characters. */
+  fingerprint: string;
+  voter: { name: string; mspId: string };
+  relayHost: string;
+  /** A peer of the voter's organisation signed what Weft read, and Weft checked it against the CA chain. */
+  peerChecked: boolean;
+  /** This identity's committed ballot in this election, from Weft's activity. */
+  alreadyVoted: { blockNumber: string | null } | null;
+}
+
+/**
+ * Weft Experimental: why a weft_castBallot window can't go on. "final": the
+ * site already has its error, and the window explains it until closed.
+ * "unreachable": the relay didn't answer; Try again. "noChannel": the
+ * network's invite may list the channel now; Refresh from invite.
+ * "locked": Weft locked; unlock, then read again.
+ */
+export interface BallotFailureView {
+  kind: "final" | "unreachable" | "noChannel" | "locked";
+  title: string;
+  detail: string;
+  /** For Details. */
+  technical?: string;
+  /** noChannel: the invite to refresh from. */
+  inviteUrl?: string;
+}
+
+export type BallotReadView = { status: "ready"; election: BallotElectionView } | { status: "failed"; failure: BallotFailureView };
 
 /** Every UI request: name -> [payload, result]. */
 export interface UiApi {
@@ -112,8 +175,16 @@ export interface UiApi {
   removeIdentity: [{ identityId: string }, WalletState];
   disconnectSite: [{ origin: string }, WalletState];
   approvalGet: [{ id: string }, ApprovalView | null];
-  /** keepReceipt: the user turned on "Keep the receipt in Weft". Only this window can set it. */
-  approvalDecide: [{ id: string; approved: boolean; keepReceipt?: boolean }, ApprovalOutcome];
+  /**
+   * keepReceipt: the user turned on "Keep the receipt in Weft". Only this
+   * window can set it. choice: weft_castBallot's option, 0-based, which only
+   * the window knows.
+   */
+  approvalDecide: [{ id: string; approved: boolean; keepReceipt?: boolean; choice?: number }, ApprovalOutcome];
+  /** Weft Experimental: reads the election for an open weft_castBallot window (docs/adr/0007). */
+  ballotRead: [{ id: string }, BallotReadView];
+  /** Weft Experimental: refreshes the network from its invite, for a channel it doesn't list, then reads again. */
+  ballotRefreshInvite: [{ id: string }, BallotReadView];
   /** A kept receipt with its choice and salt. Needs Weft unlocked. */
   receiptGet: [{ id: string }, ReceiptView | null];
   receiptRemove: [{ id: string }, null];
@@ -193,7 +264,8 @@ export async function ui<M extends UiMethod>(
 
 export interface ProviderRequest {
   channel: "weft-provider";
-  method: WeftMethod;
+  /** Any method name a page sends; the background worker answers 4200 for one this build doesn't offer. */
+  method: AnyMethod;
   params?: unknown;
 }
 

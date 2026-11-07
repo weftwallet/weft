@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "description": "The private tally's cryptography for Weft Experimental, the trustee tool and the explorer (ADR 0007). Unreviewed.",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

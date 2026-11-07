@@ -14,7 +14,7 @@ import {
   type SelectHTMLAttributes,
 } from "react";
 import LOADER from "@weftwallet/brand/logo/loaders/weft.svg?raw";
-import { PRODUCT_NAME } from "../lib/experimental";
+import { EXPERIMENTAL, PRODUCT_NAME } from "../lib/experimental";
 import LOADER_SMALL from "@weftwallet/brand/logo/loaders/weft-small.svg?raw";
 
 /* Icons: 24px stroke icons, decorative unless labelled. ------------- */
@@ -132,8 +132,19 @@ export function Icon({ name, size = 20, color = "currentColor" }: { name: IconNa
  * The Weft mark for 32px and below, drawn on a 16px pixel grid so threads and
  * gaps stay crisp. Use WeaveMark for anything larger.
  */
+/**
+ * Weft Experimental's ground: the main mark's tile with its bottom edge
+ * pinked, as packages/brand/logo/products/experimental.svg (48px) and
+ * experimental-small.svg (16px) draw it (SYSTEM.md, Marks).
+ */
+const PINKED =
+  "M2 14a12 12 0 0 1 12-12H34a12 12 0 0 1 12 12V42L43.8 46L41.6 42L39.4 46L37.2 42L35 46L32.8 42L30.6 46L28.4 42L26.2 46L24 42L21.8 46L19.6 42L17.4 46L15.2 42L13 46L10.8 42L8.6 46L6.4 42L4.2 46L2 42Z";
+const PINKED_SMALL = "M0 4Q0 0 4 0H12Q16 0 16 4V16H14V14H12V16H10V14H8V16H6V14H4V16H2V14H0Z";
+
 export function Logo({ size = 24, label = PRODUCT_NAME }: { size?: number; label?: string | null }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
+  // Weft Experimental's warps stop above the pinked edge.
+  const warp = EXPERIMENTAL ? 11 : 12;
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
   // Still: nothing in the mark moves once it is drawn (SYSTEM.md, Motion).
@@ -154,9 +165,9 @@ export function Logo({ size = 24, label = PRODUCT_NAME }: { size?: number; label
           <rect className="logo__reveal logo__reveal--2" x="2" y="8" width="12" height="6" />
         </clipPath>
       </defs>
-      <rect width="16" height="16" rx="4" fill={thread} />
-      <rect x="4" y="2" width="2" height="12" fill={ink} />
-      <rect x="10" y="2" width="2" height="12" fill={ink} />
+      {EXPERIMENTAL ? <path d={PINKED_SMALL} fill={thread} /> : <rect width="16" height="16" rx="4" fill={thread} />}
+      <rect x="4" y="2" width="2" height={warp} fill={ink} />
+      <rect x="10" y="2" width="2" height={warp} fill={ink} />
       <g clipPath={`url(#${id}a)`}>
         <rect x="2" y="4" width="12" height="2" fill={ink} />
         <rect x="9" y="3" width="4" height="4" fill={thread} />
@@ -216,8 +227,12 @@ export function WeaveMark({ size = 72, mode }: { size?: number; mode: "draw" | "
           </clipPath>
         ))}
       </defs>
-      <rect className="weave__ground" x="2" y="2" width="44" height="44" rx="12" fill={thread} />
-      <path className="weave__warps" d="M17 8V40M31 8V40" stroke={ink} strokeWidth="3" strokeLinecap="round" fill="none" />
+      {EXPERIMENTAL ? (
+        <path className="weave__ground" d={PINKED} fill={thread} />
+      ) : (
+        <rect className="weave__ground" x="2" y="2" width="44" height="44" rx="12" fill={thread} />
+      )}
+      <path className="weave__warps" d={EXPERIMENTAL ? "M17 8V38M31 8V38" : "M17 8V40M31 8V40"} stroke={ink} strokeWidth="3" strokeLinecap="round" fill="none" />
       <g className="weave__rows" fill="none">
         {rows.map(([y, over, under], i) => (
           <g key={i} clipPath={`url(#${id}r${i})`}>

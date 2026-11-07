@@ -21,12 +21,16 @@ import {
   sendTo,
   withActiveChange,
 } from "../lib/sites";
+import { ballotRead, ballotRefreshInvite } from "../lib/ballot/handler";
 import { checkCertificates, registerCertificateWatch } from "../lib/certificate-watch";
 import * as receipts from "../lib/receipts";
 import * as vault from "../lib/vault";
 import * as wallet from "../lib/wallet";
 
-type Handlers = { [M in UiMethod]: (payload: UiApi[M][0]) => Promise<UiApi[M][1]> };
+/** Requests only Weft Experimental's windows send (docs/adr/0007). */
+type ExperimentalUiMethod = "ballotRead" | "ballotRefreshInvite";
+type Handler<M extends UiMethod> = (payload: UiApi[M][0]) => Promise<UiApi[M][1]>;
+type Handlers = { [M in Exclude<UiMethod, ExperimentalUiMethod>]: Handler<M> } & { [M in ExperimentalUiMethod]?: Handler<M> };
 
 const handlers: Handlers = {
   state: () => wallet.getState(),
@@ -83,7 +87,14 @@ const handlers: Handlers = {
   checkEndpoints: ({ relayUrl, caUrl, caName }) => wallet.checkEndpoints(relayUrl, caUrl, caName),
   refreshInvite: ({ networkId }) => wallet.refreshInvite(networkId),
   approvalGet: async ({ id }) => getApproval(id),
-  approvalDecide: ({ id, approved, keepReceipt }) => decideApproval(id, approved, keepReceipt === true),
+  approvalDecide: ({ id, approved, keepReceipt, choice }) => decideApproval(id, approved, keepReceipt === true, choice),
+  // The build constant itself, so the normal build drops the ballot handler (lib/experimental.ts).
+  ...(import.meta.env.WEFT_EXPERIMENTAL === true
+    ? {
+        ballotRead: ({ id }: { id: string }) => ballotRead(id),
+        ballotRefreshInvite: ({ id }: { id: string }) => ballotRefreshInvite(id),
+      }
+    : {}),
   receiptGet: ({ id }) => receipts.receiptView(id),
   receiptRemove: async ({ id }) => (await receipts.removeReceipt(id), null),
   receiptsOf: ({ identityId }) => receipts.receiptsOf(identityId),
@@ -130,7 +141,7 @@ export default defineBackground(() => {
     if (m.channel === "weft-ui") {
       const fromExtensionPage = sender.url ? new URL(sender.url).origin === extensionOrigin : false;
       if (!fromExtensionPage || !m.method || !(m.method in handlers)) return false;
-      const handler = handlers[m.method as UiMethod] as (payload: unknown) => Promise<unknown>;
+      const handler = handlers[m.method as keyof Handlers] as (payload: unknown) => Promise<unknown>;
       if (!PASSIVE.includes(m.method as UiMethod)) void vault.touch();
       handler(m.payload)
         .then((value) => sendResponse({ ok: true, value } satisfies UiResponse<unknown>))

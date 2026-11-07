@@ -24,6 +24,7 @@
     "@weftwallet/brand": "workspace:*",
     "@weftwallet/core": "workspace:*",
     "@weftwallet/protocol": "workspace:*",
+    "@weftwallet/tally": "workspace:*",
     "@weftwallet/ui": "workspace:*",
     "jsqr": "^1.4.0",
     "react": "^19.3.1",
@@ -31,6 +32,7 @@
     "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
+    "@peculiar/x509": "^2.2.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@wxt-dev/module-react": "^1.2.2",

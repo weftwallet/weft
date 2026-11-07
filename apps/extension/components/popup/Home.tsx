@@ -82,6 +82,28 @@ export function Home({
     }
   };
 
+  // The channel picker sits in the header's bar when the MSP ID and the whole
+  // channel name fit there. When they don't, as with an election's channel
+  // beside Weft Experimental's tag, it takes a row of its own under the bar,
+  // so the channel is never cut off (SYSTEM.md, Navigation: a header's links
+  // move to a row of their own before they are cut). A hidden probe holds the
+  // picker's content at its natural width.
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const fitKey = `${active.mspId}|${channel ?? ""}|${channels.length > 1}`;
+  const [rowFor, setRowFor] = useState<string | null>(null);
+  const ownRow = rowFor === fitKey;
+  useLayoutEffect(() => {
+    if (ownRow) return;
+    const measure = () => {
+      const picker = pickerRef.current;
+      const probe = probeRef.current;
+      if (picker && probe && probe.offsetWidth > picker.offsetWidth) setRowFor(fitKey);
+    };
+    measure();
+    void document.fonts?.ready.then(measure);
+  }, [fitKey, ownRow]);
+
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
     const i = TABS.indexOf(e.currentTarget.id.replace("tab-", "") as Tab);
     const next =
@@ -94,7 +116,7 @@ export function Home({
 
   return (
     <>
-      <header className="header">
+      <header className={`header${ownRow ? " header--picker-row" : ""}`}>
         <h1 ref={heading} tabIndex={-1} className="visually-hidden">
           {PRODUCT_NAME}
         </h1>
@@ -104,7 +126,12 @@ export function Home({
             Experimental
           </span>
         )}
-        <div className={`channel-picker ${channels.length > 1 ? "channel-picker--choice" : ""}`}>
+        <span ref={probeRef} className={`channel-picker channel-picker__probe ${channels.length > 1 ? "channel-picker--choice" : ""}`} aria-hidden="true">
+          <span className="channel-picker__msp mono">{active.mspId}</span>
+          <span>·</span>
+          <span className="channel-picker__channel">{channel}</span>
+        </span>
+        <div ref={pickerRef} className={`channel-picker ${channels.length > 1 ? "channel-picker--choice" : ""}`}>
           <span className="channel-picker__msp mono" title={active.mspId}>
             {active.mspId}
           </span>

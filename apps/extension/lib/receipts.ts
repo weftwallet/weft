@@ -5,19 +5,23 @@
  * never gets a kept receipt back.
  */
 
-import { RECEIPT_TYPE, type BallotReceipt } from "@weftwallet/protocol";
-import { db, type ActivityRecord, type IdentityRecord, type NetworkRecord, type ReceiptRecord } from "./db";
+import { RECEIPT_TYPE, type BallotReceipt, type BallotReceiptV2 } from "@weftwallet/protocol";
+import { db, type ActivityRecord, type IdentityRecord, type NetworkRecord, type ReceiptRecord, type ReceiptRecordV2 } from "./db";
+import { EXPERIMENTAL } from "./experimental";
 import * as vault from "./vault";
 
 /** A kept receipt as the popup shows it, with its choice and salt opened. */
-export interface ReceiptView {
+export type ReceiptView = {
   id: string;
   origin: string;
   keptAt: number;
-  receipt: BallotReceipt;
   /** The network's explorer, from its invite, for Check in the explorer. */
   explorerUrl?: string;
-}
+} & (
+  | { receipt: BallotReceipt }
+  /** Weft Experimental (docs/adr/0007): a version 2 receipt, with the voter's note of the choice opened. */
+  | { receipt: BallotReceiptV2; choice: string }
+);
 
 /** The record for a receipt whose secret was sealed when the user signed. */
 export function receiptRecord(
@@ -43,11 +47,31 @@ export function receiptRecord(
 
 /** The receipt kept for a transaction, opened. Null when there is none. Throws when Weft is locked. */
 export async function receiptView(id: string): Promise<ReceiptView | null> {
-  const record = await db.get<ReceiptRecord>("receipts", id);
+  const record = await db.get<ReceiptRecord | ReceiptRecordV2>("receipts", id);
   if (!record) return null;
-  const secret = JSON.parse(new TextDecoder().decode(await vault.openReceipt(id, record.sealed))) as { option: string; salt: string };
   const identity = await db.get<IdentityRecord>("identities", record.identityId);
   const network = identity ? await db.get<NetworkRecord>("networks", identity.networkId) : undefined;
+  if (record.version === 2) {
+    if (!EXPERIMENTAL) return null;
+    const note = JSON.parse(new TextDecoder().decode(await vault.openReceipt(id, record.sealed))) as { option: string };
+    return {
+      id,
+      origin: record.origin,
+      keptAt: record.keptAt,
+      receipt: {
+        type: RECEIPT_TYPE,
+        version: 2,
+        channel: record.channel,
+        electionId: record.electionId,
+        txId: record.txId,
+        blockNumber: record.blockNumber,
+        tracking: record.tracking,
+      },
+      choice: note.option,
+      ...(network?.explorerUrl ? { explorerUrl: network.explorerUrl } : {}),
+    };
+  }
+  const secret = JSON.parse(new TextDecoder().decode(await vault.openReceipt(id, record.sealed))) as { option: string; salt: string };
   return {
     id,
     origin: record.origin,

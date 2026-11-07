@@ -4,14 +4,20 @@
  * and in a transaction's detail when it is kept.
  */
 import { receiptFileName, receiptJson } from "@weftwallet/core";
-import type { BallotReceipt } from "@weftwallet/protocol";
+import type { BallotReceipt, BallotReceiptV2 } from "@weftwallet/protocol";
 import { useState, type ReactNode } from "react";
 import { Button } from "./ui";
 
+/** A version 1 receipt, or Weft Experimental's version 2 (docs/adr/0007). */
+type AnyReceipt = BallotReceipt | BallotReceiptV2;
+
+/** The receipt as the file and the copied text hold it. */
+const receiptText = (receipt: AnyReceipt) => (receipt.version === 1 ? receiptJson(receipt) : JSON.stringify(receipt, null, 2));
+
 /** Saves the receipt as the JSON file the explorer reads. Returns its name. */
-export function downloadReceipt(receipt: BallotReceipt): string {
+export function downloadReceipt(receipt: AnyReceipt): string {
   const name = receiptFileName(receipt);
-  const url = URL.createObjectURL(new Blob([receiptJson(receipt)], { type: "application/json" }));
+  const url = URL.createObjectURL(new Blob([receiptText(receipt)], { type: "application/json" }));
   const a = Object.assign(document.createElement("a"), { href: url, download: name });
   a.hidden = true;
   document.body.append(a);
@@ -37,7 +43,7 @@ export function SaveReceipt({
   copied,
   children,
 }: {
-  receipt: BallotReceipt;
+  receipt: AnyReceipt;
   copied: string;
   /** More actions, under the pair (Check in the explorer). */
   children?: ReactNode;
@@ -53,7 +59,7 @@ export function SaveReceipt({
           <Button
             className="btn btn--sm"
             onClick={() =>
-              void navigator.clipboard.writeText(receiptJson(receipt)).then(
+              void navigator.clipboard.writeText(receiptText(receipt)).then(
                 () => setSaved({ text: copied, ok: true }),
                 () => setSaved({ text: "This browser didn't allow copying. Use Download receipt instead.", ok: false }),
               )

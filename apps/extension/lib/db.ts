@@ -38,6 +38,14 @@ export interface IdentityRecord {
   /** The enrollment ID used with the CA, needed for re-enrolment. */
   enrollmentId: string | null;
   createdAt: number;
+  /**
+   * Weft Experimental only: the PEM CA chain Fabric CA returned when this
+   * identity was enrolled or re-enrolled, for checking a peer's signature on
+   * a private election it reads (docs/adr/0007). Absent for imported
+   * identities, CSRs, identities enrolled before it was kept, and every
+   * identity in Weft.
+   */
+  caChain?: string;
 }
 
 /** A key pair waiting for the CA administrator to return a certificate. */
@@ -106,6 +114,27 @@ export interface ReceiptRecord {
   blockNumber: number;
   commitment: string;
   /** { option, salt } as JSON, sealed with the receipt key, `id` as additional data. */
+  sealed: Sealed;
+  keptAt: number;
+}
+
+/**
+ * Weft Experimental only: a kept version 2 receipt (docs/adr/0007). The
+ * tracking code is public; the voter's note of the choice is sealed with the
+ * receipt key, `id` as additional data, and proves nothing to anyone else.
+ */
+export interface ReceiptRecordV2 {
+  id: string;
+  identityId: string;
+  origin: string;
+  type: typeof RECEIPT_TYPE;
+  version: 2;
+  channel: string;
+  electionId: string;
+  txId: string;
+  blockNumber: number;
+  tracking: string;
+  /** { option } as JSON. */
   sealed: Sealed;
   keptAt: number;
 }
@@ -190,11 +219,11 @@ export const db = {
     return all.sort((a, b) => b.at - a.at);
   },
   /** The receipts kept for an identity's transactions. */
-  async receiptsOf(identityId: string): Promise<ReceiptRecord[]> {
-    return promisify((await store("receipts")).index("identityId").getAll(identityId)) as Promise<ReceiptRecord[]>;
+  async receiptsOf(identityId: string): Promise<(ReceiptRecord | ReceiptRecordV2)[]> {
+    return promisify((await store("receipts")).index("identityId").getAll(identityId)) as Promise<(ReceiptRecord | ReceiptRecordV2)[]>;
   },
   /** Saves an activity record and its receipt together: both are written, or neither. */
-  async putWithReceipt(activity: ActivityRecord, receipt: ReceiptRecord): Promise<void> {
+  async putWithReceipt(activity: ActivityRecord, receipt: ReceiptRecord | ReceiptRecordV2): Promise<void> {
     const tx = (await open()).transaction(["activity", "receipts"], "readwrite");
     tx.objectStore("activity").put(activity);
     tx.objectStore("receipts").put(receipt);

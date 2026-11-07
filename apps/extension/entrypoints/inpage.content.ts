@@ -8,12 +8,12 @@ import {
   PROVIDER_VERSION,
   WeftError,
   type PageToWalletMessage,
+  type AnyMethod,
+  type AnyMethods,
   type RequestArgs,
   type WalletToPageMessage,
   type WeftEvent,
   type WeftEvents,
-  type WeftMethod,
-  type WeftMethods,
   type WeftProvider,
 } from "@weftwallet/protocol";
 import { defineContentScript } from "wxt/utils/define-content-script";
@@ -48,7 +48,7 @@ export default defineContentScript({
       isWeft: true as const,
       version: PROVIDER_VERSION,
       features: Object.freeze([...FEATURES]),
-      request<M extends WeftMethod>(args: RequestArgs<M>): Promise<WeftMethods[M]["result"]> {
+      request<M extends AnyMethod>(args: RequestArgs<M>): Promise<AnyMethods[M]["result"]> {
         const id = crypto.randomUUID();
         const message: PageToWalletMessage = { target: MESSAGE_TARGET.toWallet, id, method: args.method, params: args.params };
         return new Promise((resolve, reject) => {

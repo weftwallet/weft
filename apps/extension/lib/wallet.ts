@@ -16,6 +16,7 @@ import {
   summarizeIdentity,
 } from "@weftwallet/core";
 import type { IdentitySummary, OrgInvite } from "@weftwallet/protocol";
+import { EXPERIMENTAL } from "./experimental";
 import { removeReceiptsOf } from "./receipts";
 import * as vault from "./vault";
 import { db, newId, type IdentityRecord, type NetworkRecord, type PendingCsrRecord, type SiteRecord } from "./db";
@@ -154,7 +155,17 @@ export async function enroll(network: NetworkInput, enrollmentId: string, secret
     certificate: issued.certificate,
     wrappedKey: await vault.wrap(keys.privateKey),
     enrollmentId,
+    ...keptChain(issued.caChain),
   });
+}
+
+/**
+ * Weft Experimental keeps the CA chain the CA returns, to check a peer's
+ * signature on a private election it reads (docs/adr/0007). Weft keeps
+ * nothing more than before.
+ */
+function keptChain(caChain: string | null): { caChain?: string } {
+  return EXPERIMENTAL && caChain ? { caChain } : {};
 }
 
 export async function importIdentity(network: NetworkInput, certificate: string, privateKeyPem: string) {
@@ -219,7 +230,7 @@ export async function reenroll(identityId: string): Promise<IdentityView> {
   const current = { certificate: identity.certificate, privateKey: await vault.signingKey(identity) };
   const issued = await ca.reenroll(current, keys, commonName);
   const { privateKey: _legacy, ...rest } = identity;
-  const updated: IdentityRecord = { ...rest, certificate: issued.certificate, wrappedKey: await vault.wrap(keys.privateKey) };
+  const updated: IdentityRecord = { ...rest, certificate: issued.certificate, wrappedKey: await vault.wrap(keys.privateKey), ...keptChain(issued.caChain) };
   await db.put("identities", updated);
   vault.forget(identity.id);
   return toView(updated, await networkMap());
