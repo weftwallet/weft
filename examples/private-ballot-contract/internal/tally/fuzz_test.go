@@ -126,3 +126,15 @@ func FuzzFromHex(f *testing.F) {
 		}
 	})
 }
+
+func FuzzParseElectionRequest(f *testing.F) {
+	f.Add(`{"id":"budget-2027","title":"Budget 2027","options":["Plan A","Plan B"],"closesAt":"2027-01-31T17:00:00.000Z",` +
+		`"trustees":["Org1MSP","Org2MSP"],"threshold":2,"voters":{"kind":"x509","msps":["Org1MSP"]}}`)
+	f.Add(`{"id":"x","title":"","options":[],"closesAt":"","trustees":[],"threshold":1e400,"voters":{"kind":"idemix","msp":"M","issuerPublicKey":"","issuerKeyHash":"","curve":""}}`)
+	f.Add(`{"voters":{"kind":null}}`)
+	f.Add("")
+	f.Fuzz(func(t *testing.T, text string) {
+		_, err := ParseElectionRequest(text)
+		refusedOrAccepted(t, err)
+	})
+}

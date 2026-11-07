@@ -34,6 +34,9 @@ type schema struct {
 	kind   kind
 	of     *schema
 	fields []field
+	// open accepts any fields: the object is checked later, once a field
+	// in it has chosen its schema (CreateElection's voters, by kind).
+	open bool
 }
 
 var (
@@ -70,6 +73,9 @@ func matches(x any, s *schema) bool {
 }
 
 func walk(thing string, x map[string]any, s *schema, path string) error {
+	if s.open {
+		return nil
+	}
 	known := map[string]bool{}
 	for _, fd := range s.fields {
 		known[fd.name] = true

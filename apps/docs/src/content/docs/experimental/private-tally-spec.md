@@ -4,7 +4,7 @@ description: The private tally's cryptography as a specification, with its encod
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The cryptography on this page is built, in `@weftwallet/tally` and the contract's `internal/tally`, and no part of Weft uses it yet.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The cryptography on this page is built, in `@weftwallet/tally` and the contract's `internal/tally`. The contract uses it, and Weft doesn't yet.
 :::
 
 This is the scheme from [ADR 0007](/reference/decisions/), written so that the Go contract and the TypeScript code in Weft, the trustee tool and the explorer can be built from it and checked against each other. It follows the prototype from the private tally study, except where a section says version 1 differs.
@@ -199,13 +199,14 @@ Every challenge covers the statement (the context, the voter, the ciphertext) an
 
 ### Parsing the contract's arguments
 
-Every JSON argument, the ballot and each ceremony and decryption post, is parsed the same way, and the order of the checks is part of the specification, because the first failure decides the [error message](/experimental/contract-api/#errors):
+Every JSON argument, the election, the ballot and each ceremony and decryption post, is parsed the same way, and the order of the checks is part of the specification, because the first failure decides the [error message](/experimental/contract-api/#errors):
 
 1. The text must be JSON, and its value an object.
 2. At each object, an unknown field is refused first. If there are several, the message names the first in the byte order of their UTF-8 names.
 3. Then each field, in the order the format lists it, must be present and of its type: a string, a number, a list or an object. An object or a list is checked completely, item by item, before the next field.
 4. A duplicated name keeps its last value, as both JSON parsers do. A number is compared as the double that JavaScript's `JSON.parse` gives, so `1`, `1.0` and `1e0` are all 1.
 5. Then the values decode, in the order they appear in the format: for a ballot, `a` then `b` of each ciphertext in order, with the identity check on each `a_j` as it decodes, then each bit proof's `c0`, `c1`, `z0` and `z1`, then `c` and `z` of the sum proof.
+6. `CreateElection`'s `voters` is the last field of the election, and its fields depend on its kind. Once the rest of the election has been checked, `voters.kind` must be present and a string, and then the rest of `voters` is checked as in steps 2 and 3 against the fields of that kind.
 
 A message names a field by its path, such as `ciphertexts[1].a` or `sumProof.z`.
 

@@ -48,6 +48,30 @@ func (s *Setup) check() error {
 
 // Prepare decodes the election's key and verifying shares and computes ctx.
 func Prepare(e *Election) (*Prepared, error) {
+	p, err := prepareKeys(e)
+	if err != nil {
+		return nil, err
+	}
+	p.Ctx = Context(e)
+	return p, nil
+}
+
+// PrepareWithContext decodes the election's key and verifying shares and
+// takes ctx as given: the contract uses the context it fixed when the
+// election opened, and Setup.Chaincode can then be empty.
+func PrepareWithContext(e *Election, ctx []byte) (*Prepared, error) {
+	if len(ctx) != 32 {
+		return nil, errors.New("tally: ctx is 32 bytes")
+	}
+	p, err := prepareKeys(e)
+	if err != nil {
+		return nil, err
+	}
+	p.Ctx = append([]byte{}, ctx...)
+	return p, nil
+}
+
+func prepareKeys(e *Election) (*Prepared, error) {
 	if err := e.check(); err != nil {
 		return nil, err
 	}
@@ -78,7 +102,6 @@ func Prepare(e *Election) (*Prepared, error) {
 		p.S = append(p.S, S)
 		p.IDs = append(p.IDs, TrusteeID(i))
 	}
-	p.Ctx = Context(e)
 	return p, nil
 }
 

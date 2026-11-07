@@ -26,6 +26,7 @@ const (
 	thingRound2   = "The round 2 post"
 	thingConfirm  = "The confirmation"
 	thingDecShare = "The decryption share"
+	thingElection = "The election"
 )
 
 func errNotJSON(t string) error   { return refuse("%s isn't JSON.", t) }
@@ -43,6 +44,10 @@ func errNotPoint(t, path string) error  { return refuse("%s's %s isn't a canonic
 func errNotScalar(t, path string) error { return refuse("%s's %s isn't a canonical scalar.", t, path) }
 func errNotBytes(t, path string, n int) error {
 	return refuse("%s's %s isn't %d bytes of lowercase hex.", t, path, n)
+}
+
+func errVotersKind() error {
+	return refuse("%s isn't in the version 1 format: voters.kind is neither \"x509\" nor \"idemix\".", thingElection)
 }
 
 func errWrongElection() error { return refuse("The ballot isn't for this election.") }
