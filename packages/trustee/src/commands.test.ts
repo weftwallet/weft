@@ -440,4 +440,63 @@ describe("the other paths", () => {
     await create();
     expect((await create(t2)).lines).toEqual(["✗ Election budget-2027 already exists.", "  Nothing was posted."]);
   });
+
+  it("refuses a closing time that has passed before signing, and passes the contract's own check through", async () => {
+    const calls = contract.calls.length;
+    const make = (t: Trustee, closesAt: string, title = "Budget 2027", voters?: string[]) =>
+      run(t, (env) => cmd.create(env, { election: ID, title, options: ["Plan A", "Plan B"], closesAt, trustees: ["Org1MSP", "Org2MSP"], voters }));
+    expect((await make(t1, "2026-11-07T12:00:00.000Z")).lines).toEqual(["✗ 12:00 UTC on 7 November 2026 has already passed.", "  Nothing was posted. Give a --closes-at in the future."]);
+    expect(contract.calls.length).toBe(calls);
+    // A machine whose clock is behind the transaction's timestamp gets the contract's refusal.
+    const slow = trustee(contract, "Org1MSP", "trustee1", { now: new Date("2026-11-01T00:00:00.000Z") });
+    expect((await make(slow, "2026-11-05T00:00:00.000Z")).lines).toEqual(["✗ closesAt isn't later than this transaction's timestamp, 2026-11-07T12:00:00.000Z.", "  Nothing was posted."]);
+    expect((await make(t1, "2027-01-31T17:00:00.000Z", "")).lines).toEqual(["✗ Election titles are 1 to 200 characters.", "  Nothing was posted."]);
+    expect((await make(t1, "2027-01-31T17:00:00.000Z", "Budget 2027", ["Org1MSP", "Org1MSP"])).lines).toEqual(["✗ An election has at least one voter organisation, all different.", "  Nothing was posted."]);
+  });
+
+  it("refuses a second close from the same trustee before signing", async () => {
+    await ceremony();
+    await run(t1, (env) => cmd.close(env, { ...e, early: true }));
+    const submits = contract.submitted().length;
+    expect((await run(t1, (env) => cmd.close(env, { ...e, early: true }))).lines).toEqual([
+      "✗ Org1MSP has already asked to close voting.",
+      "  Nothing was posted. Voting closes when 1 more trustee asks.",
+    ]);
+    expect(contract.submitted().length).toBe(submits);
+    // The contract refuses it too, for a client that doesn't check first.
+    await expect(contract.ledgerFor({ msp: "Org1MSP", trustee: true }).submit("CloseElection", ID)).rejects.toThrow("Org1MSP has already asked to close voting.");
+  });
+
+  it("refuses a decryption share during the key ceremony", async () => {
+    await create();
+    expect((await run(t1, (env) => cmd.decrypt(env, e))).lines).toEqual(["✗ Voting hasn't closed yet: the election is in keygen, and decryption shares are posted once it is in decrypting."]);
+    expect(contract.submitted()).toEqual(["Org1MSP CreateElection"]);
+    await expect(contract.ledgerFor({ msp: "Org1MSP", trustee: true }).submit("PostDecryptionShare", ID, "{}")).rejects.toThrow(
+      "Voting hasn't closed yet: the election is in keygen, and decryption shares are posted once it is in decrypting.",
+    );
+  });
+
+  it("names the reporting organisation in status, and doesn't report once confirmed", async () => {
+    await create();
+    await rounds12();
+    t1.answers.push(PASS1);
+    await run(t1, (env) => cmd.confirm(env, e));
+    // Org1MSP has confirmed: a share changed now can't make it report.
+    contract.tamperRound2(ID, "Org2MSP");
+    expect((await run(t1, (env) => cmd.confirm(env, e))).lines).toEqual([
+      "✗ Org1MSP has already posted round 3.",
+      "  Nothing was posted. Run weft-trustee status --election budget-2027 to see what the ceremony is waiting for.",
+    ]);
+    expect(contract.submitted()).not.toContain("Org1MSP ReportBadShare");
+    // The contract refuses it too, for a client that doesn't check first.
+    await expect(contract.ledgerFor({ msp: "Org1MSP", trustee: true }).submit("ReportBadShare", ID, contract.record(ID).trustees[1]!.id)).rejects.toThrow(
+      "Org1MSP has already confirmed its shares, so it can't report a bad share.",
+    );
+    // Org2MSP hasn't confirmed, so it can.
+    contract.tamperRound2(ID, "Org1MSP");
+    t2.answers.push(PASS2);
+    expect((await run(t2, (env) => cmd.confirm(env, e))).code).toBe(1);
+    expect(contract.record(ID)).toMatchObject({ state: "failed", reportedBy: "Org2MSP" });
+    expect((await run(t1, (env) => cmd.status(env, e))).lines[1]).toBe("State      failed: Org2MSP reported a bad share in the key ceremony, so it can't open");
+  });
 });

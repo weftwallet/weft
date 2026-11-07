@@ -151,6 +151,14 @@ export function checkBallot(e: Election, voterTag: Uint8Array, json: string, led
   const d = parseBallot(e, json);
   const trace = verifyBallotProofs(e, voterTag, d);
   const ciphertexts = d.ballot.ciphertexts.map((ct) => ct.a);
+  // Step 6: no two ciphertexts of the ballot share a_j, which identical
+  // ciphertexts also do, and no a_j is on the ledger. The points are
+  // canonical, so equal hex is an equal point.
+  for (let i = 0; i < ciphertexts.length; i++) {
+    for (let j = i + 1; j < ciphertexts.length; j++) {
+      if (ciphertexts[i] === ciphertexts[j]) throw new TallyError(messages.repeatedInBallot(i, j));
+    }
+  }
   if (ciphertexts.some((a) => ledger.hasCiphertext(a))) throw new TallyError(messages.repeated());
   if (ledger.hasVoted(toHex(voterTag))) throw new TallyError(voter === "x509" ? messages.identityVoted() : messages.credentialVoted());
   return { ballot: d.ballot, tracking: trackingCode(e, voterTag, d.ballot), ciphertexts, trace };

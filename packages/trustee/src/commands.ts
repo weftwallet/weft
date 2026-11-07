@@ -55,6 +55,8 @@ export interface ElectionRecord {
   totals?: Ciphertext[];
   closedBy?: string[];
   tally?: { counts: Record<string, number>; total: number };
+  /** In failed: the MSP ID of the trustee organisation that reported a bad share. */
+  reportedBy?: string;
 }
 
 export interface CeremonyRecord {
@@ -267,7 +269,7 @@ export async function status(env: Env, o: StatusOptions): Promise<number> {
         : `open, past its planned closing time, ${when(rec.closesAt)}: voting stays open until ${rec.threshold} trustees close it`,
     decrypting: `decrypting: voting closed with ${plural(rec.ballots ?? 0, "ballot")}, and the trustees are decrypting the totals`,
     counted: "counted: the tally is published",
-    failed: "failed: a trustee reported a bad share in the key ceremony, so it can't open",
+    failed: `failed: ${rec.reportedBy ?? "a trustee"} reported a bad share in the key ceremony, so it can't open`,
     cancelled: `cancelled: ${rec.creatorMsp} cancelled it during the key ceremony`,
   };
   out.line(`${rec.title} (${id}) on ${env.connection.channel}`);
@@ -356,6 +358,8 @@ export async function create(env: Env, o: CreateOptions): Promise<number> {
   requireTrustee(env.identity);
   const closesAt = contractTime(o.closesAt);
   if (!closesAt) throw new Failure(`${o.closesAt} isn't a time.`, "Give --closes-at in the form 2027-01-31T17:00:00.000Z.");
+  // The contract compares closesAt with the transaction's timestamp, which this machine's clock sets.
+  if (new Date(closesAt) <= env.now()) throw new Failure(`${when(closesAt)} has already passed.`, "Nothing was posted. Give a --closes-at in the future.");
   const n = o.trustees.length;
   const threshold = o.threshold ?? Math.floor(n / 2) + 1;
   const voters = o.voters?.length ? o.voters : o.trustees;
@@ -611,7 +615,12 @@ export async function close(env: Env, o: CloseOptions): Promise<number> {
     throw new Failure(`Voting has already closed: the election is in ${rec.state}.`, rec.state === "decrypting" ? `Each trustee can now post its decryption share with ${CMD} decrypt.` : `Run ${CMD} status --election ${rec.id} to see the tally.`);
   }
   if (rec.state !== "open") throw new Failure(`The election isn't open: it is in ${rec.state}.`);
-  trusteeIndex(env, rec);
+  const i = trusteeIndex(env, rec);
+  const before = await getCeremony(env, o.election);
+  if (before.trustees[i]!.closeRequested) {
+    const left = rec.threshold - before.trustees.filter((t) => t.closeRequested).length;
+    throw new Failure(`${env.identity.msp} has already asked to close voting.`, `Nothing was posted. Voting closes when ${plural(left, "more trustee")} ${left === 1 ? "asks" : "ask"}.`);
+  }
   const early = env.now() < new Date(rec.closesAt);
   if (early && !o.early) {
     throw new Failure(`Voting is open until ${rec.closesAt}.`, `Nothing was posted. Run this again after ${when(rec.closesAt)}, or add --early to close it now.`);
@@ -657,6 +666,7 @@ export async function decrypt(env: Env, o: ElectionOptions): Promise<number> {
       before ? `Run ${CMD} close after that time, then this command.` : `Run ${CMD} close, then this command.`,
     );
   }
+  if (rec.state === "keygen") throw new Failure("Voting hasn't closed yet: the election is in keygen, and decryption shares are posted once it is in decrypting.");
   if (rec.state === "counted") throw new Failure("The tally is already published.", `Run ${CMD} status --election ${rec.id} to see it.`);
   if (rec.state !== "decrypting") throw new Failure(`The election is in ${rec.state}: decryption shares are posted while it is in decrypting.`);
   const i = trusteeIndex(env, rec);

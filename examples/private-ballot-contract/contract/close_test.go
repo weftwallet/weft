@@ -19,12 +19,12 @@ func TestCloseNeedsKTrustees(t *testing.T) {
 	castAll(t, v, n, id)
 	first := ok(t, n.submit(trustee(t, "Org4MSP"), "CloseElection", id))
 	eventIs(t, first, "CloseRequested", `{"electionId":"council-2027","trustee":"Org4MSP"}`)
-	// Asking again records nothing more and doesn't close.
-	again := ok(t, n.submit(trustee(t, "Org4MSP"), "CloseElection", id))
-	if len(again.writes) != 0 || record(t, again.payload).State != stateOpen {
-		t.Errorf("a second request from the same trustee wrote %d keys", len(again.writes))
+	// Asking again is refused: it writes nothing and emits no event.
+	again := n.endorse(trustee(t, "Org4MSP"), "CloseElection", id)
+	refused(t, again, "Org4MSP has already asked to close voting.")
+	if len(again.writes) != 0 || again.event != nil {
+		t.Errorf("a second request from the same trustee wrote %d keys and event %v", len(again.writes), again.event)
 	}
-	eventIs(t, again, "CloseRequested", `{"electionId":"council-2027","trustee":"Org4MSP"}`)
 	second := ok(t, n.submit(trustee(t, "Org2MSP"), "CloseElection", id))
 	if record(t, second.payload).State != stateOpen {
 		t.Fatal("2 of 3 trustees closed the election")
@@ -163,9 +163,13 @@ func TestEndorsersAgree(t *testing.T) {
 	}
 }
 
-// No source file of the contract reads a clock or draws randomness.
+// No source file of the contract reads a clock or draws randomness, and
+// the transaction's timestamp is read in one place, createdAt in
+// election.go, which only CreateElection calls.
 func TestNoClockOrRandomness(t *testing.T) {
-	forbidden := regexp.MustCompile(`time\.Now|time\.Since|time\.Until|GetTxTimestamp|"math/rand|"crypto/rand|"math/rand/v2`)
+	forbidden := regexp.MustCompile(`time\.Now|time\.Since|time\.Until|"math/rand|"crypto/rand|"math/rand/v2`)
+	timestamp := regexp.MustCompile(`GetTxTimestamp|createdAt\(`)
+	var reads []string
 	var files []string
 	for _, dir := range []string{".", filepath.Join("..", "internal", "tally"), ".."} {
 		matches, _ := filepath.Glob(filepath.Join(dir, "*.go"))
@@ -186,5 +190,12 @@ func TestNoClockOrRandomness(t *testing.T) {
 		if loc := forbidden.FindIndex(b); loc != nil {
 			t.Errorf("%s uses %s", f, b[loc[0]:loc[1]])
 		}
+		for _, m := range timestamp.FindAll(b, -1) {
+			reads = append(reads, filepath.Base(f)+" "+string(m))
+		}
+	}
+	// The definition, its one call to GetTxTimestamp, and CreateElection's one call.
+	if strings.Join(reads, ", ") != "election.go createdAt(, election.go GetTxTimestamp, election.go createdAt(" {
+		t.Errorf("the transaction's timestamp is read in %v, not only by CreateElection", reads)
 	}
 }

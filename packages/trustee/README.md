@@ -15,13 +15,13 @@ weft-trustee status --election budget-2027 --connection org1.yaml
 
 | Command | Does |
 |---|---|
-| `status` | Shows the election's state and each trustee's progress, and what to run next. `--json` prints the records. |
-| `create` | Calls `CreateElection` with `--title`, an `--option` for each option, `--closes-at`, a `--trustee` for each trustee organisation in order, and optionally `--threshold` (a majority by default) and a `--voter` for each voter organisation (the trustees by default). |
+| `status` | Shows the election's state and each trustee's progress, and what to run next. For a failed election it names the organisation that reported a bad share. `--json` prints the records. |
+| `create` | Calls `CreateElection` with `--title`, an `--option` for each option, `--closes-at`, a `--trustee` for each trustee organisation in order, and optionally `--threshold` (a majority by default) and a `--voter` for each voter organisation (the trustees by default). It refuses a `--closes-at` that has already passed by this machine's clock before anything is signed. |
 | `commit` | Round 1: draws the polynomial and the one-time ceremony key, saves them encrypted, and posts the commitments, the proof of knowledge and the one-time public key. |
 | `share` | Round 2: once every trustee has posted round 1, encrypts a share to each other trustee and posts them. |
 | `confirm` | Round 3: once every trustee has posted round 2, decrypts and checks the shares sent to you, saves your key share encrypted, deletes the one-time ceremony key, and posts a proof that you hold the share. If a share fails, it posts a report instead, and the election fails. The last confirmation also calls `OpenElection`, checks the fingerprint, and prints it. |
 | `open` | Calls `OpenElection` once every trustee has confirmed, for when the last `confirm` couldn't. |
-| `close` | Calls `CloseElection`. Voting closes when k trustees have asked. Before `closesAt`, by this machine's clock, it refuses unless given `--early`. It needs no passphrase. |
+| `close` | Calls `CloseElection`. Voting closes when k trustees have asked. Before `closesAt`, by this machine's clock, it refuses unless given `--early`. A trustee that has already asked is refused before anything is signed. It needs no passphrase. |
 | `decrypt` | Once voting has closed, posts your decryption share of each total, with proofs. The k-th share also calls `PublishTally`, checks the counts against the shares, and prints them. |
 | `publish` | Calls `PublishTally` once k shares are in, for when the k-th `decrypt` couldn't. |
 | `cancel` | Calls `CancelElection`, for a trustee of the creator's organisation while the election is in `keygen`. |

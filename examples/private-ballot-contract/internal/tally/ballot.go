@@ -225,6 +225,16 @@ func CheckBallot(p *Prepared, voterTag []byte, text string, ledger Ledger, crede
 	if err != nil {
 		return nil, err
 	}
+	// Step 6: no two ciphertexts of the ballot share a_j, which identical
+	// ciphertexts also do, and no a_j is on the ledger. The points are
+	// canonical, so equal hex is an equal point.
+	for i := range d.Ciphertexts {
+		for j := i + 1; j < len(d.Ciphertexts); j++ {
+			if d.Ciphertexts[i].A == d.Ciphertexts[j].A {
+				return nil, errRepeatedInBallot(i, j)
+			}
+		}
+	}
 	for _, ct := range d.Ciphertexts {
 		if ledger.HasCiphertext(ct.A) {
 			return nil, errRepeated()

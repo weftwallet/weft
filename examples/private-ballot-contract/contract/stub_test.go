@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
@@ -29,7 +30,8 @@ type entry struct {
 	ver   version
 }
 
-// network is one channel's committed state.
+// network is one channel's committed state, and now is the timestamp the
+// client writes in each transaction it endorses.
 type network struct {
 	t         *testing.T
 	channel   string
@@ -37,10 +39,14 @@ type network struct {
 	state     map[string]entry
 	block     int
 	txs       int
+	now       time.Time
 }
 
+// testNow is the clients' time in the tests, before every closesAt they use.
+var testNow = time.Date(2026, 11, 7, 12, 0, 0, 123456789, time.UTC)
+
 func newNetwork(t *testing.T, channel string) *network {
-	return &network{t: t, channel: channel, chaincode: "private-ballot", state: map[string]entry{}, block: 1}
+	return &network{t: t, channel: channel, chaincode: "private-ballot", state: map[string]entry{}, block: 1, now: testNow}
 }
 
 // write is one key in a write set, in the order the contract wrote it.
@@ -216,10 +222,13 @@ func (s *fakeStub) GetChannelID() string { return s.net.channel }
 
 func (s *fakeStub) GetCreator() ([]byte, error) { return s.who.serialized(), nil }
 
-// GetTxTimestamp is the client's clock. The contract must never read it.
+// GetTxTimestamp is the client's clock, which only CreateElection may read.
 func (s *fakeStub) GetTxTimestamp() (*timestamppb.Timestamp, error) {
-	s.net.t.Errorf("%s read the transaction's timestamp", s.e.function)
-	return nil, fmt.Errorf("no clock in this test")
+	if s.e.function != "CreateElection" {
+		s.net.t.Errorf("%s read the transaction's timestamp", s.e.function)
+		return nil, fmt.Errorf("no clock for %s in this test", s.e.function)
+	}
+	return timestamppb.New(s.net.now), nil
 }
 
 func (s *fakeStub) GetSignedProposal() (*peer.SignedProposal, error) {

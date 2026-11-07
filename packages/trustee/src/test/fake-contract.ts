@@ -60,6 +60,8 @@ export class FakeContract {
   private elections = new Map<string, Stored>();
   /** The next submit of this function fails validation with this code, once. */
   failNext: { fn: string; code: string } | null = null;
+  /** The transaction timestamp the clients write, which only CreateElection reads. */
+  now = new Date("2026-11-07T12:00:00.000Z");
 
   constructor(channel = "privatevote-budget-2027", chaincode = "private-ballot") {
     this.channel = channel;
@@ -187,9 +189,14 @@ export class FakeContract {
         if (!caller.trustee) throw new Refusal("This identity can't act as a trustee: its certificate doesn't carry weft.trustee=true.");
         if (!e.trustees.includes(caller.msp)) throw new Refusal(`${caller.msp} isn't one of the trustee organisations named in this election.`);
         if (this.elections.has(e.id)) throw new Refusal(`Election ${e.id} already exists.`);
+        const titleLength = [...e.title].length;
+        if (titleLength < 1 || titleLength > 200) throw new Refusal("Election titles are 1 to 200 characters.");
         if (e.options.length < 2 || new Set(e.options).size !== e.options.length) throw new Refusal("An election has 2 to 20 options, all different.");
+        if (new Date(e.closesAt) <= this.now) throw new Refusal(`closesAt isn't later than this transaction's timestamp, ${this.now.toISOString()}.`);
         if (e.trustees.length < 2) throw new Refusal("An election has at least two trustee organisations, all different.");
         if (e.threshold < 2 || e.threshold > e.trustees.length) throw new Refusal("The threshold must be from 2 to the number of trustees.");
+        const msps = e.voters.msps ?? [];
+        if (msps.length < 1 || new Set(msps).size !== msps.length) throw new Refusal("An election has at least one voter organisation, all different.");
         const rec: ElectionRecord = {
           v: 1,
           id: e.id,
@@ -240,9 +247,11 @@ export class FakeContract {
         this.ceremonyOpen(s);
         const i = this.trustee(caller, s);
         this.waiting(s, s.round2, 2);
+        if (caller.msp in s.confirm) throw new Refusal(`${caller.msp} has already confirmed its shares, so it can't report a bad share.`);
         const from = s.rec.trustees.findIndex((t) => t.id === args[1]);
         if (from < 0 || from === i) throw new Refusal(`Trustee ${args[1]} isn't another trustee of this election.`);
         s.rec.state = "failed";
+        s.rec.reportedBy = caller.msp;
         return this.out(s.rec, write);
       }
       case "CancelElection": {
@@ -283,6 +292,7 @@ export class FakeContract {
         if (s.rec.state === "decrypting" || s.rec.state === "counted") throw new Refusal(`Voting has already closed: the election is in ${s.rec.state}.`);
         if (s.rec.state !== "open") throw new Refusal(`The election isn't open: it is in ${s.rec.state}.`);
         this.trustee(caller, s);
+        if (s.close.has(caller.msp)) throw new Refusal(`${caller.msp} has already asked to close voting.`);
         s.close.add(caller.msp);
         if (s.close.size >= s.rec.threshold) {
           const { totals, ballots } = addTotals(s.rec.options.length, s.ballots.map((b) => b.ballot.ciphertexts));
@@ -296,6 +306,9 @@ export class FakeContract {
       case "PostDecryptionShare": {
         const s = this.get(id!);
         const i = this.trustee(caller, s);
+        if (s.rec.state === "keygen" || s.rec.state === "open") {
+          throw new Refusal(`Voting hasn't closed yet: the election is in ${s.rec.state}, and decryption shares are posted once it is in decrypting.`);
+        }
         if (s.rec.state !== "decrypting") throw new Refusal(`The election is in ${s.rec.state}: decryption shares are posted while it is in decrypting.`);
         if (caller.msp in s.dshares) throw new Refusal(`${caller.msp} has already posted its decryption share.`);
         this.check(() => checkDecryptionShare(this.election(s.rec), s.rec.totals!, i, args[1]!));

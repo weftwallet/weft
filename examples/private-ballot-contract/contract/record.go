@@ -121,6 +121,7 @@ type Record struct {
 	Totals          []tally.Ciphertext `json:"totals,omitempty"`
 	ClosedBy        []string           `json:"closedBy,omitempty"`
 	Tally           *Tally             `json:"tally,omitempty"`
+	ReportedBy      string             `json:"reportedBy,omitempty"`
 }
 
 // msps returns the trustees' MSP IDs in the order of the trustee list.

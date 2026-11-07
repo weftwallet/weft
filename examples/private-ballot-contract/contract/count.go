@@ -43,10 +43,12 @@ func acceptedBallots(stub shim.ChaincodeStubInterface, id string) ([][]tally.Cip
 	return out, nil
 }
 
-// CloseElection(electionId): a trustee asks to close voting. The request
-// that brings the number of trustees who have asked to k closes the
+// CloseElection(electionId): a trustee asks to close voting, once. The
+// request that brings the number of trustees who have asked to k closes the
 // election, adds up the accepted ballots per option and moves it to
-// decrypting.
+// decrypting. A second request from the same trustee is refused: the
+// request that brought the number to k closed the election in the same
+// transaction, so asking again can never close it.
 func closeElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	l := ledger{stub}
 	r, err := l.election(args[0])
@@ -67,8 +69,15 @@ func closeElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, err
 	default:
 		return nil, errNotOpen(r.State)
 	}
+	mine, err := l.get(keyClose, r.ID, c.msp)
+	if err != nil {
+		return nil, err
+	}
+	if mine != nil {
+		return nil, errAlreadyAsked(c.msp)
+	}
 	// A transaction doesn't read its own writes, so the caller's request
-	// counts whether it is on the ledger already or written now.
+	// counts as it is written now.
 	var asked []string
 	for _, t := range r.Trustees {
 		b, err := l.get(keyClose, r.ID, t.Msp)
@@ -78,7 +87,7 @@ func closeElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, err
 		if b != nil || t.Msp == c.msp {
 			asked = append(asked, t.Msp)
 		}
-		if b == nil && t.Msp == c.msp {
+		if t.Msp == c.msp {
 			if err := l.put([]byte(stub.GetTxID()), keyClose, r.ID, t.Msp); err != nil {
 				return nil, err
 			}
@@ -113,7 +122,9 @@ type sharePostedEvent struct {
 }
 
 // PostDecryptionShare(electionId, shareJson): a trustee's share of each
-// total, with its proofs, while the election is decrypting.
+// total, with its proofs, while the election is decrypting. Before then,
+// in keygen or open, it is refused as too early, and after, in counted,
+// failed or cancelled, with the state.
 func postDecryptionShare(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	l := ledger{stub}
 	r, err := l.election(args[0])
@@ -128,7 +139,11 @@ func postDecryptionShare(stub shim.ChaincodeStubInterface, args []string) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	if r.State != stateDecrypting {
+	switch r.State {
+	case stateDecrypting:
+	case stateKeygen, stateOpen:
+		return nil, errNotClosedYet(r.State)
+	default:
 		return nil, errNotDecrypting(r.State)
 	}
 	posted, err := l.get(keyDShare, r.ID, c.msp)

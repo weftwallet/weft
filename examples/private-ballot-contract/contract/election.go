@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 
@@ -18,14 +19,32 @@ var closesAtPattern = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[
 // closesAtLayout is the form of closesAt, as JavaScript's toISOString writes it.
 const closesAtLayout = "2006-01-02T15:04:05.000Z"
 
-// validClosesAt checks the form and that the date exists. time.Parse reads
-// no clock; nothing compares closesAt with any time.
-func validClosesAt(s string) bool {
+// maxTitle is the longest title, in Unicode code points, which Go and
+// JavaScript count the same way.
+const maxTitle = 200
+
+// parseClosesAt checks the form and that the date exists, and returns the
+// time. time.Parse reads no clock.
+func parseClosesAt(s string) (time.Time, bool) {
 	if !closesAtPattern.MatchString(s) {
-		return false
+		return time.Time{}, false
 	}
 	t, err := time.Parse(closesAtLayout, s)
-	return err == nil && t.Format(closesAtLayout) == s
+	return t, err == nil && t.Format(closesAtLayout) == s
+}
+
+// createdAt is the transaction's timestamp, which the client writes in the
+// proposal header and every endorser reads the same. It is the only time
+// the contract reads, and only CreateElection reads it, to refuse a
+// closesAt that has already passed: a client that lies about the time
+// there misleads only its own election's planned closing time, which the
+// contract never acts on. Ballots and closing read no time.
+func createdAt(stub shim.ChaincodeStubInterface) (time.Time, error) {
+	ts, err := stub.GetTxTimestamp()
+	if err != nil || ts == nil {
+		return time.Time{}, fmt.Errorf("contract: no transaction timestamp: %v", err)
+	}
+	return ts.AsTime().UTC(), nil
 }
 
 func allDifferent(xs []string) bool {
@@ -44,8 +63,9 @@ type electionEvent struct {
 }
 
 // CreateElection(electionJson), in the order contract-api.md lists the
-// checks, after the argument has parsed: the caller, the ID, the options,
-// closesAt, the trustees, the threshold and the kind of voters.
+// checks, after the argument has parsed: the caller, the ID, the title, the
+// options, closesAt, the trustees, the threshold, the kind of voters and the
+// voter organisations.
 func createElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	req, err := tally.ParseElectionRequest(args[0])
 	if err != nil {
@@ -76,11 +96,22 @@ func createElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, er
 	if existing != nil {
 		return nil, errExists(req.ID)
 	}
+	if n := utf8.RuneCountInString(req.Title); n < 1 || n > maxTitle {
+		return nil, errTitle()
+	}
 	if len(req.Options) < 2 || len(req.Options) > 20 || !allDifferent(req.Options) {
 		return nil, errOptions()
 	}
-	if !validClosesAt(req.ClosesAt) {
+	closesAt, ok := parseClosesAt(req.ClosesAt)
+	if !ok {
 		return nil, errClosesAt()
+	}
+	now, err := createdAt(stub)
+	if err != nil {
+		return nil, err
+	}
+	if !closesAt.After(now) {
+		return nil, errClosesAtPassed(now.Format(closesAtLayout))
 	}
 	if len(req.Trustees) < 2 || !allDifferent(req.Trustees) {
 		return nil, errTrustees()
@@ -91,6 +122,9 @@ func createElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, er
 	}
 	if req.Voters.Kind != "x509" {
 		return nil, errIdemixUnsupported()
+	}
+	if len(req.Voters.Msps) < 1 || !allDifferent(req.Voters.Msps) {
+		return nil, errVoters()
 	}
 	r := &Record{
 		V:          1,

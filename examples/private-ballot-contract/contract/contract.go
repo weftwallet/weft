@@ -2,9 +2,11 @@
 // fabric-chaincode-go's shim: its functions, state keys, events and errors
 // are those in apps/docs/src/content/docs/experimental/contract-api.md.
 //
-// Every function is deterministic. None reads a clock, the transaction's
-// timestamp or any randomness, and none iterates over a Go map to decide
-// what it writes, so every endorser writes the same bytes.
+// Every function is deterministic. None reads a clock or any randomness,
+// and none iterates over a Go map to decide what it writes, so every
+// endorser writes the same bytes. Only CreateElection reads the
+// transaction's timestamp, which every endorser reads the same from the
+// proposal, to refuse a closesAt that has already passed.
 //
 // Unreviewed cryptography, for Weft Experimental only.
 package contract

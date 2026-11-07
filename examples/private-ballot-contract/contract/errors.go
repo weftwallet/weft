@@ -24,8 +24,15 @@ func errTrustees() error {
 	return refuse("An election has at least two trustee organisations, all different.")
 }
 func errThreshold() error { return refuse("The threshold must be from 2 to the number of trustees.") }
+func errTitle() error     { return refuse("Election titles are 1 to 200 characters.") }
 func errClosesAt() error {
 	return refuse("closesAt isn't a time in the form 2027-01-31T17:00:00.000Z.")
+}
+func errClosesAtPassed(now string) error {
+	return refuse("closesAt isn't later than this transaction's timestamp, %s.", now)
+}
+func errVoters() error {
+	return refuse("An election has at least one voter organisation, all different.")
 }
 func errIdemixUnsupported() error {
 	return refuse("Elections with voter credentials aren't supported by this version of the contract.")
@@ -49,6 +56,9 @@ func errAlreadyPosted(msp string, round int) error {
 func errRoundNotFinished(round int, msp string) error {
 	return refuse("Round %d isn't finished: waiting for %s.", round, msp)
 }
+func errAlreadyConfirmed(msp string) error {
+	return refuse("%s has already confirmed its shares, so it can't report a bad share.", msp)
+}
 func errNotAnotherTrustee(id string) error {
 	return refuse("Trustee %s isn't another trustee of this election.", id)
 }
@@ -57,11 +67,15 @@ func errVotingClosed() error        { return refuse("Voting has closed.") }
 func errAlreadyClosed(state string) error {
 	return refuse("Voting has already closed: the election is in %s.", state)
 }
+func errAlreadyAsked(msp string) error { return refuse("%s has already asked to close voting.", msp) }
 func errNotVoter(msp string) error {
 	return refuse("This identity can't vote in this election: %s isn't one of its voter organisations.", msp)
 }
 func errNotDecrypting(state string) error {
 	return refuse("The election is in %s: decryption shares are posted while it is in decrypting.", state)
+}
+func errNotClosedYet(state string) error {
+	return refuse("Voting hasn't closed yet: the election is in %s, and decryption shares are posted once it is in decrypting.", state)
 }
 func errSharePosted(msp string) error {
 	return refuse("%s has already posted its decryption share.", msp)

@@ -61,8 +61,11 @@ func errNoRandomness(j int) error { return refuse("Ciphertext %d has no randomne
 func errNotBit(j int) error       { return refuse("Ciphertext %d is not a 0 or a 1.", j) }
 func errNotOne() error            { return refuse("The ballot does not choose exactly one option.") }
 func errRepeated() error          { return refuse("A ciphertext in this ballot is already on the ledger.") }
-func errIdentityVoted() error     { return refuse("This identity has already voted in this election.") }
-func errCredentialVoted() error   { return refuse("This credential has already voted in this election.") }
+func errRepeatedInBallot(i, j int) error {
+	return refuse("Ciphertexts %d and %d have the same randomness.", i, j)
+}
+func errIdentityVoted() error   { return refuse("This identity has already voted in this election.") }
+func errCredentialVoted() error { return refuse("This credential has already voted in this election.") }
 func errProofOfKnowledge(msp string) error {
 	return refuse("The proof of knowledge from %s doesn't verify.", msp)
 }

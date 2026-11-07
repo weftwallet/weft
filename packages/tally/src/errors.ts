@@ -35,6 +35,7 @@ export const messages = {
   notBit: (j: number) => `Ciphertext ${j} is not a 0 or a 1.`,
   notOne: () => "The ballot does not choose exactly one option.",
   repeated: () => "A ciphertext in this ballot is already on the ledger.",
+  repeatedInBallot: (i: number, j: number) => `Ciphertexts ${i} and ${j} have the same randomness.`,
   identityVoted: () => "This identity has already voted in this election.",
   credentialVoted: () => "This credential has already voted in this election.",
 

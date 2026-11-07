@@ -20,7 +20,7 @@ The contract uses `fabric-chaincode-go/v2`'s `shim` and `pkg/cid`, v2.3.0, and d
 
 ## Determinism
 
-No function reads a clock, the transaction's timestamp or any randomness, and no write depends on the order of a Go map. Records and posts are written from structs, whose fields marshal in a fixed order. Ballots are read by range in key order and the trustees' posts by point reads in the order of the trustee list. `TestEndorsersAgree` runs a whole election twice and compares every write byte for byte, and `TestNoClockOrRandomness` refuses `time.Now`, `GetTxTimestamp` and the random packages in the contract's source.
+No function reads a clock or any randomness, and no write depends on the order of a Go map. `CreateElection` is the one function that reads the transaction's timestamp, which the client sets and every endorser reads the same from the proposal, to refuse a `closesAt` that has already passed. Ballots and closing read no time. Records and posts are written from structs, whose fields marshal in a fixed order. Ballots are read by range in key order and the trustees' posts by point reads in the order of the trustee list. `TestEndorsersAgree` runs a whole election twice and compares every write byte for byte, and `TestNoClockOrRandomness` refuses `time.Now` and the random packages in the contract's source, and allows `GetTxTimestamp` only in the one function `CreateElection` calls. The tests' stub fails any other function that reads the timestamp.
 
 ## Building and testing
 

@@ -139,6 +139,32 @@
       "error": "The ballot isn't for this election."
     },
     {
+      "name": "two identical ciphertexts in one ballot",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"e8d2374a12f7c444c69ffcd604b3c238f3542832c34abe69bc6270c792525e63\",\"b\":\"16f1825c461456ea9967b89f08d25712cc1ae98ebd68d36014f45659c315fd3d\"},{\"a\":\"e8d2374a12f7c444c69ffcd604b3c238f3542832c34abe69bc6270c792525e63\",\"b\":\"16f1825c461456ea9967b89f08d25712cc1ae98ebd68d36014f45659c315fd3d\"},{\"a\":\"3e552a2e8b8efe2227be7553e20f0aa5a12e4be43a9c386a3d1dbf8d6278c614\",\"b\":\"4692e2ec2475d5d7ff6341c66f76cae840539d22c81db4b180ee03af146cb92d\"}],\"bitProofs\":[{\"c0\":\"3ffdeab273c270d9b83a465ce6091669cfa1d96aeb8e25b11c81d0b4ee6c9a0b\",\"c1\":\"e01f2422c48136537e796f58ee78f251fb3a33b43331f278a46436a1e008f70f\",\"z0\":\"b43b6ba3d9eb96d7a3aada1021c363071adf2a4c0fb730484345bc4137708309\",\"z1\":\"18c6ff5ac0c5cdf3058de59800d1f67d6399dde2ca92aa2cde9f52028dcb6c0f\"},{\"c0\":\"63602500f97418c4189c17855d9fcc4ed66d9a7ce25fec8932ad5a36674e270b\",\"c1\":\"4979d1c00ec6c6ffb631c049573f61c501d11d6913b8d45b38bf70b97878f804\",\"z0\":\"532d398680c22816383d509c8a2beb5f6e98c09bc3c3115c393820c9f1232c0e\",\"z1\":\"8b1472a6fd08ace09f71c91b2892d85ef1f47ae0ab74480b792cd7ac2711060e\"},{\"c0\":\"ad4d327dba8d74f58cce8db78612e344c40b827aee7df8ab18f3e9680d473b0a\",\"c1\":\"1c85d449e4fa00bf37edf214d306625c9a449e9c84985495733fc6dba3f56705\",\"z0\":\"b73e00c876164e220be74f42b32907042c92a75e7f5e5620bb8969833df4cd01\",\"z1\":\"950d37692d084bb7f95942323de2e7a6e56771a7baf81b38fd74da83be98d301\"}],\"sumProof\":{\"c\":\"5a919d30c93cb52aea5f08dadfd1857bc72991e137f51e5f3ffbe66ea3b5810a\",\"z\":\"85ebfb8f316c4f4ac754492e3bf604f7f6a85c1018441d00c1d58ea0401a650d\"}}",
+      "error": "Ciphertexts 0 and 1 have the same randomness."
+    },
+    {
+      "name": "two ciphertexts in one ballot with the same randomness",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"26ec1981920fada568fdf4855c59369cdb868a9a33d3fdbb11a4d8547548fc52\",\"b\":\"a4daba08a0c3d2c74647c6ecc2b820a74d0a67f6c03f04eef6b78cff16da535f\"},{\"a\":\"26ec1981920fada568fdf4855c59369cdb868a9a33d3fdbb11a4d8547548fc52\",\"b\":\"48b7ccb86ad3837657e4caa929007a8ecd110c8e502be5f4a9e30cf0c55d7300\"},{\"a\":\"fc5362f3976ce41c924bc99f019db21c92b1f4dd9015eaf838968fc7bd92af66\",\"b\":\"a8b8f83a10f9c2e1b483d8c8eceb411eae7e788cff773040ebf298ea7bd94f58\"}],\"bitProofs\":[{\"c0\":\"591b87e83c0bdf0f53bf587ee2e9ccaa675c24ba716dfad81556bd321862ae09\",\"c1\":\"00c5c9a1899e836f60f0b114225b92d77168daf9440c18ef6e34db58ba0a5600\",\"z0\":\"f23dfa81eb918fc01548313b522382bd49c4ff7abe67b212225e2ab7434e480b\",\"z1\":\"a9f750a435d6c635c0a2751289e926dd9ecdd355bb09dd829317b9992e1be30f\"},{\"c0\":\"ede8d1cce624dadd5905821b84f896b8d51a531c46c07ff7e8dfdce8a3b09805\",\"c1\":\"2d024dcbcb507d629645558733616fe37e32acff5347887214d586503ff7da00\",\"z0\":\"a53361440cca8205221bb2e35bc4523045c91a58a4f37ce4937e9e9d75c6e40e\",\"z1\":\"c360c17d0cc8817da4a4f0bd9fe512d6534a91e3b3c63519e9118c6a65b69708\"},{\"c0\":\"1c989666a2334fc02e63eeb404032ca3db9b7ba987d40ededdeceaed23efe207\",\"c1\":\"e404e8a4769aacdb73dbec635a6fe7fe44043f40106f1595be15b851b481090a\",\"z0\":\"68b7b9305d1ca21b08eb4118bd48b45b7b83062b03ce165e2cc1ea714fc21300\",\"z1\":\"6b8236c8a7b24a943a8eca5992e0cadb2cb6bb01a956761b5ccde0ab60b5d00e\"}],\"sumProof\":{\"c\":\"1f8f9c0d33e41a95b3e3c47b899cd03af2ce1a62c086d161c5add59a6798190e\",\"z\":\"70ad25cb6e55e037af206f729e99980ed8c66ee11b47105329a9d10adc67f302\"}}",
+      "error": "Ciphertexts 0 and 1 have the same randomness."
+    },
+    {
       "name": "not JSON",
       "kind": "ballot",
       "election": "budget-2027",

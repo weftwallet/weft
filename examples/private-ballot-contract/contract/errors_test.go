@@ -44,6 +44,16 @@ func TestCreateElection(t *testing.T) {
 	}
 	// A threshold written as 2.0 or 2e0 is 2, as JSON.parse reads it.
 	ok(t, n.submit(org1, "CreateElection", strings.Replace(newElection(map[string]any{"id": "lunch-b"}), `"threshold":2`, `"threshold":2e0`, 1)))
+	// A title is counted in code points: 200 of them, 800 bytes, is the longest.
+	long := ok(t, n.submit(org1, "CreateElection", newElection(map[string]any{"id": "lunch-c", "title": strings.Repeat("\U0001F37D", 200)})))
+	if record(t, long.payload).Title != strings.Repeat("\U0001F37D", 200) {
+		t.Error("a 200 code point title didn't round-trip")
+	}
+	// closesAt a millisecond after the transaction's timestamp, which the
+	// format truncates to milliseconds, is later than it.
+	ok(t, n.submit(org1, "CreateElection", newElection(map[string]any{"id": "lunch-d", "closesAt": "2026-11-07T12:00:00.124Z"})))
+	// One voter organisation is enough.
+	ok(t, n.submit(org1, "CreateElection", newElection(map[string]any{"id": "lunch-e", "voters": map[string]any{"kind": "x509", "msps": []string{"Org3MSP"}}})))
 
 	cases := []struct {
 		who  identity
@@ -61,12 +71,23 @@ func TestCreateElection(t *testing.T) {
 		{org1, newElection(map[string]any{"id": strings.Repeat("a", 65)}), "Election IDs are 1 to 64 letters, digits, - or _."},
 		{org1, newElection(map[string]any{"id": "lunch\x00"}), "Election IDs are 1 to 64 letters, digits, - or _."},
 		{org1, newElection(map[string]any{"id": "déjeuner"}), "Election IDs are 1 to 64 letters, digits, - or _."},
+		{org1, newElection(map[string]any{"id": "x1", "title": ""}), "Election titles are 1 to 200 characters."},
+		{org1, newElection(map[string]any{"id": "x1", "title": strings.Repeat("é", 201)}), "Election titles are 1 to 200 characters."},
+		{org1, newElection(map[string]any{"id": "x1", "title": strings.Repeat("\U0001F37D", 201)}), "Election titles are 1 to 200 characters."},
+		// The title is checked before the options, in the order of the fields.
+		{org1, newElection(map[string]any{"id": "x1", "title": "", "options": []string{"Soup"}}), "Election titles are 1 to 200 characters."},
 		{org1, newElection(map[string]any{"id": "x1", "options": []string{"Soup"}}), "An election has 2 to 20 options, all different."},
 		{org1, newElection(map[string]any{"id": "x1", "options": []string{"Soup", "Soup"}}), "An election has 2 to 20 options, all different."},
 		{org1, newElection(map[string]any{"id": "x1", "options": strings.Split("abcdefghijklmnopqrstu", "")}), "An election has 2 to 20 options, all different."},
 		{org1, newElection(map[string]any{"id": "x1", "closesAt": "2027-01-31T17:00:00Z"}), "closesAt isn't a time in the form 2027-01-31T17:00:00.000Z."},
 		{org1, newElection(map[string]any{"id": "x1", "closesAt": "2027-02-30T17:00:00.000Z"}), "closesAt isn't a time in the form 2027-01-31T17:00:00.000Z."},
 		{org1, newElection(map[string]any{"id": "x1", "closesAt": "2027-01-31T17:00:00.000+00:00"}), "closesAt isn't a time in the form 2027-01-31T17:00:00.000Z."},
+		// closesAt against the transaction's timestamp, 2026-11-07T12:00:00.123456789Z.
+		{org1, newElection(map[string]any{"id": "x1", "closesAt": "2026-11-07T11:59:59.999Z"}), "closesAt isn't later than this transaction's timestamp, 2026-11-07T12:00:00.123Z."},
+		{org1, newElection(map[string]any{"id": "x1", "closesAt": "2026-11-07T12:00:00.123Z"}), "closesAt isn't later than this transaction's timestamp, 2026-11-07T12:00:00.123Z."},
+		{org1, newElection(map[string]any{"id": "x1", "closesAt": "2020-01-31T17:00:00.000Z"}), "closesAt isn't later than this transaction's timestamp, 2026-11-07T12:00:00.123Z."},
+		// The form is checked before the time.
+		{org1, newElection(map[string]any{"id": "x1", "closesAt": "2020-01-31T17:00:00Z"}), "closesAt isn't a time in the form 2027-01-31T17:00:00.000Z."},
 		{org1, newElection(map[string]any{"id": "x1", "trustees": []string{"Org1MSP"}, "threshold": 1}), "An election has at least two trustee organisations, all different."},
 		{org1, newElection(map[string]any{"id": "x1", "trustees": []string{"Org1MSP", "Org1MSP"}}), "An election has at least two trustee organisations, all different."},
 		{org1, newElection(map[string]any{"id": "x1", "threshold": 1}), "The threshold must be from 2 to the number of trustees."},
@@ -74,6 +95,10 @@ func TestCreateElection(t *testing.T) {
 		{org1, newElection(map[string]any{"id": "x1", "threshold": 2.5}), "The threshold must be from 2 to the number of trustees."},
 		{org1, newElection(map[string]any{"id": "x1", "voters": map[string]any{"kind": "idemix", "msp": "ChairVoters2027MSP", "issuerPublicKey": "AAAA", "issuerKeyHash": "00", "curve": "FP256BN_AMCL"}}),
 			"Elections with voter credentials aren't supported by this version of the contract."},
+		{org1, newElection(map[string]any{"id": "x1", "voters": map[string]any{"kind": "x509", "msps": []string{}}}), "An election has at least one voter organisation, all different."},
+		{org1, newElection(map[string]any{"id": "x1", "voters": map[string]any{"kind": "x509", "msps": []string{"Org1MSP", "Org2MSP", "Org1MSP"}}}), "An election has at least one voter organisation, all different."},
+		// The voter organisations are checked last.
+		{org1, newElection(map[string]any{"id": "x1", "threshold": 3, "voters": map[string]any{"kind": "x509", "msps": []string{}}}), "The threshold must be from 2 to the number of trustees."},
 		// The argument parses before anything else is checked, in the specification's order.
 		{member(t, "Org9MSP"), "not json", "The election isn't JSON."},
 		{org1, "[1]", "The election isn't a JSON object."},
@@ -147,19 +172,24 @@ func TestCeremonyRefusals(t *testing.T) {
 	refused(t, n.endorse(org1, "OpenElection", id), "Round 3 isn't finished: waiting for Org1MSP.")
 	ok(t, n.submit(org1, "ConfirmShares", id, r3(0)))
 	refused(t, n.endorse(org1, "ConfirmShares", id, r3(0)), "Org1MSP has already posted round 3.")
+	// A trustee that has confirmed can't report a bad share, whichever trustee it names.
+	refused(t, n.endorse(org1, "ReportBadShare", id, "0200000000000000000000000000000000000000000000000000000000000000"),
+		"Org1MSP has already confirmed its shares, so it can't report a bad share.")
+	refused(t, n.endorse(org1, "ReportBadShare", id, "0100000000000000000000000000000000000000000000000000000000000000"),
+		"Org1MSP has already confirmed its shares, so it can't report a bad share.")
 	refused(t, n.endorse(org1, "OpenElection", id), "Round 3 isn't finished: waiting for Org2MSP.")
 
 	// Reports: only another trustee's identifier, as the record lists it.
-	refused(t, n.endorse(org1, "ReportBadShare", id, "0100000000000000000000000000000000000000000000000000000000000000"),
-		"Trustee 0100000000000000000000000000000000000000000000000000000000000000 isn't another trustee of this election.")
-	refused(t, n.endorse(org1, "ReportBadShare", id, "0400000000000000000000000000000000000000000000000000000000000000"),
+	refused(t, n.endorse(org2, "ReportBadShare", id, "0200000000000000000000000000000000000000000000000000000000000000"),
+		"Trustee 0200000000000000000000000000000000000000000000000000000000000000 isn't another trustee of this election.")
+	refused(t, n.endorse(org2, "ReportBadShare", id, "0400000000000000000000000000000000000000000000000000000000000000"),
 		"Trustee 0400000000000000000000000000000000000000000000000000000000000000 isn't another trustee of this election.")
-	refused(t, n.endorse(org1, "ReportBadShare", id, "2"), "Trustee 2 isn't another trustee of this election.")
+	refused(t, n.endorse(org2, "ReportBadShare", id, "2"), "Trustee 2 isn't another trustee of this election.")
 
 	// Voting and counting can't start in keygen.
 	refused(t, n.endorse(member(t, "Org1MSP"), "CastBallot", id, "{}"), "The election isn't open: it is in keygen.")
 	refused(t, n.endorse(org1, "CloseElection", id), "The election isn't open: it is in keygen.")
-	refused(t, n.endorse(org1, "PostDecryptionShare", id, "{}"), "The election is in keygen: decryption shares are posted while it is in decrypting.")
+	refused(t, n.endorse(org1, "PostDecryptionShare", id, "{}"), "Voting hasn't closed yet: the election is in keygen, and decryption shares are posted once it is in decrypting.")
 	refused(t, n.endorse(member(t, "Org1MSP"), "PublishTally", id), "The tally can't be published: the election is in keygen.")
 
 	// Cancelling: a trustee identity of the creator's organisation.
@@ -169,8 +199,11 @@ func TestCeremonyRefusals(t *testing.T) {
 	// A report ends the ceremony.
 	failed := n.clone()
 	report := ok(t, failed.submit(org2, "ReportBadShare", id, "0300000000000000000000000000000000000000000000000000000000000000"))
-	if record(t, report.payload).State != stateFailed {
-		t.Error("ReportBadShare didn't fail the election")
+	if r := record(t, report.payload); r.State != stateFailed || r.ReportedBy != "Org2MSP" {
+		t.Errorf("ReportBadShare left the election in %s, reported by %q", r.State, r.ReportedBy)
+	}
+	if !strings.HasSuffix(string(report.payload), `"state":"failed","reportedBy":"Org2MSP"}`) {
+		t.Errorf("the failed record: %s", report.payload)
 	}
 	eventIs(t, report, "ElectionFailed", `{"electionId":"budget-2027","reportedBy":"Org2MSP","fromTrustee":"Org3MSP"}`)
 	terminal(t, failed, stateFailed)
@@ -192,7 +225,7 @@ func TestCeremonyRefusals(t *testing.T) {
 	refused(t, n.endorse(org1, "CancelElection", id), "The key ceremony has ended: the election is in open.")
 	refused(t, n.endorse(org1, "PostCommitments", id, r1(0)), "The key ceremony has ended: the election is in open.")
 	refused(t, n.endorse(org2, "ReportBadShare", id, "0100000000000000000000000000000000000000000000000000000000000000"), "The key ceremony has ended: the election is in open.")
-	refused(t, n.endorse(org1, "PostDecryptionShare", id, v.shares["budget-2027"][0]), "The election is in open: decryption shares are posted while it is in decrypting.")
+	refused(t, n.endorse(org1, "PostDecryptionShare", id, v.shares["budget-2027"][0]), "Voting hasn't closed yet: the election is in open, and decryption shares are posted once it is in decrypting.")
 	refused(t, n.endorse(member(t, "Org1MSP"), "PublishTally", id), "The tally can't be published: the election is in open.")
 }
 

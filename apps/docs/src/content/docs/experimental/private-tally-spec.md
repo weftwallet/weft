@@ -13,7 +13,7 @@ This is the scheme from [ADR 0007](/reference/decisions/), written so that the G
 
 Weft Experimental, the trustee tool (`weft-trustee`) and the explorer share one TypeScript implementation, `@weftwallet/tally` in `packages/tally`, on `@noble/curves` and `@noble/hashes`. It is a private package: it isn't published, and Weft's normal build doesn't depend on it. The contract implements only what it runs, the verifying half, in Go, in `internal/tally` of its own module. Both run the same [test vectors](#test-vectors).
 
-Randomness is drawn only in Weft (encryption and ballot proofs) and in the trustee tool (key ceremony and decryption shares). Every step the contract runs is deterministic. It draws no randomness and reads no clock, not even the transaction's timestamp, which the client sets, so every endorser computes the same result.
+Randomness is drawn only in Weft (encryption and ballot proofs) and in the trustee tool (key ceremony and decryption shares). Every step the contract runs is deterministic. It draws no randomness and reads no clock, so every endorser computes the same result. The one time it reads is the transaction's timestamp, which the client sets and every endorser reads the same from the proposal, and only `CreateElection` reads it, to refuse a `closesAt` that has already passed. Nothing in this specification, from casting a ballot to publishing the tally, reads a time.
 
 ## Notation
 
@@ -231,7 +231,7 @@ In this order, stopping at the first failure:
 3. Every point and scalar decodes canonically, and no `a_j` is the identity.
 4. Every bit proof verifies.
 5. The sum proof verifies.
-6. No `a_j` is already on the ledger for this election.
+6. No two ciphertexts of the ballot have the same `a_j`, which two identical ciphertexts also do, and no `a_j` is already on the ledger for this election. The points are canonical, so the contract compares their hex. A repeat within the ballot is refused with the first pair, i before j.
 7. The voter hasn't voted in this election, by `v`. For a voter credential, this runs after the pseudonym proof verifies.
 
 ## Totals
@@ -382,7 +382,7 @@ The proofs exist twice, so the two implementations are tied together by vectors 
 - Each vector has fixed inputs, including the randomness that would normally be drawn, and every intermediate and final output: framed bytes, `ctx`, voter tags, ciphertexts, each proof's commitments and challenges, the tracking code, totals, decryption shares, Lagrange coefficients and counts.
 - Provers take their randomness as an argument through `@weftwallet/tally/testing`, so the TypeScript side can reproduce a vector and the Go side, which never proves ballots, can check the same bytes.
 - The key ceremony vectors fix noble's round 1 proof bytes, the derived key and verifying shares, the share encryption with a fixed nonce, and the confirmation proofs.
-- Negative vectors are inputs that must be refused, each with the contract's exact error message from the [error table](/experimental/contract-api/#errors): the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), and non-canonical points and scalars, identity points, unknown fields, missing fields, wrong types and wrong lengths, for ballots, every ceremony post, decryption shares and the tally.
+- Negative vectors are inputs that must be refused, each with the contract's exact error message from the [error table](/experimental/contract-api/#errors): the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), ballots whose own ciphertexts repeat, with proofs that verify, and non-canonical points and scalars, identity points, unknown fields, missing fields, wrong types and wrong lengths, for ballots, every ceremony post, decryption shares and the tally.
 - A change to the scheme changes the vectors first. A new label version is the only way to change an encoding, and its vectors go in a new folder, `v2/`.
 
 ## What is library code

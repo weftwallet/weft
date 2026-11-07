@@ -151,8 +151,10 @@ type failedEvent struct {
 }
 
 // ReportBadShare(electionId, fromTrustee): a trustee's share failed its
-// check, so the election moves to failed. fromTrustee is the sender's
-// identifier, as in the record's trustee list.
+// check, so the election moves to failed, with the reporting organisation
+// in the record. fromTrustee is the sender's identifier, as in the record's
+// trustee list. A trustee that has confirmed has accepted its shares, so it
+// can't report one.
 func reportBadShare(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	l, r, c, i, err := ceremonyCall(stub, args[0])
 	if err != nil {
@@ -160,6 +162,13 @@ func reportBadShare(stub shim.ChaincodeStubInterface, args []string) ([]byte, er
 	}
 	if err := roundsFinished(l, r, 2); err != nil {
 		return nil, err
+	}
+	confirmed, err := l.get(keyConfirm, r.ID, c.msp)
+	if err != nil {
+		return nil, err
+	}
+	if confirmed != nil {
+		return nil, errAlreadyConfirmed(c.msp)
 	}
 	from := -1
 	for j, t := range r.Trustees {
@@ -170,7 +179,7 @@ func reportBadShare(stub shim.ChaincodeStubInterface, args []string) ([]byte, er
 	if from < 0 {
 		return nil, errNotAnotherTrustee(args[1])
 	}
-	r.State = stateFailed
+	r.State, r.ReportedBy = stateFailed, c.msp
 	out, err := l.saveElection(r)
 	if err != nil {
 		return nil, err

@@ -466,6 +466,15 @@ export async function generateVectors(): Promise<Record<string, string>> {
     voted: [toHex(anonTag)],
   });
   ballotCase("a ballot for another election", ballotJson(proveBallot(ref.election, tagOf(ref.setup, VOTERS.ada), [1, 0], drawBallotRandomness(2, seededRandom("v1 negative ref"))).ballot));
+  // Repeats within one ballot. Slot 1 reuses slot 0's r, and every proof
+  // verifies, so only the repeat check refuses them.
+  const reused = (seed: string, m: number[]) => {
+    const rnd = drawBallotRandomness(aL, seededRandom(seed));
+    rnd.r[1] = rnd.r[0]!;
+    return ballotJson(proveBallot(A.election, adaTag, m, rnd).ballot);
+  };
+  ballotCase("two identical ciphertexts in one ballot", reused("v1 negative identical", [0, 0, 1]));
+  ballotCase("two ciphertexts in one ballot with the same randomness", reused("v1 negative reused", [1, 0, 0]));
   // Parsing.
   ballotCase("not JSON", "{\"v\":1,");
   ballotCase("not an object", "[]");
