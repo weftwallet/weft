@@ -10,6 +10,7 @@
  * receipt file are the only parts that need script.
  */
 
+import { X509Certificate } from "node:crypto";
 import { html, raw, type Html } from "./html.ts";
 import type { PrivateBallotRow } from "./db.ts";
 import { blockUrl, channelUrl, crumbs, cut, enc, fieldError, invalid, layout, pager, short, time, txUrl, type Site } from "./pages.ts";
@@ -39,6 +40,14 @@ export const phasePill = (phase: Phase) => pill(...PHASES[phase]);
 const KEYGEN: Phase[] = ["round1", "round2", "round3", "opening"];
 /** Whether the election has a key, so its ballots, its check and its tracking codes can be shown. */
 const hasKey = (v: PrivateElectionView) => !KEYGEN.includes(v.phase) && v.phase !== "failed" && v.phase !== "cancelled";
+/**
+ * The full check and the tracking code check during the key ceremony: on the
+ * page but hidden, with their scripts, so they appear without a reload when
+ * the election opens while the page is open (data-show, in pages.ts LIVE).
+ * A failed or cancelled election never opens, so it has neither.
+ */
+const shownOnceOpen = (v: PrivateElectionView, name: string): Html | null =>
+  hasKey(v) ? html` data-show="${name}"` : KEYGEN.includes(v.phase) ? html` data-show="${name}" hidden` : null;
 
 /** "Org1MSP", "Org1MSP and Org2MSP", "A, B and C". */
 export function list(items: readonly string[]): string {
@@ -283,7 +292,8 @@ ${sharesTable(v)}</div>`;
 export const MS_PER_BALLOT = 27;
 
 function fullCheckSection(v: PrivateElectionView): Html {
-  if (!hasKey(v)) return html``;
+  const shown = shownOnceOpen(v, "check");
+  if (!shown) return html``;
   const L = v.options.length;
   const detail =
     v.submitters === "show"
@@ -293,7 +303,7 @@ function fullCheckSection(v: PrivateElectionView): Html {
     html`<li class="xcheck__step" data-step="${key}"><span>${label}</span><span class="small subtle xcheck__word" data-word>waiting</span><span class="small subtle xcheck__detail">${text}</span>${
       bar ? html`<div class="xcheck__bar" aria-hidden="true"><span></span></div>` : ""
     }</li>`;
-  return html`<section class="section-gap" id="check"><h2>Check the whole election</h2><p class="lead">This browser reads the key ceremony, every ballot, the totals and the decryption shares from this explorer and checks each proof again, so you don't have to rely on this explorer's own check. Nothing is sent anywhere.</p>
+  return html`<section class="section-gap" id="check"${shown}><h2>Check the whole election</h2><p class="lead">This browser reads the key ceremony, every ballot, the totals and the decryption shares from this explorer and checks each proof again, so you don't have to rely on this explorer's own check. Nothing is sent anywhere.</p>
 <div class="card xcheck" id="xcheck">
 <ol class="xcheck__steps">
 ${step("ceremony", "Key ceremony", `${v.trustees.length} proofs of knowledge and ${v.trustees.length} confirmations, with the key, the context and the fingerprint worked out again from the commitments.`)}
@@ -340,6 +350,11 @@ function fullCheckScript(v: PrivateElectionView): string {
     return "About " + (ms < 60000 ? Math.max(1, Math.round(ms / 1000)) + (ms < 1500 ? " second" : " seconds") : Math.round(ms / 60000) + (ms < 90000 ? " minute" : " minutes")) + " for " + plural(total, "ballot") + " in " + plural(WORKERS, "worker") + ".";
   }
   hint.textContent = estimate(${v.ballots.total});
+  // As ballots arrive (pages.ts LIVE), the estimate follows the count, unless a check is running.
+  document.addEventListener("weft:live", function () {
+    var title = document.querySelector('[data-live="title"]');
+    if (!current && title) hint.textContent = estimate(Number(title.getAttribute("data-ballots")) || 0);
+  });
   function step(key) { return card.querySelector('[data-step="' + key + '"]'); }
   function word(key, kind, text) {
     var w = step(key).querySelector("[data-word]");
@@ -585,8 +600,9 @@ function trackingResult(v: PrivateElectionView, t: TrackingLookup): Html {
 }
 
 function trackingSection(v: PrivateElectionView, t: TrackingLookup | null): Html {
-  if (!hasKey(v)) return html``;
-  return html`<section class="section-gap" id="receipt"><h2>Check your tracking code</h2>
+  const shown = shownOnceOpen(v, "receipt");
+  if (!shown) return html``;
+  return html`<section class="section-gap" id="receipt"${shown}><h2>Check your tracking code</h2>
 <form class="card receipt receipt--single" method="get" action="#receipt" id="tracking-form" novalidate>
   <div class="xr-file" id="tracking-file-row" hidden>
     <input type="file" accept=".json,application/json" id="tracking-file" tabindex="-1" aria-hidden="true">
@@ -663,21 +679,38 @@ ${t ? trackingResult(v, t) : ""}
 
 /* The ballots ------------------------------------------------------------ */
 
+/** Who submitted a ballot, from its creator's certificate: the common name and the MSP ID, as the transaction pages show a submitter. */
+function submitter(b: PrivateBallotRow): Html {
+  if (!b.creator) return html`<span class="subtle">not published</span>`;
+  let name: string | null = null;
+  try {
+    name = /(?:^|\n)CN=([^\n]+)/.exec(new X509Certificate(Buffer.from(b.creator.idBytes, "base64")).subject)?.[1] ?? null;
+  } catch {
+    /* not a certificate: the MSP ID alone */
+  }
+  return name ? html`<span>${name}</span> <span class="mono subtle">${b.creator.mspId}</span>` : html`<span class="mono">${b.creator.mspId}</span>`;
+}
+
 function ballotsSection(v: PrivateElectionView, page: BallotsPage, yours: string | null): Html {
   if (!hasKey(v)) return html``;
   const L = v.options.length;
+  const showSubmitter = v.submitters === "show";
   const rows = page.rows.map((b) => {
     const mine = b.txId === yours;
-    return html`<tr${mine ? raw(' class="is-yours"') : ""}><td><a class="mono row-link" href="${txUrl(v.channel, b.txId)}"><span data-copy="${b.tracking}" title="${b.tracking}">${cut(b.tracking)}</span></a>${mine ? html` <span class="small ok">yours</span>` : ""}</td><td class="mono subtle" data-label="Voter tag">${short(b.voterTag)}</td><td data-label="Block"><a class="mono" href="${blockUrl(v.channel, b.block)}">#${b.block}</a></td><td data-label="Committed">${time(b.timestamp)}</td><td>${
+    return html`<tr${mine ? raw(' class="is-yours"') : ""}><td><a class="mono row-link" href="${txUrl(v.channel, b.txId)}"><span data-copy="${b.tracking}" title="${b.tracking}">${cut(b.tracking)}</span></a>${mine ? html` <span class="small ok">yours</span>` : ""}</td>${
+      showSubmitter ? html`<td data-label="Submitted by">${submitter(b)}</td>` : ""
+    }<td class="mono subtle" data-label="Voter tag">${short(b.voterTag)}</td><td data-label="Block"><a class="mono" href="${blockUrl(v.channel, b.block)}">#${b.block}</a></td><td data-label="Committed">${time(b.timestamp)}</td><td>${
       b.verified ? pill("ok", "proofs verify") : pill("bad", "proofs fail", b.error ?? undefined)
     }</td></tr>`;
   });
   return html`<section class="section-gap" id="ballots" data-live="ballots"><h2>Ballots</h2><p class="lead">Each ballot is ${L} ciphertexts with proofs that it chooses exactly one option. This explorer checked every proof as it read the block. A tracking code is a hash of the ballot and shows nothing about the choice. A voter tag names no one, and anyone with the voter's certificate can work it out for this election.${
-    v.submitters === "hide" ? " This explorer doesn't show who submitted each ballot, and shows its voter tag, which every proof is bound to." : ""
+    v.submitters === "hide"
+      ? " This explorer doesn't show who submitted each ballot, and shows its voter tag, which every proof is bound to."
+      : " This explorer shows who submitted each ballot, from the certificate that signed it."
   }</p>
 ${page.rows.length === 0
   ? html`<p class="empty">No ballots yet. Each ballot appears here once its block is indexed.</p>`
-  : html`<table class="table ballots"><thead><tr><th>Tracking code</th><th>Voter tag</th><th>Block</th><th>Committed</th><th>Proofs</th></tr></thead><tbody>${rows}</tbody></table>`}
+  : html`<table class="table ballots"><thead><tr><th>Tracking code</th>${showSubmitter ? html`<th>Submitted by</th>` : ""}<th>Voter tag</th><th>Block</th><th>Committed</th><th>Proofs</th></tr></thead><tbody>${rows}</tbody></table>`}
 ${page.newer || page.older ? pager("Pages of ballots", ["Newer ballots", page.newer], ["Older ballots", page.older]) : ""}
 </section>`;
 }
@@ -688,7 +721,7 @@ export function privateElectionPage(site: Site, v: PrivateElectionView, page: Ba
     site,
     `${v.title}, a private election on ${v.channel}`,
     html`${crumbs(["Overview", "/"], [v.channel, channelUrl(v.channel), true], ["Elections", `${channelUrl(v.channel)}/elections`], v.title)}
-<div class="title-row" data-live="title"><h1>${v.title}</h1>${phasePill(v.phase)}</div>
+<div class="title-row" data-live="title" data-ballots="${v.ballots.total}"><h1>${v.title}</h1>${phasePill(v.phase)}</div>
 ${banner(v)}
 ${summary(v)}
 ${ceremonySection(v)}

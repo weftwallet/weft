@@ -685,6 +685,14 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 /* Stop checking keeps its place while it isn't offered, so nothing moves when a check starts. */
 .xcheck__stop { margin-inline-start: auto; }
 .xcheck__stop[aria-hidden="true"] { visibility: hidden; }
+/* On a phone the button has the first row, and the estimate and Stop
+   checking share the second, so Stop checking keeps its place beside the
+   estimate while it isn't offered and leaves no empty row. */
+@media (max-width: 480px) {
+  .xcheck__actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--weft-space-2) var(--weft-space-3); align-items: baseline; }
+  .xcheck__actions #xcheck-run { grid-column: 1 / -1; justify-self: start; }
+  .xcheck__stop { margin-inline-start: 0; }
+}
 .section-gap > .table + .check { margin-top: var(--weft-space-3); }
 /* On a phone each option's bar takes the row under its name and count. */
 @media (max-width: 480px) {

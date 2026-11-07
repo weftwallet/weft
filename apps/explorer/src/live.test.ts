@@ -8,7 +8,18 @@ import { LIVE } from "./pages.ts";
  * whether the explorer answers.
  */
 function livePage() {
-  const page = { online: true, said: [] as string[], busy: [] as boolean[], intervals: 0, fetched: [] as string[] };
+  const page = {
+    online: true,
+    said: [] as string[],
+    busy: [] as boolean[],
+    intervals: 0,
+    fetched: [] as string[],
+    height: 86,
+    /** Parts shown only in some states (data-show), and whether the fetched page hides each. */
+    shown: [] as { dataset: { show: string }; hidden: boolean }[],
+    freshHidden: {} as Record<string, boolean>,
+    events: [] as string[],
+  };
   const element = (id: string) => {
     const attrs: Record<string, string> = {};
     const classes = new Set<string>();
@@ -38,13 +49,14 @@ function livePage() {
     activeElement: null as unknown,
     getElementById: (id: string) => byId[id] ?? null,
     querySelector: (s: string) => (s === "main h1" ? h1 : null),
-    querySelectorAll: () => [],
+    querySelectorAll: (s: string) => (s === "main [data-show]" ? page.shown : []),
     addEventListener: () => {},
+    dispatchEvent: (e: { type: string }) => void page.events.push(e.type),
   };
   const fetch = (url: string) => {
     page.fetched.push(url);
     if (!page.online) return Promise.reject(new Error("offline"));
-    return Promise.resolve({ ok: true, json: async () => ({ channels: [{ channel: "mychannel", height: 86, state: "live", peerHeight: 86 }] }), text: async () => "<html></html>" });
+    return Promise.resolve({ ok: true, json: async () => ({ channels: [{ channel: "mychannel", height: page.height, state: "live", peerHeight: page.height }] }), text: async () => "<html></html>" });
   };
   runInNewContext(LIVE, {
     document,
@@ -54,8 +66,12 @@ function livePage() {
     setInterval: () => ++page.intervals,
     DOMParser: class {
       parseFromString() {
-        return { querySelector: () => null, querySelectorAll: () => [] };
+        const show = /^\[data-show="(.+)"\]$/;
+        return { querySelector: (s: string) => (show.test(s) && show.exec(s)![1]! in page.freshHidden ? { hidden: page.freshHidden[show.exec(s)![1]!] } : null), querySelectorAll: () => [] };
       }
+    },
+    Event: class {
+      constructor(readonly type: string) {}
     },
     weftSay: (t: string) => page.said.push(t),
     weftBusy: (b: ReturnType<typeof element>, on: boolean) => {
@@ -123,5 +139,25 @@ describe("a live page's Check now", () => {
     expect(live.page.fetched).toEqual(["/api/v1/status", "http://explorer.test/"]);
     expect(live.page.said.at(-1)).toBe("This page is updating again.");
     expect(live.page.busy).toEqual([true, false, true, false, true, false, true, false]);
+  });
+});
+
+describe("a live page's parts shown only in some states", () => {
+  it("shows a private election's checks once the fetched page shows them, without a reload", async () => {
+    const live = livePage();
+    const check = { dataset: { show: "check" }, hidden: true };
+    const receipt = { dataset: { show: "receipt" }, hidden: true };
+    live.page.shown.push(check, receipt);
+    await live.settle();
+    // A block arrives: the election opened, so the fetched page shows both.
+    live.page.height = 87;
+    live.page.freshHidden = { check: false, receipt: false };
+    live.button.press();
+    await live.settle();
+    await live.settle();
+    expect(live.page.fetched.at(-1)).toBe("http://explorer.test/");
+    expect(check.hidden).toBe(false);
+    expect(receipt.hidden).toBe(false);
+    expect(live.page.events).toEqual(["weft:live"]);
   });
 });

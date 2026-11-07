@@ -745,8 +745,14 @@ export const LIVE = `
       // The page moved itself, so the header's row (header.js) takes it as no scroll.
       if (moved) { scrollBy(0, moved); if (window.weftHeaderSkipScroll) weftHeaderSkipScroll(); }
     }
+    // A part shown only in some states (the private election's checks, once it opens) follows the page.
+    document.querySelectorAll("main [data-show]").forEach(function (part) {
+      var fresh = next.querySelector('[data-show="' + part.dataset.show + '"]');
+      if (fresh && part.hidden !== fresh.hidden) part.hidden = fresh.hidden;
+    });
     weftRelative();
     announce(added);
+    document.dispatchEvent(new Event("weft:live"));
   }
   function announce(added) {
     var again = resumed;

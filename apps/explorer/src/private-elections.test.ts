@@ -293,6 +293,32 @@ describe("the private election pages", () => {
     expect(counting).toContain("Waiting for 1 more decryption share. The tally needs 2 of 2.");
   });
 
+  it("has the checks hidden during the key ceremony, so they appear once the election opens without a reload", async () => {
+    const round2 = (await page(await fixture("round2-undefined", { until: "round2", choices: [0, 1, 2] }))).body;
+    expect(round2).toContain('<section class="section-gap" id="check" data-show="check" hidden>');
+    expect(round2).toContain('<section class="section-gap" id="receipt" data-show="receipt" hidden>');
+    expect(round2).toContain('data-live="title" data-ballots="0"');
+    const open = (await page(await fixture("open-undefined", { until: "open", choices: [0, 1, 2] }))).body;
+    expect(open).toContain('<section class="section-gap" id="check" data-show="check">');
+    expect(open).toContain('<section class="section-gap" id="receipt" data-show="receipt">');
+    expect(open).toContain('data-live="title" data-ballots="3"');
+    // A failed election never opens, so it has neither.
+    const failed = (await page(await fixture("failed-undefined", { until: "failed", choices: [0, 1, 2] }))).body;
+    expect(failed).not.toContain('data-show="check"');
+    expect(failed).not.toContain('data-show="receipt"');
+  });
+
+  it("shows who submitted each ballot only when the policy shows submitters", async () => {
+    const f = await counted();
+    const shown = (await page(f, "", "show")).body;
+    expect(shown).toContain("<th>Tracking code</th><th>Submitted by</th><th>Voter tag</th>");
+    expect(shown.match(/<td data-label="Submitted by"><span class="mono">Org1MSP<\/span><\/td>/g)?.length).toBeGreaterThan(0);
+    expect(shown).toContain("This explorer shows who submitted each ballot, from the certificate that signed it.");
+    const hidden = (await page(f)).body;
+    expect(hidden).not.toContain("Submitted by");
+    expect(hidden).toContain("This explorer doesn't show who submitted each ballot");
+  });
+
   it("checks a tracking code from Weft's link, and lands on that ballot", async () => {
     const f = await counted();
     const b = f.ballots[3]!;
