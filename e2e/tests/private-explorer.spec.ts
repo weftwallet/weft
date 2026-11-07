@@ -6,19 +6,18 @@
  * every ballot passes in the browser's workers, then fails when one
  * published ballot is changed on its way to the page.
  *
- * Needs an election with ballots, as `pnpm playground:up --experimental`
- * seeds and the cast-ballot test votes in, ideally counted with
- * `pnpm playground:count`: WEFT_E2E_STACK=playground, WEFT_E2E_ELECTION to
- * choose it (budget-2027 by default), and WEFT_E2E_PRIVATE_EXPLORERS for
- * the explorers' addresses (the playground's two by default).
+ * Runs in the experimental-stack project, last, on the election that
+ * experimental.setup.ts created for the run and the tests before it voted
+ * in and counted (support/experimental.ts). WEFT_E2E_ELECTION and
+ * WEFT_E2E_ELECTION_CHANNEL check another election instead, and
+ * WEFT_E2E_PRIVATE_EXPLORERS gives the explorers' addresses (the
+ * playground's two by default).
  */
 
+import { ELECTION_CHANNEL, runElection } from "../support/experimental.ts";
 import { expect, test } from "../support/fixtures.ts";
 
-const ELECTION = process.env.WEFT_E2E_ELECTION ?? "budget-2027";
-const CHANNEL = `privatevote-${ELECTION}`;
 const EXPLORERS = (process.env.WEFT_E2E_PRIVATE_EXPLORERS ?? "http://localhost:8790,http://localhost:8791").split(",").map((u) => u.trim().replace(/\/+$/, ""));
-const api = (base: string, path = "") => `${base}/api/v1/channels/${CHANNEL}/private-elections/${ELECTION}${path}`;
 
 interface View {
   state: string;
@@ -36,6 +35,11 @@ interface Ballots {
 test.describe("the explorer's private election pages", () => {
   test("show the same election in both explorers, check every ballot in the browser, and catch a changed one", { tag: "@fabric" }, async ({ browser }) => {
     test.setTimeout(240_000);
+    const run = runElection();
+    const ELECTION = process.env.WEFT_E2E_ELECTION ?? run?.electionId;
+    test.skip(!ELECTION, "No election to check: the experimental-setup project makes one on pnpm playground:up --experimental, or set WEFT_E2E_ELECTION.");
+    const CHANNEL = process.env.WEFT_E2E_ELECTION ? ELECTION_CHANNEL : run!.channel;
+    const api = (base: string, path = "") => `${base}/api/v1/channels/${CHANNEL}/private-elections/${ELECTION}${path}`;
     const views: View[] = [];
     for (const base of EXPLORERS) {
       const res = await fetch(api(base)).catch(() => null);

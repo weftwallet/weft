@@ -38,3 +38,14 @@ test("the docs playground follows the wallet's connection", async ({ wallet }) =
   await popup.locator(".sheet").getByRole("button", { name: "Disconnect" }).click();
   await expect(page.locator("#pg-conn")).toHaveText("Disconnected in Weft");
 });
+
+test("the playground's Private election section stays hidden without Weft", async ({ browser }) => {
+  const s = stack();
+  test.skip(!s.sites.playground, "Build the playground first (pnpm --filter @weftwallet/playground build).");
+  const page = await browser.newPage();
+  await page.goto(`${s.sites.playground}/?invite=${encodeURIComponent(s.inviteUrl)}`);
+  // The page gives up looking for Weft after a moment, and says so.
+  await expect(page.locator("#pg-weft")).toHaveAttribute("data-state", "missing");
+  await expect(page.locator("#pg-private")).toBeHidden();
+  await page.close();
+});

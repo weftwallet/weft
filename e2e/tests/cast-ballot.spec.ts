@@ -3,20 +3,16 @@
  * private ballot from a site on a real network, and the site gets the
  * transaction and a version 2 receipt, never the choice.
  *
- * Needs peers with the private-ballot contract and an open election with
- * X.509 voters from Org1MSP, as `pnpm playground:up --experimental` seeds:
- * WEFT_E2E_STACK=playground, and WEFT_E2E_ELECTION to choose the election
- * (budget-2027 by default). The voter is alice, who can vote once per
- * election, so the test needs an election she hasn't voted in.
+ * Runs in the experimental-stack project, against `pnpm playground:up
+ * --experimental` (WEFT_E2E_STACK=playground), in the election that
+ * experimental.setup.ts creates for the run (support/experimental.ts). The
+ * voter is alice.
  */
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { CONTRACT, runElection } from "../support/experimental.ts";
 import { BUILDS, expect, stack, test } from "../support/fixtures.ts";
-
-const ELECTION = process.env.WEFT_E2E_ELECTION ?? "budget-2027";
-const CHANNEL = `privatevote-${ELECTION}`;
-const CONTRACT = "private-ballot";
 
 test.describe("Weft Experimental casts a ballot", () => {
   test.skip(!existsSync(join(BUILDS.experimental, "manifest.json")), "Build Weft Experimental's test build first (pnpm --filter @weftwallet/extension build:e2e:experimental).");
@@ -24,6 +20,10 @@ test.describe("Weft Experimental casts a ballot", () => {
 
   test("from a site, which gets the receipt and never the choice", { tag: "@fabric" }, async ({ wallet }) => {
     test.setTimeout(180_000);
+    const run = runElection();
+    test.skip(!run, "No election for this run: the experimental-setup project makes one on pnpm playground:up --experimental.");
+    const ELECTION = run!.electionId;
+    const CHANNEL = run!.channel;
     // Enrolled here, so Weft keeps Org1's CA chain and checks its peer's signature on the election.
     await wallet.enroll("alice", stack().users.alice!, { channels: ["mychannel", CHANNEL], name: "Weft playground" });
     const dapp = await wallet.dapp();
