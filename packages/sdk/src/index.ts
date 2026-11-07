@@ -15,6 +15,8 @@ import {
   type AddNetworkResult,
   type BallotReceipt,
   type BallotReceiptRequest,
+  type CastBallotParams,
+  type CastBallotResult,
   type ContractCall,
   type EvaluateResult,
   type ExperimentalFeature,
@@ -149,6 +151,17 @@ export class WeftClient {
     return this.provider
       .request({ method: "weft_signIn", params: statement ? { nonce, statement } : { nonce } })
       .catch(rethrow);
+  }
+
+  /**
+   * Experimental: asks the voter to cast a ballot in a private election
+   * (docs/adr/0007). Only Weft Experimental offers it: check
+   * supports("castBallot") first, since normal Weft fails with 4200. The
+   * voter chooses in Weft's window, and the result has the transaction and a
+   * version 2 receipt, never the choice. Doesn't require connect().
+   */
+  async castBallot(params: CastBallotParams): Promise<CastBallotResult> {
+    return this.provider.request({ method: "weft_castBallot", params }).catch(rethrow);
   }
 
   /** Binds a channel and chaincode so calls read like function calls. */

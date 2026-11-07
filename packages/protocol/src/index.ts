@@ -27,8 +27,8 @@ export type WeftFeature = (typeof PROVIDER_FEATURES)[number];
  * - `"voterCredentials"`: Idemix voter credentials, for anonymous ballots
  *   with `weft_castBallot` (docs/adr/0008).
  *
- * Names only: neither feature is built yet, and the protocol has no method
- * for them.
+ * `castBallot` is built, with its method in ExperimentalMethods.
+ * `voterCredentials` is a name only.
  */
 export type ExperimentalFeature = "castBallot" | "voterCredentials";
 
@@ -252,6 +252,70 @@ export interface ReceiptHandoff {
   salt: string;
 }
 
+/* ------------------------------------------------------------------ */
+/* Experimental: casting a ballot in a private election (docs/adr/0007) */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Experimental: params for weft_castBallot, which only Weft Experimental
+ * offers (feature "castBallot"). Normal Weft answers 4200. The request
+ * carries no choice, no key and no ballot: the voter chooses in Weft's
+ * window, and Weft reads the election key from the ledger itself.
+ */
+export interface CastBallotParams {
+  /** The election's channel, for example "privatevote-budget-2027". */
+  channel: string;
+  /** The private-ballot contract, for example "private-ballot". */
+  chaincode: string;
+  /** 1 to 64 letters, digits, - or _. */
+  electionId: string;
+}
+
+/**
+ * Experimental: a version 2 ballot receipt. It holds the tracking code and
+ * no choice and no randomness, so it shows that the ballot was counted and
+ * nothing about what it chose.
+ */
+export interface BallotReceiptV2 {
+  type: typeof RECEIPT_TYPE;
+  version: 2;
+  channel: string;
+  electionId: string;
+  txId: string;
+  /** A number, as in a version 1 receipt, which the explorer's receipt check reads. */
+  blockNumber: number;
+  /** 64 lowercase hex characters. */
+  tracking: string;
+}
+
+/**
+ * Experimental: what happened to a version 2 receipt. `"mismatch"`: the
+ * contract's tracking code isn't the one Weft computed; the vote stands, the
+ * receipt carries Weft's tracking code, and Weft keeps nothing.
+ */
+export type BallotReceiptResultV2 =
+  | { kept: true; receipt: BallotReceiptV2 }
+  | { kept: false; reason: ReceiptNotKeptReason; receipt: BallotReceiptV2 };
+
+/** Experimental: the result of weft_castBallot. The web app never learns the choice. */
+export interface CastBallotResult {
+  transactionId: string;
+  /** A string, because Fabric block numbers are 64-bit. */
+  blockNumber: string;
+  status: "VALID";
+  receipt: BallotReceiptResultV2;
+}
+
+/**
+ * Experimental: methods only Weft Experimental accepts. They aren't in
+ * METHODS, and normal Weft answers each with 4200 UnsupportedMethod.
+ */
+export interface ExperimentalMethods {
+  weft_castBallot: { params: CastBallotParams; result: CastBallotResult };
+}
+
+export type ExperimentalMethod = keyof ExperimentalMethods;
+
 /** Every method the provider accepts, with its params and result types. */
 export interface WeftMethods {
   weft_connect: { params: undefined; result: IdentitySummary };
@@ -268,9 +332,13 @@ export interface WeftMethods {
 
 export type WeftMethod = keyof WeftMethods;
 
-export type RequestArgs<M extends WeftMethod = WeftMethod> = WeftMethods[M]["params"] extends undefined
+/** The main product's methods and the experimental ones, for typing requests. */
+export type AnyMethods = WeftMethods & ExperimentalMethods;
+export type AnyMethod = keyof AnyMethods;
+
+export type RequestArgs<M extends AnyMethod = WeftMethod> = AnyMethods[M]["params"] extends undefined
   ? { method: M; params?: undefined }
-  : { method: M; params: WeftMethods[M]["params"] };
+  : { method: M; params: AnyMethods[M]["params"] };
 
 export const METHODS: readonly WeftMethod[] = [
   "weft_connect",
@@ -348,7 +416,8 @@ export interface WeftProvider {
    * and ExperimentalFeature for the entries only Weft Experimental lists.
    */
   readonly features: readonly string[];
-  request<M extends WeftMethod>(args: RequestArgs<M>): Promise<WeftMethods[M]["result"]>;
+  /** ExperimentalMethods work only in Weft Experimental; check `features` first. */
+  request<M extends AnyMethod>(args: RequestArgs<M>): Promise<AnyMethods[M]["result"]>;
   on<E extends WeftEvent>(event: E, listener: (payload: WeftEvents[E]) => void): void;
   off<E extends WeftEvent>(event: E, listener: (payload: WeftEvents[E]) => void): void;
 }
@@ -390,7 +459,19 @@ export const ErrorCode = {
   Internal: -32603,
 } as const;
 
-export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
+/**
+ * Experimental: codes only Weft Experimental returns (docs/adr/0009). Kept
+ * apart from ErrorCode so the normal build doesn't carry them.
+ */
+export const ExperimentalErrorCode = {
+  /**
+   * weft_castBallot: Weft couldn't read an open private election with that
+   * ID. `data.state` has the election's state when there is one.
+   */
+  ElectionUnavailable: 4400,
+} as const;
+
+export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode] | (typeof ExperimentalErrorCode)[keyof typeof ExperimentalErrorCode];
 
 export interface WeftErrorShape {
   code: ErrorCodeValue;
@@ -440,7 +521,7 @@ export const MESSAGE_TARGET = {
 export interface PageToWalletMessage {
   target: typeof MESSAGE_TARGET.toWallet;
   id: string;
-  method: WeftMethod;
+  method: AnyMethod;
   params?: unknown;
 }
 
