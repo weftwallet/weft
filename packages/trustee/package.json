@@ -1,0 +1,29 @@
+{
+  "name": "@weftwallet/trustee",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "weft-trustee: the trustee tool for private elections in Weft Experimental (ADR 0007). Unreviewed.",
+  "type": "module",
+  "bin": {
+    "weft-trustee": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.check.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.6",
+    "@hyperledger/fabric-gateway": "^1.13.0",
+    "@weftwallet/tally": "workspace:*",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "vitest": "^5.0.5"
+  }
+}

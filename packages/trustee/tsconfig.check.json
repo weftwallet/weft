@@ -1,0 +1,10 @@
+{
+  // Type-checks the tests too, which the build leaves out.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src"],
+  "exclude": []
+}
