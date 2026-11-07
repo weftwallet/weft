@@ -35,7 +35,7 @@ The private tally is built first, because it works with ordinary X.509 identitie
 
 ### The private tally
 
-The trustee organisations jointly hold the election key. Any k of them can decrypt, and fewer can't. Weft encrypts the voter's choice under that key, with proofs that the ballot chooses exactly one option, and the contract checks the proofs. When voting closes, the contract adds up the encrypted ballots, and k trustees decrypt only the totals, each with a proof. Anyone who can read the ledger can re-check every step. See the [specification](/experimental/private-tally-spec/) and the [key ceremony](/experimental/key-ceremony/).
+The trustee organisations jointly hold the election key. Any k of them can decrypt, and fewer can't. Weft encrypts the voter's choice under that key, with proofs that the ballot chooses exactly one option, and the contract checks the proofs. When k trustees close voting on the ledger, the contract adds up the encrypted ballots, and k trustees decrypt only the totals, each with a proof. Anyone who can read the ledger can re-check every step. See the [specification](/experimental/private-tally-spec/) and the [key ceremony](/experimental/key-ceremony/).
 
 The voter chooses in Weft's approval window, and the web app's page never sees the choice. The receipt is a tracking code, which shows that the ballot was counted and holds nothing about the choice.
 
@@ -47,7 +47,7 @@ A voter credential is an Idemix credential from the election's own idemix CA, he
 
 | Party | Main product | Private tally, X.509 voters | Private tally with voter credentials |
 |---|---|---|---|
-| Public explorer visitor | Neither who voted nor the choice, when the explorer hides submitters | Neither, and can re-check the whole count | Neither, and can re-check the whole count |
+| Public explorer visitor | Neither who voted nor the choice, when the explorer hides submitters | Not the choice. A voter tag for each ballot, which names no one, and who voted when the explorer shows submitters. Can re-check the whole count | Neither, and can re-check the whole count |
 | Member organisations | Who voted, and the choice in the private collection | Who voted, not the choice | Neither: an anonymous member of the voter organisation |
 | Endorsing peers | Who voted, and the choice | Who voted, not the choice | Neither |
 | The relay | The certificate, the choice and the voter's network address | The certificate, a ciphertext and the network address | A ciphertext, the network address and the timing |
@@ -76,13 +76,14 @@ Weft Experimental's popup and windows say "Weft Experimental", and its welcome s
 
 | What | Value | Now |
 |---|---|---|
-| Channels | One per election, `privatevote-<election id>`, each with Org1MSP and Org2MSP as endorsers, administrators and trustees. An election with voter credentials adds its own idemix organisation: `privatevote-chair-2027` has ChairVoters2027MSP for `chair-2027` | `privatevote-chair-2027` created |
+| Channels | One per election in the playground's list, `privatevote-<election id>`, each with Org1MSP and Org2MSP as endorsers, administrators and trustees. An election with voter credentials adds its own idemix organisation: `privatevote-chair-2027` has ChairVoters2027MSP for `chair-2027` | `privatevote-chair-2027` created. `privatevote-budget-2027` not yet. |
 | Voters' CA | A Fabric CA for each such election, each with its own issuer key, in Docker like test-network's CAs. For `chair-2027`, the CA `ca-chair-2027` on `https://localhost:7058`, whose idemix issuer key is ChairVoters2027MSP's, with demo voters `voter1` to `voter5` (secret `voter1pw` and so on), each registered with affiliation `voters` and one enrolment | Running. No CA proxy for the browser yet. |
 | Contract | `private-ballot`, from `examples/private-ballot-contract`, endorsed by Org1 and Org2 | Not built yet |
-| Key ceremony | Run with `weft trustee` for Org1 and Org2, 2 of 2 | Not built yet |
-| Elections | `budget-2027` on `privatevote-budget-2027`, with X.509 voters from Org1 and Org2 (private tally only), and `chair-2027` on `privatevote-chair-2027`, with voter credentials from ChairVoters2027MSP (both features) | Not built yet |
+| Key ceremony | Run with `weft-trustee` for Org1 and Org2, 2 of 2, with a trustee identity (`weft.trustee=true`) at each organisation's CA | Not built yet |
+| Elections | One list in `playground/experimental.mjs`, each with an optional voter organisation. `budget-2027` on `privatevote-budget-2027`, with X.509 voters from Org1 and Org2 (private tally only), seeded open for 30 days. `chair-2027` on `privatevote-chair-2027`, with voter credentials from ChairVoters2027MSP (both features), gets the contract and isn't seeded until voter credentials are built | Not built yet |
+| Counting | `pnpm playground:count <election>` closes the election and decrypts it for Org1 and Org2, so a tester sees a count without waiting for `closesAt` | Not built yet |
 | Relay | Started with `WEFT_EXPERIMENTAL=1` and `WEFT_IDEMIX_MSP_IDS=ChairVoters2027MSP`, and its invite lists every election's channel | Running. It accepts no idemix signers yet. |
-| Explorers | Both organisations' explorers, started with `WEFT_EXPERIMENTAL=1`, with `privateElections: private-ballot` for every election's channel in their policies | Running. They show those channels as ordinary channels until election pages are built. |
+| Explorers | Both organisations' explorers, started with `WEFT_EXPERIMENTAL=1`, with `privateElections: private-ballot` for every election's channel in their policies. Org1's shows submitters and Org2's hides them, and both publish each ballot's voter tag for the [full check](/experimental/cast-ballot/#what-the-explorer-publishes) | Running. They show those channels as ordinary channels until election pages are built. |
 
 `pnpm playground:down` removes the experimental channels and the voters' CAs with everything else. Another election with voter credentials is one more entry in the playground's list of elections, and the next `pnpm playground:up --experimental` starts its CA and creates its channel. The [playground's README](https://github.com/ifeanyi-ugwu/weft/tree/main/playground#adding-an-election) has the details. Run `pnpm playground:up` without `--experimental` to go back to the normal relay and explorers on the same network.
 
@@ -94,7 +95,7 @@ Weft Playground shows a "Private election" section only when `window.weft.featur
 |---|---|---|
 | Extension | `WEFT_EXPERIMENTAL=1` at build time, which `dev:experimental`, `build:experimental` and `build:e2e:experimental` set. It changes the name, the extension ID, the output folder and `features`, and the normal build contains none of the experimental code. | Yes |
 | Relay | `WEFT_EXPERIMENTAL=1`, and `WEFT_IDEMIX_MSP_IDS` for the voter MSPs. It refuses to start with `WEFT_IDEMIX_MSP_IDS` and without `WEFT_EXPERIMENTAL=1`. | Yes |
-| Explorer | `WEFT_EXPERIMENTAL=1`, and a channel's `privateElections` in the policy. It refuses to start with `privateElections` and without `WEFT_EXPERIMENTAL=1`. | Yes |
+| Explorer | `WEFT_EXPERIMENTAL=1`, and a channel's `privateElections` in the policy. It refuses to start with `privateElections` and without `WEFT_EXPERIMENTAL=1`, or with `privateElections` and `values: hash` on the same channel. With `privateElections`, it publishes each ballot's voter tag even when `submitter: hide`. | Yes |
 | Playground stack | `pnpm playground:up --experimental` | Yes |
 
 ## Pages

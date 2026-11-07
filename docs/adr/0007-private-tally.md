@@ -1,6 +1,6 @@
 # 0007: Hide the choice with a homomorphic tally, as an experiment
 
-Proposed on 1 November 2026 as an experiment. Decided by Ifeanyi Ugwu.
+Proposed on 1 November 2026 as an experiment, and revised on 7 November 2026. Decided by Ifeanyi Ugwu.
 
 This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Nothing in this record is built yet.
 
@@ -19,6 +19,12 @@ The ballot contract from ADR 0004 hides each choice from the public, and ADR 000
 The count is only partly checkable. The explorer compares the published total with the number of commitments, and it can't check the count per option, because the counting happens inside the private collection. ADR 0004 and the elections guide say that hiding the choice from the member organisations needs blind signatures, mixnets or homomorphic tallying.
 
 Whatever the contract verifies has to finish within Fabric's default 30-second execution timeout, with the same result on every endorser.
+
+A Fabric transaction's timestamp comes from the proposal header, which the client writes. The shim's `GetTxTimestamp` returns that value, and no peer compares it with its own clock. Endorsement policies, at chaincode or key level, name the peers that must sign a result, not the client that submits it.
+
+Reading from the ledger through the relay is a proposal signed with the voter's key, which ADR 0005 keeps encrypted until Weft is unlocked. Fabric CA returns the organisation's CA chain with every enrolment, and Weft doesn't keep it.
+
+`@weftwallet/cli` is published, and every operator who builds an invite installs it.
 
 I ran a study on 1 November 2026 that compared those options and built a prototype of the recommended one. The prototype ran a three-organisation key ceremony, cast five ballots, decrypted the right count with every pair of organisations, and refused each of the eight invalid ballots, shares and tallies it was given. [Prototype results](../../apps/docs/src/content/docs/experimental/prototype-results.md) has the runs and timings. This record follows the study's recommendations with two changes made afterwards: the contract is written in Go instead of TypeScript, and the work is an experiment on main behind a switch (ADR 0009) instead of a change to the main product.
 
@@ -44,17 +50,21 @@ The private tally follows Helios. Each ballot is encrypted under a key that the 
 
 ### The election key
 
-The trustee organisations run a key ceremony over the ledger, a Pedersen distributed key generation in the three-round structure of noble's FROST module. It ends with a joint public key whose secret no organisation knows, and a Shamir share for each trustee. No share reaches the contract or the ledger in readable form. Trustees act through `weft trustee`, a command in `packages/cli` that keeps the share on the organisation's own machine.
+The trustee organisations run a key ceremony over the ledger, a Pedersen distributed key generation in the three-round structure of noble's FROST module. It ends with a joint public key whose secret no organisation knows, and a Shamir share for each trustee. No share reaches the contract or the ledger in readable form. Trustees act through `weft-trustee`, the command of a private package, `@weftwallet/trustee` in `packages/trustee`, which keeps the share on the organisation's own machine. It isn't a `weft trustee` command in `@weftwallet/cli`, because that would add `@hyperledger/fabric-gateway`, gRPC and unreviewed cryptography to a package every operator installs, which ADR 0009 keeps away from people who install Weft. If the feature leaves the track, its commands can move into `@weftwallet/cli` with the same subcommands.
 
 Any k of the n trustees can decrypt, and fewer can't. The threshold k is set per election and defaults to a majority of the trustee organisations. The playground's network has two organisations, and its elections use 2 of 2. Choosing k = n gives the most secrecy, but lets any one organisation stop the count by losing or withholding its share.
 
 ### Proofs
 
-Each ciphertext carries a proof that it encrypts 0 or 1, and the ballot carries one more proof that its ciphertexts add up to an encryption of exactly 1. Every challenge covers the election context, the voter tag, the ciphertext and the proof's commitments, which avoids the weak Fiat-Shamir fault that allowed forged proofs in Helios. Binding to the voter, and refusing any ciphertext already on the ledger, stops the Helios replay attack in which a copied ballot reveals the voter's choice.
+Each ciphertext carries a proof that it encrypts 0 or 1, and the ballot carries one more proof that its ciphertexts add up to an encryption of exactly 1. Every challenge covers the election context, the voter tag, the ciphertext and the proof's commitments, which avoids the weak Fiat-Shamir fault that allowed forged proofs in Helios. Binding to the voter, and refusing any ciphertext already on the ledger, stops the Helios replay attack in which a copied ballot reveals the voter's choice. The voter tag is a hash of the transaction creator's identity together with the channel and the election ID, so the same voter has a different tag in each election.
 
 ### Casting through Weft
 
-The experimental build adds `weft_castBallot`, with the channel, contract and election ID. The voter chooses in Weft's approval window, and the web app never learns the choice. Weft reads the election from the ledger through the relay, shows its title and options, who holds the key, the threshold and a short fingerprint of the key that explorers show too. It then encrypts, proves, signs and submits.
+The experimental build adds `weft_castBallot`, with the channel, contract and election ID. The voter chooses in Weft's approval window, and the web app never learns the choice.
+
+Weft opens the window once the params check, and unlocks there if it is locked. It then reads the election by endorsing `GetElection` without submitting, and checks that a peer of the voter's own organisation signed the answer, against the CA chain Weft keeps from enrolment. Where it has no chain, it reads without that check and says so. It works out the election context and the election fingerprint itself. The fingerprint is a short hash of the whole election context and the trustees' MSP IDs, which explorers show too. It doesn't cover the title or `closesAt`. Any failure before the vote shows in the window, and the site gets the error code as soon as Weft knows.
+
+The window has two screens. The first shows the title, the options and the planned closing time, and the voter chooses. The second shows the choice, who holds the key, the threshold, the fingerprint and what the network sees, with Sign and vote. Weft then encrypts, proves, signs and submits.
 
 Weft never takes the election key, or a finished ballot, from the web app. A key the web app supplies could be one whose secret the web app holds, and a finished ballot can't be checked to hold the option the voter saw. The contract refuses a ballot under any other key, as the prototype's wrong-key test shows.
 
@@ -66,7 +76,9 @@ The receipt is a tracking code, a hash of the ballot with the voter tag and the 
 
 ### Counting and checking
 
-After the closing time, anyone calls `CloseElection`, and the contract adds up the accepted ballots per option. Each trustee posts a decryption share of each total with a proof, the contract checks it, and once k shares are in, `PublishTally` combines them and writes the counts. Every step is deterministic, so every endorser gets the same answer. The explorer can re-check the whole election from ledger data. Its receipt check needs no choice, and ADR 0006's message hand-off isn't used for version 2 receipts.
+Only the trustees close an election. `CloseElection` records a trustee's request, and the request that brings the number of trustees who have asked to k closes the election and adds up the accepted ballots per option. The contract checks the caller's MSP ID and its `weft.trustee=true` attribute itself, as for every trustee function, because an endorsement policy can't name the submitting client. The closing transaction is the cut-off: `CastBallot` reads the election record that the close rewrites, so a ballot committed after the close fails validation and one endorsed after it is refused. No contract function reads a clock. `closesAt` is the planned closing time, which Weft and explorers show. After it, the election stays open until k trustees close it. k is chosen because k trustees already decide whether the totals are decrypted: a smaller group can't end voting, and the n - k + 1 who could stop a close by not asking could already stop the count.
+
+Each trustee posts a decryption share of each total with a proof, the contract checks it, and once k shares are in, `PublishTally` combines them and writes the counts. Every step is deterministic, so every endorser gets the same answer. The explorer can re-check the whole election from ledger data. Every ballot proof is bound to the voter tag, so an explorer whose policy has `privateElections` for a channel publishes each ballot's voter tag there, even with `submitter: hide`, and still hides the submitter's certificate, name and MSP ID. Its receipt check needs no choice, and ADR 0006's message hand-off isn't used for version 2 receipts.
 
 ### A Go contract, with the proofs written twice
 
@@ -76,7 +88,9 @@ After the closing time, anyone calls `CloseElection`, and the contract adds up t
 - Node chaincode verifies about 40 three-option ballots a second per core with noble. The Go standard library's curve operations were 24 to 56 times faster than noble's in the prototype, which suggests 1 to 2 ms per ballot. That figure is an estimate from the ratio, and the scheme hasn't been measured in Go.
 - The Node contract library, `fabric-contract-api`, fails for every call from an idemix creator (ADR 0008).
 
-The tally proofs therefore exist in Go in the contract and in TypeScript in Weft, the trustee CLI and the explorer. Shared test vectors, which both test suites run, keep the two in step.
+The contract is one Go module with the verifiers in `internal/tally`. The peer builds it in Docker with test-network's `deployCC -ccl go`, as for the playground's other contracts, so it needs no new container or peer setting. `vendor/` stays out of git, and the `go` line in `go.mod` is no newer than the Go in `hyperledger/fabric-ccenv:2.5`.
+
+The tally proofs therefore exist in Go in the contract and in TypeScript in one private package, `@weftwallet/tally` in `packages/tally`, which Weft Experimental, the trustee tool and the explorer share. It stays out of `@weftwallet/core`, so the check that the normal build holds none of it is a check on a package boundary. Test vectors in `packages/tally/vectors/v1/`, written from fixed seeds as JSON and run by both test suites, keep the two in step. Each negative vector carries the contract's exact error message.
 
 ### Left out of version 1
 
@@ -98,7 +112,10 @@ The ElGamal encryption, the proofs, the share encryption, the Lagrange combinati
 - Version 1 receipts and the main product's ballot contract keep working unchanged.
 - Any k colluding trustees can read a single ballot, and nothing on the ledger would show it. If fewer than k can or will post shares, the totals can't be decrypted, and the election has to be run again.
 - A voter running a modified Weft can keep the randomness and prove their vote. A bug or side channel in Weft that leaks the randomness reveals the vote.
-- Weft doesn't yet check the peer's signature on the election key it reads through the relay. Until it does, the fingerprint in the approval window, which explorers show too, is the voter's check against a substituted key.
+- Until Weft keeps the CA chain from enrolment, and for voter credentials, whose organisation has no peers, Weft reads the election without checking the peer's signature. The election fingerprint in the approval window, which explorers show too, is then the voter's check against a substituted key.
+- k trustees decide when voting ends. They can close before `closesAt`, and the block the election closed in shows that to everyone who can read the channel.
+- Explorers publish each ballot's voter tag, even where they hide submitters, because the full check needs it. An X.509 voter's tag names no one, but anyone with the certificate can compute it for an election and see that the voter voted in it. The tag covers the channel and the election ID, so one certificate's tags differ between elections and can't be linked across them.
+- Reading the election is a signed proposal, so the relay and the endorsing peers see which identity read it.
 - Verification limits how many ballots a second an endorsing peer accepts, and the explorer's full check of 10,000 ballots takes minutes.
 - The Pedersen key generation lets a participant bias the distribution of the joint key, which FROST and ElectionGuard also accept.
 - Who voted, and when, stays visible to every member unless ADR 0008's voter credentials are used too.

@@ -12,10 +12,12 @@ This page describes Weft Experimental, a separate build that is not part of the 
 ## Overview
 
 - It uses `fabric-chaincode-go`'s shim and `cid` package, which handle idemix creators. Whether `fabric-contract-api-go` does too is to be checked while building it. Node's `fabric-contract-api` doesn't ([ADR 0008](/reference/decisions/)).
+- It is one Go module, `github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract`, with the tally's verifiers in `internal/tally`. They handle no secret: decoding, the proof checks, the tracking code, totals, the round 1 proof of knowledge, the key and verifying shares, and combining decryption shares.
 - It verifies ballot proofs with a Go ristretto255 library, still to be chosen, and the pseudonym proof with IBM's idemix library, from the same Go source as Weft's WebAssembly build.
 - It uses no private data collection and no transient data. Every argument is public.
-- Every function is deterministic. The only clock it reads is the transaction's timestamp.
+- Every function is deterministic, and none reads a clock. A transaction's timestamp is set by the client that sends it, and peers don't compare it with their own clocks, so the contract doesn't use it. An election stops accepting ballots when it is [closed](#closeelection) on the ledger.
 - Its endorsement and lifecycle policies name only X.509 organisations, since idemix organisations can't endorse. The playground uses `AND('Org1MSP.peer','Org2MSP.peer')`.
+- The peer builds it in Docker, as for the playground's other contracts, with test-network's `deployCC -ccl go`, which runs `go mod vendor` in the contract's folder. `vendor/` isn't committed, and the `go` line in `go.mod` is no newer than the Go in `hyperledger/fabric-ccenv:2.5`.
 
 Arguments are strings, as in every Fabric contract. JSON arguments are parsed into fixed fields: unknown fields, missing fields and wrong types are refused. Points and scalars are lowercase hex, as the [specification](/experimental/private-tally-spec/#group-and-encoding) says.
 
@@ -24,11 +26,13 @@ Arguments are strings, as in every Fabric contract. JSON arguments are parsed in
 | State | Meaning | Next |
 |---|---|---|
 | `keygen` | The key ceremony is running. No ballots. | `open`, `failed` or `cancelled` |
-| `open` | The key exists. Ballots are accepted until `closesAt`. | `decrypting` |
-| `decrypting` | The totals are written. Trustees post decryption shares. | `counted` |
+| `open` | The key exists. Ballots are accepted until k trustees close the election. | `decrypting` |
+| `decrypting` | Voting has closed and the totals are written. Trustees post decryption shares. | `counted` |
 | `counted` | The tally is published. | None |
 | `failed` | A trustee reported a bad share in the ceremony. | None |
-| `cancelled` | The creator cancelled the election during the ceremony. | None |
+| `cancelled` | The creator's organisation cancelled the election during the ceremony. | None |
+
+`closesAt` is the planned closing time. The contract stores it for Weft and explorers to show, and doesn't act on it. Once `closesAt` has passed, the election stays `open` and keeps accepting ballots until the trustees close it with [`CloseElection`](#closeelection). Weft and explorers show that as "Open, past its planned closing time", and show `decrypting` as "Counting".
 
 ## The election record
 
@@ -50,31 +54,33 @@ Arguments are strings, as in every Fabric contract. JSON arguments are parsed in
   "publicKey": "<point>",
   "verifyingShares": ["<point>", "<point>"],
   "context": "<64 hex characters>",
-  "fingerprint": "3f9a 61c2 08de 77b1 c4e0"
+  "fingerprint": "3f9a61c208de77b1c4e0"
 }
 ```
+
+`fingerprint` is the [election fingerprint](/experimental/private-tally-spec/#the-election-fingerprint), 20 lowercase hex characters without spaces. Weft and explorers show it in five groups of four.
 
 `voters` is one of:
 
 - `{ "kind": "x509", "msps": [...] }`: X.509 identities of these organisations vote. The private tally only.
 - `{ "kind": "idemix", "msp": "ChairVoters2027MSP", "issuerPublicKey": "<base64>", "issuerKeyHash": "<hex>", "curve": "FP256BN_AMCL" }`: voter credentials from this idemix organisation vote. `issuerPublicKey` is the issuer's `IssuerPublicKey` protobuf, pinned at creation. The contract can't read the channel configuration, so explorers compare `issuerKeyHash` with the organisation's key in the configuration block.
 
-From `decrypting` on, the record also has `ballots` (the number accepted) and `totals` (one `{ a, b }` per option). From `counted`, it also has `tally: { counts: { "<option>": n }, total }`.
+From `decrypting` on, the record also has `ballots` (the number accepted), `totals` (one `{ a, b }` per option) and `closedBy` (the MSP IDs of the trustees whose requests closed it). From `counted`, it also has `tally: { counts: { "<option>": n }, total }`.
 
 ## Functions
 
 | Function | Arguments | Who can call it | When |
 |---|---|---|---|
-| [`CreateElection`](#createelection) | `electionJson` | A member of one of the named trustee organisations | Any time |
+| [`CreateElection`](#createelection) | `electionJson` | A trustee identity of one of the named trustee organisations | Any time |
 | [`PostCommitments`](#postcommitments) | `electionId`, `round1Json` | A trustee | `keygen` |
 | [`PostShares`](#postshares) | `electionId`, `round2Json` | A trustee | `keygen`, after every round 1 |
 | [`ConfirmShares`](#confirmshares) | `electionId`, `proofJson` | A trustee | `keygen`, after every round 2 |
 | [`ReportBadShare`](#reportbadshare) | `electionId`, `fromTrustee` | A trustee | `keygen`, after every round 2 |
-| [`CancelElection`](#cancelelection) | `electionId` | A member of the creator's organisation | `keygen` |
+| [`CancelElection`](#cancelelection) | `electionId` | A trustee identity of the creator's organisation | `keygen` |
 | [`OpenElection`](#openelection) | `electionId` | Anyone with an X.509 identity in the channel | `keygen`, after every confirmation |
-| [`CastBallot`](#castballot) | `electionId`, `ballotJson` | An X.509 voter | `open`, before `closesAt` |
-| [`CastAnonymousBallot`](#castanonymousballot) | `electionId`, `ballotJson`, `pseudonymJson` | A voter credential | `open`, before `closesAt` |
-| [`CloseElection`](#closeelection) | `electionId` | Anyone with an X.509 identity in the channel | `open`, after `closesAt` |
+| [`CastBallot`](#castballot) | `electionId`, `ballotJson` | An X.509 voter | `open` |
+| [`CastAnonymousBallot`](#castanonymousballot) | `electionId`, `ballotJson`, `pseudonymJson` | A voter credential | `open` |
+| [`CloseElection`](#closeelection) | `electionId` | A trustee | `open` |
 | [`PostDecryptionShare`](#postdecryptionshare) | `electionId`, `shareJson` | A trustee | `decrypting` |
 | [`PublishTally`](#publishtally) | `electionId` | Anyone with an X.509 identity in the channel | `decrypting`, with k shares |
 | `GetElection` | `electionId` | Anyone who can read the channel | Any time |
@@ -82,15 +88,18 @@ From `decrypting` on, the record also has `ballots` (the number accepted) and `t
 | `GetBallot` | `electionId`, `tracking` | Anyone who can read the channel | Any time |
 | `GetDecryptionShares` | `electionId` | Anyone who can read the channel | Any time |
 
-A trustee is an X.509 identity of a trustee organisation whose certificate carries the attribute `weft.trustee=true`. The contract works out which trustee is calling from the MSP ID, so trustee arguments don't name themselves.
+A trustee identity is an X.509 identity whose certificate carries the Fabric CA attribute `weft.trustee=true`. A trustee is a trustee identity of one of the election's trustee organisations. The contract works out which trustee is calling from the MSP ID, so trustee arguments don't name themselves.
+
+The contract checks the caller itself, with `cid`, from the creator's MSP ID and its `weft.trustee` attribute. Endorsement policies, at chaincode or key level, say which peers must sign a result and can't name the client that submits it.
 
 ### CreateElection
 
-`electionJson` has `id`, `title`, `options`, `closesAt`, `trustees` (MSP IDs, in order), `threshold` and `voters`. The contract checks that:
+`electionJson` has `id`, `title`, `options`, `closesAt`, `trustees` (MSP IDs, in order), `threshold` and `voters`. The caller's organisation becomes `creatorMsp`. The contract checks that:
 
+- the caller is a trustee identity of one of the named trustee organisations
 - the ID is 1 to 64 letters, digits, `-` or `_`
 - there are 2 to 20 different options
-- `closesAt` is in the future
+- `closesAt` is a UTC time written as `2027-01-31T17:00:00.000Z`. It isn't compared with any clock.
 - there are at least two trustee organisations, all different
 - the threshold is 2 to n
 - for idemix voters, the issuer key parses for the named curve
@@ -119,7 +128,7 @@ Moves an election that is still in `keygen` to `cancelled`. Event `ElectionCance
 
 ### OpenElection
 
-Once every trustee has confirmed, computes the election key, the verifying shares, `context` and `fingerprint`, and moves the election to `open`. Every endorser computes the same values from the round 1 commitments. Event `ElectionOpened` with the fingerprint.
+Once every trustee has confirmed, computes the election key, the verifying shares, `context` and `fingerprint`, and moves the election to `open`. Every endorser computes the same values from the round 1 commitments. Event `ElectionOpened` with the fingerprint. `weft-trustee confirm` calls it when its confirmation is the last one.
 
 ### CastBallot
 
@@ -131,17 +140,23 @@ For an election with voter credentials. The creator must be an idemix identity o
 
 ### CloseElection
 
-After `closesAt`, reads every accepted ballot of the election, adds them up per option, writes `ballots` and `totals`, and moves the election to `decrypting`. Event `ElectionClosed` with the number of ballots.
+A trustee asks to close voting. The contract records the request under `close` `<id>` `<trustee>`, unless this trustee has already asked. If at least k trustees have then asked, it reads every accepted ballot of the election, adds them up per option, writes `ballots`, `totals` and `closedBy`, and moves the election to `decrypting`. Otherwise the election stays `open`. Event `ElectionClosed` with the number of ballots when the call closes the election, and `CloseRequested` with the trustee when it doesn't.
 
-`CloseElection` reads every ballot by range, so its read set grows with the electorate. A ballot endorsed just before `closesAt` and committed after `CloseElection` was endorsed makes the close fail validation with a phantom read conflict. Call it again.
+The transaction that closes the election is the cut-off, whatever any timestamp says:
+
+- `CastBallot` and `CastAnonymousBallot` read the election record, which the close rewrites. A ballot committed before the close is counted. A ballot committed after it fails validation with `MVCC_READ_CONFLICT`, whenever it was endorsed, and a ballot endorsed after it is refused with "Voting has closed."
+- The close reads every ballot by range, so its read set grows with the electorate. A ballot committed between the close's endorsement and its commit makes the close fail validation with `PHANTOM_READ_CONFLICT`. Call it again.
+- A call from a trustee that has already asked still closes the election once k have asked. Two requests endorsed at the same moment each see only their own, and the next call from either trustee completes the close.
+
+Only trustees can close, and k of them are needed, because k trustees together already decide whether the totals are ever decrypted. No group smaller than k can end voting, and any group large enough to stop a close by not asking, n - k + 1 trustees, could already stop the count by withholding its decryption shares. The contract doesn't stop k trustees closing before `closesAt`. `weft-trustee close` asks for `--early` to do that, and explorers show the block the election closed in beside `closesAt`.
 
 ### PostDecryptionShare
 
-`shareJson` is `{ "shares": [{ "d": <point>, "c": <scalar>, "z": <scalar> }, ...] }`, one per option. The contract checks every proof against the trustee's verifying share and the totals. Event `DecryptionSharePosted`.
+`shareJson` is `{ "shares": [{ "d": <point>, "c": <scalar>, "z": <scalar> }, ...] }`, one per option. The contract checks every proof against the trustee's verifying share and the totals, and accepts one share per trustee. Event `DecryptionSharePosted`.
 
 ### PublishTally
 
-Once at least k trustees have posted shares, combines the k with the lowest identifiers, finds each count, checks they add up to `ballots`, writes `tally` and moves the election to `counted`. Event `TallyPublished` with the counts and total.
+Once at least k trustees have posted shares, combines the k with the lowest identifiers, finds each count, checks they add up to `ballots`, writes `tally` and moves the election to `counted`. Event `TallyPublished` with the counts and total. `weft-trustee decrypt` calls it when its share is the k-th.
 
 ### Readers
 
@@ -161,6 +176,7 @@ Composite keys, with the object type first:
 | `tracking` `<id>` `<tracking>` | The transaction ID |
 | `ciphertext` `<id>` `<a>` | The transaction ID, one key per ciphertext, for the repeated-ciphertext check |
 | `voted` `<id>` `<voter tag>` | An empty marker: this voter or credential has voted |
+| `close` `<id>` `<trustee>` | An empty marker: this trustee has asked to close voting |
 | `dshare` `<id>` `<trustee>` | A trustee's decryption share |
 
 Each ballot, ciphertext and marker has a key of its own, so concurrent ballots never write the same key. The totals are computed once, at close, rather than kept as a running sum, which every concurrent ballot would conflict on.
@@ -175,7 +191,8 @@ Fabric keeps one event per transaction. Each payload is JSON with `electionId`.
 | `CeremonyStep` | `electionId`, `round`, `trustee` (MSP ID) |
 | `ElectionOpened` | `electionId`, `fingerprint` |
 | `BallotCast` | `electionId`, `tracking` |
-| `ElectionClosed` | `electionId`, `ballots` |
+| `CloseRequested` | `electionId`, `trustee` (MSP ID) |
+| `ElectionClosed` | `electionId`, `ballots`, `closedBy` |
 | `DecryptionSharePosted` | `electionId`, `trustee` |
 | `TallyPublished` | `electionId`, `counts`, `total` |
 | `ElectionFailed` | `electionId`, `reportedBy`, `fromTrustee` |
@@ -191,16 +208,23 @@ Each error says what happened and, where the caller can do something about it, w
 | `Election <id> already exists.` | `CreateElection` with an ID in use. |
 | `Election IDs are 1 to 64 letters, digits, - or _.` | `CreateElection`. |
 | `An election has 2 to 20 options, all different.` | `CreateElection`. |
+| `An election has at least two trustee organisations, all different.` | `CreateElection`. |
 | `The threshold must be from 2 to the number of trustees.` | `CreateElection`. |
-| `<MSP> isn't a trustee of this election.` | A trustee function from another organisation. |
-| `This identity can't act as a trustee: its certificate doesn't carry weft.trustee=true.` | A trustee function from an identity without the attribute. |
-| `<MSP> has already posted round <n>.` | A second post in the same round. |
-| `Round <n> isn't finished: waiting for <MSP>.` | A round started before the one before it ended. |
+| `closesAt isn't a time in the form 2027-01-31T17:00:00.000Z.` | `CreateElection`. |
+| `Elections with voter credentials aren't supported by this version of the contract.` | `CreateElection` with `voters.kind` `"idemix"`, until voter credentials are built. |
+| `<MSP> isn't one of the trustee organisations named in this election.` | `CreateElection` from an organisation that isn't in `trustees`. |
+| `<MSP> isn't a trustee of this election.` | A trustee function, including `CloseElection`, from another organisation. |
+| `This identity can't act as a trustee: its certificate doesn't carry weft.trustee=true.` | `CreateElection`, `CancelElection` or a trustee function from an identity without the attribute. |
+| `<MSP> didn't create this election, so it can't cancel it.` | `CancelElection` from another organisation. |
+| `The key ceremony has ended: the election is in <state>.` | A ceremony function, `ReportBadShare`, `CancelElection` or `OpenElection` outside `keygen`. |
+| `<MSP> has already posted round <n>.` | A second post in the same round, including a second confirmation in round 3. |
+| `Round <n> isn't finished: waiting for <MSP>.` | A round, a report or `OpenElection` before the round before it ended. |
 | `The proof of knowledge from <MSP> doesn't verify.` | `PostCommitments`. |
 | `The confirmation from <MSP> doesn't match its verifying share.` | `ConfirmShares`. |
-| `The election isn't open: it is in <state>.` | A ballot outside `open`. |
-| `Voting has closed.` | A ballot at or after `closesAt`. |
-| `Voting is open until <closesAt>.` | `CloseElection` too early. |
+| `Trustee <id> isn't another trustee of this election.` | `ReportBadShare` naming an unknown identifier or the caller's own. |
+| `The election isn't open: it is in <state>.` | A ballot, or `CloseElection`, in `keygen`, `failed` or `cancelled`. |
+| `Voting has closed.` | A ballot in `decrypting` or `counted`. |
+| `Voting has already closed: the election is in <state>.` | `CloseElection` in `decrypting` or `counted`. |
 | `This identity can't vote in this election: <MSP> isn't one of its voter organisations.` | `CastBallot` from another MSP, or either cast function for the wrong kind of voter. |
 | `The ballot isn't for this election.` | Wrong `v` or `electionId`. |
 | `The ballot has <n> ciphertexts; this election has <L> options.` | Wrong length. |
@@ -211,6 +235,13 @@ Each error says what happened and, where the caller can do something about it, w
 | `The pseudonym proof is not valid.` | `CastAnonymousBallot`, including a proof copied from another voter. |
 | `This identity has already voted in this election.` | A second ballot from an X.509 voter. |
 | `This credential has already voted in this election.` | A second ballot from a voter credential. |
+| `The election is in <state>: decryption shares are posted while it is in decrypting.` | `PostDecryptionShare` outside `decrypting`. |
+| `<MSP> has already posted its decryption share.` | A second `PostDecryptionShare` from the same trustee. |
+| `The decryption share has <n> entries; this election has <L> options.` | `PostDecryptionShare` with the wrong length. |
 | `Share <j> from <MSP> does not match its key.` | `PostDecryptionShare`. |
+| `The tally is already published.` | `PublishTally` in `counted`. |
+| `The tally can't be published: the election is in <state>.` | `PublishTally` in any other state but `decrypting`. |
 | `The tally needs <k> decryption shares; <m> have been posted.` | `PublishTally` too early. |
 | `A count is larger than the number of ballots, so the totals or shares are wrong.` | `PublishTally`, which should never happen with verified shares. |
+
+Every negative [test vector](/experimental/private-tally-spec/#test-vectors) carries the message from this table that the contract must return for it.

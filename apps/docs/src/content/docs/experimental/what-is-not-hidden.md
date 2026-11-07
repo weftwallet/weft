@@ -13,10 +13,11 @@ The [private tally](/experimental/private-tally-spec/) hides the choice and [vot
 
 ### To everyone who can read the channel
 
-- That the election exists, its options, trustees, threshold, closing time and key.
+- That the election exists, its options, trustees, threshold, planned closing time and key, and the block in which the trustees closed it.
 - How many ballots were cast, and when each one was committed.
 - The final counts. In a small election, or a one-sided one, the counts can show how individuals voted: if every ballot chose the same option, everyone knows each voter's choice.
 - With X.509 voters, who voted and who didn't, since every ballot transaction carries the voter's certificate.
+- On an explorer, each ballot's voter tag, even where the explorer hides submitters. It names no one, but anyone with the voter's certificate can compute it for an election and see that the voter voted in it. The tag covers the channel and the election ID, so an X.509 voter's tags differ from one election to the next, and the published tags don't link one certificate's ballots across elections. See [What the explorer publishes](/experimental/cast-ballot/#what-the-explorer-publishes).
 - With voter credentials, the voter organisation, the shared affiliation and the role on every ballot, and the per-election pseudonym, which is the same for any second attempt by the same credential in that election.
 
 ### To particular parties
@@ -47,9 +48,13 @@ A voter credential hides a voter among the other voters of the same organisation
 
 ### The election key
 
-Weft reads the election key through the relay and doesn't yet check the peer's signature on that answer. A dishonest relay could substitute a key it holds and read that one ballot, which the contract would then refuse. Until Weft checks the signature, the voter's check is the key fingerprint in the approval window, which explorers show too.
+Weft reads the election through the relay, by endorsing `GetElection` without submitting, and checks that a peer of the voter's own organisation signed the answer. That check needs the organisation's CA chain from enrolment, which Weft doesn't keep today, and a voter credential's organisation has no peers. Without the check, a dishonest relay could substitute a key it holds and read that one ballot, which the contract would then refuse, and the voter's check is the election fingerprint in the approval window, which explorers show too.
 
 The Pedersen key generation lets a participant bias the distribution of the joint key (Gennaro, Jarecki, Krawczyk and Rabin). FROST and ElectionGuard accept this, and the private tally claims no more than they do.
+
+### Closing
+
+Voting ends when k trustees close the election on the ledger, not at `closesAt`, because a transaction's timestamp is set by the client and peers don't check it. The contract doesn't stop k trustees closing before `closesAt`, which would turn away voters who hadn't voted yet. Explorers show the block the election closed in beside its planned closing time, so an early close is visible to everyone who can read the channel.
 
 ### Throughput
 

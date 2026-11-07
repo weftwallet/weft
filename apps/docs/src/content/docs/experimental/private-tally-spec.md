@@ -7,13 +7,13 @@ description: The private tally's cryptography as a specification, with its encod
 This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
 :::
 
-This is the scheme from [ADR 0007](/reference/decisions/), written so that the Go contract and the TypeScript code in Weft, the trustee CLI and the explorer can be built from it and checked against each other. It follows the prototype from the private tally study, except where a section says version 1 differs.
+This is the scheme from [ADR 0007](/reference/decisions/), written so that the Go contract and the TypeScript code in Weft, the trustee tool and the explorer can be built from it and checked against each other. It follows the prototype from the private tally study, except where a section says version 1 differs.
 
 ## Scope
 
-Weft, the trustee CLI and the explorer implement it in TypeScript with `@noble/curves` and `@noble/hashes`. The contract implements it in Go. Both run the same [test vectors](#test-vectors).
+Weft Experimental, the trustee tool (`weft-trustee`) and the explorer share one TypeScript implementation, `@weftwallet/tally` in `packages/tally`, on `@noble/curves` and `@noble/hashes`. It is a private package: it isn't published, and Weft's normal build doesn't depend on it. The contract implements only what it runs, the verifying half, in Go, in `internal/tally` of its own module. Both run the same [test vectors](#test-vectors).
 
-Randomness is drawn only in Weft (encryption and ballot proofs) and in the trustee CLI (key ceremony and decryption shares). Every step the contract runs is deterministic. It draws no randomness and reads no clock other than the transaction's timestamp, so every endorser computes the same result.
+Randomness is drawn only in Weft (encryption and ballot proofs) and in the trustee tool (key ceremony and decryption shares). Every step the contract runs is deterministic. It draws no randomness and reads no clock, not even the transaction's timestamp, which the client sets, so every endorser computes the same result.
 
 ## Notation
 
@@ -75,7 +75,7 @@ Other digests are SHA-256 of a framed list. Every hash starts with a label of it
 | `share` | A decryption share's proof (under the DST) |
 | `confirm` | A trustee's proof that it holds its share (under the DST) |
 | `weft-ballot-hash v1` | The tracking code |
-| `weft-election-key v1` | The key fingerprint |
+| `weft-election-fingerprint v1` | The election fingerprint |
 | `weft-ballot-v1 share` | Key-share encryption in the ceremony |
 
 The key ceremony's round 1 proofs use the hash of noble's FROST module, as described under [Key ceremony](#key-ceremony).
@@ -94,14 +94,25 @@ ctx = SHA-256(frame(["weft-ballot v1", channel, chaincode, electionId,
 
 ## The voter tag
 
-Ballot proofs are bound to the voter through a tag `v` that the contract computes from the transaction itself:
+Ballot proofs are bound to the voter through a tag `v` that the contract computes from the transaction itself, for one election on one channel:
 
 ```text
-X.509 voter:       v = SHA-256(frame(["weft-voter x509 v1", mspId, idBytes]))
-voter credential:  v = SHA-256(frame(["weft-voter idemix v1", mspId, P]))
+X.509 voter:       v = SHA-256(frame(["weft-voter x509 v1", channel, electionId, mspId, idBytes]))
+voter credential:  v = SHA-256(frame(["weft-voter idemix v1", channel, electionId, mspId, P]))
 ```
 
-`mspId` and `idBytes` are the fields of the transaction creator's `SerializedIdentity`. For an X.509 identity, `idBytes` is the PEM certificate as Fabric carries it, and Weft has it because it signs with that certificate. `P` is the 64-byte per-election pseudonym from [Voter credentials](/experimental/voter-credentials/#the-per-election-pseudonym). A ballot copied into another voter's transaction fails its proofs.
+The parts, in this order:
+
+| Part | Bytes |
+|---|---|
+| The label | The UTF-8 bytes of `weft-voter x509 v1` or `weft-voter idemix v1`. No other hash in the scheme starts with either label. |
+| `channel` | The UTF-8 bytes of the channel name, as the contract's `GetChannelID` returns it. |
+| `electionId` | The UTF-8 bytes of the election ID. |
+| `mspId` | The UTF-8 bytes of the `mspid` field of the transaction creator's `SerializedIdentity`. |
+| `idBytes` | The `id_bytes` field of the creator's `SerializedIdentity`, unchanged. For an X.509 identity it is the PEM certificate as Fabric carries it, and Weft has it because it signs with that certificate. |
+| `P` | The 64-byte per-election pseudonym from [Voter credentials](/experimental/voter-credentials/#the-per-election-pseudonym). |
+
+Each part is framed as in [Framing](#framing), and `v` is the 32-byte SHA-256 digest. A ballot copied into another voter's transaction fails its proofs. Because the channel and the election ID are in the tag, one X.509 certificate has a different tag in every election, and the tags an explorer publishes can't be matched across elections. Within one election, anyone who holds the certificate can still compute its tag.
 
 ## Random scalars
 
@@ -199,17 +210,17 @@ As 64 lowercase hex characters, it is the voter's receipt and the key the explor
 
 In this order, stopping at the first failure:
 
-1. The election is open and the transaction's timestamp is before its closing time.
+1. The election is `open`. No time is compared with `closesAt`: the election stops accepting ballots when the transaction that [closes it](/experimental/contract-api/#closeelection) commits.
 2. The ballot parses, its `v` is 1, its `electionId` is the election's, and it has L ciphertexts and L bit proofs.
 3. Every point and scalar decodes canonically, and no `a_j` is the identity.
 4. Every bit proof verifies.
 5. The sum proof verifies.
 6. No `a_j` is already on the ledger for this election.
-7. The voter hasn't voted in this election: by `v` for an X.509 voter, by SHA-256 of `P` for a voter credential, after the pseudonym proof verifies.
+7. The voter hasn't voted in this election, by `v`. For a voter credential, this runs after the pseudonym proof verifies.
 
 ## Totals
 
-After the closing time, the contract adds up every accepted ballot per option:
+When k trustees close the election, the contract adds up every accepted ballot per option:
 
 ```text
 (A_j, B_j) = sum over accepted ballots of (a_j, b_j),   for j = 0 to L - 1
@@ -271,13 +282,20 @@ verify: c = Hs("confirm", [ctx, id_j, S_j, z·G - c·S_j])
 
 The prototype had each trustee confirm without a proof. Version 1 adds this one, so the election opens only when every trustee has shown it holds a working share.
 
-### The key fingerprint
+### The election fingerprint
 
 ```text
-fingerprint = the first 10 bytes of SHA-256(frame(["weft-election-key v1", ctx]))
+fingerprint = the first 10 bytes of SHA-256(frame(["weft-election-fingerprint v1", ctx,
+                                                   msp_(1), ..., msp_(n)]))
 ```
 
-Shown as 20 hex characters in five groups of four, for example `3f9a 61c2 08de 77b1 c4e0`, in Weft's approval window and on every explorer's election page.
+`msp_(1)` to `msp_(n)` are the trustees' MSP IDs, each as its UTF-8 bytes, sorted in ascending byte order and framed one part each. Sorting makes the fingerprint depend on which organisations are trustees and not on the order of the trustee list. The order still sets each trustee's identifier, which `ctx` covers.
+
+The fingerprint covers the whole election context and the trustee organisations: the channel, the contract, the election ID, the key, the options, the threshold, each trustee's identifier and verifying share, and the trustees' MSP IDs, which Weft's window names as the key holders. A changed option list, trustee setup or trustee organisation changes it, as a changed key does.
+
+The title and `closesAt` aren't covered. A record with a different title or planned closing time has the same fingerprint, so the fingerprint can't be used to check either of them.
+
+The election record and the `ElectionOpened` event store it as 20 lowercase hex characters without spaces, for example `3f9a61c208de77b1c4e0`. Weft's approval window and every explorer's election page show it in five groups of four, `3f9a 61c2 08de 77b1 c4e0`, in the monospaced font, labelled "Election fingerprint".
 
 ## Decryption shares
 
@@ -325,13 +343,16 @@ Find each count `t_j` in 0 to N by stepping from 0. Refuse the tally if any `t_j
 
 ## Test vectors
 
-The proofs exist twice, so the two implementations are tied together by vectors that both test suites run. They are planned to live in one folder in the repository, read by the TypeScript tests and by the contract's Go tests.
+The proofs exist twice, so the two implementations are tied together by vectors that both test suites run.
 
+- They live in `packages/tally/vectors/v1/`, one JSON file per group: framing, context and tags, ballots, tracking, ceremony, shares, tally and negative. Every byte string is lowercase hex.
+- `packages/tally/scripts/vectors.ts` writes them from fixed seeds, and they are committed. Running it again changes no file.
+- The TypeScript tests in `packages/tally` and the contract's Go tests read the same files, the Go tests by relative path.
 - Each vector has fixed inputs, including the randomness that would normally be drawn, and every intermediate and final output: framed bytes, `ctx`, voter tags, ciphertexts, each proof's commitments and challenges, the tracking code, totals, decryption shares, Lagrange coefficients and counts.
 - Provers take their randomness as an argument in tests, so the TypeScript side can reproduce a vector and the Go side, which never proves ballots, can check the same bytes.
 - The key ceremony vectors fix noble's round 1 proof bytes, the derived key and verifying shares, the share encryption with a fixed nonce, and the confirmation proofs.
-- Negative vectors are inputs that must be refused, each with the reason: the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), and non-canonical points and scalars, identity points, unknown fields and wrong lengths.
-- A change to the scheme changes the vectors first. A version bump in a label is the only way to change an encoding.
+- Negative vectors are inputs that must be refused, each with the contract's exact error message from the [error table](/experimental/contract-api/#errors): the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), and non-canonical points and scalars, identity points, unknown fields and wrong lengths.
+- A change to the scheme changes the vectors first. A new label version is the only way to change an encoding, and its vectors go in a new folder, `v2/`.
 
 ## What is library code
 
