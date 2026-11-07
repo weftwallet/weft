@@ -35,6 +35,8 @@ const INK = "#0B1218";
 /** Grounds: [tile colour, thread colour, framed]. */
 const TEAL = [THREAD, INK, false];
 const FRAMED = [INK, THREAD, true];
+/** Weft Experimental's ground: the teal tile with its bottom edge pinked. */
+const PINKED = [THREAD, INK, "pinked"];
 
 /* Full drawings ----------------------------------------------------------- */
 
@@ -49,8 +51,16 @@ const full = ([g, t]) => ({
     `<path d="M${x} ${y - 5}V${y + 5}" stroke="${g}" stroke-width="7"/>` + `<path d="M${x} ${y - 5}V${y + 5}" stroke="${t}" stroke-width="3"/>`,
 });
 
+/** The pinked edge: ten teeth across the 44px bottom edge, 4px deep. */
+const pinked48 = (g) => {
+  const teeth = Array.from({ length: 20 }, (_, i) => `L${+(46 - 2.2 * (i + 1)).toFixed(1)} ${i % 2 ? 42 : 46}`).join("");
+  return `<path d="M2 14a12 12 0 0 1 12-12H34a12 12 0 0 1 12 12V42${teeth}Z" fill="${g}"/>`;
+};
+
 const tile48 = ([g, t, framed]) =>
-  framed
+  framed === "pinked"
+    ? pinked48(g)
+    : framed
     ? `<rect x="3" y="3" width="42" height="42" rx="11" fill="${g}" stroke="${t}" stroke-width="2"/>`
     : `<rect x="2" y="2" width="44" height="44" rx="12" fill="${g}"/>`;
 
@@ -67,6 +77,17 @@ const drawings = {
       teal.weft(14, 10, 38) + teal.warpOver(31, 14) +
       teal.weft(24, 10, 38) + teal.warpOver(17, 24) +
       teal.weft(34, 10, 24),
+  },
+  // Weft Experimental: the main mark's cloth cut as a swatch, with a pinked
+  // edge, the way a fabric sample is cut to try before the whole bolt. The
+  // warps stop above the teeth.
+  experimental: {
+    ground: PINKED,
+    full:
+      teal.warp(17, 8, 38) + teal.warp(31, 8, 38) +
+      teal.weft(14, 10, 38) + teal.warpOver(31, 14) +
+      teal.weft(24, 10, 38) + teal.warpOver(17, 24) +
+      teal.weft(34, 10, 38) + teal.warpOver(31, 34),
   },
   // The warp alone, strung in the loom: nothing has passed through it yet.
   network: {
@@ -98,7 +119,9 @@ const px = ([g, t]) => ({
   weftOver: (x, y) => rect(x - 1, y - 1, 4, 4, g) + rect(x - 1, y, 4, 2, t),
 });
 const tile16 = ([g, t, isFramed]) =>
-  isFramed ? `<rect width="16" height="16" rx="4" fill="${t}"/><rect x="1" y="1" width="14" height="14" rx="3" fill="${g}"/>` : `<rect width="16" height="16" rx="4" fill="${g}"/>`;
+  isFramed === "pinked"
+    ? `<path d="M0 4Q0 0 4 0H12Q16 0 16 4V16H14V14H12V16H10V14H8V16H6V14H4V16H2V14H0Z" fill="${g}" shape-rendering="crispEdges"/>`
+    : isFramed ? `<rect width="16" height="16" rx="4" fill="${t}"/><rect x="1" y="1" width="14" height="14" rx="3" fill="${g}"/>` : `<rect width="16" height="16" rx="4" fill="${g}"/>`;
 
 const pTeal = px(TEAL);
 const pFramed = px(FRAMED);
@@ -113,7 +136,13 @@ drawings.explorer.small =
   pFramed.warp(3) + pFramed.warp(7) + pFramed.warp(11) +
   [3, 7, 11].map((y, k) => pFramed.weft(y) + [3, 7, 11].map((x, j) => ((j + k) % 2 ? pFramed.warpOver(x, y) : pFramed.weftOver(x, y))).join("")).join("");
 
-const names = { playground: "Weft Playground", network: "Weft Network", explorer: "Weft Explorer" };
+// Experimental: the main mark's 2 by 2 weave, warps a pixel shorter to clear
+// the teeth on the bottom two rows.
+drawings.experimental.small =
+  pTeal.warp(4, 2, 11) + pTeal.warp(10, 2, 11) + pTeal.weft(4) + pTeal.weft(10) +
+  pTeal.weftOver(4, 4) + pTeal.warpOver(10, 4) + pTeal.warpOver(4, 10) + pTeal.weftOver(10, 10);
+
+const names = { experimental: "Weft Experimental", playground: "Weft Playground", network: "Weft Network", explorer: "Weft Explorer" };
 
 mkdirSync(out, { recursive: true });
 for (const [id, d] of Object.entries(drawings)) {

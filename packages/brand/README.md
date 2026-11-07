@@ -26,6 +26,7 @@ The Weft site, Weft Wallet and the docs use the main mark. The playground, Weft 
 
 | File | Mark |
 |---|---|
+| `logo/products/experimental.svg` | Weft Experimental: the main mark cut as a swatch, its bottom edge pinked |
 | `logo/products/playground.svg` | The cloth with a pick still to pass |
 | `logo/products/network.svg` | The warp alone, in the loom's frame |
 | `logo/products/explorer.svg` | The finished cloth, a 3 by 3 weave, in the loom's frame |

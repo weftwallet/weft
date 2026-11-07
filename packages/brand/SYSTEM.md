@@ -21,11 +21,12 @@ Every product header shows its mark and its name. Links between products go thro
 
 The warp is the network: organisations, peers and channels, strung once and held fixed. The weft is what passes through it: identities and transactions. A weft only holds if it goes over one warp and under the next, which is why every mark shows its crossings.
 
-There are two grounds. A teal tile with ink threads is for products people pass something through: the Weft site, the wallet, the docs and the playground. An ink tile in a teal frame, with teal threads, is for tools an organisation runs for itself: Weft Network and the explorer. The frame is the loom. At 16px a filled tile and a framed tile are different shapes, which is what keeps the products apart in a row of browser tabs.
+There are two grounds. A teal tile with ink threads is for products people pass something through: the Weft site, the wallet, the docs and the playground. An ink tile in a teal frame, with teal threads, is for tools an organisation runs for itself: Weft Network and the explorer. The frame is the loom. At 16px a filled tile and a framed tile are different shapes, which is what keeps the products apart in a row of browser tabs. Weft Experimental uses the teal tile with its bottom edge pinked, so the second build has its own outline beside Weft in the toolbar.
 
 | Mark | Drawing |
 |---|---|
 | Main (`logo/mark.svg`) | Three wefts through two warps, alternating. |
+| Experimental | The main mark cut as a swatch: the bottom edge pinked in ten teeth, the warps stopping above them. Only the Weft Experimental build (ADR 0009) uses it. At 16px: the main mark's 2 by 2 weave, with 2px teeth along the bottom two rows. |
 | Playground | The main mark's cloth with the last pick halfway across, so the bottom of the warp is bare. At 16px: one pick through two warps. |
 | Network | Four warps, nothing through them. At 16px: three. |
 | Explorer | A 3 by 3 plain weave. Never the main mark inverted: `logo/mark-inverted.svg` is Weft itself on a teal or light ground. |
