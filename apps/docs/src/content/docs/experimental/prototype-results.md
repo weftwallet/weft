@@ -4,7 +4,7 @@ description: What the private tally and voter credential prototypes of 1 Novembe
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The results on this page come from the studies' prototypes, except [version 1's timings](#version-1-measured), which come from `@weftwallet/tally` and the contract's `internal/tally`, and [the explorer's](#the-explorer-version-1).
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The results on this page come from the studies' prototypes, except [version 1's timings](#version-1-measured), which come from `@weftwallet/tally` and the contract's `internal/tally`, [the peers'](#on-a-fabric-peer-version-1) and [the explorer's](#the-explorer-version-1).
 :::
 
 The studies behind [ADR 0007](/reference/decisions/) and [ADR 0008](/reference/decisions/) each built a prototype on 1 November 2026. Where version 1 differs from a prototype, the [specification](/experimental/private-tally-spec/) says so.
@@ -61,6 +61,19 @@ Version 1's code was timed on 7 November 2026 on a 2.3 GHz Intel Xeon with two c
 Go verifies about 22 times as fast as Node on the same machine. An endorsing peer's checks of one three-option ballot take about 0.7 ms of one core in Go, which is about 1,400 ballots a second before the contract's ledger reads and writes, against about 65 in Node.
 
 The study's estimate, made before any Go ristretto255 library could be fetched, was 1 to 2 ms from the ratio of the Go standard library's X25519 and P-256 multiplications to noble's (24 and 40 to 56 times). The measurement is below that range.
+
+### On a Fabric peer, version 1
+
+The contract was timed on 7 and 8 November 2026 on the native network the step 4 tests ran on: Fabric 2.5.16 peers and three Raft orderers run as processes, without Docker, on the machine the explorer's timings below come from, with `private-ballot` built by the peers' Go builder and endorsed by `AND('Org1MSP.peer','Org2MSP.peer')`. Each time is a peer's own "finished chaincode" duration for one endorsement, which covers the contract's ledger reads and writes as well as its checks.
+
+| Transaction | Measured on each endorsing peer |
+|---|---|
+| `CastBallot`, a three-option ballot, with its proofs, voter tag, tracking code and repeat checks | 2 to 11 ms, mean 4.3 ms |
+| A ballot from `weft_castBallot`, from submitting the signed transaction to its commit | about 2 s |
+| `CreateElection`, each round of the key ceremony, `OpenElection`, a decryption share and `PublishTally` | 1 to 5 ms each |
+| `CloseElection`, the request that closes voting and adds up the ballots, for up to 13 ballots | 2 to 3 ms |
+
+The time from submit to commit is the orderers' batch and block time, not the contract's. Across the whole of a ceremony or a count, the trustee tool's time is in its gateway calls and commits: `seedElection` creating an election and running its key ceremony for Org1 and Org2 (eight transactions, the last opening it) took 26 s, and `pnpm playground:count` closing an election, posting both decryption shares and publishing the tally took 14.5 s, both with the ledger reads between steps.
 
 ### The explorer's full check
 

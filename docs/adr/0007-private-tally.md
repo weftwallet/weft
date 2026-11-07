@@ -1,8 +1,8 @@
 # 0007: Hide the choice with a homomorphic tally, as an experiment
 
-Proposed on 1 November 2026 as an experiment, and revised on 7 November 2026. Decided by Ifeanyi Ugwu.
+Proposed on 1 November 2026 as an experiment, revised on 7 November 2026, and built on 8 November 2026. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Only the cryptography, the contract and the trustee tool are built so far: `@weftwallet/tally`, `examples/private-ballot-contract` with its verifiers in `internal/tally`, and `weft-trustee` in `packages/trustee`.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. All of it is built, behind the experimental switches: `@weftwallet/tally`, `examples/private-ballot-contract` with its verifiers in `internal/tally`, `weft-trustee` in `packages/trustee`, `weft_castBallot` and receipt version 2 in Weft Experimental, the explorer's private election pages with the full check, and the playground's Private election section.
 
 ## Context and problem
 
@@ -112,7 +112,7 @@ The ElGamal encryption, the proofs, the share encryption, the Lagrange combinati
 - Version 1 receipts and the main product's ballot contract keep working unchanged.
 - Any k colluding trustees can read a single ballot, and nothing on the ledger would show it. If fewer than k can or will post shares, the totals can't be decrypted, and the election has to be run again.
 - A voter running a modified Weft can keep the randomness and prove their vote. A bug or side channel in Weft that leaks the randomness reveals the vote.
-- Until Weft keeps the CA chain from enrolment, and for voter credentials, whose organisation has no peers, Weft reads the election without checking the peer's signature. The election fingerprint in the approval window, which explorers show too, is then the voter's check against a substituted key.
+- Weft Experimental keeps the CA chain that Fabric CA returns at enrolment and re-enrolment, and checks the voter's organisation's peer signature on the election it reads. For an identity it has no chain for, such as one imported from files, and for voter credentials, whose organisation has no peers, it reads the election without that check, and the window says so. The election fingerprint in the approval window, which explorers show too, is then the voter's check against a substituted key.
 - k trustees decide when voting ends. They can close before `closesAt`, and the block the election closed in shows that to everyone who can read the channel.
 - Explorers publish each ballot's voter tag, even where they hide submitters, because the full check needs it. An X.509 voter's tag names no one, but anyone with the certificate can compute it for an election and see that the voter voted in it. The tag covers the channel and the election ID, so one certificate's tags differ between elections and can't be linked across them.
 - Reading the election is a signed proposal, so the relay and the endorsing peers see which identity read it.

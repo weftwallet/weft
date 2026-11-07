@@ -169,7 +169,7 @@ The explorer refuses to start with `privateElections` and without `WEFT_EXPERIME
 
 | Setting | Effect |
 |---|---|
-| `privateElections` with `submitter: show` | Each ballot's submitter is shown, as on any channel, and the API publishes each ballot's certificate, so the browser works out each voter tag again itself. |
+| `privateElections` with `submitter: show` | Each ballot's submitter is shown, as on any channel and in the election's ballots table, and the API publishes each ballot's certificate, so the browser works out each voter tag again itself. |
 | `privateElections` with `submitter: hide` | The submitter's certificate, name and MSP ID stay hidden, and each ballot's voter tag is still published, because every ballot proof is bound to it. The explorer's server works out each tag from the transaction's creator as it reads the block, and the browser checks every proof against the published tag. See [What the explorer publishes](/experimental/cast-ballot/#what-the-explorer-publishes). |
 
 As it reads each block, the explorer checks each private-ballot transaction as the contract did: every ceremony post, the key and fingerprint when the election opens, each ballot's proofs, voter tag and tracking code, the totals when voting closes, each decryption share and the tally. It decodes each argument and written value the way the Go contract does, so a byte that isn't UTF-8 becomes U+FFFD exactly where it did on the endorsing peers. Checking ballots costs about 23 ms of one core per three-option ballot, so a backlog of 10,000 ballots takes about 4.5 minutes to index ([Prototype results](/experimental/prototype-results/#the-explorer-version-1)).
@@ -183,7 +183,9 @@ As it reads each block, the explorer checks each private-ballot transaction as t
 - the result: the encrypted totals, each trustee's decryption share with its proofs, and the counts;
 - Check every ballot, which re-checks the whole election in up to four Web Workers in the browser, from the published data only, and reports either that everything checks out or the first failure, by ballot and transaction;
 - the tracking code check that Weft links to, `?tracking=<tracking>#receipt`, which also takes a ballot's transaction ID or a version 2 receipt file;
-- every ballot, with its tracking code, voter tag, block and proof status, 50 to a page.
+- every ballot, with its tracking code, its submitter with `submitter: show`, voter tag, block and proof status, 50 to a page.
+
+The page updates in place as blocks arrive, like the explorer's other live pages. During the key ceremony the check and the tracking code check aren't shown, and they appear once the election opens, without a reload.
 
 The content security policy adds `worker-src 'self'` for the full check's worker, `/assets/full-check.js`, which `pnpm --filter @weftwallet/explorer build` bundles from `@weftwallet/tally` into `dist/worker/full-check.js`. The explorer refuses to start with the switch and a channel that names `privateElections` if that file isn't built.
 

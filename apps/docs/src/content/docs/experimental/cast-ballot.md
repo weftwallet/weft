@@ -4,7 +4,7 @@ description: The weft_castBallot method in Weft Experimental, its request and re
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. `weft_castBallot`, its approval window, receipt version 2 in Weft, the SDK's `castBallot()` and the explorer's election pages with the tracking code check are built. The playground's Private election section isn't built yet. [What is built](#what-is-built) has the details.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. `weft_castBallot`, its approval window, receipt version 2 in Weft, the SDK's `castBallot()`, the explorer's election pages with the tracking code check, and the playground's Private election section are built. Anonymous ballots with voter credentials aren't. [What is built](#what-is-built) has the details.
 :::
 
 `weft_castBallot` asks Weft to cast a ballot in a private election on the [private-ballot contract](/experimental/contract-api/). The voter chooses in Weft's approval window, Weft encrypts and proves the ballot, and the web app gets the transaction and a receipt, never the choice. Only Weft Experimental offers it, and normal Weft answers `4200` UnsupportedMethod. ([ADR 0007](/reference/decisions/))
@@ -29,7 +29,7 @@ const anonymousBallots = weft?.features.includes("voterCredentials") ?? false;
 // with voter credentials, also require anonymousBallots.
 ```
 
-Weft Playground shows its "Private election" section only when `castBallot` is present.
+Weft Playground shows its "Private election" section only when `castBallot` is present. The section lists the private elections that the invite's explorer publishes, from the explorer's JSON API, and casts with the SDK's `castBallot()`, as below.
 
 ## Request
 
@@ -215,7 +215,9 @@ In Weft Experimental, built with `WEFT_EXPERIMENTAL=1`:
 
 In the explorer, started with `WEFT_EXPERIMENTAL=1`: the election pages, the tracking code check at `?tracking=<tracking>#receipt`, each ballot's published voter tag and the full check in the browser's workers ([Run an explorer](/operators/explorer/#private-elections)).
 
-Not built yet: anonymous ballots with voter credentials (ADR 0008's step), and the playground's Private election section, which Weft Playground shows, empty, for Weft Experimental.
+In Weft Playground, the Private election section, shown when `window.weft.features` includes `"castBallot"` (`apps/playground/src/components/PrivateElection.astro`). It reads the elections from the explorer the invite names (`/api/v1/channels/<channel>/private-elections` and `/<id>` on every channel whose status lists `privateElections`), so reading needs no connection to Weft. It sends Weft only the channel, the contract and the election ID, and shows the result: the block, receipt version 2 with Download receipt, Copy receipt and a link to the explorer's tracking code check, and the count once the trustees publish it. It says what happened for each error below, with the code under Details. Every request and answer is in the page's provider log, which never holds the choice.
+
+Not built yet: anonymous ballots with voter credentials (ADR 0008's step).
 
 ## Errors
 

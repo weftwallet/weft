@@ -4,7 +4,7 @@ description: What neither experimental feature hides, and the options that were 
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The private tally is built, and what the page says of it describes the code. Voter credentials aren't built yet, and what it says of them describes the planned design.
 :::
 
 The [private tally](/experimental/private-tally-spec/) hides the choice and [voter credentials](/experimental/voter-credentials/) hide who voted. Neither hides everything. Tell voters what applies to their election.
