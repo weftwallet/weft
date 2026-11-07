@@ -4,7 +4,7 @@ description: Weft Experimental, a separate build with a private tally and anonym
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. Only the build switch and the experimental channels are built so far. The two features aren't built yet, and the page describes their planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. Only the build switch, the experimental channels and the private tally's cryptography (`@weftwallet/tally` and the contract's verifiers) are built so far. The two features aren't built yet, and the page describes their planned design.
 :::
 
 ## The experimental track

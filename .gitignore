@@ -22,3 +22,6 @@ e2e/.bin/
 # Explorer index (apps/explorer)
 explorer.db
 explorer.db-*
+
+# Go contracts: test-network vendors modules at deploy time
+examples/*/vendor/

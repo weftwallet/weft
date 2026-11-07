@@ -4,7 +4,7 @@ description: The planned Go contract for private elections, its functions, argum
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. Only the contract's verifiers, in `internal/tally`, are built so far, and the page describes the planned design of the rest.
 :::
 
 `examples/private-ballot-contract` is the contract for private elections, shared by the [private tally](/experimental/private-tally-spec/) and [voter credentials](/experimental/voter-credentials/). It is written in Go and deployed as `private-ballot`. The main product's `examples/ballot-contract` stays as it is, with its private collection and version 1 receipts.
@@ -13,13 +13,13 @@ This page describes Weft Experimental, a separate build that is not part of the 
 
 - It uses `fabric-chaincode-go`'s shim and `cid` package, which handle idemix creators. Whether `fabric-contract-api-go` does too is to be checked while building it. Node's `fabric-contract-api` doesn't ([ADR 0008](/reference/decisions/)).
 - It is one Go module, `github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract`, with the tally's verifiers in `internal/tally`. They handle no secret: decoding, the proof checks, the tracking code, totals, the round 1 proof of knowledge, the key and verifying shares, and combining decryption shares.
-- It verifies ballot proofs with a Go ristretto255 library, still to be chosen, and the pseudonym proof with IBM's idemix library, from the same Go source as Weft's WebAssembly build.
+- It verifies ballot proofs with `github.com/gtank/ristretto255` on `filippo.io/edwards25519`, and the pseudonym proof with IBM's idemix library, from the same Go source as Weft's WebAssembly build. The module's README gives the reasons for the ristretto255 library.
 - It uses no private data collection and no transient data. Every argument is public.
 - Every function is deterministic, and none reads a clock. A transaction's timestamp is set by the client that sends it, and peers don't compare it with their own clocks, so the contract doesn't use it. An election stops accepting ballots when it is [closed](#closeelection) on the ledger.
 - Its endorsement and lifecycle policies name only X.509 organisations, since idemix organisations can't endorse. The playground uses `AND('Org1MSP.peer','Org2MSP.peer')`.
-- The peer builds it in Docker, as for the playground's other contracts, with test-network's `deployCC -ccl go`, which runs `go mod vendor` in the contract's folder. `vendor/` isn't committed, and the `go` line in `go.mod` is no newer than the Go in `hyperledger/fabric-ccenv:2.5`.
+- The peer builds it in Docker, as for the playground's other contracts, with test-network's `deployCC -ccl go`, which runs `go mod vendor` in the contract's folder. `vendor/` isn't committed, and the `go` line in `go.mod` is no newer than the Go in `hyperledger/fabric-ccenv:2.5`: it is `go 1.24.0`, and the image for Fabric 2.5.16 has Go 1.26.4.
 
-Arguments are strings, as in every Fabric contract. JSON arguments are parsed into fixed fields: unknown fields, missing fields and wrong types are refused. Points and scalars are lowercase hex, as the [specification](/experimental/private-tally-spec/#group-and-encoding) says.
+Arguments are strings, as in every Fabric contract. JSON arguments are parsed into fixed fields: unknown fields, missing fields and wrong types are refused, in the order [the specification](/experimental/private-tally-spec/#parsing-the-contracts-arguments) sets. Points and scalars are lowercase hex, as the [specification](/experimental/private-tally-spec/#group-and-encoding) says.
 
 ## Election states
 
@@ -108,11 +108,11 @@ It assigns identifiers 1 to n in the trustees' order and writes the election in 
 
 ### PostCommitments
 
-Round 1. `round1Json` is `{ "commitments": [<point>, ...], "proof": { ... }, "ceremonyKey": <point> }`, with k commitments and the proof of knowledge in noble's FROST DKG format. The contract checks the proof and that this trustee hasn't posted round 1. Event `CeremonyStep` with `round: 1`.
+Round 1. `round1Json` is `{ "commitments": [<point>, ...], "proof": <128 hex>, "ceremonyKey": <point> }`, with k commitments and the proof of knowledge in noble's FROST DKG format, its 64 bytes `R` then `z`. The contract checks the proof, that no commitment and not the one-time key is the identity, and that this trustee hasn't posted round 1. Event `CeremonyStep` with `round: 1`.
 
 ### PostShares
 
-Round 2. `round2Json` is `{ "shares": [{ "to": <id>, "nonce": <24 hex>, "box": <96 hex> }, ...] }`, one per other trustee. The contract checks that every other trustee gets exactly one share, of the right length. It can't check the shares themselves. Event `CeremonyStep` with `round: 2`.
+Round 2. `round2Json` is `{ "shares": [{ "to": <id>, "nonce": <24 hex>, "box": <96 hex> }, ...] }`, one per other trustee, with `to` the recipient's identifier as a scalar. The contract checks that every other trustee gets exactly one share, of the right length. It can't check the shares themselves. Event `CeremonyStep` with `round: 2`.
 
 ### ConfirmShares
 
@@ -219,7 +219,11 @@ Each error says what happened and, where the caller can do something about it, w
 | `The key ceremony has ended: the election is in <state>.` | A ceremony function, `ReportBadShare`, `CancelElection` or `OpenElection` outside `keygen`. |
 | `<MSP> has already posted round <n>.` | A second post in the same round, including a second confirmation in round 3. |
 | `Round <n> isn't finished: waiting for <MSP>.` | A round, a report or `OpenElection` before the round before it ended. |
-| `The proof of knowledge from <MSP> doesn't verify.` | `PostCommitments`. |
+| `The proof of knowledge from <MSP> doesn't verify.` | `PostCommitments`, including a proof that isn't 64 bytes, a non-canonical `R` or `z`, an identity `R`, and another trustee's round 1. |
+| `Round 1 from <MSP> has <n> commitments; this election's threshold is <k>.` | `PostCommitments` with other than k commitments. |
+| `Commitment <t> from <MSP> is the identity point.` | `PostCommitments`. |
+| `The one-time key from <MSP> is the identity point.` | `PostCommitments`. |
+| `Round 2 from <MSP> doesn't send exactly one share to each other trustee.` | `PostShares` with a share missing, repeated, to the sender itself or to an identifier that isn't a trustee's. |
 | `The confirmation from <MSP> doesn't match its verifying share.` | `ConfirmShares`. |
 | `Trustee <id> isn't another trustee of this election.` | `ReportBadShare` naming an unknown identifier or the caller's own. |
 | `The election isn't open: it is in <state>.` | A ballot, or `CloseElection`, in `keygen`, `failed` or `cancelled`. |
@@ -228,6 +232,7 @@ Each error says what happened and, where the caller can do something about it, w
 | `This identity can't vote in this election: <MSP> isn't one of its voter organisations.` | `CastBallot` from another MSP, or either cast function for the wrong kind of voter. |
 | `The ballot isn't for this election.` | Wrong `v` or `electionId`. |
 | `The ballot has <n> ciphertexts; this election has <L> options.` | Wrong length. |
+| `The ballot has <n> bit proofs; this election has <L> options.` | Wrong length. |
 | `Ciphertext <j> has no randomness.` | An identity point. |
 | `Ciphertext <j> is not a 0 or a 1.` | A bit proof fails. This includes a ballot under another key, a changed proof and a ballot copied from another voter. |
 | `The ballot does not choose exactly one option.` | The sum proof fails. |
@@ -243,5 +248,21 @@ Each error says what happened and, where the caller can do something about it, w
 | `The tally can't be published: the election is in <state>.` | `PublishTally` in any other state but `decrypting`. |
 | `The tally needs <k> decryption shares; <m> have been posted.` | `PublishTally` too early. |
 | `A count is larger than the number of ballots, so the totals or shares are wrong.` | `PublishTally`, which should never happen with verified shares. |
+| `The counts add up to <s>, not to the <N> ballots, so the totals or shares are wrong.` | `PublishTally`, which should never happen with verified shares. |
+
+Every JSON argument (the ballot, each ceremony post and the decryption share) is refused with one of these when it doesn't parse or decode, `<thing>` being `The ballot`, `The round 1 post`, `The round 2 post`, `The confirmation` or `The decryption share`, and `<path>` a field such as `ciphertexts[1].a`:
+
+| Error | When |
+|---|---|
+| `<thing> isn't JSON.` | The argument doesn't parse. |
+| `<thing> isn't a JSON object.` | It parses to something else, including `null`. |
+| `<thing> isn't in the version 1 format: it has an unknown field, <path>.` | A field the format doesn't have. With several, the first in byte order. |
+| `<thing> isn't in the version 1 format: <path> is missing.` | A field the format needs. |
+| `<thing> isn't in the version 1 format: <path> isn't a string.` | Likewise `a number`, `a list` or `an object`, for a value of the wrong type, including `null`. |
+| `<thing>'s <path> isn't a canonical point.` | Not 32 bytes of lowercase hex, or not a canonical RFC 9496 encoding. |
+| `<thing>'s <path> isn't a canonical scalar.` | Not 32 bytes of lowercase hex, or l or more. |
+| `<thing>'s <path> isn't <n> bytes of lowercase hex.` | A round 2 `nonce` that isn't 12 bytes, or a `box` that isn't 48. |
+
+A count of 1 takes the singular in every message: `1 ciphertext`, `1 entry`, `1 has been posted`.
 
 Every negative [test vector](/experimental/private-tally-spec/#test-vectors) carries the message from this table that the contract must return for it.

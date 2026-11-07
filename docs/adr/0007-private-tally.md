@@ -2,7 +2,7 @@
 
 Proposed on 1 November 2026 as an experiment, and revised on 7 November 2026. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Nothing in this record is built yet.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Only the cryptography is built so far: `@weftwallet/tally` and the contract's verifiers in `internal/tally`.
 
 ## Context and problem
 
@@ -85,7 +85,7 @@ Each trustee posts a decryption share of each total with a proof, the contract c
 `examples/private-ballot-contract` is written in Go, and `examples/ballot-contract` stays as it is. Go is chosen over TypeScript for three reasons:
 
 - IBM's idemix library is Go, and ADR 0008's pseudonym proof is verified natively in the same contract.
-- Node chaincode verifies about 40 three-option ballots a second per core with noble. The Go standard library's curve operations were 24 to 56 times faster than noble's in the prototype, which suggests 1 to 2 ms per ballot. That figure is an estimate from the ratio, and the scheme hasn't been measured in Go.
+- Node chaincode verifies about 40 three-option ballots a second per core with noble. The Go standard library's curve operations were 24 to 56 times faster than noble's in the prototype. Version 1's Go verifier, measured since, checks a three-option ballot in 0.68 ms, about 22 times as fast as version 1 in Node on the same machine.
 - The Node contract library, `fabric-contract-api`, fails for every call from an idemix creator (ADR 0008).
 
 The contract is one Go module with the verifiers in `internal/tally`. The peer builds it in Docker with test-network's `deployCC -ccl go`, as for the playground's other contracts, so it needs no new container or peer setting. `vendor/` stays out of git, and the `go` line in `go.mod` is no newer than the Go in `hyperledger/fabric-ccenv:2.5`.
@@ -100,7 +100,7 @@ The tally proofs therefore exist in Go in the contract and in TypeScript in one 
 
 ### Review gate
 
-The ElGamal encryption, the proofs, the share encryption, the Lagrange combination and the transcript encoding are hand-written. Only the group, hashing to a scalar and SHA-256 come from audited libraries. The feature stays experimental until an external cryptographic review of the hand-written part and a maintainer's sign-off (ADR 0009). Until then, any page that says the choice is hidden from the organisations also says the feature is unreviewed.
+The ElGamal encryption, the proofs, the share encryption, the Lagrange combination and the transcript encoding are hand-written. In TypeScript, only the group, hashing to a scalar, the DKG rounds and SHA-256 come from audited libraries. The Go verifiers use `github.com/gtank/ristretto255` over `filippo.io/edwards25519`, the Go standard library's audited edwards25519 code. The ristretto255 layer has no published audit, and joins the review with the Go `expand_message_xmd`. The feature stays experimental until an external cryptographic review of the hand-written part and a maintainer's sign-off (ADR 0009). Until then, any page that says the choice is hidden from the organisations also says the feature is unreviewed.
 
 ## Consequences
 
@@ -108,7 +108,7 @@ The ElGamal encryption, the proofs, the share encryption, the Lagrange combinati
 - Anyone with ledger access can check the whole count, including the count per option.
 - Election creators choose trustees and a threshold. The trustee organisations run a ceremony before voting and a decryption step after it.
 - Two implementations of the proofs have to be kept in step, with the test vectors as the contract between them.
-- A three-option ballot is 640 bytes, or 1,520 as hex JSON. `CloseElection` reads every ballot, and its read set grows with the electorate, as in `examples/ballot-contract`.
+- A three-option ballot is 640 bytes, or about 1,520 as hex JSON. `CloseElection` reads every ballot, and its read set grows with the electorate, as in `examples/ballot-contract`.
 - Version 1 receipts and the main product's ballot contract keep working unchanged.
 - Any k colluding trustees can read a single ballot, and nothing on the ledger would show it. If fewer than k can or will post shares, the totals can't be decrypted, and the election has to be run again.
 - A voter running a modified Weft can keep the randomness and prove their vote. A bug or side channel in Weft that leaks the randomness reveals the vote.

@@ -4,7 +4,7 @@ description: What the private tally and voter credential prototypes of 1 Novembe
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the results on this page come from the studies' prototypes.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The results on this page come from the studies' prototypes, except [version 1's timings](#version-1-measured), which come from `@weftwallet/tally` and the contract's `internal/tally`.
 :::
 
 The studies behind [ADR 0007](/reference/decisions/) and [ADR 0008](/reference/decisions/) each built a prototype on 1 November 2026. Where version 1 differs from a prototype, the [specification](/experimental/private-tally-spec/) says so.
@@ -49,16 +49,18 @@ Node 22.22.0 and headless Chromium 141 on a 2.8 GHz Xeon with two cores, means o
 
 One 4096-bit exponentiation, the operation of ElectionGuard's integer group, took 8 to 14 ms. A ristretto255 multiplication took 0.5 to 1.4 ms. A ciphertext in the 4096-bit group is 1,024 bytes per option, against 64 in ristretto255.
 
-### Go, estimated
+### Version 1, measured
 
-The Go contract's speed wasn't measured, because the study couldn't fetch Go ristretto255 libraries. The Go standard library was measured instead:
+Version 1's code was timed on 7 November 2026 on a 2.3 GHz Intel Xeon with two cores: Node 22.22.0 with noble 2.4.0 (`pnpm --filter @weftwallet/tally bench`, means of 40 to 100 runs after warm-up), and Go 1.24.7 with `github.com/gtank/ristretto255` v0.2.0 on `filippo.io/edwards25519` v1.2.0 (`go test -bench . ./internal/tally`, three runs of 3 seconds). Verifying includes parsing the JSON and the tracking code. The contract never proves, so the Go prover is a test-only one, there to compare.
 
-| Operation | noble in Node | Go 1.24 standard library | Ratio |
-|---|---|---|---|
-| X25519 scalar multiplication | 1.44 ms | 0.061 ms | about 24 |
-| P-256 variable-base multiplication | 4.01 ms | 0.071 to 0.10 ms | 40 to 56 |
+| Options | Encrypt and prove, Node | Encrypt and prove, Go | Verify, Node | Verify, Go | Hex JSON |
+|---|---|---|---|---|---|
+| 3 | 11 ms | 0.69 ms | 15 ms | 0.68 ms | 1,521 bytes |
+| 10 | 31 to 34 ms | 2.2 ms | 44 ms | 2.1 ms | 4,560 bytes |
 
-From the ratio, the Go contract would verify a three-option ballot in roughly 1 to 2 ms, which is hundreds of ballots a second per core. That is an estimate. Node chaincode with noble verifies about 40 a second per core.
+Go verifies about 22 times as fast as Node on the same machine. An endorsing peer's checks of one three-option ballot take about 0.7 ms of one core in Go, which is about 1,400 ballots a second before the contract's ledger reads and writes, against about 65 in Node.
+
+The study's estimate, made before any Go ristretto255 library could be fetched, was 1 to 2 ms from the ratio of the Go standard library's X25519 and P-256 multiplications to noble's (24 and 40 to 56 times). The measurement is below that range.
 
 ### The explorer's full check
 

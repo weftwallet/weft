@@ -4,7 +4,7 @@ description: The private tally's cryptography as a specification, with its encod
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The cryptography on this page is built, in `@weftwallet/tally` and the contract's `internal/tally`, and no part of Weft uses it yet.
 :::
 
 This is the scheme from [ADR 0007](/reference/decisions/), written so that the Go contract and the TypeScript code in Weft, the trustee tool and the explorer can be built from it and checked against each other. It follows the prototype from the private tally study, except where a section says version 1 differs.
@@ -77,6 +77,7 @@ Other digests are SHA-256 of a framed list. Every hash starts with a label of it
 | `weft-ballot-hash v1` | The tracking code |
 | `weft-election-fingerprint v1` | The election fingerprint |
 | `weft-ballot-v1 share` | Key-share encryption in the ceremony |
+| `FROST-RISTRETTO255-SHA512-v1dkg` | Noble's round 1 proof of knowledge, as a prefix to plain SHA-512 |
 
 The key ceremony's round 1 proofs use the hash of noble's FROST module, as described under [Key ceremony](#key-ceremony).
 
@@ -116,7 +117,9 @@ Each part is framed as in [Framing](#framing), and `v` is the 32-byte SHA-256 di
 
 ## Random scalars
 
-A random scalar is 64 bytes from the platform's secure random generator, read as a little-endian integer and reduced modulo l, drawn again if the result is 0.
+A random scalar is 64 bytes from the platform's secure random generator, read as a little-endian integer and reduced modulo l, drawn again if the result is 0. In TypeScript the generator is `crypto.getRandomValues`, and only the test path, `@weftwallet/tally/testing`, passes any other source.
+
+The key ceremony's polynomial and its proof of knowledge are drawn by noble's FROST DKG, which maps 48 random bytes to a scalar from 1 to l - 1 as (the little-endian integer mod (l - 1)) + 1.
 
 ## Ciphertexts and encryption
 
@@ -194,6 +197,18 @@ Every challenge covers the statement (the context, the voter, the ciphertext) an
 
 `ciphertexts` and `bitProofs` have exactly L entries each, in option order. A parser reads these fields and no others, and refuses unknown fields, missing fields and wrong lengths.
 
+### Parsing the contract's arguments
+
+Every JSON argument, the ballot and each ceremony and decryption post, is parsed the same way, and the order of the checks is part of the specification, because the first failure decides the [error message](/experimental/contract-api/#errors):
+
+1. The text must be JSON, and its value an object.
+2. At each object, an unknown field is refused first. If there are several, the message names the first in the byte order of their UTF-8 names.
+3. Then each field, in the order the format lists it, must be present and of its type: a string, a number, a list or an object. An object or a list is checked completely, item by item, before the next field.
+4. A duplicated name keeps its last value, as both JSON parsers do. A number is compared as the double that JavaScript's `JSON.parse` gives, so `1`, `1.0` and `1e0` are all 1.
+5. Then the values decode, in the order they appear in the format: for a ballot, `a` then `b` of each ciphertext in order, with the identity check on each `a_j` as it decodes, then each bit proof's `c0`, `c1`, `z0` and `z1`, then `c` and `z` of the sum proof.
+
+A message names a field by its path, such as `ciphertexts[1].a` or `sumProof.z`.
+
 ### The tracking code
 
 ```text
@@ -241,7 +256,19 @@ C_it   = a_it·G                                     for t = 0 to k - 1
 e_i    = a random scalar,  E_i = e_i·G              the one-time ceremony key
 ```
 
-It posts `C_i0` to `C_i(k-1)`, a proof of knowledge of `a_i0` in the format of noble's FROST DKG round 1 package, and `E_i`. The contract checks the proof of knowledge. The Go code reproduces noble's proof and hash exactly, and the test vectors fix their bytes. Noble's DKG is outside RFC 9591, which leaves key generation out of scope.
+It posts `C_i0` to `C_i(k-1)`, a proof of knowledge of `a_i0` in the format of noble's FROST DKG round 1 package, and `E_i`. The proof is noble's 64 bytes, `R` then `z`, as 128 lowercase hex characters:
+
+```text
+prove (noble's DKG.round1):
+  k = a random scalar,  R = k·G
+  c = OS2IP_LE(SHA-512("FROST-RISTRETTO255-SHA512-v1dkg" || id_i || C_i0 || R)) mod l
+  z = k + a_i0·c
+
+verify:
+  accept if R isn't the identity and R = z·G - c·C_i0
+```
+
+The hash is plain SHA-512 of the prefix and the three 32-byte encodings, not `expand_message_xmd`, as noble 2.4.0 computes it for `ristretto255_FROST`. The contract checks this proof, that there are k commitments and none is the identity, and that `E_i` isn't the identity, which are the checks noble's round 2 makes, so a round 1 the contract accepts is one every honest trustee's round 2 accepts too. Noble's DKG is outside RFC 9591, which leaves key generation out of scope.
 
 Once every trustee has posted round 1, the key and every verifying share follow from the commitments alone:
 
@@ -261,7 +288,7 @@ key  = HKDF-SHA-256(ikm = encoding of K, salt = empty, info = info, length = 32)
 box  = AES-256-GCM(key, nonce = 12 random bytes, aad = info, plaintext = y_ij as 32 bytes)
 ```
 
-It posts one `{ to: id_j, nonce, box }` per recipient. The ledger keeps them permanently, which is why each trustee deletes its one-time key after round 3.
+It posts one `{ to: id_j, nonce, box }` per recipient, with `id_j` as a 32-byte scalar, `nonce` as 12 bytes and `box`, the 32-byte ciphertext and the 16-byte tag, as 48 bytes, all in lowercase hex. The ledger keeps them permanently, which is why each trustee deletes its one-time key after round 3.
 
 ### Round 3, checked by each trustee
 
@@ -271,7 +298,7 @@ Trustee j decrypts each `y_ij` and checks it against i's commitments:
 y_ij·G = sum over t of (id_j^t)·C_it
 ```
 
-A share that fails is reported, and the ceremony stops. Otherwise trustee j's secret share is `s_j = y_1j + ... + y_nj` (with its own `f_j(id_j)`), and `s_j·G` equals the `S_j` the contract computed. The trustee posts a proof that it holds `s_j`:
+A share that fails, or a box that doesn't open, is reported with the sender's identifier, and the ceremony stops. Otherwise noble's round 3 sums trustee j's secret share, `s_j = y_1j + ... + y_nj` (with its own `f_j(id_j)`), and `s_j·G` equals the `S_j` the contract computed. The trustee posts a proof that it holds `s_j`:
 
 ```text
 w = a random scalar,  R = w·G
@@ -313,7 +340,7 @@ verify:
   accept if c = Hs("share", [ctx, id_i, j, A_j, D_ij, S_i, T_1, T_2])
 ```
 
-A trustee's share is `{ trustee: id_i, shares: [{ d, c, z }] }`, with one entry per option.
+A trustee posts `{ "shares": [{ "d", "c", "z" }] }`, with one entry per option. The contract works out the trustee from the caller's MSP ID, so a `trustee` field is refused as unknown, and stores the share with the trustee's identifier.
 
 ## Recovering the tally
 
@@ -333,29 +360,34 @@ Find each count `t_j` in 0 to N by stepping from 0. Refuse the tally if any `t_j
 | Ciphertext | 64 bytes |
 | 0-or-1 proof | 128 bytes |
 | Sum proof | 64 bytes |
-| Ballot | 192 bytes per option plus 64: 640 for three options, 1,520 as hex JSON |
-| Decryption share | 96 bytes per option: 288 for three options, 734 as JSON |
-| Round 1 public data, three trustees | 1,081 bytes as JSON, before one-time keys |
+| Ballot | 192 bytes per option plus 64: 640 for three options, 1,521 as hex JSON for `budget-2027`, and 4,560 for ten options |
+| Decryption share | 96 bytes per option: 288 for three options, 657 as JSON |
+| Round 1 post, a threshold of 2 | 371 bytes as JSON, with the one-time key |
+| Round 2 post, three trustees | 440 bytes as JSON |
+| Confirmation | 143 bytes as JSON |
 
 ## Timings
 
-[Prototype results](/experimental/prototype-results/#timings) has the prototype's timings for encryption, verification, the ceremony, the count and the explorer's full check, and the estimate for Go.
+[Prototype results](/experimental/prototype-results/#timings) has the prototype's timings for encryption, verification, the ceremony, the count and the explorer's full check, and version 1's timings in Go and Node.
 
 ## Test vectors
 
 The proofs exist twice, so the two implementations are tied together by vectors that both test suites run.
 
-- They live in `packages/tally/vectors/v1/`, one JSON file per group: framing, context and tags, ballots, tracking, ceremony, shares, tally and negative. Every byte string is lowercase hex.
-- `packages/tally/scripts/vectors.ts` writes them from fixed seeds, and they are committed. Running it again changes no file.
+- They live in `packages/tally/vectors/v1/`, one JSON file per group: `framing.json` (framing, `expand_message_xmd` and Hs), `context.json` (contexts, fingerprints and voter tags), `ballots.json`, `tracking.json`, `ceremony.json`, `shares.json` (totals and decryption shares), `tally.json` and `negative.json`. Every byte string is lowercase hex.
+- `packages/tally/scripts/vectors.ts` writes them from fixed seeds, and they are committed. Running it again changes no file, and a TypeScript test regenerates them in memory and compares every byte.
+- Each step draws from its own seed, so adding a vector doesn't change the others. A seed's stream is `SHA-512(frame(["weft-tally test rng v1", seed, i]))` for i = 0, 1 and so on, and each draw takes the next bytes.
 - The TypeScript tests in `packages/tally` and the contract's Go tests read the same files, the Go tests by relative path.
 - Each vector has fixed inputs, including the randomness that would normally be drawn, and every intermediate and final output: framed bytes, `ctx`, voter tags, ciphertexts, each proof's commitments and challenges, the tracking code, totals, decryption shares, Lagrange coefficients and counts.
-- Provers take their randomness as an argument in tests, so the TypeScript side can reproduce a vector and the Go side, which never proves ballots, can check the same bytes.
+- Provers take their randomness as an argument through `@weftwallet/tally/testing`, so the TypeScript side can reproduce a vector and the Go side, which never proves ballots, can check the same bytes.
 - The key ceremony vectors fix noble's round 1 proof bytes, the derived key and verifying shares, the share encryption with a fixed nonce, and the confirmation proofs.
-- Negative vectors are inputs that must be refused, each with the contract's exact error message from the [error table](/experimental/contract-api/#errors): the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), and non-canonical points and scalars, identity points, unknown fields and wrong lengths.
+- Negative vectors are inputs that must be refused, each with the contract's exact error message from the [error table](/experimental/contract-api/#errors): the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), and non-canonical points and scalars, identity points, unknown fields, missing fields, wrong types and wrong lengths, for ballots, every ceremony post, decryption shares and the tally.
 - A change to the scheme changes the vectors first. A new label version is the only way to change an encoding, and its vectors go in a new folder, `v2/`.
 
 ## What is library code
 
-From `@noble/curves` 2.4.0 (MIT): the ristretto255 group (RFC 9496), hashing to a scalar (RFC 9380's `expand_message_xmd`), and the DKG in its FROST module. From `@noble/hashes` 2.4.0: SHA-256 and HKDF. The noble-curves README lists audits by Trail of Bits, Kudelski Security and Cure53. AES-GCM comes from WebCrypto in TypeScript and the standard library in Go.
+From `@noble/curves` 2.4.0 (MIT): the ristretto255 group (RFC 9496), hashing to a scalar (RFC 9380's `expand_message_xmd`), and the DKG's three rounds in its FROST module. From `@noble/hashes` 2.4.0: SHA-256, SHA-512 and HKDF. The noble-curves README lists audits by Trail of Bits, Kudelski Security and Cure53. AES-GCM comes from WebCrypto.
 
-Hand-written, and to be reviewed: the encryption, the 0-or-1, sum, share and confirmation proofs, the share encryption's construction, the Lagrange combination, the count search and the framing. In Go, the ristretto255 library is still to be chosen, and `expand_message_xmd` and the reproduction of noble's DKG proof are hand-written too.
+In Go, the group comes from `github.com/gtank/ristretto255` v0.2.0 on `filippo.io/edwards25519` v1.2.0 (both BSD 3-Clause), and SHA-256 and SHA-512 from the standard library. `filippo.io/edwards25519` is the standard library's edwards25519 code, which was in the scope of Trail of Bits' 2025 audit of Go's cryptography. No published audit of `gtank/ristretto255` itself was found. The [contract's README](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/private-ballot-contract) gives the reasons for the choice.
+
+Hand-written, and to be reviewed: the encryption, the 0-or-1, sum, share and confirmation proofs, the share encryption's construction, the check that names the sender of a bad share, the Lagrange combination, the count search, the framing and the strict JSON parsing. In Go, `expand_message_xmd`, the check of noble's DKG proof and every verifier are hand-written too, and `gtank/ristretto255`'s encoding layer joins the review.
