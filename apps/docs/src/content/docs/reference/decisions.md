@@ -42,3 +42,25 @@ A voting web app sends the receipt with the vote: `receipt` on `weft_submit`, wi
 The explorer's receipt check gets the choice and salt by message from the page that opened it, never in its address, which the browser's history would keep. See [Run an election](/guides/elections/).
 
 The trade-off: the app learns whether the voter kept the receipt in Weft. Copy and Download still leave a copy outside Weft, and say so.
+
+## 0007: Hide the choice with a homomorphic tally, as an experiment
+
+Proposed on 1 November 2026 as an experiment. It applies only to the Weft Experimental build, the playground's experimental channel and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions.
+
+Each ballot is encrypted under a key that the trustee organisations share, k of n, with a majority by default and 2 of 2 in the playground. The scheme is exponential ElGamal on ristretto255, in the style of Helios and ElectionGuard. Each ballot carries proofs that it chooses exactly one option, bound to the election, the voter and the ciphertext. The contract adds up the encrypted ballots, and k trustees decrypt only the totals, each with a proof. The voter chooses in Weft's window through `weft_castBallot`, and the web app never learns the choice. Weft reads the election key from the ledger itself, never from the web app. The receipt is a tracking code, and Weft discards the encryption randomness, which leaves the receipt unable to prove the vote. The contract is written in Go, the proofs exist in Go and TypeScript, and shared test vectors keep them in step. Explorers can re-check the whole count. See [Experimental features](/experimental/overview/).
+
+The trade-off: k colluding trustees could read any ballot, too few trustees stop the count, and a voter with modified software can still prove their vote. The cryptography is hand-written, and the feature stays experimental until an external cryptographic review and a maintainer's sign-off.
+
+## 0008: Hide who voted with Idemix voter credentials, as an experiment
+
+Proposed on 1 November 2026 as an experiment, under the same terms as 0007, and built on top of it.
+
+A voter enrols with the election's idemix CA and gets a voter credential, an identity kind used only for casting ballots. Weft signs with IBM's idemix library compiled to WebAssembly, with a new pseudonym for every transaction. One vote per credential comes from a per-election pseudonym with a proof that Weft adds to the ballot. One credential per voter is enforced at the CA, because in the prototype a voter with an X.509 certificate got three credentials and voted three times. Each election gets a new issuer key, because Fabric's idemix has no revocation. See [Voter credentials](/experimental/voter-credentials/) and [Prototype results](/experimental/prototype-results/).
+
+The trade-off: one vote per person depends on the CA's configuration, the experimental build carries 13 MB of WebAssembly, the relay sees the voter's network address, and Fabric's idemix curves are below the 128-bit level. The pseudonym proof needs an external review.
+
+## 0009: Build experiments on main, behind a build switch
+
+`WEFT_EXPERIMENTAL=1` builds Weft Experimental, a separate extension that installs alongside Weft with its own storage. Only it carries the idemix module and offers `weft_castBallot`, and pages detect it through `window.weft.features`. The playground, relay and explorer have matching switches, and the docs have an Experimental section. A feature leaves the track only after an external cryptographic review and a maintainer's sign-off. Until then, its records don't amend the main product's.
+
+The trade-off: main holds code most users never run, and both builds must be tested.

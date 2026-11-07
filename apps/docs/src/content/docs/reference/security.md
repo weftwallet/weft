@@ -68,6 +68,10 @@ The extension's manifest asks for no host access up front. When you add a networ
 - Weft doesn't check revocation before signing: it can't read the channel's revocation lists without a member identity. Peers refuse revoked certificates, and when they do, Weft checks the lists the network's explorer publishes and says the certificate was revoked rather than that access was denied.
 - Relays don't authenticate wallets: any wallet can ask a relay to build proposals, and peers enforce which identities may transact. Restrict signers with `WEFT_ALLOWED_MSP_IDS`.
 
+## Experimental features
+
+Weft Experimental is a separate build with a private tally, which hides a voter's choice, and Idemix voter credentials, which hide who voted. Neither feature is part of Weft, and no one outside the project has reviewed their cryptography. Everything above describes Weft as you install it, and the experimental build changes none of it. See [Experimental features](/experimental/overview/), and [What isn't hidden](/experimental/what-is-not-hidden/) for their limits.
+
 ## Reporting a vulnerability
 
 Please don't open a public issue. See `SECURITY.md` in the repository.

@@ -127,6 +127,21 @@ export default defineConfig({
             { label: "Brand", slug: "reference/brand" },
           ],
         },
+        {
+          // Weft Experimental's features (docs/adr/0009). Every page says it
+          // is experimental, unreviewed and not part of the main product.
+          label: "Experimental",
+          items: [
+            { label: "Experimental features", slug: "experimental/overview" },
+            { label: "Private tally specification", slug: "experimental/private-tally-spec" },
+            { label: "Key ceremony", slug: "experimental/key-ceremony" },
+            { label: "Contract API", slug: "experimental/contract-api" },
+            { label: "Casting a ballot", slug: "experimental/cast-ballot" },
+            { label: "Voter credentials", slug: "experimental/voter-credentials" },
+            { label: "What isn't hidden", slug: "experimental/what-is-not-hidden" },
+            { label: "Prototype results", slug: "experimental/prototype-results" },
+          ],
+        },
       ],
     }),
   ],
