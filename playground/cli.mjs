@@ -35,11 +35,12 @@
  *      and the members channel's starting assets (seed-members.mjs).
  *
  * With --experimental, after step 5 (experimental.mjs): a voters' CA for
- * each election, in Docker like test-network's CAs (compose-voters-ca.yaml),
- * a channel for each election, privatevote-<election id>, with that
- * election's idemix organisation (privatevote-chair-2027 with
- * ChairVoters2027MSP for the seeded chair-2027), and the hook for the
- * private-ballot contract. The relay and the explorers then start with
+ * each election with voter credentials, in Docker like test-network's CAs
+ * (compose-voters-ca.yaml), a channel for each election,
+ * privatevote-<election id>, with the election's idemix organisation if it
+ * has one (privatevote-budget-2027 has none; privatevote-chair-2027 has
+ * ChairVoters2027MSP), and the private-ballot contract on each channel,
+ * deployed with deployCC -ccl go. The relay and the explorers then start with
  * WEFT_EXPERIMENTAL=1, and the invite and explorers include every election's channel.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -456,7 +457,7 @@ function testNetworkLayout() {
 /* ------------------------------------------------------------------ */
 
 /**
- * One voters' CA per election (experimental.mjs, VOTER_ELECTIONS), each run
+ * One voters' CA per election with voter credentials (experimental.mjs, ELECTIONS), each run
  * from compose-voters-ca.yaml as its own Compose project, with the same image
  * as test-network's CAs. The variables fill in the election's names and ports.
  */
@@ -471,9 +472,9 @@ function votersCaCompose(election, home = experimentalNetwork.paths(state).elect
     env: {
       ...process.env,
       VOTERS_CA_CONTAINER: votersCaContainer(election),
-      VOTERS_CA_NAME: election.ca.name,
-      VOTERS_CA_PORT: String(election.ca.port),
-      VOTERS_CA_OPERATIONS_PORT: String(election.ca.operations),
+      VOTERS_CA_NAME: election.voterOrg.ca.name,
+      VOTERS_CA_PORT: String(election.voterOrg.ca.port),
+      VOTERS_CA_OPERATIONS_PORT: String(election.voterOrg.ca.operations),
       VOTERS_CA_HOME: home,
     },
   };
@@ -496,7 +497,7 @@ function stopVotersCaContainers() {
   if (!has("docker")) return;
   const containers = () => spawnSync("docker", ["ps", "-aq", "--filter", `label=${VOTERS_CA_LABEL}`], { encoding: "utf8" }).stdout?.trim() ?? "";
   if (!containers()) return;
-  for (const election of experimentalNetwork.VOTER_ELECTIONS) {
+  for (const election of experimentalNetwork.voterElections()) {
     const compose = votersCaCompose(election);
     spawnSync("docker", [...compose.args, "down", "--volumes", "--remove-orphans"], { env: compose.env, stdio: "ignore" });
   }
@@ -524,8 +525,22 @@ function cleanExperimental() {
   }
 }
 
+/**
+ * A contract on one of the experimental channels, with test-network's
+ * deployCC. For Go, deployCC runs go mod vendor in the contract's folder and
+ * the peer builds it in Docker with fabric-ccenv.
+ */
+function deployContract({ channel, name, path, language, version, sequence, policy }) {
+  const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
+  run(
+    "./network.sh",
+    ["deployCC", "-c", channel, "-ccn", name, "-ccp", path, "-ccl", language, "-ccv", version, "-ccs", String(sequence), "-ccep", policy],
+    { cwd: testNetwork, env },
+  );
+}
+
 /** What experimental.mjs uses from this file. */
-const tools = { step, note, fail, startCaServer: startVotersCaContainer };
+const tools = { step, note, fail, startCaServer: startVotersCaContainer, deployContract };
 
 /**
  * Two explorers, one per organisation, each reading from its own peer and
@@ -602,10 +617,11 @@ function experimentalSummary() {
   const x = experimentalNetwork;
   return `
   ${bold("Experimental")} (Weft Experimental only, not part of Weft)
-${x.VOTER_ELECTIONS.map((e) => `  Channel     ${x.electionChannel(e)}: Org1MSP and Org2MSP endorse, with ${e.mspId} for ${e.id}`).join("\n")}
-${x.VOTER_ELECTIONS.map((e) => `  Voters' CA  ${e.id}: https://localhost:${e.ca.port}, CA ${e.ca.name}, MSP ${e.mspId}`).join("\n")}
+${x.ELECTIONS.map((e) => `  Channel     ${x.electionChannel(e)}: Org1MSP and Org2MSP endorse, ${e.voterOrg ? `with ${e.voterOrg.mspId}, for ${e.id} with voter credentials` : `for ${e.id} with X.509 voters`}`).join("\n")}
+${x.voterElections().map((e) => `  Voters' CA  ${e.id}: https://localhost:${e.voterOrg.ca.port}, CA ${e.voterOrg.ca.name}, MSP ${e.voterOrg.mspId}`).join("\n")}
   Voters      ${x.DEMO_VOTERS[0].id} to ${x.DEMO_VOTERS.at(-1).id} (secret <id>pw), affiliation ${x.VOTER_AFFILIATION}, one enrolment each
-  Contract    ${x.PRIVATE_CONTRACT} isn't built yet, so no election's channel has a contract or elections
+  Contract    ${x.PRIVATE_CONTRACT} on every election's channel, endorsed by ${bold("Org1 and Org2")}
+  Elections   not seeded yet: the key ceremony needs weft-trustee
   Wallet      ${bold("pnpm --filter @weftwallet/extension build:experimental")}, then load
               apps/extension/.output-experimental/chrome-mv3 in a browser profile without Weft
 `;
@@ -648,7 +664,7 @@ async function up(flags) {
 function setExperimental(experimental) {
   const marker = experimentalNetwork.paths(state).marker;
   // The marker holds the voter MSP IDs and the channels the relay and the
-  // explorers were started with, so a new election in VOTER_ELECTIONS restarts
+  // explorers were started with, so a new election in ELECTIONS restarts
   // them too, with WEFT_IDEMIX_MSP_IDS, the invite and the policies updated.
   const before = existsSync(marker) ? readFileSync(marker, "utf8") : null;
   const after = experimental ? `${experimentalNetwork.voterMspIds()}\n${experimentalNetwork.privateChannels().join(",")}\n` : null;
@@ -709,9 +725,9 @@ async function status() {
   line("Explorer", await ok(`http://localhost:${PORTS.explorer}/api/v1/status`), `http://localhost:${PORTS.explorer} (Org1)`);
   line("Explorer", await ok(`http://localhost:${PORTS.explorerOrg2}/api/v1/status`), `http://localhost:${PORTS.explorerOrg2} (Org2)`);
   if (existsSync(experimentalNetwork.paths(state).marker)) {
-    for (const election of experimentalNetwork.VOTER_ELECTIONS) {
+    for (const election of experimentalNetwork.voterElections()) {
       const container = votersCaContainer(election);
-      line("Voters CA", containerRunning(container), `${container} container, https://localhost:${election.ca.port} (experimental, ${election.id})`);
+      line("Voters CA", containerRunning(container), `${container} container, https://localhost:${election.voterOrg.ca.port} (experimental, ${election.id})`);
     }
   }
 }

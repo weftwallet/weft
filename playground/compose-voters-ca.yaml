@@ -5,8 +5,8 @@
 # host, where fabric-ca-server writes the idemix issuer keys
 # (IssuerPublicKey, IssuerRevocationPublicKey) that become the election's MSP.
 #
-# playground/cli.mjs runs it once per election in VOTER_ELECTIONS
-# (playground/experimental.mjs), as the Compose project weft-voters-<election>,
+# playground/cli.mjs runs it once per election with voter credentials in
+# ELECTIONS (playground/experimental.mjs), as the Compose project weft-voters-<election>,
 # with these variables set:
 #   VOTERS_CA_CONTAINER        the container's name, for example ca_voters_chair_2027
 #   VOTERS_CA_NAME             the CA's name, for example ca-chair-2027
