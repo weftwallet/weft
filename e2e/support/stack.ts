@@ -21,6 +21,8 @@ import { productUrl } from "../../packages/brand/products.mjs";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export const EXTENSION = join(ROOT, "apps/extension/.output-e2e/chrome-mv3");
+/** Weft Experimental's test build (docs/adr/0009), from build:e2e:experimental. */
+export const EXTENSION_EXPERIMENTAL = join(ROOT, "apps/extension/.output-e2e-experimental/chrome-mv3");
 
 /** Weft's sites, built with WEFT_PRODUCTS=dev so they link to each other locally. */
 const SITES = ["site", "docs", "playground", "network"] as const;

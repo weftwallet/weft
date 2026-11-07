@@ -5,7 +5,7 @@
 
 import { test as base, chromium, expect, type BrowserContext, type Page, type Worker } from "@playwright/test";
 import { createServer, type Server } from "node:http";
-import { EXTENSION, PORTS, type StackInfo } from "./stack.ts";
+import { EXTENSION, EXTENSION_EXPERIMENTAL, PORTS, type StackInfo } from "./stack.ts";
 
 export { expect };
 
@@ -191,7 +191,11 @@ export class Wallet {
   }
 }
 
-type Fixtures = { wallet: Wallet; walletPassword: string | null };
+/** Which test build the wallet fixture loads: Weft, or Weft Experimental (docs/adr/0009). */
+export type Build = "normal" | "experimental";
+export const BUILDS: Record<Build, string> = { normal: EXTENSION, experimental: EXTENSION_EXPERIMENTAL };
+
+type Fixtures = { wallet: Wallet; walletPassword: string | null; build: Build };
 type WorkerFixtures = { site: Site };
 
 export const test = base.extend<Fixtures, WorkerFixtures>({
@@ -207,12 +211,15 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
 
   walletPassword: [PASSWORD, { option: true }],
 
-  wallet: async ({ site, walletPassword }, use, testInfo) => {
+  build: ["normal", { option: true }],
+
+  wallet: async ({ site, walletPassword, build }, use, testInfo) => {
     const headed = testInfo.tags.includes("@headed");
+    const extension = BUILDS[build];
     const context = await chromium.launchPersistentContext(testInfo.outputPath("profile"), {
       channel: "chromium",
       headless: !headed,
-      args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
+      args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
     });
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
     const id = new URL(worker.url()).host;
