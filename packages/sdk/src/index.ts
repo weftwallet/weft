@@ -17,6 +17,7 @@ import {
   type BallotReceiptRequest,
   type ContractCall,
   type EvaluateResult,
+  type ExperimentalFeature,
   type IdentitySummary,
   type NetworkSummary,
   type ReceiptHandoff,
@@ -25,6 +26,7 @@ import {
   type SubmitResult,
   type WeftEvent,
   type WeftEvents,
+  type WeftFeature,
   type WeftProvider,
 } from "@weftwallet/protocol";
 
@@ -119,8 +121,12 @@ export class WeftClient {
     return this.provider.request({ method: "weft_submit", params: call }).catch(rethrow);
   }
 
-  /** Whether this Weft offers a feature, for example "receipts". */
-  supports(feature: string): boolean {
+  /**
+   * Whether this Weft offers a feature, for example "receipts". The
+   * ExperimentalFeature names, such as "castBallot", are listed only by
+   * Weft Experimental (docs/adr/0009).
+   */
+  supports(feature: WeftFeature | ExperimentalFeature | (string & {})): boolean {
     return this.provider.features?.includes(feature) ?? false;
   }
 

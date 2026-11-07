@@ -11,10 +11,26 @@ export const PROVIDER_VERSION = "0.1.0";
 /**
  * What this Weft can do, beyond the methods every Weft has. A page checks
  * `window.weft.features` for a feature rather than comparing versions.
- * Experimental builds add their own entries.
+ * Weft Experimental adds its own entries (ExperimentalFeature).
  */
 export const PROVIDER_FEATURES = ["receipts"] as const;
 export type WeftFeature = (typeof PROVIDER_FEATURES)[number];
+
+/**
+ * Experimental: features only Weft Experimental, the build made with
+ * WEFT_EXPERIMENTAL=1, can list in `window.weft.features` (docs/adr/0009).
+ * Normal Weft never lists them. No one outside the project has reviewed them,
+ * and they may change or be removed without notice.
+ *
+ * - `"castBallot"`: `weft_castBallot`, a private tally for elections with
+ *   X.509 voters (docs/adr/0007).
+ * - `"voterCredentials"`: Idemix voter credentials, for anonymous ballots
+ *   with `weft_castBallot` (docs/adr/0008).
+ *
+ * Names only: neither feature is built yet, and the protocol has no method
+ * for them.
+ */
+export type ExperimentalFeature = "castBallot" | "voterCredentials";
 
 /* ------------------------------------------------------------------ */
 /* Identities and networks                                             */
@@ -327,7 +343,10 @@ export type WeftEvent = keyof WeftEvents;
 export interface WeftProvider {
   readonly isWeft: true;
   readonly version: string;
-  /** Features this Weft offers, for example "receipts". See PROVIDER_FEATURES. */
+  /**
+   * Features this Weft offers, for example "receipts". See PROVIDER_FEATURES,
+   * and ExperimentalFeature for the entries only Weft Experimental lists.
+   */
   readonly features: readonly string[];
   request<M extends WeftMethod>(args: RequestArgs<M>): Promise<WeftMethods[M]["result"]>;
   on<E extends WeftEvent>(event: E, listener: (payload: WeftEvents[E]) => void): void;
