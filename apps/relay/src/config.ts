@@ -24,6 +24,18 @@ export interface RelayConfig {
   publicUrl: string | undefined;
   /** Hosted join page used in printed links. */
   joinPage: string | undefined;
+  /**
+   * Experimental (docs/adr/0009): WEFT_EXPERIMENTAL=1. Off by default. Only
+   * then may the relay accept idemix signers, from idemixMspIds.
+   */
+  experimental: boolean;
+  /**
+   * Experimental (docs/adr/0008): WEFT_IDEMIX_MSP_IDS, the voter MSPs whose
+   * idemix signers the relay may accept, one per election, for example
+   * ChairVoters2027MSP. Empty unless experimental. Parsed only: the relay
+   * doesn't accept idemix signers yet.
+   */
+  idemixMspIds: string[];
 }
 
 function list(value: string | undefined): string[] | undefined {
@@ -41,6 +53,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
   }
   const tlsPath = env.WEFT_PEER_TLS_CA_CERT;
   const origins = list(env.WEFT_ALLOWED_ORIGINS);
+  const experimental = env.WEFT_EXPERIMENTAL === "1";
+  const idemixMspIds = list(env.WEFT_IDEMIX_MSP_IDS) ?? [];
+  if (idemixMspIds.length > 0 && !experimental) {
+    throw new Error(
+      "WEFT_IDEMIX_MSP_IDS is set, but the relay accepts idemix signers only when it's started with WEFT_EXPERIMENTAL=1. Set WEFT_EXPERIMENTAL=1, or remove WEFT_IDEMIX_MSP_IDS.",
+    );
+  }
   return {
     port: Number(env.PORT ?? env.WEFT_PORT ?? 8787),
     host: env.WEFT_HOST ?? "0.0.0.0",
@@ -53,5 +72,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
     invite: loadInvite(env),
     publicUrl: env.WEFT_PUBLIC_URL?.replace(/\/+$/, "") || undefined,
     joinPage: env.WEFT_JOIN_PAGE || undefined,
+    experimental,
+    idemixMspIds,
   };
 }

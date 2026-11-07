@@ -17,6 +17,11 @@ process.on("SIGTERM", shutdown);
 
 await app.listen({ port: config.port, host: config.host });
 app.log.info(`Weft relay forwarding to ${config.peerEndpoint}`);
+if (config.experimental) {
+  // docs/adr/0009: the switch is parsed, and nothing experimental is served yet.
+  const voters = config.idemixMspIds.length ? config.idemixMspIds.join(", ") : "none";
+  app.log.warn(`Started with WEFT_EXPERIMENTAL=1, for Weft Experimental. Voter MSPs for idemix signers: ${voters}. This relay accepts no idemix signers yet.`);
+}
 if (config.invite && config.publicUrl) {
   const links = inviteLinks(`${config.publicUrl}/.well-known/weft-invite.json`, config.joinPage);
   app.log.info(`Invite for ${config.invite.mspId}: ${links.join}`);

@@ -37,6 +37,8 @@ const base: RelayConfig = {
   invite: null,
   publicUrl: undefined,
   joinPage: undefined,
+  experimental: false,
+  idemixMspIds: [],
 };
 const pool = new GatewayPool(base);
 afterAll(() => pool.close());
