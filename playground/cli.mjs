@@ -6,6 +6,9 @@
  *   pnpm playground:up --https
  *                           the same, but the CA proxy serves HTTPS with a mkcert
  *                           certificate, so the CA URL looks like production's
+ *   pnpm playground:up --experimental
+ *                           also sets up Weft Experimental's channels (docs/adr/0009,
+ *                           experimental.mjs); needs Go. Combines with --https
  *   pnpm playground:explorer
  *                           start (or restart) only the explorer, on a running stack
  *   pnpm playground:status  what's running
@@ -30,6 +33,14 @@
  *      cross-checking with the other.
  *   8. Seeds two elections (seed-elections.mjs), one counted and one open,
  *      and the members channel's starting assets (seed-members.mjs).
+ *
+ * With --experimental, after step 5 (experimental.mjs): a voters' CA for
+ * each election, in Docker like test-network's CAs (compose-voters-ca.yaml),
+ * a channel for each election, privatevote-<election id>, with that
+ * election's idemix organisation (privatevote-chair-2027 with
+ * ChairVoters2027MSP for the seeded chair-2027), and the hook for the
+ * private-ballot contract. The relay and the explorers then start with
+ * WEFT_EXPERIMENTAL=1, and the invite and explorers include every election's channel.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -37,6 +48,7 @@ import { connect } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { productUrl } from "../packages/brand/products.mjs";
+import * as experimentalNetwork from "./experimental.mjs";
 
 const FABRIC_VERSION = "2.5.16";
 const CA_VERSION = "1.5.17";
@@ -190,7 +202,7 @@ function stopBackground(name) {
 /* Steps                                                               */
 /* ------------------------------------------------------------------ */
 
-function checkPrerequisites({ https }) {
+function checkPrerequisites({ https, experimental }) {
   step(0, "Checking prerequisites");
   if (!has("docker")) fail("Docker is required.", "Install Docker Desktop or OrbStack, then run this again.");
   if (spawnSync("docker", ["info"], { stdio: "ignore" }).status !== 0) {
@@ -207,6 +219,10 @@ function checkPrerequisites({ https }) {
     );
   }
   note(https ? "docker, git, curl and mkcert found" : "docker, git and curl found");
+  if (experimental) {
+    note(`Go found (${experimentalNetwork.checkGo({ fail })}), for --experimental`);
+    experimentalNetwork.checkElections({ fail });
+  }
 }
 
 function ensureFabric() {
@@ -237,6 +253,7 @@ function startNetwork() {
   // A new network has none of the old one's contracts or channels.
   rmSync(join(state, "ballot-deployed"), { force: true });
   rmSync(join(state, "members-channel"), { force: true });
+  for (const path of [experimentalNetwork.paths(state).channels, ...experimentalNetwork.paths(state).legacy]) rmSync(path, { recursive: true, force: true });
   run("./network.sh", ["down"], { cwd: testNetwork, env });
   run("./network.sh", ["up", "createChannel", "-c", CHANNEL, "-ca"], { cwd: testNetwork, env });
   run(
@@ -358,7 +375,7 @@ function startCaProxy({ https }) {
   return { port: PORTS.caProxy, url: `http://localhost:${PORTS.caProxy}` };
 }
 
-async function startRelay(caUrl) {
+async function startRelay(caUrl, { experimental }) {
   step(7, "Weft relay for Org1");
   // Built every time, with the packages it uses: the stack runs the built
   // code, as production does, and an old build would hide your changes.
@@ -373,7 +390,7 @@ async function startRelay(caUrl) {
     caName: "ca-org1",
     relayUrl: `http://localhost:${PORTS.relay}`,
     explorerUrl: `http://localhost:${PORTS.explorer}`,
-    channels: [CHANNEL, MEMBERS_CHANNEL],
+    channels: [CHANNEL, MEMBERS_CHANNEL, ...(experimental ? experimentalNetwork.privateChannels() : [])],
   };
   writeFileSync(join(state, "invite.json"), `${JSON.stringify(invite, null, 2)}\n`);
   startBackground("relay", join(repo, "apps", "relay", "dist", "main.js"), [], {
@@ -384,16 +401,137 @@ async function startRelay(caUrl) {
     WEFT_INVITE_FILE: join(state, "invite.json"),
     WEFT_PUBLIC_URL: `http://localhost:${PORTS.relay}`,
     WEFT_JOIN_PAGE: local("site", "/join/"),
+    // Experimental: only the relay of the experimental stack may later accept
+    // idemix signers, from each election's voter MSP (docs/adr/0008).
+    ...(experimental ? { WEFT_EXPERIMENTAL: "1", WEFT_IDEMIX_MSP_IDS: experimentalNetwork.voterMspIds() } : {}),
   });
   await waitFor(`http://localhost:${PORTS.relay}/v1/health`, "The relay");
   ensureStillRunning("relay");
 }
 
 /**
+ * An explorer's policy file. For the experimental stack, a copy in .state
+ * that also publishes every election's channel, with its private elections.
+ */
+function explorerPolicy(o, experimental) {
+  const policy = join(here, o.policy);
+  if (!experimental) return policy;
+  const copy = join(state, `${o.name}-experimental.yaml`);
+  const text = readFileSync(policy, "utf8").trimEnd();
+  writeFileSync(copy, `${text}\n  # Experimental (docs/adr/0009), added by pnpm playground:up --experimental.\n${experimentalNetwork.privatePolicy(o.name)}`);
+  return copy;
+}
+
+/** Fabric's test-network as experimental.mjs needs it: the same paths and ports network.sh uses. */
+function testNetworkLayout() {
+  const organizations = join(testNetwork, "organizations");
+  const ordererOrg = join(organizations, "ordererOrganizations", "example.com");
+  const orderer = join(ordererOrg, "orderers", "orderer.example.com", "tls");
+  const peerOrg = (n, port) => {
+    const dir = join(organizations, "peerOrganizations", `org${n}.example.com`);
+    return {
+      msp: `Org${n}MSP`,
+      mspDir: join(dir, "msp"),
+      adminMsp: join(dir, "users", `Admin@org${n}.example.com`, "msp"),
+      peers: [{ address: `localhost:${port}`, tlsCa: join(dir, "tlsca", `tlsca.org${n}.example.com-cert.pem`), anchor: { host: `peer0.org${n}.example.com`, port } }],
+    };
+  };
+  return {
+    bin: join(samples, "bin"),
+    peerConfig: join(samples, "config"),
+    orderer: {
+      msp: "OrdererMSP",
+      mspDir: join(ordererOrg, "msp"),
+      endpoints: ["orderer.example.com:7050"],
+      consenters: [{ host: "orderer.example.com", port: 7050, cert: join(orderer, "server.crt") }],
+      tlsCa: join(ordererOrg, "tlsca", "tlsca.example.com-cert.pem"),
+      admins: [{ address: "localhost:7053", tls: { cert: join(orderer, "server.crt"), key: join(orderer, "server.key") } }],
+    },
+    orgs: [peerOrg(1, 7051), peerOrg(2, 9051)],
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Experimental: the voters' CAs, in Docker                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One voters' CA per election (experimental.mjs, VOTER_ELECTIONS), each run
+ * from compose-voters-ca.yaml as its own Compose project, with the same image
+ * as test-network's CAs. The variables fill in the election's names and ports.
+ */
+const VOTERS_CA_COMPOSE = join(here, "compose-voters-ca.yaml");
+/** Set on every voters' CA container in compose-voters-ca.yaml. */
+const VOTERS_CA_LABEL = "service=weft-voters-ca";
+const votersCaContainer = (election) => `ca_voters_${election.id.replace(/-/g, "_")}`;
+
+function votersCaCompose(election, home = experimentalNetwork.paths(state).election(election).home) {
+  return {
+    args: ["compose", "-f", VOTERS_CA_COMPOSE, "-p", `weft-voters-${election.id}`],
+    env: {
+      ...process.env,
+      VOTERS_CA_CONTAINER: votersCaContainer(election),
+      VOTERS_CA_NAME: election.ca.name,
+      VOTERS_CA_PORT: String(election.ca.port),
+      VOTERS_CA_OPERATIONS_PORT: String(election.ca.operations),
+      VOTERS_CA_HOME: home,
+    },
+  };
+}
+
+/** Starts an election's voters' CA, with its home mounted from .state, unless it's already running. */
+function startVotersCaContainer(election, home) {
+  const container = votersCaContainer(election);
+  if (containerRunning(container)) note(`${container} already running`);
+  else {
+    const compose = votersCaCompose(election, home);
+    run("docker", [...compose.args, "up", "-d"], { env: compose.env });
+    note(`${container} started, with its home in .state/voters-ca/${election.id}/server`);
+  }
+  return { logs: `docker logs ${container}` };
+}
+
+/** Stops and removes every voters' CA container, including those of elections no longer listed. */
+function stopVotersCaContainers() {
+  if (!has("docker")) return;
+  const containers = () => spawnSync("docker", ["ps", "-aq", "--filter", `label=${VOTERS_CA_LABEL}`], { encoding: "utf8" }).stdout?.trim() ?? "";
+  if (!containers()) return;
+  for (const election of experimentalNetwork.VOTER_ELECTIONS) {
+    const compose = votersCaCompose(election);
+    spawnSync("docker", [...compose.args, "down", "--volumes", "--remove-orphans"], { env: compose.env, stdio: "ignore" });
+  }
+  const left = containers();
+  if (left) spawnSync("docker", ["rm", "-f", ...left.split("\n")], { stdio: "ignore" });
+  console.log("  stopped the voters' CAs");
+}
+
+/**
+ * Removes the experimental files in .state. On Linux the voters' CA
+ * containers write their homes as root, so if removing them fails, they're
+ * removed from inside a container, as network.sh removes test-network's CA files.
+ */
+function cleanExperimental() {
+  try {
+    experimentalNetwork.clean(state);
+  } catch {
+    const dir = experimentalNetwork.paths(state).votersCa;
+    spawnSync("docker", ["run", "--rm", "-v", `${dir}:/data`, "hyperledger/fabric-ca:latest", "sh", "-c", "rm -rf /data/*"], { stdio: "ignore" });
+    try {
+      experimentalNetwork.clean(state);
+    } catch (error) {
+      note(`couldn't remove ${dir} (${error.code ?? error.message}); delete it by hand`);
+    }
+  }
+}
+
+/** What experimental.mjs uses from this file. */
+const tools = { step, note, fail, startCaServer: startVotersCaContainer };
+
+/**
  * Two explorers, one per organisation, each reading from its own peer and
  * comparing signed checkpoints with the other (docs/adr/0004, phase 3).
  */
-async function startExplorer(stepNumber = 8) {
+async function startExplorer(stepNumber = 8, { experimental = false } = {}) {
   step(stepNumber, "Explorers for Org1 and Org2");
   // Built every time, with the packages it uses: the stack runs the built
   // code, as production does, and an old build would hide your changes.
@@ -414,7 +552,7 @@ async function startExplorer(stepNumber = 8) {
       WEFT_EXPLORER_MSP_ID: o.msp,
       WEFT_EXPLORER_CERT: join(user, "signcerts"),
       WEFT_EXPLORER_KEY: join(user, "keystore"),
-      WEFT_EXPLORER_POLICY: join(here, o.policy),
+      WEFT_EXPLORER_POLICY: explorerPolicy(o, experimental),
       WEFT_EXPLORER_DB: join(state, `${o.name}.db`),
       WEFT_EXPLORER_PEERS: `http://localhost:${o.other}`,
       // Block pages link to the network page; the local one can reach local explorers.
@@ -422,6 +560,7 @@ async function startExplorer(stepNumber = 8) {
       // The switcher, the footer and "Get Weft" link to the local sites too.
       WEFT_EXPLORER_PRODUCTS_DOMAIN: "dev",
       NODE_OPTIONS: "--disable-warning=ExperimentalWarning",
+      ...(experimental ? { WEFT_EXPERIMENTAL: "1" } : {}),
     });
   }
   for (const o of orgs) {
@@ -430,7 +569,7 @@ async function startExplorer(stepNumber = 8) {
   }
 }
 
-function summary(caUrl) {
+function summary(caUrl, { experimental }) {
   const inviteUrl = `http://localhost:${PORTS.relay}/.well-known/weft-invite.json`;
   const playground = local("playground", `/?invite=${encodeURIComponent(inviteUrl)}`);
   console.log(`
@@ -443,7 +582,7 @@ ${bold("Weft playground is running.")}
   Channels    ${CHANNEL} (public), contracts ${bold("basic")} and ${bold("ballot")}
               ${MEMBERS_CHANNEL} (members only), contract ${bold("basic")}
   Elections   team-lunch (counted), board-2026 (open)
-
+${experimental ? experimentalSummary() : ""}
   Demo users (Org1):
 ${DEMO_USERS.map((u) => `    ${u.id.padEnd(8)} secret ${u.secret.padEnd(10)} ${dim(u.attrs.replace(":ecert", ""))}`).join("\n")}
 
@@ -459,26 +598,66 @@ Stop with ${bold("pnpm playground:down")}.
 `);
 }
 
+function experimentalSummary() {
+  const x = experimentalNetwork;
+  return `
+  ${bold("Experimental")} (Weft Experimental only, not part of Weft)
+${x.VOTER_ELECTIONS.map((e) => `  Channel     ${x.electionChannel(e)}: Org1MSP and Org2MSP endorse, with ${e.mspId} for ${e.id}`).join("\n")}
+${x.VOTER_ELECTIONS.map((e) => `  Voters' CA  ${e.id}: https://localhost:${e.ca.port}, CA ${e.ca.name}, MSP ${e.mspId}`).join("\n")}
+  Voters      ${x.DEMO_VOTERS[0].id} to ${x.DEMO_VOTERS.at(-1).id} (secret <id>pw), affiliation ${x.VOTER_AFFILIATION}, one enrolment each
+  Contract    ${x.PRIVATE_CONTRACT} isn't built yet, so no election's channel has a contract or elections
+  Wallet      ${bold("pnpm --filter @weftwallet/extension build:experimental")}, then load
+              apps/extension/.output-experimental/chrome-mv3 in a browser profile without Weft
+`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Commands                                                            */
 /* ------------------------------------------------------------------ */
 
 async function up(flags) {
   const https = flags.includes("--https");
+  const experimental = flags.includes("--experimental");
   mkdirSync(state, { recursive: true });
-  checkPrerequisites({ https });
+  checkPrerequisites({ https, experimental });
   ensureFabric();
   startNetwork();
   deployBallot();
   createMembersChannel();
   registerUsers();
+  setExperimental(experimental);
+  if (experimental) {
+    const net = testNetworkLayout();
+    await experimentalNetwork.startVotersCas(net, state, tools);
+    await experimentalNetwork.createElectionChannels(net, state, tools);
+    experimentalNetwork.deployPrivateBallot(net, state, tools);
+  }
   const proxy = startCaProxy({ https });
   await waitForPort(proxy.port, "The CA proxy");
   ensureStillRunning("ca-proxy");
-  await startRelay(proxy.url);
-  await startExplorer();
+  await startRelay(proxy.url, { experimental });
+  await startExplorer(8, { experimental });
   seedElections();
-  summary(proxy.url);
+  summary(proxy.url, { experimental });
+}
+
+/**
+ * Records whether the stack runs the experimental setup. When that changes
+ * on a running stack, the relay and the explorers restart with the new settings.
+ */
+function setExperimental(experimental) {
+  const marker = experimentalNetwork.paths(state).marker;
+  // The marker holds the voter MSP IDs and the channels the relay and the
+  // explorers were started with, so a new election in VOTER_ELECTIONS restarts
+  // them too, with WEFT_IDEMIX_MSP_IDS, the invite and the policies updated.
+  const before = existsSync(marker) ? readFileSync(marker, "utf8") : null;
+  const after = experimental ? `${experimentalNetwork.voterMspIds()}\n${experimentalNetwork.privateChannels().join(",")}\n` : null;
+  if (before !== after) {
+    for (const name of ["relay", "explorer", "explorer-org2"]) stopBackground(name);
+    if (!experimental) stopVotersCaContainers();
+  }
+  if (experimental) writeFileSync(marker, after);
+  else rmSync(marker, { force: true });
 }
 
 /** The explorer alone, for a stack started before it existed or after a rebuild. */
@@ -488,7 +667,7 @@ async function explorer() {
   stopBackground("explorer");
   stopBackground("explorer-org2");
   await new Promise((r) => setTimeout(r, 500)); // let the old process free the port
-  await startExplorer(1);
+  await startExplorer(1, { experimental: existsSync(experimentalNetwork.paths(state).marker) });
   console.log(`\n${bold("Explorers")} ${teal(`http://localhost:${PORTS.explorer}`)} (Org1), ${teal(`http://localhost:${PORTS.explorerOrg2}`)} (Org2)\n`);
 }
 
@@ -498,6 +677,7 @@ function down() {
   stopBackground("explorer-org2");
   stopBackground("relay");
   stopBackground("ca-proxy");
+  stopVotersCaContainers();
   if (existsSync(testNetwork)) {
     const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
     run("./network.sh", ["down"], { cwd: testNetwork, env });
@@ -506,6 +686,7 @@ function down() {
   rmSync(join(state, "ballot-deployed"), { force: true });
   rmSync(join(state, "members-channel"), { force: true });
   rmSync(join(state, "receipts.json"), { force: true });
+  cleanExperimental();
   // The next network starts from block 0, so the old index would be wrong.
   for (const name of ["explorer", "explorer-org2"]) {
     for (const suffix of ["", "-wal", "-shm"]) rmSync(join(state, `${name}.db${suffix}`), { force: true });
@@ -527,13 +708,19 @@ async function status() {
   line("Invite", await ok(`http://localhost:${PORTS.relay}/.well-known/weft-invite.json`), "served by the relay");
   line("Explorer", await ok(`http://localhost:${PORTS.explorer}/api/v1/status`), `http://localhost:${PORTS.explorer} (Org1)`);
   line("Explorer", await ok(`http://localhost:${PORTS.explorerOrg2}/api/v1/status`), `http://localhost:${PORTS.explorerOrg2} (Org2)`);
+  if (existsSync(experimentalNetwork.paths(state).marker)) {
+    for (const election of experimentalNetwork.VOTER_ELECTIONS) {
+      const container = votersCaContainer(election);
+      line("Voters CA", containerRunning(container), `${container} container, https://localhost:${election.ca.port} (experimental, ${election.id})`);
+    }
+  }
 }
 
 const [command, ...flags] = process.argv.slice(2).filter((a) => a !== "--");
 const commands = { up, down, status, explorer };
-const unknown = flags.filter((f) => !(command === "up" && f === "--https"));
+const unknown = flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
 if (!commands[command] || unknown.length) {
-  console.log("Usage: node playground/cli.mjs <up [--https]|explorer|down|status>");
+  console.log("Usage: node playground/cli.mjs <up [--https] [--experimental]|explorer|down|status>");
   if (unknown.length) console.log(`Unknown option: ${unknown.join(" ")}`);
   process.exit(command ? 1 : 0);
 }
