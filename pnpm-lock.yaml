@@ -182,6 +182,9 @@ importers:
       '@weftwallet/brand':
         specifier: workspace:*
         version: link:../../packages/brand
+      '@weftwallet/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@weftwallet/ui':
         specifier: workspace:*
         version: link:../../packages/ui

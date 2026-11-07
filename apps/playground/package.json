@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@weftwallet/brand": "workspace:*",
+    "@weftwallet/sdk": "workspace:*",
     "@weftwallet/ui": "workspace:*",
     "astro": "^7.4.1"
   }

@@ -1,13 +1,735 @@
 ---
 // Experimental (docs/adr/0009): the "Private election" section, for
-// weft_castBallot (docs/adr/0007). It is hidden until Playground.astro finds
-// "castBallot" in window.weft.features, which only Weft Experimental lists,
-// and no build lists it yet. The section has no content until castBallot is
-// built.
+// weft_castBallot (docs/adr/0007). Playground.astro shows it only when
+// window.weft.features includes "castBallot", which only Weft Experimental
+// lists.
+//
+// It lists the private elections that the invite's explorer publishes, read
+// from the explorer's JSON API, so reading needs no connection to Weft. It
+// asks Weft to cast a ballot with the SDK's castBallot(), sending only the
+// channel, the contract and the election ID: the voter chooses in Weft's
+// window, and this page never learns the choice. It shows the result, a
+// version 2 receipt with the tracking code, and the count once the trustees
+// publish it, as the explorer reports it.
+import { productHref } from "@weftwallet/ui/links";
+const docs = (path: string) => productHref("docs", path);
 ---
 
 <section class="pg-card" id="pg-private" aria-labelledby="pg-private-heading" data-feature="castBallot" hidden>
-  <div class="pg-head">
+  <div class="pg-head pg-head--status">
     <h2 id="pg-private-heading">Private election</h2>
+    <span class="pg-chips">
+      <span class="pg-pill" id="pg-pe-state" data-state="pending">Not loaded</span>
+      <span class="pg-pill" data-state="pending">Weft Experimental</span>
+    </span>
+  </div>
+  <p class="pg-hint">
+    Uses the <a href={docs("/experimental/contract-api/")}>private-ballot contract</a>, which the local playground deploys on a channel of its own for each
+    election, with <code>budget-2027</code> open. Weft Experimental encrypts your choice in its own window under a key the election's trustee organisations share,
+    so this page never learns how you voted.
+  </p>
+  <p class="pg-receipt-line pg-receipt-line--unsaved">Experimental. No one outside the project has reviewed this cryptography.</p>
+
+  <div class="pg-head">
+    <h3 id="pg-pe-list-heading">Elections</h3>
+    <button type="button" id="pg-pe-refresh" class="btn btn--text" hidden>Refresh</button>
+  </div>
+  <p class="pg-hint" id="pg-pe-status">Load an invite in step 1. This section lists the private elections that the invite's explorer publishes.</p>
+  <div class="action-error" id="pg-pe-list-error" role="alert" hidden></div>
+  <fieldset class="pg-pe-list" id="pg-pe-list" aria-labelledby="pg-pe-list-heading" hidden></fieldset>
+
+  <div id="pg-pe" class="pg-stack" hidden>
+    <dl class="pg-details">
+      <dt>Election</dt><dd id="pg-pe-title"></dd>
+      <dt>Channel</dt><dd class="mono" id="pg-pe-channel"></dd>
+      <dt>Voting</dt><dd id="pg-pe-voting"></dd>
+      <dt>Trustees</dt><dd id="pg-pe-trustees"></dd>
+      <dt>Election fingerprint</dt><dd class="mono" id="pg-pe-fp"></dd>
+      <dt>Options</dt><dd id="pg-pe-options"></dd>
+      <dt>Ballots</dt><dd id="pg-pe-ballots"></dd>
+      <dt>Result</dt><dd id="pg-pe-result"></dd>
+    </dl>
+    <div class="pg-stack" id="pg-pe-vote-wrap">
+      <p class="pg-hint">You choose in Weft's window, not on this page. This page sends Weft the channel, the contract and the election ID, and nothing else.</p>
+      <div class="pg-row pg-wrap">
+        <button type="button" id="pg-pe-vote" class="btn btn--write">Vote in Weft</button>
+      </div>
+    </div>
+    <div class="action-error" id="pg-pe-error" role="alert" hidden></div>
+  </div>
+  <p class="pg-hint" id="pg-pe-message" tabindex="-1"></p>
+
+  <div id="pg-pe-receipt" class="pg-stack" hidden>
+    <h3>Your receipt</h3>
+    <p class="pg-hint">It shows that your ballot is on the ledger and in the count. It holds nothing about your choice, so you can show it to anyone.</p>
+    <p class="pg-receipt-line" id="pg-pe-receipt-saved"></p>
+    <pre id="pg-pe-receipt-json" class="pg-out" data-tone="ok"></pre>
+    <div class="pg-row pg-wrap">
+      <button type="button" id="pg-pe-download" class="btn btn--primary">Download receipt</button>
+      <button type="button" id="pg-pe-copy" class="btn">Copy receipt</button>
+      <a id="pg-pe-check" class="btn" target="_blank" rel="noreferrer" hidden>Check it in the explorer</a>
+    </div>
+    <div class="action-error" id="pg-pe-receipt-error" role="alert" hidden></div>
+  </div>
+
+  <div id="pg-pe-code-wrap" class="pg-stack" hidden>
+    <h3>The same call in code</h3>
+    <pre id="pg-pe-code" class="pg-out"></pre>
   </div>
 </section>
+
+<script>
+  import { WeftClient, type CastBallotResult, type WeftProvider } from "@weftwallet/sdk";
+  import { announce, clearError, conceal, fetchProblem, grouped, isBusy, reveal, setBusy, shortened, showError, technical } from "@weftwallet/ui/ui";
+  import { logged } from "../scripts/provider-log.ts";
+
+  /* What the explorer's JSON API returns (apps/explorer/src/private-elections.ts). */
+  type Phase = "round1" | "round2" | "round3" | "opening" | "open" | "late" | "counting" | "counted" | "failed" | "cancelled";
+  interface Summary {
+    id: string;
+    title: string;
+    closesAt: string;
+    state: string;
+    phase: Phase;
+    ballots: number;
+    fingerprint: string | null;
+  }
+  interface Step {
+    txId: string;
+    block: number;
+    timestamp: number | null;
+  }
+  interface View {
+    channel: string;
+    contract: string;
+    id: string;
+    title: string;
+    options: string[];
+    closesAt: string;
+    creatorMsp: string;
+    threshold: number;
+    phase: Phase;
+    trustees: { msp: string; share: Step | null }[];
+    fingerprint: string | null;
+    closed: (Step & { early: boolean }) | null;
+    recordBallots: number | null;
+    tally: { counts: number[]; total: number } | null;
+    failed: (Step & { reportedBy: string; fromTrustee: string | null }) | null;
+    ballots: { total: number; failed: number };
+  }
+  type Listed = Summary & { channel: string };
+
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const w = window as any;
+  const section = $("pg-private");
+  const root = section.closest<HTMLElement>(".pg")!;
+  const timeOf = (d: string | number) => new Date(d).toLocaleString("en-GB", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  const list = (items: readonly string[]) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
+  const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString("en-GB")} ${n === 1 ? one : many}`;
+  const keyOf = (e: { channel: string; id: string }) => `${e.channel}\n${e.id}`;
+  const KEYGEN: Phase[] = ["round1", "round2", "round3", "opening"];
+  const canVote = (phase: Phase) => phase === "open" || phase === "late";
+  /** The order the list shows them in: what can be voted in first. */
+  const RANK: Record<Phase, number> = { open: 0, late: 1, round1: 2, round2: 2, round3: 2, opening: 2, counting: 3, counted: 4, failed: 5, cancelled: 6 };
+  const PILL: Record<Phase, ["ok" | "pending", string]> = {
+    open: ["ok", "Open"],
+    late: ["ok", "Open, past closing time"],
+    round1: ["pending", "Key ceremony"],
+    round2: ["pending", "Key ceremony"],
+    round3: ["pending", "Key ceremony"],
+    opening: ["pending", "Key ceremony"],
+    counting: ["pending", "Counting"],
+    counted: ["ok", "Counted"],
+    failed: ["pending", "Failed"],
+    cancelled: ["pending", "Cancelled"],
+  };
+
+  let explorer: string | null = root.dataset.explorer || null;
+  let elections: Listed[] = [];
+  let selected: string | null = null;
+  let view: View | null = null;
+  /** Elections this page has cast a ballot in, and what Weft returned for each. */
+  const results = new Map<string, CastBallotResult>();
+  /** Elections whose contract refused this identity's second ballot. */
+  const votedBefore = new Set<string>();
+  let reading = false;
+
+  /* ---------------- reading the explorer ---------------- */
+
+  async function getJson<T>(url: string): Promise<T> {
+    const response = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(6000) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json() as Promise<T>;
+  }
+  const api = (channel: string, id?: string) =>
+    `${explorer}/api/v1/channels/${encodeURIComponent(channel)}/private-elections${id ? `/${encodeURIComponent(id)}` : ""}`;
+  const pageFor = (channel: string, id: string) => `${explorer}/channels/${encodeURIComponent(channel)}/elections/${encodeURIComponent(id)}`;
+
+  function setPill(state: "ok" | "pending", text: string) {
+    const pill = $("pg-pe-state");
+    pill.dataset.state = state;
+    pill.textContent = text;
+  }
+
+  /** The list's status line. Words between backticks are code. */
+  function status(text: string) {
+    $("pg-pe-status").replaceChildren(...text.split("`").map((part, i) => (i % 2 ? Object.assign(document.createElement("code"), { textContent: part }) : document.createTextNode(part))));
+  }
+
+  /**
+   * Reads the elections from the explorer: the channels its status lists
+   * with private elections, then each channel's list. Pressing Refresh puts
+   * the loader on it; otherwise, the first time, the status line says what
+   * the page is waiting for and shows the loader after the wait. A quiet
+   * read (the 15-second update) changes the list and the election in place.
+   */
+  async function loadElections(how: "first" | "pressed" | "quiet" = "first") {
+    if (!explorer || reading) return;
+    reading = true;
+    const host = new URL(explorer).host;
+    const refresh = $("pg-pe-refresh");
+    const line = $("pg-pe-status");
+    let loader = 0;
+    if (how === "pressed") setBusy(refresh, true);
+    if (how === "first") {
+      status(`Reading the private elections from the explorer at ${host}.`);
+      loader = window.setTimeout(() => line.classList.add("is-working"), 300);
+    }
+    try {
+      const at = await getJson<{ name: string; channels: { channel: string; publishes?: { privateElections?: boolean } }[] }>(`${explorer}/api/v1/status`);
+      const channels = at.channels.filter((c) => c.publishes?.privateElections).map((c) => c.channel);
+      const lists = await Promise.all(channels.map((channel) => getJson<Summary[]>(api(channel)).then((l) => l.map((e) => ({ ...e, channel })))));
+      elections = lists.flat().sort((a, b) => RANK[a.phase] - RANK[b.phase]);
+      clearError($("pg-pe-list-error"));
+      const name = `${at.name}'s explorer`;
+      refresh.hidden = false;
+      if (channels.length === 0) {
+        showList();
+        status(`${name} publishes no channel with private elections. An explorer shows them when it runs with \`WEFT_EXPERIMENTAL=1\` and its policy names \`privateElections\` for a channel.`);
+        noElection("No elections");
+        return;
+      }
+      if (elections.length === 0) {
+        showList();
+        status(`${name} publishes no private elections yet. On the local playground, \`pnpm playground:up --experimental\` creates and opens \`budget-2027\`.`);
+        noElection("No elections");
+        return;
+      }
+      const open = elections.filter((e) => canVote(e.phase)).length;
+      status(
+        open === 0
+          ? `${name} has ${plural(elections.length, "private election")}, and none is open. Choose one to see its state or its count.`
+          : `${name} has ${plural(elections.length, "private election")}, ${open === elections.length ? (open === 1 ? "and it is open" : "all open") : `${open} of them open`}.`,
+      );
+      if (!selected || !elections.some((e) => keyOf(e) === selected)) selected = keyOf(elections.find((e) => canVote(e.phase)) ?? elections[0]!);
+      showList();
+      await loadView(how === "quiet");
+    } catch (error: any) {
+      if (how !== "quiet") {
+        status(elections.length ? "The list below is from the last time the explorer answered." : "No elections loaded.");
+        showError($("pg-pe-list-error"), fetchProblem(error, `The explorer at ${host}`), `${explorer}\n${error?.message ?? error}`);
+        refresh.hidden = false;
+        if (!elections.length) noElection("Not loaded");
+      }
+    } finally {
+      clearTimeout(loader);
+      line.classList.remove("is-working");
+      if (how === "pressed") setBusy(refresh, false);
+      reading = false;
+    }
+  }
+
+  function noElection(pill: string) {
+    view = null;
+    setPill("pending", pill);
+    conceal($("pg-pe"));
+    showResultFor(null);
+  }
+
+  /** The list of elections, updated in place, so the chosen one and focus survive. */
+  function showList() {
+    const box = $("pg-pe-list");
+    const have = new Map([...box.querySelectorAll<HTMLLabelElement>("label")].map((l) => [l.dataset.key!, l]));
+    elections.forEach((e, i) => {
+      const key = keyOf(e);
+      let label = have.get(key);
+      if (!label) {
+        label = document.createElement("label");
+        label.className = "pg-pe-item";
+        label.dataset.key = key;
+        const input = Object.assign(document.createElement("input"), { type: "radio", name: "pg-pe-election", value: key });
+        input.addEventListener("change", () => {
+          selected = key;
+          clearError($("pg-pe-error"));
+          void loadView();
+        });
+        const text = Object.assign(document.createElement("span"), { className: "pg-pe-item__text" });
+        text.append(Object.assign(document.createElement("span"), { className: "pg-pe-item__title" }), Object.assign(document.createElement("span"), { className: "mono pg-pe-item__where" }));
+        label.append(input, text, Object.assign(document.createElement("span"), { className: "pg-pill" }));
+      }
+      label.querySelector<HTMLElement>(".pg-pe-item__title")!.textContent = e.title;
+      label.querySelector<HTMLElement>(".pg-pe-item__where")!.textContent = `${e.id} on ${e.channel}`;
+      const [state, text] = pillFor(key, e.phase);
+      const pill = label.querySelector<HTMLElement>(".pg-pill")!;
+      pill.dataset.state = state;
+      pill.textContent = text;
+      label.querySelector("input")!.checked = key === selected;
+      if (box.children[i] !== label) box.insertBefore(label, box.children[i] ?? null);
+      have.delete(key);
+    });
+    for (const gone of have.values()) gone.remove();
+    if (elections.length) reveal(box);
+    else conceal(box);
+  }
+
+  /** Voted, once this page has cast a ballot in an election that is still open; otherwise its phase. */
+  function pillFor(key: string, phase: Phase): ["ok" | "pending", string] {
+    if (canVote(phase) && (results.has(key) || votedBefore.has(key))) return ["ok", "Voted"];
+    return PILL[phase];
+  }
+
+  /** Reads the chosen election's whole view, for its trustees, its contract and its count. */
+  async function loadView(quiet = false) {
+    const e = elections.find((x) => keyOf(x) === selected);
+    if (!e) return;
+    try {
+      const v = await getJson<View>(api(e.channel, e.id));
+      if (keyOf(v) !== selected) return;
+      const changed = view && keyOf(view) === selected && (view.phase !== v.phase || !!view.tally !== !!v.tally);
+      showView(v);
+      if (changed) announce(v.phase === "counted" ? `${v.title} is counted. The result is in the Private election section.` : `${v.title} is now ${PILL[v.phase][1].toLowerCase()}.`);
+    } catch (error: any) {
+      if (quiet) return;
+      showError($("pg-pe-list-error"), fetchProblem(error, `The explorer at ${new URL(explorer!).host}`), `${api(e.channel, e.id)}\n${error?.message ?? error}`);
+    }
+  }
+
+  /* ---------------- the chosen election ---------------- */
+
+  function showView(v: View) {
+    const key = keyOf(v);
+    const fresh = !view || keyOf(view) !== key;
+    view = v;
+    const n = v.trustees.length;
+    const k = v.threshold;
+    setPill(...pillFor(key, v.phase));
+    $("pg-pe-title").textContent = v.title;
+    $("pg-pe-channel").textContent = v.channel;
+    $("pg-pe-voting").textContent = votingText(v);
+    $("pg-pe-trustees").textContent = `${list(v.trustees.map((t) => t.msp))}. Any ${k} of ${n} can decrypt.`;
+    $("pg-pe-fp").textContent = v.fingerprint ? grouped(v.fingerprint) : "Not made yet";
+    $("pg-pe-options").textContent = v.options.join(", ");
+    $("pg-pe-ballots").textContent = KEYGEN.includes(v.phase) || v.phase === "failed" || v.phase === "cancelled" ? "None" : (v.recordBallots ?? v.ballots.total).toLocaleString("en-GB");
+    showResult(v);
+    // Vote in Weft is offered while the contract takes ballots, once per election from this page.
+    const offer = canVote(v.phase) && !results.has(key) && !votedBefore.has(key);
+    const vote = $<HTMLButtonElement>("pg-pe-vote");
+    const wrap = $("pg-pe-vote-wrap");
+    if (!isBusy(vote)) {
+      if (offer) reveal(wrap);
+      else {
+        // The button that had focus is going: focus what took its place.
+        if (wrap.contains(document.activeElement)) $("pg-pe-message").focus();
+        conceal(wrap);
+      }
+    }
+    showCode(v, offer || results.has(key));
+    if (fresh) {
+      clearError($("pg-pe-error"));
+      showResultFor(key);
+    }
+    reveal($("pg-pe"));
+  }
+
+  function votingText(v: View): string {
+    switch (v.phase) {
+      case "open":
+        return `Open until ${timeOf(v.closesAt)}`;
+      case "late":
+        return `Open. Its planned closing time, ${timeOf(v.closesAt)}, has passed, and it takes ballots until ${v.threshold} of ${v.trustees.length} trustees close it.`;
+      case "counting":
+      case "counted":
+        return v.closed
+          ? `Closed on ${timeOf(v.closed.timestamp ?? v.closesAt)}, in block ${v.closed.block}${v.closed.early ? ", before its planned closing time" : ""}.`
+          : "Closed.";
+      case "failed": {
+        const from = v.failed?.fromTrustee;
+        return `It won't open. Its key ceremony failed: ${v.failed?.reportedBy ?? "a trustee"} reported that the share it received${from ? ` from ${from}` : ""} doesn't match the sender's commitments.`;
+      }
+      case "cancelled":
+        return `It won't open. ${v.creatorMsp} cancelled it during its key ceremony.`;
+      default:
+        return "Not open yet. Its trustees are making the election key, and voting opens once every trustee has confirmed.";
+    }
+  }
+
+  /** The count once it is published, with a link to the explorer's check of the shares. */
+  function showResult(v: View) {
+    const dd = $("pg-pe-result");
+    const k = v.threshold;
+    const n = v.trustees.length;
+    const posted = v.trustees.filter((t) => t.share).map((t) => t.msp);
+    if (v.phase === "counted" && v.tally) {
+      const tally = document.createElement("dl");
+      tally.className = "pg-tally";
+      v.options.forEach((o, i) => tally.append(Object.assign(document.createElement("dt"), { textContent: o }), Object.assign(document.createElement("dd"), { className: "mono", textContent: String(v.tally!.counts[i] ?? 0) })));
+      const said = Object.assign(document.createElement("p"), {
+        className: "pg-hint",
+        textContent: `${plural(v.tally.total, "ballot")}. ${list(posted.slice(0, k))} posted their decryption shares, and each explorer checks them. `,
+      });
+      said.append(Object.assign(document.createElement("a"), { href: `${pageFor(v.channel, v.id)}#result`, target: "_blank", rel: "noreferrer", textContent: "See the count and the shares in the explorer" }));
+      dd.replaceChildren(tally, said);
+      return;
+    }
+    if (v.phase === "counting") {
+      const ballots = v.recordBallots ?? v.ballots.total;
+      dd.textContent = `Voting has closed with ${plural(ballots, "ballot")}, and the contract added them up. The count is published once ${k} of ${n} trustees post decryption shares. ${
+        posted.length ? `${list(posted)} ${posted.length === 1 ? "has posted its share" : "have posted theirs"}.` : "No trustee has posted one yet."
+      }`;
+      return;
+    }
+    dd.textContent = v.phase === "failed" || v.phase === "cancelled" ? "No ballots were cast." : "Published when the trustees decrypt the totals.";
+  }
+
+  function showCode(v: View, show: boolean) {
+    $("pg-pe-code").textContent = `import { getWeft } from "@weftwallet/sdk";
+
+const weft = await getWeft();
+const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, chaincode: ${JSON.stringify(v.contract)}, electionId: ${JSON.stringify(v.id)} });`;
+    if (show) reveal($("pg-pe-code-wrap"));
+    else conceal($("pg-pe-code-wrap"));
+  }
+
+  /* ---------------- casting ---------------- */
+
+  /** window.weft, with every request in the provider log, for the SDK's client. */
+  function provider(): WeftProvider {
+    const weft = w.weft;
+    return {
+      isWeft: true,
+      version: weft.version,
+      features: weft.features,
+      request: ((args: { method: string; params?: unknown }) => logged(weft, args.method, args.params)) as WeftProvider["request"],
+      on: (event: any, listener: any) => weft.on(event, listener),
+      off: (event: any, listener: any) => weft.off(event, listener),
+    } as WeftProvider;
+  }
+
+  function message(text: string, focus = false) {
+    const p = $("pg-pe-message");
+    p.textContent = text;
+    if (text) announce(text);
+    if (focus) p.focus();
+  }
+
+  async function cast() {
+    const button = $<HTMLButtonElement>("pg-pe-vote");
+    if (!view || !w.weft || isBusy(button)) return;
+    const v = view;
+    const key = keyOf(v);
+    setBusy(button, true);
+    clearError($("pg-pe-error"));
+    message("Waiting for you in Weft. Choose your option in its window. This page never sees it.");
+    try {
+      const result = await new WeftClient(provider()).castBallot({ channel: v.channel, chaincode: v.contract, electionId: v.id });
+      results.set(key, result);
+      setBusy(button, false);
+      if (selected === key) {
+        showResultFor(key);
+        showView(v);
+        showList();
+        $("pg-pe-message").focus();
+      }
+      void loadElections("quiet");
+    } catch (error: any) {
+      if (selected === key) {
+        message("");
+        castFailed(error, v);
+      }
+      if (error?.code === 5001 && /already voted/.test(error?.message ?? "")) votedBefore.add(key);
+      // The election may have changed state: read it again.
+      if (error?.code === 4400 || error?.code === 5001) void loadElections("quiet");
+    } finally {
+      setBusy(button, false);
+      if (view && keyOf(view) === key) showView(view);
+      showList();
+    }
+  }
+
+  function castFailed(error: any, v: View) {
+    const box = $("pg-pe-error");
+    const state: string | undefined = error?.data?.state;
+    const details = [technical(error), state ? `State ${state}` : ""].filter(Boolean).join("\n");
+    showError(box, castProblem(error, v), details);
+    // The tracking code to check links to the explorer's check, in the sentence that names it.
+    const tracking: string | undefined = error?.data?.tracking;
+    const sentence = box.querySelector("p");
+    if (error?.code === 5002 && tracking && explorer && sentence) {
+      const named = `tracking code ${shortened(tracking)} in the explorer`;
+      const [before, after] = sentence.textContent!.split(named);
+      // One span, since the sentence's line is a flex row with the icon (base.css .action-error).
+      const words = document.createElement("span");
+      words.append(
+        before ?? "",
+        Object.assign(document.createElement("a"), { href: `${pageFor(v.channel, v.id)}?tracking=${tracking}#receipt`, target: "_blank", rel: "noreferrer", textContent: named }),
+        after ?? "",
+      );
+      sentence.replaceChildren(words);
+    }
+  }
+
+  /** What a failed weft_castBallot means, in words: what happened first, then what to do. */
+  function castProblem(error: any, v: View): string {
+    const said: string = error?.message ?? "";
+    const data = error?.data ?? {};
+    switch (error?.code) {
+      case 4001:
+        return "You rejected the vote in Weft. Nothing was signed, and you can vote again.";
+      case 4300:
+        if (Array.isArray(data.voterMsps)) {
+          return /voter credentials/.test(said)
+            ? `${v.title}'s voters vote with voter credentials, which this version of Weft Experimental can't hold yet. No ballot was cast.`
+            : `None of your identities in Weft can vote in ${v.title}: its voters are ${list(data.voterMsps)} identities. Make one of them active in Weft, then vote again.`;
+        }
+        if (/channel/.test(said)) return `Your network in Weft doesn't list the channel ${v.channel}. Refresh its invite in Weft, then vote again.`;
+        return "Weft has no identity yet. Use Join with Weft in step 2, then vote again.";
+      case 4301:
+        return "Your certificate has expired. Renew it in Weft, then vote again.";
+      case 4400:
+        switch (data.state) {
+          case "decrypting":
+          case "counted":
+            return `Weft couldn't cast a ballot: ${v.id} has closed.`;
+          case "keygen":
+            return `Weft couldn't cast a ballot: ${v.id} isn't open yet. Its trustees are still making its key.`;
+          case "failed":
+            return `Weft couldn't cast a ballot: ${v.id}'s key ceremony failed, so it can't open.`;
+          case "cancelled":
+            return `Weft couldn't cast a ballot: ${v.id} was cancelled.`;
+          default:
+            return `Weft didn't cast a ballot: it couldn't use ${v.id}'s record. Weft's window said why, and the reason is under Details.`;
+        }
+      case 5001:
+        if (/already voted/.test(said)) return "Your ballot wasn't committed: this identity has already voted in this election.";
+        if (data.status === "MVCC_READ_CONFLICT" || data.contract === "Voting has closed." || /^The election isn't open/.test(data.contract ?? "")) {
+          return "Your ballot wasn't committed: the trustees closed voting before it arrived.";
+        }
+        return "The network rejected your ballot. The reason is under Details.";
+      case 5002:
+        return data.tracking
+          ? `Weft couldn't tell whether your ballot was committed: the relay stopped answering after Weft sent it. Check tracking code ${shortened(data.tracking)} in the explorer before you vote again.`
+          : "Weft couldn't reach the network's relay, so no ballot was cast. Check that the network is running, then vote again.";
+      case -32002:
+        return "Weft already has a request from this page waiting. Finish it in the Weft window first.";
+      case -32602:
+        return "Weft refused the request: the channel, contract or election ID isn't one it accepts. Nothing was signed.";
+      case 4200:
+        return "This Weft doesn't offer private elections. Weft Experimental does.";
+      default:
+        return "Weft couldn't cast your ballot. The reason is under Details.";
+    }
+  }
+
+  /* ---------------- the receipt ---------------- */
+
+  /** The message and receipt for an election, or none: each election keeps its own. */
+  function showResultFor(key: string | null) {
+    const result = key ? results.get(key) : undefined;
+    if (!result) {
+      if (!isBusy($("pg-pe-vote"))) $("pg-pe-message").textContent = "";
+      conceal($("pg-pe-receipt"));
+      return;
+    }
+    message(`Your ballot is in block ${result.blockNumber}. This page doesn't know your choice: Weft encrypted it in its own window. Your receipt is below.`);
+    const r = result.receipt.receipt;
+    const why = result.receipt.kept ? null : result.receipt.reason;
+    const [tone, text] = result.receipt.kept
+      ? ["kept", "Weft kept your receipt. It's with this vote in your Weft activity, and you can still download or copy it here."]
+      : why === "storage"
+        ? ["unsaved", "Weft couldn't keep your receipt. Save it before you leave."]
+        : why === "mismatch"
+          ? ["unsaved", "Weft didn't keep your receipt: the contract's tracking code isn't the one Weft worked out. Your vote stands. Save the receipt before you leave."]
+          : ["unsaved", "This page doesn't keep your receipt. Save it before you leave."];
+    const line = $("pg-pe-receipt-saved");
+    line.className = `pg-receipt-line pg-receipt-line--${tone}`;
+    line.textContent = text;
+    $("pg-pe-receipt-json").textContent = JSON.stringify(r, null, 2);
+    const check = $<HTMLAnchorElement>("pg-pe-check");
+    check.hidden = !explorer;
+    if (explorer) check.href = `${pageFor(r.channel, r.electionId)}?tracking=${r.tracking}#receipt`;
+    clearError($("pg-pe-receipt-error"));
+    reveal($("pg-pe-receipt"));
+  }
+
+  /** Where the receipt went replaces the notice, in its place, so nothing below moves. */
+  function receiptSaved(text: string) {
+    const line = $("pg-pe-receipt-saved");
+    line.textContent = text;
+    line.className = "pg-receipt-line pg-receipt-line--saved arrive";
+    announce(text);
+  }
+
+  const shownReceipt = () => (selected ? results.get(selected) : undefined);
+
+  $("pg-pe-download").addEventListener("click", () => {
+    const result = shownReceipt();
+    if (!result) return;
+    const r = result.receipt.receipt;
+    const name = `weft-receipt-${r.electionId.replace(/[^A-Za-z0-9_-]/g, "-")}-block-${r.blockNumber}.json`;
+    const url = URL.createObjectURL(new Blob([$("pg-pe-receipt-json").textContent ?? ""], { type: "application/json" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    a.hidden = true;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    clearError($("pg-pe-receipt-error"));
+    receiptSaved(`Downloaded as ${name}.${result.receipt.kept ? " Weft has a copy too." : ""}`);
+  });
+
+  $("pg-pe-copy").addEventListener("click", async () => {
+    const result = shownReceipt();
+    const button = $("pg-pe-copy");
+    clearError($("pg-pe-receipt-error"));
+    try {
+      await navigator.clipboard.writeText($("pg-pe-receipt-json").textContent ?? "");
+      button.textContent = "Copied";
+      receiptSaved(result?.receipt.kept ? "Copied. Weft has a copy too." : "Copied. Paste it somewhere you'll keep it.");
+      setTimeout(() => (button.textContent = "Copy receipt"), 2000);
+    } catch {
+      getSelection()?.selectAllChildren($("pg-pe-receipt-json"));
+      showError($("pg-pe-receipt-error"), "This browser didn't allow copying. The receipt is selected: press Ctrl+C, or Cmd+C on a Mac.");
+    }
+  });
+
+  /* ---------------- wiring ---------------- */
+
+  $("pg-pe-vote").addEventListener("click", () => void cast());
+  $("pg-pe-refresh").addEventListener("click", () => void loadElections("pressed"));
+  root.addEventListener("pg:invite", (e) => {
+    const next = (e as CustomEvent<{ explorerUrl: string | null }>).detail.explorerUrl;
+    if (next === explorer && elections.length) return;
+    explorer = next;
+    elections = [];
+    selected = null;
+    showList();
+    if (!explorer) {
+      status("The invite names no explorer, so this section can't list its private elections.");
+      noElection("No explorer");
+      return;
+    }
+    void loadElections();
+  });
+  if (explorer) void loadElections();
+  // Elections open, close and get counted while the page is open: the list
+  // and the chosen election update in place, so nothing the person is doing
+  // is disturbed.
+  setInterval(() => {
+    if (explorer && !section.hidden && !document.hidden) void loadElections("quiet");
+  }, 15_000);
+</script>
+
+<style is:global>
+  /* Global, as Playground.astro's are, because the list rows are created by
+     the script. Every selector is under #pg-private. */
+  #pg-private .pg-pe-list {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--weft-space-2);
+  }
+  #pg-private .pg-pe-item {
+    display: flex;
+    align-items: center;
+    gap: var(--weft-space-3);
+    min-height: 44px;
+    padding: var(--weft-space-2) var(--weft-space-4);
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-lg);
+    cursor: pointer;
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      background-color var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  @media (hover: hover) {
+    #pg-private .pg-pe-item:hover {
+      border-color: var(--weft-text-subtle);
+    }
+  }
+  #pg-private .pg-pe-item:has(input:checked) {
+    background: var(--weft-accent-soft);
+    border-color: var(--weft-accent-line);
+  }
+  #pg-private .pg-pe-item:has(input:focus-visible) {
+    outline: var(--weft-focus-ring) solid var(--weft-focus);
+    outline-offset: var(--weft-focus-offset);
+  }
+  #pg-private .pg-pe-item input {
+    margin: 0;
+    flex: none;
+    accent-color: var(--weft-accent);
+  }
+  #pg-private .pg-pe-item input:focus-visible {
+    outline: none;
+  }
+  #pg-private .pg-pe-item__text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  #pg-private .pg-pe-item__title {
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+  }
+  #pg-private .pg-pe-item__where {
+    font-size: var(--weft-type-xs);
+    line-height: var(--weft-leading-xs);
+    color: var(--weft-text-subtle);
+    overflow-wrap: anywhere;
+  }
+  #pg-private .pg-pe-item .pg-pill {
+    flex: none;
+    white-space: nowrap;
+  }
+  /* On a phone the state goes under the name, so neither is squeezed. */
+  @container (max-width: 420px) {
+    #pg-private .pg-pe-item {
+      flex-wrap: wrap;
+      row-gap: var(--weft-space-1);
+    }
+    #pg-private .pg-pe-item__text {
+      flex-basis: calc(100% - 13px - var(--weft-space-3));
+    }
+    #pg-private .pg-pe-item .pg-pill {
+      margin-left: calc(13px + var(--weft-space-3));
+    }
+  }
+  #pg-private {
+    container-type: inline-size;
+  }
+  #pg-private .pg-tally {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) auto;
+    justify-content: start;
+    gap: var(--weft-space-1) var(--weft-space-5);
+    margin: 0 0 var(--weft-space-2);
+  }
+  #pg-private .pg-tally dt {
+    color: var(--weft-text);
+  }
+  #pg-private .pg-tally dd {
+    margin: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #pg-private .pg-head > h3 {
+    margin: 0;
+  }
+  #pg-pe-message:empty {
+    display: none;
+  }
+</style>
