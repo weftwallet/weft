@@ -1,0 +1,528 @@
+{
+  "totals": [
+    {
+      "election": "budget-2027",
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "ballots": 5
+    },
+    {
+      "election": "council-2027",
+      "totals": [
+        {
+          "a": "801689ad1d178b34fe176923c79994243e43f2402673422bb4a0a7e6cb86cd3a",
+          "b": "a011f4886ba38fcf2a17808441bcb7d2b90555cfc7197f3b9554a8af89f4cd5d"
+        },
+        {
+          "a": "2c5fce5eaa2605feb0e719aa18b55956eb64a8b23fe37a26838d1a15f2a34d11",
+          "b": "beb8b500fb8daf77c0a49bdd8b9310fa129ba818eb903030875ca398978ebe50"
+        },
+        {
+          "a": "e23b68fab8af2f25a14482735f18955b85d97db12ba87c670fdde8aa25c7fe21",
+          "b": "16e589f33d413d09c5948d6fe88039900f56208109891aae5be549309090d63f"
+        },
+        {
+          "a": "b66aba0decc65dd2b4ca594a8e94dbeb29ffc2e290bc7a5c487d2cf98b273711",
+          "b": "26a4e893af4c8bc83521698c3fb8a328ef02db4b5088e221833b5207d31a777f"
+        },
+        {
+          "a": "804f5bceaecf08b5a6b6fa95326136bf3ae3f26e841fe77ab2007cabc76fe521",
+          "b": "68ae4f5ee2e7447b704c678b87cae7aa644f077eab0731b2d04d6a548eb38e5a"
+        },
+        {
+          "a": "6a6981e13ea35b487c488e43005911b1a0d691b13e0c36a4fe210c3961e02d37",
+          "b": "5468f3c205b89aad016bb585ba4af4012f984ab842d8e7b07f58e232947ac373"
+        },
+        {
+          "a": "52361ed7f0d90da86f97a730c94a1ec74a28036c65c93c2a6a13b8205ffde90b",
+          "b": "66bebb22bc2ff4f9dbd97b8979fe55105a60bc2904a2f2a3f48475d6788df02a"
+        },
+        {
+          "a": "b6e7940527399f0fda5e3db4e84d33b8cb0af7f6f34c4b69905031ec7725f34f",
+          "b": "6c743d0b806c00fe15e17043379f367bfba16b29a5cfe135302dcdf91411fc25"
+        },
+        {
+          "a": "7613b6b6c336ebfbbd5c43c575242e75c32377b2f51d563987afcff1d9a9a73c",
+          "b": "947d8e8f8689423a70652cc83cb71e9b303f9f15189b78168fd7b52811836b71"
+        },
+        {
+          "a": "9e86ea523310d17152393bd20a618b8419e7bc1692a0798740c2ad123d242858",
+          "b": "a0dcfaae628c34048c4e2e463d762130146f565ac7dd480c569d5db57e790431"
+        }
+      ],
+      "ballots": 4
+    },
+    {
+      "election": "referendum-2027",
+      "totals": [
+        {
+          "a": "dad082ffa4308de421652b7c966c9a1888a59a1e42839157b188abef58dc5e33",
+          "b": "f083c048cc57c4026bc603015113f006b550b4a33d43182d3e08a4d9e1208813"
+        },
+        {
+          "a": "2e4d694432762d7c4268ca315e3e77df69d16e8904e0b4c93d6341b0a87c8207",
+          "b": "e64ba78a8184c17e99af8ea1ca601c337867708925b0bec9c152868b1b3cbf21"
+        }
+      ],
+      "ballots": 3
+    }
+  ],
+  "shares": [
+    {
+      "election": "budget-2027",
+      "index": 0,
+      "msp": "Org1MSP",
+      "keyShare": "0c7884f6e99fe79a45b6df128ca032d61d6dfe176e722c63c7d270fd95ee0a08",
+      "seed": "v1 budget-2027 dshare 0",
+      "nonces": [
+        "215dd9ae0d1b1cc2feaa20e3431d3ddb5ec51d2a63d021c890be6b32dc58d70b",
+        "b69c4c2cc8c5e37a005e5428dddaae065b973e1943d1bde1493e6afeeebf3706",
+        "401cc9730c74e9321f9da9af3efd9db85da7e80173bc5d1ddc82c372a048b002"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b",
+            "c": "571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408",
+            "z": "e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707"
+          },
+          {
+            "d": "106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800",
+            "c": "fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001",
+            "z": "c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b"
+          },
+          {
+            "d": "7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77",
+            "c": "c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307",
+            "z": "13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b\",\"c\":\"571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408\",\"z\":\"e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707\"},{\"d\":\"106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800\",\"c\":\"fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001\",\"z\":\"c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b\"},{\"d\":\"7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77\",\"c\":\"c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307\",\"z\":\"13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909\"}]}"
+    },
+    {
+      "election": "budget-2027",
+      "index": 1,
+      "msp": "Org2MSP",
+      "keyShare": "f3f3ee5ace54a8adbfed7b69d4c75561aa826ad821f58637e8d103d781e4d004",
+      "seed": "v1 budget-2027 dshare 1",
+      "nonces": [
+        "c2a00e2d8683a046f5ee371a4eec48fd44d620c6b46d89d9ed1fbb239e8eec00",
+        "17db5b8295dc485deffa6b052df8061ed231eaded83292be1bdf68f4c88f1902",
+        "d7a0ed057b7b7e4b0cd10bf7266101b14f78ccb604521f8ec4245401f42ce002"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "72ebd3a3aa4393c953461b71d4fdf2aa85e6ba209d9f13708fc2f0f733c8df0a",
+            "c": "25553ecf125e3dc48a09c22d96f47f7de3517aba6cd25879a35e8374f81f2d0d",
+            "z": "9a069b8c0bbe7143da6c1eb93a6a013b519c7c37c888dc9d9f57a49be7ef110d"
+          },
+          {
+            "d": "803ed3ad0899c691d8ad4c7872cb75752dd8f70d8957bb937dfe88103db3967a",
+            "c": "18df30e722b1ef65fba940335a24f1641849f773d5b89cc39a2ff5fa2cfa0305",
+            "z": "ebecad5123a796895bab1439e15e675504223e297d55d80548db594dea936300"
+          },
+          {
+            "d": "be2247b3810d150b4051b8df87a506e629877a33bdb479702c7d3be94a4bcc4c",
+            "c": "88b467fc5a5fdff83d161620d0557697dbe958b85391f7e5364fc8789f307e04",
+            "z": "cc5145541d2fcc52291c92230a5a8697146ae898f9aaa90e58a3e745e2ac5b04"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"72ebd3a3aa4393c953461b71d4fdf2aa85e6ba209d9f13708fc2f0f733c8df0a\",\"c\":\"25553ecf125e3dc48a09c22d96f47f7de3517aba6cd25879a35e8374f81f2d0d\",\"z\":\"9a069b8c0bbe7143da6c1eb93a6a013b519c7c37c888dc9d9f57a49be7ef110d\"},{\"d\":\"803ed3ad0899c691d8ad4c7872cb75752dd8f70d8957bb937dfe88103db3967a\",\"c\":\"18df30e722b1ef65fba940335a24f1641849f773d5b89cc39a2ff5fa2cfa0305\",\"z\":\"ebecad5123a796895bab1439e15e675504223e297d55d80548db594dea936300\"},{\"d\":\"be2247b3810d150b4051b8df87a506e629877a33bdb479702c7d3be94a4bcc4c\",\"c\":\"88b467fc5a5fdff83d161620d0557697dbe958b85391f7e5364fc8789f307e04\",\"z\":\"cc5145541d2fcc52291c92230a5a8697146ae898f9aaa90e58a3e745e2ac5b04\"}]}"
+    },
+    {
+      "election": "budget-2027",
+      "index": 2,
+      "msp": "Org3MSP",
+      "keyShare": "da6f59bfb20969c0392518c01cef78ec3698d698d577e10b09d196b06dda9601",
+      "seed": "v1 budget-2027 dshare 2",
+      "nonces": [
+        "c2d1cc2a8dd49b276b809e8fea3033b085525757a84795209a95bc3da67cd205",
+        "de0ca2db3192bb9178a3bd58eaaec25a56b387fe55515e6696fc9c907cc6bf0c",
+        "b537e3882f8a069983c5a42994b3c8b2dc71148ddc9e98ab0a18fcfb2601530d"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "60504ea8044ddb21ea68a82e2fad0ccdf5c0a1e9c2241b42d460672f5a21ec50",
+            "c": "475298ba7fbdfb07dca9b92096d45979764087540a4349d67b4528b5450c3e0f",
+            "z": "fcfd70292314464c8cf1bbaafd6e68de35c77cd78521a1c3525e8db764e61609"
+          },
+          {
+            "d": "d40289a713aad87f7a34a1d7b42fb41c2f82bde4a5fad56d50cf34e7c9274e35",
+            "c": "6ee328df9d8f437b8d52f29ae8ffad76800862464cbd2052beba9dfd732ddf0d",
+            "z": "ef93766403b342be544b2a0c43a35f3168ae47cc3b8d1c5312ef165106d2600d"
+          },
+          {
+            "d": "36dd6706865821c39d8f46750f3d572f8dbfecfccd48d61c0b1f7348c9f4841b",
+            "c": "d03ad1bc7e631c39d0878128e5fec2d30818c93c4ee187ed65d8c89994dcc303",
+            "z": "5caee027f8821ce67991c9f59bbebe773598801ae14c8b35626984812ba1da09"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"60504ea8044ddb21ea68a82e2fad0ccdf5c0a1e9c2241b42d460672f5a21ec50\",\"c\":\"475298ba7fbdfb07dca9b92096d45979764087540a4349d67b4528b5450c3e0f\",\"z\":\"fcfd70292314464c8cf1bbaafd6e68de35c77cd78521a1c3525e8db764e61609\"},{\"d\":\"d40289a713aad87f7a34a1d7b42fb41c2f82bde4a5fad56d50cf34e7c9274e35\",\"c\":\"6ee328df9d8f437b8d52f29ae8ffad76800862464cbd2052beba9dfd732ddf0d\",\"z\":\"ef93766403b342be544b2a0c43a35f3168ae47cc3b8d1c5312ef165106d2600d\"},{\"d\":\"36dd6706865821c39d8f46750f3d572f8dbfecfccd48d61c0b1f7348c9f4841b\",\"c\":\"d03ad1bc7e631c39d0878128e5fec2d30818c93c4ee187ed65d8c89994dcc303\",\"z\":\"5caee027f8821ce67991c9f59bbebe773598801ae14c8b35626984812ba1da09\"}]}"
+    },
+    {
+      "election": "council-2027",
+      "index": 0,
+      "msp": "Org2MSP",
+      "keyShare": "d81143c24995cf2a1e81abdb93315460ed824111e415c33cc0dcdd68df81fc01",
+      "seed": "v1 council-2027 dshare 0",
+      "nonces": [
+        "e4217488f677885cd66cf92f7a159a282907745cfa9e38d3fc07efc296075007",
+        "b8731ff46376e674dba02d465aca209fbc650e8f0392ee534ac7d24b36ae050a",
+        "2936f02ed7dd85af2d2ec8a069877645a30900bedfdf6738edf8667d5ff9450d",
+        "b2857a3474b5a035bc0d687b2d1281d3c01270156944f414daf60aeb63af420e",
+        "4aa7312ef1b3fe076f57fd4fdec4bb730a0e8b6080e4533ae8a03a95b600860d",
+        "539363c45f79f926d1d453e04db3de8e1511de18e3bf1cf17b0583ccce468b01",
+        "1e75165d407517ef430ec659eceb58f26524da82386e5005317610d392dfdb0c",
+        "b1d806e271a27783bb814d0df2bd2a6343d930b3a0879bc47af48c699c820002",
+        "d35896b3c05e0e74c7274b2af2c2726221d9441572e731e62b410d160208ef03",
+        "74383fa5e27fbde545278598a232a9d9fafb4fc886b441409cfceb16f8315b01"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "14edd5d94de72d6e6b2edd2ffad9b015b97ef18772a2853fbabd3b64bac8cf0e",
+            "c": "e6a2bf2621eda76ce4bd2a1711f7ea07da50d7428b13ba6c1e05f836ed146603",
+            "z": "c69cb1ea10d3f835989e594ea1d8665aa0b939e5392d98e63ac3c63128257b00"
+          },
+          {
+            "d": "b84414667af1c07da2661015b4cb5e24a42855b2d9795bd67cfa474876af2d39",
+            "c": "b651fe0128032b7b6ec34cfbebb31ec56f7a819a863f10172564e23ea5f36200",
+            "z": "f8a5a58bdaa9dfdc2c75ee35dfdf2fbad69a7aae90d957d42c194c3e3f1a6003"
+          },
+          {
+            "d": "962d9daed06845debbd971aa5fa624f1685c71390a6e7b770ea844d135816735",
+            "c": "f0b56a57d63be0a0f2e7b9c110a5e777b3d2b59e70d97d084d86a5c739d1f205",
+            "z": "8ba4810fdcad6771221bffef1a0f939da51cc57fa5f71319546483b71291f00a"
+          },
+          {
+            "d": "a65e07216811a1ceb9adf236841a75f4096be30cb97259450c4ab4f8b0869a35",
+            "c": "623575dc85ef3b94442600fc45cf2531ec89c4c2839f237c4d780d26430ecf04",
+            "z": "09dfe990b6dbb33f0378afdfea886fdb3359ae2f0a3a5a32e1e6d66f2ecae504"
+          },
+          {
+            "d": "5c7318f83e3957fad49cc7f2d5ef35d1f7b7d83b987567d138b6d049882b3422",
+            "c": "e7457b7d7c37cec3a2e05e3e62c22e849af289a98f1bc73e300baf926ceedd0f",
+            "z": "1e57f2ab9662d32f2b448af6756ae850b49a4fb2fc23c7ad808fd7c4c258a106"
+          },
+          {
+            "d": "e853fe6937c5e266d51f28924772d00e42c339b014b3679ced62ff29d2156830",
+            "c": "87418fe29de34f41199637e96606d9f90d3c28563ae8ef77a21b353baeef1a09",
+            "z": "9b1bde7d65acb30475e4fa68bb0c3a5cf4190957bdd46e6b5e6656aaeb937e0e"
+          },
+          {
+            "d": "04dd995cf78a3f31c01f50c5b480d0dc2ac169373ddda7ec09747eccd2f0d066",
+            "c": "9fe7119394b446905de304203bad29dcde02ff89cd63e67d68dbde895417800d",
+            "z": "fc46d4dd97798b01149e2ee5186cba7db67c571d8555102ebbced5376037ac08"
+          },
+          {
+            "d": "a8b1f1e8f2ce25b4f695d40da7cc28cc047ef786bf2482e55d53a702e9643e77",
+            "c": "d0d339b4cc481e41e77f6448327ce1215e232caa2dc95227f232561305ca580d",
+            "z": "20650151ea7236b595bd45c6c4272f8a19ab72df1dcb3be10eea5877cce23500"
+          },
+          {
+            "d": "9882c27289c95f3894166fbf7cff0d83b117d306841bb4f8c12e6c0894f02e6c",
+            "c": "2c4e66c9aa94346d70e29f222730ed44db749b56f732725a33e7d63af2aee60c",
+            "z": "6de67fcad197bb7ea1663f0c3b090484b691a682912df12a05389ca342d5730b"
+          },
+          {
+            "d": "46de48143ed6b05a5cd853ffcdd04b42c9dcba21929dee09ad44867a0b060422",
+            "c": "01f4cfd89f7a7d702aa608605d83fd50a2036b8ea33b8fdc89d08efc63b60d01",
+            "z": "c3d1acaf9e713b7b5d4db5dba62a9b8d280dcac4b7c18065261d967a23fd140a"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"14edd5d94de72d6e6b2edd2ffad9b015b97ef18772a2853fbabd3b64bac8cf0e\",\"c\":\"e6a2bf2621eda76ce4bd2a1711f7ea07da50d7428b13ba6c1e05f836ed146603\",\"z\":\"c69cb1ea10d3f835989e594ea1d8665aa0b939e5392d98e63ac3c63128257b00\"},{\"d\":\"b84414667af1c07da2661015b4cb5e24a42855b2d9795bd67cfa474876af2d39\",\"c\":\"b651fe0128032b7b6ec34cfbebb31ec56f7a819a863f10172564e23ea5f36200\",\"z\":\"f8a5a58bdaa9dfdc2c75ee35dfdf2fbad69a7aae90d957d42c194c3e3f1a6003\"},{\"d\":\"962d9daed06845debbd971aa5fa624f1685c71390a6e7b770ea844d135816735\",\"c\":\"f0b56a57d63be0a0f2e7b9c110a5e777b3d2b59e70d97d084d86a5c739d1f205\",\"z\":\"8ba4810fdcad6771221bffef1a0f939da51cc57fa5f71319546483b71291f00a\"},{\"d\":\"a65e07216811a1ceb9adf236841a75f4096be30cb97259450c4ab4f8b0869a35\",\"c\":\"623575dc85ef3b94442600fc45cf2531ec89c4c2839f237c4d780d26430ecf04\",\"z\":\"09dfe990b6dbb33f0378afdfea886fdb3359ae2f0a3a5a32e1e6d66f2ecae504\"},{\"d\":\"5c7318f83e3957fad49cc7f2d5ef35d1f7b7d83b987567d138b6d049882b3422\",\"c\":\"e7457b7d7c37cec3a2e05e3e62c22e849af289a98f1bc73e300baf926ceedd0f\",\"z\":\"1e57f2ab9662d32f2b448af6756ae850b49a4fb2fc23c7ad808fd7c4c258a106\"},{\"d\":\"e853fe6937c5e266d51f28924772d00e42c339b014b3679ced62ff29d2156830\",\"c\":\"87418fe29de34f41199637e96606d9f90d3c28563ae8ef77a21b353baeef1a09\",\"z\":\"9b1bde7d65acb30475e4fa68bb0c3a5cf4190957bdd46e6b5e6656aaeb937e0e\"},{\"d\":\"04dd995cf78a3f31c01f50c5b480d0dc2ac169373ddda7ec09747eccd2f0d066\",\"c\":\"9fe7119394b446905de304203bad29dcde02ff89cd63e67d68dbde895417800d\",\"z\":\"fc46d4dd97798b01149e2ee5186cba7db67c571d8555102ebbced5376037ac08\"},{\"d\":\"a8b1f1e8f2ce25b4f695d40da7cc28cc047ef786bf2482e55d53a702e9643e77\",\"c\":\"d0d339b4cc481e41e77f6448327ce1215e232caa2dc95227f232561305ca580d\",\"z\":\"20650151ea7236b595bd45c6c4272f8a19ab72df1dcb3be10eea5877cce23500\"},{\"d\":\"9882c27289c95f3894166fbf7cff0d83b117d306841bb4f8c12e6c0894f02e6c\",\"c\":\"2c4e66c9aa94346d70e29f222730ed44db749b56f732725a33e7d63af2aee60c\",\"z\":\"6de67fcad197bb7ea1663f0c3b090484b691a682912df12a05389ca342d5730b\"},{\"d\":\"46de48143ed6b05a5cd853ffcdd04b42c9dcba21929dee09ad44867a0b060422\",\"c\":\"01f4cfd89f7a7d702aa608605d83fd50a2036b8ea33b8fdc89d08efc63b60d01\",\"z\":\"c3d1acaf9e713b7b5d4db5dba62a9b8d280dcac4b7c18065261d967a23fd140a\"}]}"
+    },
+    {
+      "election": "council-2027",
+      "index": 1,
+      "msp": "Org1MSP",
+      "keyShare": "1da1662b728f8cb089262f601c5ddd28500b7365993101bee6d4c2df2a87d10b",
+      "seed": "v1 council-2027 dshare 1",
+      "nonces": [
+        "9085ddd4bf905ed003108897c06e66fd6a11d34c16e20053a5057d063de8b800",
+        "8d14ebb61ac986d7a827c458add90c0493dfdfc440679c75ae0d766a45e41202",
+        "4c3b37cc7f4d18a3fa02ef1b8641c6f71e439640917123c0504d72e6564afc0d",
+        "6a740516d9c40bb9bb54cc05511d6e3909d72c54a9b02b6f1fb324e6478a5306",
+        "795cf01907a978e2723da3bdac2258e5589f6197f34d9d57212fd6d5a3414307",
+        "948fa4f09df5b640c086535cb09ecb996fe787a91619bae58d4fd4a224e9d807",
+        "19bbfceca30695fecf2cc20f0de05374c1f9e3684aecc2c4806e0116f0722a01",
+        "934527c547d0f273a46f1384f6b05cfea99c08f1a489e48bb34c96edfb42e505",
+        "6f2dc11ccf7cc898180f5cea7c1baa09f31cb480adda079dbf068d077fdabb0c",
+        "275844f6e7cdef099d4688204937731405b4a142d6d34027743f28e7ad804e0c"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "5643dd6ca89a330f55dca4b30bde4fc842f7a9a791c622ef7e57375a0180444a",
+            "c": "9bbdd39be089c935bdeb8f3d91f1bbe64dc9a54b30dc7333bf8b704ba2354706",
+            "z": "3b1311604b49f796a0bfbe6780536ffb83144a485f6baff3ac14c92314568106"
+          },
+          {
+            "d": "c4f9523c955dc8984c83de850f4cb323f3ccd838eaf45020b81c0aad298e4f52",
+            "c": "7a869e671089b55cbe4186c12d4d181cfe16b3dbae19ed723c41313ac546520c",
+            "z": "5902e1d67f96eaa4caff15a2a61230f5c5e1539a6266b496ab717b754f999107"
+          },
+          {
+            "d": "4a27e0db1ae780914f8f2122833051d173927770bad128741c9f1084d3ba0508",
+            "c": "8e16381f8ada08bb61fdf15cd1e54c03838cacc59eafddced7673f6dd88b0209",
+            "z": "3b513df12cba98adbadbda05c67006a99638d532384f59f41962dde9b6e0bb09"
+          },
+          {
+            "d": "104d88cb7db08a4b7bec4383851ef15061be30f921fab27ad5fb5111c0c21216",
+            "c": "104cd0d05ca77bf170503266506b924da729e8d7da108dfb54ecac25f2359a00",
+            "z": "5fa76f5410d216c7f59f73ed67ad7021a760d98de7ef8b2a83ac738def086a06"
+          },
+          {
+            "d": "0e05b113019edee74da55d23d47ee7bf89a883ae144458672f8b52ce16eb2c67",
+            "c": "ac1225e36b250f7ed19cd071a4bdb50aeef50a34ea9acf92909380e5ed49000d",
+            "z": "fef4d55bc5a57ac499886a47c749e06a4de0fa56f53e869259da0a6a7a7cbb06"
+          },
+          {
+            "d": "de18db9b2c5728ae78d4d029e1c28d76250de22df6913b437ec9a759ae8c0a1f",
+            "c": "2f993423d3f84b9d9f13f131c95e1f01498d45c712e43a15c04ecfcb79067d01",
+            "z": "c2c12c6c0963ddd54726572b6cd19652bdfdcc99e01652fb1f509e0fcd211d05"
+          },
+          {
+            "d": "f2aa7eba586b07f4b5d587910a73a508e92a35908e5bcddaab7a87dec7d29e5e",
+            "c": "0fbf94fcf26e0b6d59c00c40d907258b5809790e66ed52c74d56772f9d300d00",
+            "z": "16117359d4c3172a39674961f0492a653cc61527dd32f474e143ca205ae44009"
+          },
+          {
+            "d": "5e241fe2128a8ef4e63e7b6f4623052a89e520ea24ce013ccb904f1c825a1077",
+            "c": "f0b713fa54c63af483fd92f1e10335183c05e18e8eb1353dbbc9c30dd0c65f06",
+            "z": "d6b1b95508747f0109d38f8eca404b30e7d131e161522355fc49c22a26746e0f"
+          },
+          {
+            "d": "56754f1a537b0311766628d7b9f4c69570fc081cde64da7acbe727212debcb46",
+            "c": "d8b86ada569e337921f1d6c8a7319125784f83ca4347e5599a772c45a6cb850c",
+            "z": "812be3d8aa1c584ad15578e8beb0e1ab47bf8bc69a5982c4e0e8cc5d16c48e07"
+          },
+          {
+            "d": "c459beca5dd23c6d92e8babb9d6c15d3410694f8fc7f655c06dbe248263b0432",
+            "c": "69cbd2aa4464cd080861c254313081be40f50352e9e3f171aa3242319127ac01",
+            "z": "6d8c249d2fb18174d6a9be75463a9645a514fd349a650a2ac506723e7941d80d"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"5643dd6ca89a330f55dca4b30bde4fc842f7a9a791c622ef7e57375a0180444a\",\"c\":\"9bbdd39be089c935bdeb8f3d91f1bbe64dc9a54b30dc7333bf8b704ba2354706\",\"z\":\"3b1311604b49f796a0bfbe6780536ffb83144a485f6baff3ac14c92314568106\"},{\"d\":\"c4f9523c955dc8984c83de850f4cb323f3ccd838eaf45020b81c0aad298e4f52\",\"c\":\"7a869e671089b55cbe4186c12d4d181cfe16b3dbae19ed723c41313ac546520c\",\"z\":\"5902e1d67f96eaa4caff15a2a61230f5c5e1539a6266b496ab717b754f999107\"},{\"d\":\"4a27e0db1ae780914f8f2122833051d173927770bad128741c9f1084d3ba0508\",\"c\":\"8e16381f8ada08bb61fdf15cd1e54c03838cacc59eafddced7673f6dd88b0209\",\"z\":\"3b513df12cba98adbadbda05c67006a99638d532384f59f41962dde9b6e0bb09\"},{\"d\":\"104d88cb7db08a4b7bec4383851ef15061be30f921fab27ad5fb5111c0c21216\",\"c\":\"104cd0d05ca77bf170503266506b924da729e8d7da108dfb54ecac25f2359a00\",\"z\":\"5fa76f5410d216c7f59f73ed67ad7021a760d98de7ef8b2a83ac738def086a06\"},{\"d\":\"0e05b113019edee74da55d23d47ee7bf89a883ae144458672f8b52ce16eb2c67\",\"c\":\"ac1225e36b250f7ed19cd071a4bdb50aeef50a34ea9acf92909380e5ed49000d\",\"z\":\"fef4d55bc5a57ac499886a47c749e06a4de0fa56f53e869259da0a6a7a7cbb06\"},{\"d\":\"de18db9b2c5728ae78d4d029e1c28d76250de22df6913b437ec9a759ae8c0a1f\",\"c\":\"2f993423d3f84b9d9f13f131c95e1f01498d45c712e43a15c04ecfcb79067d01\",\"z\":\"c2c12c6c0963ddd54726572b6cd19652bdfdcc99e01652fb1f509e0fcd211d05\"},{\"d\":\"f2aa7eba586b07f4b5d587910a73a508e92a35908e5bcddaab7a87dec7d29e5e\",\"c\":\"0fbf94fcf26e0b6d59c00c40d907258b5809790e66ed52c74d56772f9d300d00\",\"z\":\"16117359d4c3172a39674961f0492a653cc61527dd32f474e143ca205ae44009\"},{\"d\":\"5e241fe2128a8ef4e63e7b6f4623052a89e520ea24ce013ccb904f1c825a1077\",\"c\":\"f0b713fa54c63af483fd92f1e10335183c05e18e8eb1353dbbc9c30dd0c65f06\",\"z\":\"d6b1b95508747f0109d38f8eca404b30e7d131e161522355fc49c22a26746e0f\"},{\"d\":\"56754f1a537b0311766628d7b9f4c69570fc081cde64da7acbe727212debcb46\",\"c\":\"d8b86ada569e337921f1d6c8a7319125784f83ca4347e5599a772c45a6cb850c\",\"z\":\"812be3d8aa1c584ad15578e8beb0e1ab47bf8bc69a5982c4e0e8cc5d16c48e07\"},{\"d\":\"c459beca5dd23c6d92e8babb9d6c15d3410694f8fc7f655c06dbe248263b0432\",\"c\":\"69cbd2aa4464cd080861c254313081be40f50352e9e3f171aa3242319127ac01\",\"z\":\"6d8c249d2fb18174d6a9be75463a9645a514fd349a650a2ac506723e7941d80d\"}]}"
+    },
+    {
+      "election": "council-2027",
+      "index": 2,
+      "msp": "Org4MSP",
+      "keyShare": "3cc77bdba6cddce02246c0cd5d54163521ea89a51d3fdd060e3757ba6ed19d0f",
+      "seed": "v1 council-2027 dshare 2",
+      "nonces": [
+        "e31499772af757a125a2385a5b7c191d1a2d97f02d79b292e4bb43cf10c12a0f",
+        "69fb6aa3f66efcfa06c63f01897894a0e341258ee0f4406248c90e2804ba6109",
+        "816da5d5091d90f61a960be59de38b4fbfd3fcefb9682e6806b9325e2493ab0f",
+        "50de1ab1de61cd9a01ff58bc84a882e17c98235c2ee3703fd0b551304e123a08",
+        "c159441c154ac59c51420f94ba44219be676a46951bb381f2f08058ce007fa02",
+        "ba840d2748dfaca3d3993627dc94d0579a50e2597ebf192fb29fef31c4a0040c",
+        "060a040fcdca727c4aba2404edf9101f78af8cf134e393358b6728723ea2d805",
+        "968c78d8a0631b4893d6517c4e320225a87040111b11b4ae439fa631ef5f8c00",
+        "1b2b0678bacc46642944a73806ffb5bc40854870b1cf69e2d6419344e088dc0c",
+        "a4477bf963e9c43de5c292b6ba1957f532c6125cb3e343627007a8c673e78d05"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "d062b703cd0cc127e8e55dde0bc2b40a5f9697df35a8498391eaabc31e32fe70",
+            "c": "304196d6e2150e71f4fdc242356adccc0676309cfe37f121c42f6588ab30d401",
+            "z": "edeb892773ccbbf1780a71c6d23de77c922d6c4e1a5b345d30993348f00fdb0f"
+          },
+          {
+            "d": "5acd7962bdca4fb7dfbc95b145eee45c4ed3d022e63aba0d3cfb0a623a9dea44",
+            "c": "bdee18f247e7c6e74dc5b4f363900ffcbfd052456a3019574d243f9bca2a5f03",
+            "z": "6d92cfd54d0d35945584ce5b1eddbc4de1883b6b84f6f9da22deed525f40ec01"
+          },
+          {
+            "d": "5c69345926c6eaa8dd870ad073cca8f5722191bc11050848e1c607c78f476d50",
+            "c": "94dd37d9dc9e19212140107d73853224248f267a382552db641130187275e40b",
+            "z": "e736e7b6d61c68a3e76b595185983bac59ef0b327ebdf0802a6b6d67e5878306"
+          },
+          {
+            "d": "4c377c483ce411e212c55a226eaf2be8a916893a17589663428ebb860521cd5f",
+            "c": "e1044662f55a00504d4c38fe9685ca8a1c2e172fad16fbf426357d04c69fe308",
+            "z": "bee2de20b22ff0dc2ccfaad4d27583989f502fe76eaa281bcd3eefb191448307"
+          },
+          {
+            "d": "68ba88d05f79f4fd1b7ec94b8d3b393e05624e66822d4e9a86d4dfb2e4b3464f",
+            "c": "68ac2678e72f61226834d96b581a39370a5f0deaf73ed1c29961043a0e76760d",
+            "z": "aa822bea0380c137853ed49c46495962917395b6ecef430863a777b1c8509c02"
+          },
+          {
+            "d": "a4797e1df4589cb1a09ea016059576a9ca1a5e96cb7c2507ef86393929444c0f",
+            "c": "7fbd860b799668f7c1defe80c96609f8072e4b5ade7ac51dc37c304c1a094b08",
+            "z": "9b9eb481ed3ce40d3620bbc567b92c8e4827e0619fc7b795bfd8a32631b5c60e"
+          },
+          {
+            "d": "70397a37630b61367948bc3fd239d551ee50bcd6b4ab72b48fb77ed00d99140a",
+            "c": "e5802e7555cd6453304657c5a90edb8c6e0fb63e9b40f62b6152aca1936ac403",
+            "z": "c878170c99a38c78a7a6bacbccbfebf83f03f15b9053a9b5c6744cb7ef24cd00"
+          },
+          {
+            "d": "7e3cc4d44a37c41b9001251ecea74950d0205bbde87d2d7e67f1c0b8b1d8fe18",
+            "c": "f4a94bb6d5e4d638cf5704684f84eb16174813bd581c20f3b9c600f9939ac30e",
+            "z": "25ff94cecb046949efd6f4aaf7488b3e841714ed032520f0495cdbdb1cd5620e"
+          },
+          {
+            "d": "76ba6e8c4674a72a5bfa3b963fadc3c331d1764e03d08480f8172ec3cb37097b",
+            "c": "de51fc1383eee896b86287fefd88c8e34f71b06f13fe6ef070f1719d84cc910e",
+            "z": "73eddb925032915fdb003deb0778d30abbea595690e9dc95a7e2f0e2e5ac2d02"
+          },
+          {
+            "d": "82ca209a645eda2473ea3c5b5abd1cd371370e01f56a8589df78b997c4d46f2e",
+            "c": "75b1a7ad21a1479ab24699e49d366917ab4774f979b1a9505d68286d87769b0f",
+            "z": "748529e5ed3ab3f3ad0b127c4c5992cd9002636ede9a2a79dca227f8f7fa5905"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"d062b703cd0cc127e8e55dde0bc2b40a5f9697df35a8498391eaabc31e32fe70\",\"c\":\"304196d6e2150e71f4fdc242356adccc0676309cfe37f121c42f6588ab30d401\",\"z\":\"edeb892773ccbbf1780a71c6d23de77c922d6c4e1a5b345d30993348f00fdb0f\"},{\"d\":\"5acd7962bdca4fb7dfbc95b145eee45c4ed3d022e63aba0d3cfb0a623a9dea44\",\"c\":\"bdee18f247e7c6e74dc5b4f363900ffcbfd052456a3019574d243f9bca2a5f03\",\"z\":\"6d92cfd54d0d35945584ce5b1eddbc4de1883b6b84f6f9da22deed525f40ec01\"},{\"d\":\"5c69345926c6eaa8dd870ad073cca8f5722191bc11050848e1c607c78f476d50\",\"c\":\"94dd37d9dc9e19212140107d73853224248f267a382552db641130187275e40b\",\"z\":\"e736e7b6d61c68a3e76b595185983bac59ef0b327ebdf0802a6b6d67e5878306\"},{\"d\":\"4c377c483ce411e212c55a226eaf2be8a916893a17589663428ebb860521cd5f\",\"c\":\"e1044662f55a00504d4c38fe9685ca8a1c2e172fad16fbf426357d04c69fe308\",\"z\":\"bee2de20b22ff0dc2ccfaad4d27583989f502fe76eaa281bcd3eefb191448307\"},{\"d\":\"68ba88d05f79f4fd1b7ec94b8d3b393e05624e66822d4e9a86d4dfb2e4b3464f\",\"c\":\"68ac2678e72f61226834d96b581a39370a5f0deaf73ed1c29961043a0e76760d\",\"z\":\"aa822bea0380c137853ed49c46495962917395b6ecef430863a777b1c8509c02\"},{\"d\":\"a4797e1df4589cb1a09ea016059576a9ca1a5e96cb7c2507ef86393929444c0f\",\"c\":\"7fbd860b799668f7c1defe80c96609f8072e4b5ade7ac51dc37c304c1a094b08\",\"z\":\"9b9eb481ed3ce40d3620bbc567b92c8e4827e0619fc7b795bfd8a32631b5c60e\"},{\"d\":\"70397a37630b61367948bc3fd239d551ee50bcd6b4ab72b48fb77ed00d99140a\",\"c\":\"e5802e7555cd6453304657c5a90edb8c6e0fb63e9b40f62b6152aca1936ac403\",\"z\":\"c878170c99a38c78a7a6bacbccbfebf83f03f15b9053a9b5c6744cb7ef24cd00\"},{\"d\":\"7e3cc4d44a37c41b9001251ecea74950d0205bbde87d2d7e67f1c0b8b1d8fe18\",\"c\":\"f4a94bb6d5e4d638cf5704684f84eb16174813bd581c20f3b9c600f9939ac30e\",\"z\":\"25ff94cecb046949efd6f4aaf7488b3e841714ed032520f0495cdbdb1cd5620e\"},{\"d\":\"76ba6e8c4674a72a5bfa3b963fadc3c331d1764e03d08480f8172ec3cb37097b\",\"c\":\"de51fc1383eee896b86287fefd88c8e34f71b06f13fe6ef070f1719d84cc910e\",\"z\":\"73eddb925032915fdb003deb0778d30abbea595690e9dc95a7e2f0e2e5ac2d02\"},{\"d\":\"82ca209a645eda2473ea3c5b5abd1cd371370e01f56a8589df78b997c4d46f2e\",\"c\":\"75b1a7ad21a1479ab24699e49d366917ab4774f979b1a9505d68286d87769b0f\",\"z\":\"748529e5ed3ab3f3ad0b127c4c5992cd9002636ede9a2a79dca227f8f7fa5905\"}]}"
+    },
+    {
+      "election": "council-2027",
+      "index": 3,
+      "msp": "Org3MSP",
+      "keyShare": "358482d2e74fc0bbe9df5e245817ff84601f86d1703e571736039bf8aa60610d",
+      "seed": "v1 council-2027 dshare 3",
+      "nonces": [
+        "0f54d4824515f4f8aef2f05858da211db3c5290cb123a99398bbdf4725231e01",
+        "1309d921768bd72163c3dd7b8d5b365228dbe843c6a6f59b190a63d2a5897204",
+        "684eb74d046ae54c6a3626ad291d294532ca09908795fcae0c9988c765fa4200",
+        "a33546f74355d0e9d2cf03613473559b34ccc5944bc3190d0423b6e32ad4360f",
+        "431d7f75868653c324b580a66301e180b83f1993e30846b8a976950afebe5005",
+        "17833d5e388200cdf2ba3cfd6fe095a3d23fd313c99acc24dcb6f1fe2cc16c09",
+        "91a944d1c479dc078a5f0cfa309451b43096354018fc69ea0c8d39b0e52b8502",
+        "c6fbda14525c2fd57a9a861ba1e848a80c4532a0d08b9b4f3f380672d460ba04",
+        "eb1dcf51450a1f084e021f2b8299bc1411dc0e0efd4403a9423f7d75600edd0d",
+        "e10b8878034bb2ae85891cb3c8041c53a3f887120ee70dd761fc87ff8dac170e"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "d0dd47a6b995fe377e3dddfee39cb82902c28d15e3f1f1bfc148fb494655fe06",
+            "c": "2fdcd3c816c097b9d8c5b47b041d0e85efef44c0d63185d8b978522aac830501",
+            "z": "c53c94ff7356111b9b57bb5ea52a3a64f40af65ebe7c5aa8d772330e8d28c300"
+          },
+          {
+            "d": "ba9f6ac78a1be269985a24a003aeb3a7e0dc2cba94e64f7b6929a90fb69d1a3e",
+            "c": "64ad0ef1126a74e7e1881aed22766342945eaaa401315b5c28755ced7109230e",
+            "z": "40b9e6ff758bb703cafd64d0d578370bd0d86d2c6815c90c6e6028be74102300"
+          },
+          {
+            "d": "540a8a82894c0c6dca66b8c1477517f60cf3f880a92c9b84a032620ef45ca03b",
+            "c": "8da6bf09b0b4865935f31dea3d3b4f7265b23eb55ad32e46752b23a364d86903",
+            "z": "a282f01df38bac7e70614f45a5eee0a2c81ac3ac8496cf5e94012df3af7d490a"
+          },
+          {
+            "d": "a8b26424e3dea1f0b07107285e118aa9ed09939a12ffad03e768d67d68bf083c",
+            "c": "01d674c59654ed91a280fb8612476497092e5df5820965ae6ff7448974fa440c",
+            "z": "659d0bb5d86481f9d644585819373df48d1d9b0d80fee2ce60605276ada81a09"
+          },
+          {
+            "d": "183f489bd5f46c056e26ab6385c9db15a134baf77b0d791e19c28491c9fae85b",
+            "c": "2f46b78ebca0802d92313062ef576eb20e09d69d41a597e48d60c6a5181bac06",
+            "z": "d1732f162064d3e0238d0be4836c3c53911b971e4f6e8bb5fc0579638e578f0f"
+          },
+          {
+            "d": "fe00f1fb7990d1eda46267e3a51908c841e9fffe45ae34c4786077eb1bfd217f",
+            "c": "4df414906fd3ec8ffd39d22ff936fccb6fa5e88a63fd8ae26dd99df9cae11706",
+            "z": "0b114ef2b0cb329c35ee3e11b53b41b8a7c51133c92bd5abd6748c9b6d35bc01"
+          },
+          {
+            "d": "4cebe203a614ede4d62e9387ab777b84abf9766c87a229a6b58e5a1f4a8d324e",
+            "c": "d2914a7303c36b3733b2de2f07aa741af48cb34ad65e93334751595cc1346d09",
+            "z": "bba2b1467ba65697cc57fad33d67c45cee450c2b8fe26a2d49bf236c3f10e30d"
+          },
+          {
+            "d": "4e467f5bb3b889ccab280edf5dddc0b2ea1025bf9ede1d4829c137870fcb892b",
+            "c": "8186318b2348b53d0cf3928b198da149bd753819788611e6a7a032457bbcfd0c",
+            "z": "728d7dc3c223481bc8e63fe32043760f0ee4ab6b2f7f276030158a7964395f04"
+          },
+          {
+            "d": "6026e9408cadb99207bf053997b265d584b113d4e6bb9c44e27e194d68c1e971",
+            "c": "108eecd18c9e8712dcab828faa2e148e3e60a7f3eec594b52121092ca9652d0f",
+            "z": "f2f8d7450744c6b662b5b3cc71667e4365af207f5ac755cc78104499049d310a"
+          },
+          {
+            "d": "c04b26a679f0e02b766f01fabbdd327859e33851b8b1bf038b293be02130cf19",
+            "c": "7b30caa1adf58ffdbc66776b20146bea8936717cbd927b5c2ea6ab127d828902",
+            "z": "c3d1f1827685d0bba73dfbf6dacb4f472ce6f426352b51a3a19a747567448b05"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"d0dd47a6b995fe377e3dddfee39cb82902c28d15e3f1f1bfc148fb494655fe06\",\"c\":\"2fdcd3c816c097b9d8c5b47b041d0e85efef44c0d63185d8b978522aac830501\",\"z\":\"c53c94ff7356111b9b57bb5ea52a3a64f40af65ebe7c5aa8d772330e8d28c300\"},{\"d\":\"ba9f6ac78a1be269985a24a003aeb3a7e0dc2cba94e64f7b6929a90fb69d1a3e\",\"c\":\"64ad0ef1126a74e7e1881aed22766342945eaaa401315b5c28755ced7109230e\",\"z\":\"40b9e6ff758bb703cafd64d0d578370bd0d86d2c6815c90c6e6028be74102300\"},{\"d\":\"540a8a82894c0c6dca66b8c1477517f60cf3f880a92c9b84a032620ef45ca03b\",\"c\":\"8da6bf09b0b4865935f31dea3d3b4f7265b23eb55ad32e46752b23a364d86903\",\"z\":\"a282f01df38bac7e70614f45a5eee0a2c81ac3ac8496cf5e94012df3af7d490a\"},{\"d\":\"a8b26424e3dea1f0b07107285e118aa9ed09939a12ffad03e768d67d68bf083c\",\"c\":\"01d674c59654ed91a280fb8612476497092e5df5820965ae6ff7448974fa440c\",\"z\":\"659d0bb5d86481f9d644585819373df48d1d9b0d80fee2ce60605276ada81a09\"},{\"d\":\"183f489bd5f46c056e26ab6385c9db15a134baf77b0d791e19c28491c9fae85b\",\"c\":\"2f46b78ebca0802d92313062ef576eb20e09d69d41a597e48d60c6a5181bac06\",\"z\":\"d1732f162064d3e0238d0be4836c3c53911b971e4f6e8bb5fc0579638e578f0f\"},{\"d\":\"fe00f1fb7990d1eda46267e3a51908c841e9fffe45ae34c4786077eb1bfd217f\",\"c\":\"4df414906fd3ec8ffd39d22ff936fccb6fa5e88a63fd8ae26dd99df9cae11706\",\"z\":\"0b114ef2b0cb329c35ee3e11b53b41b8a7c51133c92bd5abd6748c9b6d35bc01\"},{\"d\":\"4cebe203a614ede4d62e9387ab777b84abf9766c87a229a6b58e5a1f4a8d324e\",\"c\":\"d2914a7303c36b3733b2de2f07aa741af48cb34ad65e93334751595cc1346d09\",\"z\":\"bba2b1467ba65697cc57fad33d67c45cee450c2b8fe26a2d49bf236c3f10e30d\"},{\"d\":\"4e467f5bb3b889ccab280edf5dddc0b2ea1025bf9ede1d4829c137870fcb892b\",\"c\":\"8186318b2348b53d0cf3928b198da149bd753819788611e6a7a032457bbcfd0c\",\"z\":\"728d7dc3c223481bc8e63fe32043760f0ee4ab6b2f7f276030158a7964395f04\"},{\"d\":\"6026e9408cadb99207bf053997b265d584b113d4e6bb9c44e27e194d68c1e971\",\"c\":\"108eecd18c9e8712dcab828faa2e148e3e60a7f3eec594b52121092ca9652d0f\",\"z\":\"f2f8d7450744c6b662b5b3cc71667e4365af207f5ac755cc78104499049d310a\"},{\"d\":\"c04b26a679f0e02b766f01fabbdd327859e33851b8b1bf038b293be02130cf19\",\"c\":\"7b30caa1adf58ffdbc66776b20146bea8936717cbd927b5c2ea6ab127d828902\",\"z\":\"c3d1f1827685d0bba73dfbf6dacb4f472ce6f426352b51a3a19a747567448b05\"}]}"
+    },
+    {
+      "election": "referendum-2027",
+      "index": 0,
+      "msp": "Org1MSP",
+      "keyShare": "c64b281f339f1a26c4b6ed82c2d18651152d0a0f81fbf8e7bc982e3b00b26b02",
+      "seed": "v1 referendum-2027 dshare 0",
+      "nonces": [
+        "c93ac1a199786b1ddf9bb248d20e18b181bb02986be525224ab0107453105f04",
+        "400def7c3a7d8abf0c08fd332c8608456e58ae53eaf130b1df6364298d5c1300"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "36bf4befef0f8ef701abf2343d59d3d185ae242e248b826f833d80d308c1c37b",
+            "c": "b23494876b7caa75a8a253937bd37df7c6b853471a9e09b3afb31554484bc606",
+            "z": "981c3003b3f864bc0cd3ce3386c4869e6441c865bcdc5cdc2d3d55db3999800d"
+          },
+          {
+            "d": "6a8343fb0a9acafeb25f22eddd432c10b70011b8a13f9136ace3919027a9a54e",
+            "c": "d12f718b6bdba5de8eb10fb0b2dd1729baef66c3fded83d38f0f30091a96590f",
+            "z": "fb1e70bc219f3307ecfbeada4d5ceaf012c9af524279b9b82be8c96d74182a03"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"36bf4befef0f8ef701abf2343d59d3d185ae242e248b826f833d80d308c1c37b\",\"c\":\"b23494876b7caa75a8a253937bd37df7c6b853471a9e09b3afb31554484bc606\",\"z\":\"981c3003b3f864bc0cd3ce3386c4869e6441c865bcdc5cdc2d3d55db3999800d\"},{\"d\":\"6a8343fb0a9acafeb25f22eddd432c10b70011b8a13f9136ace3919027a9a54e\",\"c\":\"d12f718b6bdba5de8eb10fb0b2dd1729baef66c3fded83d38f0f30091a96590f\",\"z\":\"fb1e70bc219f3307ecfbeada4d5ceaf012c9af524279b9b82be8c96d74182a03\"}]}"
+    },
+    {
+      "election": "referendum-2027",
+      "index": 1,
+      "msp": "Org2MSP",
+      "keyShare": "d1aef6816593fa31170c1cd5a540c31b55fcaacf510dbcf15c03389e5371a503",
+      "seed": "v1 referendum-2027 dshare 1",
+      "nonces": [
+        "b84f50fa4146c4063ae1fe178bb5ab3798b2f2b017b5b2c96d1d3a5dc80c400d",
+        "3041e656f91acc01163aa3878413605b4ff229d0e39536469f13b88f8cd1840d"
+      ],
+      "share": {
+        "shares": [
+          {
+            "d": "1ca4678de1588209e3cf384ab0bcf3c5f7ac9c46d636729e18c71933e354a500",
+            "c": "ed251d5e69bd146aca7dc23e850b6f7a09dcda5e557fc8de098540004ca98907",
+            "z": "bed2382d9ae53c763b4f1cafc7f45e98230cfb896f502c13991a4d0f2339f50e"
+          },
+          {
+            "d": "66db3d556326c30bf83b3a4f867bee3d9d4341c2d000a74359a1199dc638a772",
+            "c": "94bcd881ecaf7269f80390f66ffd4d28c540fa6862c52f24dcbe909987222004",
+            "z": "852e1e3bd6204b575e43ae80cc6d3d2725a33385dcfb72a9b6d2477ab29d730e"
+          }
+        ]
+      },
+      "json": "{\"shares\":[{\"d\":\"1ca4678de1588209e3cf384ab0bcf3c5f7ac9c46d636729e18c71933e354a500\",\"c\":\"ed251d5e69bd146aca7dc23e850b6f7a09dcda5e557fc8de098540004ca98907\",\"z\":\"bed2382d9ae53c763b4f1cafc7f45e98230cfb896f502c13991a4d0f2339f50e\"},{\"d\":\"66db3d556326c30bf83b3a4f867bee3d9d4341c2d000a74359a1199dc638a772\",\"c\":\"94bcd881ecaf7269f80390f66ffd4d28c540fa6862c52f24dcbe909987222004\",\"z\":\"852e1e3bd6204b575e43ae80cc6d3d2725a33385dcfb72a9b6d2477ab29d730e\"}]}"
+    }
+  ]
+}

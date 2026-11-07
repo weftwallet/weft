@@ -1,0 +1,1175 @@
+{
+  "negative": [
+    {
+      "name": "a ballot sent by another voter",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "cd869d4e36aa224fe599c31aedbed4ab3ff25d346dcc943abb56582ce3bd5c98",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"a01ca6630a3eddd53eb41041556cddb665fed57f92a4c197e71aad446b8a4a72\",\"b\":\"525da191e85e8dad1385c11b1678bd638c5deb355c546ae151ddca69a7d78725\"},{\"a\":\"9cfe52ddb245d701aae9f0e2924f4feae3650dd81956a480438c7dbc7e838a0b\",\"b\":\"98d066d7adee8b97bc8fceaad33659f9c48d0b6e223da6cf325a38317189d13f\"},{\"a\":\"72b5ebf20f502286d9f74ff883366b7f309b4f427791e0eefa7a4b73d4d71d65\",\"b\":\"d84136343cfc115daa0ea6e8e46f61036fac4a65723eefb8a2f7f661cb6a0c5e\"}],\"bitProofs\":[{\"c0\":\"74ce10daa381c5e2e9a8c2bc1e901d09bc5d7f6b7394aed372915ca2d423f301\",\"c1\":\"5883f0363b3dfbddb5ff9047ac2adf4ecb52f43378c6eb36bf37441b4ef61f07\",\"z0\":\"020942bd56d02da05f38ccb800b8c1659383259a4c7d25b4b53ac0c3279f7c0d\",\"z1\":\"de837359ac8f206320b17705aa0156a93513e6071ca76c61dcccc5e0ea668202\"},{\"c0\":\"072493e9f66ecde21aeea9760dde329231552269d4af1c3a12d5b120d14d190f\",\"c1\":\"7ed4aa0d925901c93a6f2e9c9b4f42ed0c9c9ec3b305c317f60e50b7f59dc00b\",\"z0\":\"d0c4138f450df991433dcc89059a0912f6a692be6f07a98e91626b0fb501780f\",\"z1\":\"2bc2343033042612e30330ec85bc185ad660f4ab962dc9c72a4b3a82a3993a03\"},{\"c0\":\"4c359ed5f11c11469b57d5d62c9ede2e918691dcafe3528d1983b50b0d74c40e\",\"c1\":\"2e4d5af29d4b27368bdee4d77f984e46a3e9d944732cbaed36ecb57e4bd3e008\",\"z0\":\"89d13d236af63a2aa080b9315bf0db5d63297aebfc74f4869cfc40fa5f8cd108\",\"z1\":\"c39e3c8bac1515b0074ff4c77ff769f3562b8d472163f96fec025eea68d8ff0f\"}],\"sumProof\":{\"c\":\"3e3ac31395b2b2000cd52c180bba72c23262c3c6b4271b43e34d06ec523d5e04\",\"z\":\"1d1623c988959ea1adc0c6a6dd34833c2229969ce4e70868bf41f54aaf37d00e\"}}",
+      "error": "Ciphertext 0 is not a 0 or a 1."
+    },
+    {
+      "name": "a repeated ballot",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [
+          "a01ca6630a3eddd53eb41041556cddb665fed57f92a4c197e71aad446b8a4a72",
+          "9cfe52ddb245d701aae9f0e2924f4feae3650dd81956a480438c7dbc7e838a0b",
+          "72b5ebf20f502286d9f74ff883366b7f309b4f427791e0eefa7a4b73d4d71d65"
+        ],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"a01ca6630a3eddd53eb41041556cddb665fed57f92a4c197e71aad446b8a4a72\",\"b\":\"525da191e85e8dad1385c11b1678bd638c5deb355c546ae151ddca69a7d78725\"},{\"a\":\"9cfe52ddb245d701aae9f0e2924f4feae3650dd81956a480438c7dbc7e838a0b\",\"b\":\"98d066d7adee8b97bc8fceaad33659f9c48d0b6e223da6cf325a38317189d13f\"},{\"a\":\"72b5ebf20f502286d9f74ff883366b7f309b4f427791e0eefa7a4b73d4d71d65\",\"b\":\"d84136343cfc115daa0ea6e8e46f61036fac4a65723eefb8a2f7f661cb6a0c5e\"}],\"bitProofs\":[{\"c0\":\"74ce10daa381c5e2e9a8c2bc1e901d09bc5d7f6b7394aed372915ca2d423f301\",\"c1\":\"5883f0363b3dfbddb5ff9047ac2adf4ecb52f43378c6eb36bf37441b4ef61f07\",\"z0\":\"020942bd56d02da05f38ccb800b8c1659383259a4c7d25b4b53ac0c3279f7c0d\",\"z1\":\"de837359ac8f206320b17705aa0156a93513e6071ca76c61dcccc5e0ea668202\"},{\"c0\":\"072493e9f66ecde21aeea9760dde329231552269d4af1c3a12d5b120d14d190f\",\"c1\":\"7ed4aa0d925901c93a6f2e9c9b4f42ed0c9c9ec3b305c317f60e50b7f59dc00b\",\"z0\":\"d0c4138f450df991433dcc89059a0912f6a692be6f07a98e91626b0fb501780f\",\"z1\":\"2bc2343033042612e30330ec85bc185ad660f4ab962dc9c72a4b3a82a3993a03\"},{\"c0\":\"4c359ed5f11c11469b57d5d62c9ede2e918691dcafe3528d1983b50b0d74c40e\",\"c1\":\"2e4d5af29d4b27368bdee4d77f984e46a3e9d944732cbaed36ecb57e4bd3e008\",\"z0\":\"89d13d236af63a2aa080b9315bf0db5d63297aebfc74f4869cfc40fa5f8cd108\",\"z1\":\"c39e3c8bac1515b0074ff4c77ff769f3562b8d472163f96fec025eea68d8ff0f\"}],\"sumProof\":{\"c\":\"3e3ac31395b2b2000cd52c180bba72c23262c3c6b4271b43e34d06ec523d5e04\",\"z\":\"1d1623c988959ea1adc0c6a6dd34833c2229969ce4e70868bf41f54aaf37d00e\"}}",
+      "error": "A ciphertext in this ballot is already on the ledger."
+    },
+    {
+      "name": "a slot holding 2",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"b0e2e3f7bf9b1ba147d9512a613f4bb6c98536695987d924f02554de95c8af1f\",\"b\":\"36136a8e88b4fff707536b0b26ed538efd1123c5c0a9c795559de01b9b43d35e\"},{\"a\":\"e077c0b569adc86fe12a95ed42f5629513417ac5d7d5b05cf67db809797d771f\",\"b\":\"6cb74ca3946e773c3b3fae5a40911293fb1c243d430d7d613614ce73d7b3f047\"},{\"a\":\"ceb1afc3f60642b3e9aa0aaf6af3159f5b462eb615545e52ed49353700601e5d\",\"b\":\"5e97cf14894652f4993ed79ff40ed1c05a9141e73aa2275d105597fca9424f24\"}],\"bitProofs\":[{\"c0\":\"6d0707cc05f3eb033ae8ad50a2385c4e28645193b4868244d6c65cf2c8170106\",\"c1\":\"665cc64e2351b841f12e82f93d0b7889e90c913c5590029e11619ce4b94a2b05\",\"z0\":\"c3299df464c33864d53c253462c15d5bba5a5aefc3b5b7e86d4e3e82c30ad40d\",\"z1\":\"b77581fe285508dfd9a8fcc9f1ec1f5e3405b4fcaae9d8323c41ef21bffba104\"},{\"c0\":\"4455d8bc05bf352e8bc4cd43fbf841f24dde280a8f2420a8daa2230ec595dc0b\",\"c1\":\"6a9539a8c4e2efbdbc8c707677fcbd1bd2613c4224649471b3c64e80403c030d\",\"z0\":\"9b2a255f41d282dbd2b55975ddedf3e74b96a8c3f7bf97f537a4ef068a7e300e\",\"z1\":\"0f94c52f2a435cb5ecb0ea3bc06f5bc92c7a39e40dfc80765b5b05e1937ee106\"},{\"c0\":\"d080decb4a2af0eb1bbdf7f4b349c60271f19a26ca58c41c7b0fc06a1c86270d\",\"c1\":\"77ec84060e0d93bcf29ee58b4fe8e70e45289d03fc54bb287224629e1ef42f0e\",\"z0\":\"d9ebc94931d6571e770e6b69a43cc8885018951a3adca87d19b6ac313e471906\",\"z1\":\"3a4151f558cc3ef96819706d58a841dfcea15c920d0c3c415bc926fca90cde01\"}],\"sumProof\":{\"c\":\"b2fb684c2fee35a541006ffbef01a5f3829ce89c43b35b05f221745b6f77240d\",\"z\":\"1e107e01cef46fb9c325e0c0e15ebf98ef1e8933010bf884ca9b4f35df74f406\"}}",
+      "error": "Ciphertext 1 is not a 0 or a 1."
+    },
+    {
+      "name": "two options chosen",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"42105c855eee8fca527f28be72fb97436bf1c781f3945e587466144caae7b226\",\"b\":\"02ab2d0e7989cefdf5d862ac0766ba8a10d19617ae0171af137b30fb2645d34a\"},{\"a\":\"d29f2bef05a3c01fd3cb592ca358e3f482abf89c394b33c0a444fa7f4ff11e3f\",\"b\":\"567ffad92585acbccf341d185e83dd2f0a07dd79d713c2f58a8fec210894b803\"},{\"a\":\"fc7d636c3d789e11098631aaa0b8dd086d6c5c5c9eecd5fee1c9a5e1347fd322\",\"b\":\"5affd44c2c25721ac449deaa7f32d9c49bbe01d55f063c27622617b890b3b007\"}],\"bitProofs\":[{\"c0\":\"09aa3800600c21f950b3ad706dd673a7f129b783d8ceeed40f9df34ad072470d\",\"c1\":\"ec24d793549e490f47ea933b64dffd83bb9931eaa3b2ae9c99ef0e78dc7b4701\",\"z0\":\"7136ea499f9ebaafef0e8a8c315292ae8962372bb690d3061474b5c4ec89b00a\",\"z1\":\"f23dc64508584ac11bac39cdd05913f7f3577e82139d3c9e3cdcb14b7dbdbb0a\"},{\"c0\":\"e5ef6b04e7d7a4341aaf5795fbca78055c3469a9518bfb6b511d097e14f1e505\",\"c1\":\"93d4ee7012691a1b0e9bc6a0ee2e7a69e2953b7786ce0247f8175f100d14fb0a\",\"z0\":\"de5acd2dd5a2a93716ef115cf6267585026243d4f449799362cfba70ffdc3c0f\",\"z1\":\"accc106b4b6ffd642143c373798f63c143d0673ff739eaa8cc7b8c3838e65f02\"},{\"c0\":\"3ef4e7d627ff7f69625b3d1876a644b402cdf0e115d67634490b087c34e4e703\",\"c1\":\"b832dde7afaaa52472bac53b9d689a70a150c50b7f329439b140735f54531c02\",\"z0\":\"2766cbac8396782a4aa12298d2aa55e3943443ab66057e0385f5da169538a504\",\"z1\":\"b297ecf576583fcb8cde888d4f64a65c0968bef773ce1fe8db607d37d7972a0a\"}],\"sumProof\":{\"c\":\"614debd39e7815db47f94e9b55acd69b53439f09ea2f37402663a986948abd0a\",\"z\":\"2fc8ffd31b45adc7489acd10dafa9b5ffa13b97e7ed137e6878274a3866c6c02\"}}",
+      "error": "The ballot does not choose exactly one option."
+    },
+    {
+      "name": "a ballot under another key",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"28ea13940ff41b5d79685f13af6f53f5701bf55590ef84fe1899563d24d1a015\",\"b\":\"205a480d0d2cb17549e09de45c23fa7b63f907439e4bdfbcbfaa12b84958e53c\"},{\"a\":\"e8a60e4587c1ec0a608fb3c3d3f46c9a3901598ba270add5af81d99febad5d2b\",\"b\":\"6c4290be1e953aa9cdbbad02886e7ec0fae0191da068c48c24f17fed16422657\"},{\"a\":\"52d7e7e4d1969b8da5303a7a7019deda9543af2e378e7e0416fcab675fd0887c\",\"b\":\"246be65cf7660951afa173abb748aca192e580a030d86f92c8339351a6ca8b06\"}],\"bitProofs\":[{\"c0\":\"ff76090665e6d95000aff05d50a4bc4ae89bad02f8ad4385a8947de7af9d2409\",\"c1\":\"893a190dd2132437c910fa76f93838ab2d895752be50808c30c547d9bb12800a\",\"z0\":\"8532a794085212b6260438a6fd6ad0607774b88f8a22e82e88707718c94fef04\",\"z1\":\"18eebbe03005c42c266868c1dc6f0ef6964418971a495b24e3e4f30b17fa3902\"},{\"c0\":\"704c32614b27b13168ed39d53ed28208e15a7e064197469ba79cf2cfd754320d\",\"c1\":\"1b0313d1bd253c39c6006e6d6eee6a9e0e5f8a68c12d446fa35524ab43e90504\",\"z0\":\"8bdc7c6dfb17982418c2ab60046712cc357d8046f8c63d824a94d3800bff0908\",\"z1\":\"8acd1088ea6fdce88227765db32b71463974dc11364a499975db9d01446bb602\"},{\"c0\":\"3dd742715ab354bfaced639e49c919f57e2d5c4e5c677e9ea28542d528bd7407\",\"c1\":\"d02f4a47155fdbdcfdbc1ae8cb449cc9375a4b09a3698da91b1b1a506afbf902\",\"z0\":\"056e0003fa21a78a06d19af54c8b3c6cc9b9560f15debec8ec6693d4fed35804\",\"z1\":\"ce3fdbd19dfffb17a048661bfbcdf67f8c852246b5ef5377017e150e26ef680a\"}],\"sumProof\":{\"c\":\"87a7e8555481f3410d1ee71c80299f4a0d161784f9af87aaa17c08bb43abc00b\",\"z\":\"671cf55a94fc6d231869985c6bb37088702b370aecfd203a825a1ad1f721a906\"}}",
+      "error": "Ciphertext 0 is not a 0 or a 1."
+    },
+    {
+      "name": "a changed bit proof value",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"807c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "Ciphertext 1 is not a 0 or a 1."
+    },
+    {
+      "name": "a changed sum proof value",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3c66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot does not choose exactly one option."
+    },
+    {
+      "name": "a second ballot from the same identity",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": [
+          "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65"
+        ]
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "This identity has already voted in this election."
+    },
+    {
+      "name": "a second ballot from the same credential",
+      "kind": "ballot",
+      "election": "referendum-2027",
+      "voterTag": "6daf184a7fe77dce813371c07dcc5bbddaf9b16990874252ecef35ab638bb015",
+      "voter": "idemix",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": [
+          "6daf184a7fe77dce813371c07dcc5bbddaf9b16990874252ecef35ab638bb015"
+        ]
+      },
+      "json": "{\"v\":1,\"electionId\":\"referendum-2027\",\"ciphertexts\":[{\"a\":\"588a989d3e6b56a1ee9aae39fe7c0f7bedd95820ede02e5693ab0af8ba2c7e5b\",\"b\":\"80fc9281505ef55d326545bdf317e214ae0b9162f33b74f0f208b689cc93754d\"},{\"a\":\"f49b9cdb44d22f1b43059b018c1dba42b68517d02f86f76e3d95e6a9a649540c\",\"b\":\"8a7ce21e2c5ef0f284c5b9de2d2882b06d7206a0be5199011a5c2844343c0917\"}],\"bitProofs\":[{\"c0\":\"cf53dfdd1464c734ffb6dcd1fc05e023fc6b26f1c293b08e3f3d42513edfdb02\",\"c1\":\"8e2091a5a4ddcedebdd5d1a4cc564a5d5f55029029dfb974b7c166ee7b6a8f07\",\"z0\":\"9b719c8d9069845d677e013411c767e553061bf33f29501c381cb52812cbd809\",\"z1\":\"00c5cbb23e42d8e4b77391a4a73434bb3f19ea550d6ef9a9f3250bbcfbfa570b\"},{\"c0\":\"1d1815b2030f278b1d2d63217b8b07ba04a9a6c575199bb2faf588e6bfc74801\",\"c1\":\"d7a10f5307c7c6a718b3adc12adf03a00d81284fd63180eb9353908b1520be05\",\"z0\":\"2df5285544150796fe3474704d5889b2c356a103e4613f6710b9c3f47e6d6e0d\",\"z1\":\"ede244743736aa656ccdf3e6dc0e595930cc2b8359e75b7d31c20f0211a9530c\"}],\"sumProof\":{\"c\":\"8b45b33ef940fda42f8d52cb9b72085eac16c87c6cc6eee93ab541a531ec2904\",\"z\":\"7fb3d241e1b5ff34d152b7533446dc8ed937ce4da2c8c8597a267b665c281909\"}}",
+      "error": "This credential has already voted in this election."
+    },
+    {
+      "name": "a ballot for another election",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"referendum-2027\",\"ciphertexts\":[{\"a\":\"18f9d61560203ebe5fd7a14049792a169f206859e1997629671802c0ea178211\",\"b\":\"8e6261616a627e561e565886d83c62c755ea96f8a9b467b5925bc5ec0d933736\"},{\"a\":\"fc9f94fceadee86a2536e151522816804132db8cf3313744ef96f8d73076b13b\",\"b\":\"be79ff90832589c8e7061bc5fc8e6c193b9e2b958ce80172a4298b9d8cc0d559\"}],\"bitProofs\":[{\"c0\":\"55e5cfbacd1f4ee6ab3b857776b90000f5d83cf408ce1fa26e9e36af7d0c6707\",\"c1\":\"891e3b1f12b7b964de109221148871c6e9f2055ad8d4982b84deaaf931e14100\",\"z0\":\"028588cfea66565ce79f4c29ebbe018a796aa2a396147dadf35453c535fdaa04\",\"z1\":\"32720394fef56fa7294af9fd3ab51da426f5f9c0f7ab0bbd595818657edd8c0e\"},{\"c0\":\"791b6189f57290f3328a223c81ae1c02fe8743fdd9c8c947f6b425a5744f3c09\",\"c1\":\"cbd89d660125ffcd4610a36c1f60890c4b9aa0ea94d39bfb54bd20dfd3973e04\",\"z0\":\"8e6acccda07bf61203e7a51f7e61bb81d203a632d2fee98bd143d35566c80e03\",\"z1\":\"02e08017c78a5144145e3631b01013373fe23e98486f8879da5090c140f19a05\"}],\"sumProof\":{\"c\":\"7bc632ef888fb40d1b011be9ea458655d7ba3c245df682062101efde31308608\",\"z\":\"5f1eb01dc45eec342a648674785b669d6463da357f1e74220ee9e2fa51ba0108\"}}",
+      "error": "The ballot isn't for this election."
+    },
+    {
+      "name": "not JSON",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,",
+      "error": "The ballot isn't JSON."
+    },
+    {
+      "name": "not an object",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "[]",
+      "error": "The ballot isn't a JSON object."
+    },
+    {
+      "name": "null",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "null",
+      "error": "The ballot isn't a JSON object."
+    },
+    {
+      "name": "an unknown top-level field",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"},\"extra\":true}",
+      "error": "The ballot isn't in the version 1 format: it has an unknown field, extra."
+    },
+    {
+      "name": "two unknown fields, the first in byte order is named",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"},\"zeta\":1,\"Alpha\":2,\"alpha\":3}",
+      "error": "The ballot isn't in the version 1 format: it has an unknown field, Alpha."
+    },
+    {
+      "name": "an unknown nested field",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\",\"c\":\"00\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't in the version 1 format: it has an unknown field, ciphertexts[0].c."
+    },
+    {
+      "name": "a missing sumProof",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}]}",
+      "error": "The ballot isn't in the version 1 format: sumProof is missing."
+    },
+    {
+      "name": "a missing nested field",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't in the version 1 format: bitProofs[2].z1 is missing."
+    },
+    {
+      "name": "v as a string",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":\"1\",\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't in the version 1 format: v isn't a number."
+    },
+    {
+      "name": "ciphertexts as an object",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":{},\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't in the version 1 format: ciphertexts isn't a list."
+    },
+    {
+      "name": "a ciphertext as a string",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[\"00\",{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't in the version 1 format: ciphertexts[0] isn't an object."
+    },
+    {
+      "name": "a null point",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":null},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't in the version 1 format: ciphertexts[1].b isn't a string."
+    },
+    {
+      "name": "version 2",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":2,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't for this election."
+    },
+    {
+      "name": "another election ID",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2028\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot isn't for this election."
+    },
+    {
+      "name": "two ciphertexts for three options",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot has 2 ciphertexts; this election has 3 options."
+    },
+    {
+      "name": "one ciphertext for three options",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot has 1 ciphertext; this election has 3 options."
+    },
+    {
+      "name": "four bit proofs for three options",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"},{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot has 4 bit proofs; this election has 3 options."
+    },
+    {
+      "name": "a point that is a non-canonical field element",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[0].a isn't a canonical point."
+    },
+    {
+      "name": "a point that is a field element of p or more",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[0].a isn't a canonical point."
+    },
+    {
+      "name": "a point that is a negative field element",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"0100000000000000000000000000000000000000000000000000000000000000\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[0].a isn't a canonical point."
+    },
+    {
+      "name": "a point that is a non-square",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"26948d35ca62e643e26a83177332e6b6afeb9d08e4268b650f1f5bbd8d81d371\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[0].a isn't a canonical point."
+    },
+    {
+      "name": "a point in uppercase hex",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6C8E1A3AF593C5D3BAFDD6717D1BCCF74AE3B4233B4498B10C54CDCB113EC45B\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[2].b isn't a canonical point."
+    },
+    {
+      "name": "a point of odd length",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[1].a isn't a canonical point."
+    },
+    {
+      "name": "a point of 31 bytes",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"23d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[1].a isn't a canonical point."
+    },
+    {
+      "name": "a point of 33 bytes",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc7800\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's ciphertexts[1].b isn't a canonical point."
+    },
+    {
+      "name": "an identity point in slot 0",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "Ciphertext 0 has no randomness."
+    },
+    {
+      "name": "an identity point in slot 2",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"0000000000000000000000000000000000000000000000000000000000000000\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "Ciphertext 2 has no randomness."
+    },
+    {
+      "name": "a scalar equal to l",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"edd3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's bitProofs[0].c0 isn't a canonical scalar."
+    },
+    {
+      "name": "a scalar of 2^256 - 1",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\"}}",
+      "error": "The ballot's sumProof.z isn't a canonical scalar."
+    },
+    {
+      "name": "a scalar in uppercase hex",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"A19A24A25EDE73F4A1FC13004EB2A52B5A4B0F5650FD64239746B8637C40BA05\"}],\"sumProof\":{\"c\":\"2662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's bitProofs[2].z1 isn't a canonical scalar."
+    },
+    {
+      "name": "a scalar with a non-hex character",
+      "kind": "ballot",
+      "election": "budget-2027",
+      "voterTag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65",
+      "voter": "x509",
+      "ledger": {
+        "ciphertexts": [],
+        "voted": []
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"f6407ce5a743fd20d036999374c1fb3b239b55e8495a734dfe34bf55b5079535\",\"b\":\"34330af585724ca7afecb76288a80352e3fea7d8f9553a39a6f75fb2bdf5e832\"},{\"a\":\"1023d2de3387c8963a238c8e419f8bc09cbe719a85e60c76e1de61b21db8262c\",\"b\":\"4cc9e31aa88c55ad1dc2c25832e6beefea3e12fba7a0e6afa33e72c86ef2dc78\"},{\"a\":\"02a252d43e9ec898d40f343339af3014e671a4f51c360233d8c6d2cf4070c775\",\"b\":\"6c8e1a3af593c5d3bafdd6717d1bccf74ae3b4233b4498b10c54cdcb113ec45b\"}],\"bitProofs\":[{\"c0\":\"1bbeb3d640db0299f7e32d01998b2b3cbd585b193c61ef513f21c0e9ca3a020d\",\"c1\":\"64a832769dc69890b64fc338c96ff56d44f99220899233a95a03c22778a12d01\",\"z0\":\"0a131b9eb0ef6d1a0f3e3d68cbd30e0b99bbfecb256568929d32eefc99737d0d\",\"z1\":\"446541cddfe8c06fe1884094c2daf9a2641d5e3ff65e1bf283306e739bfccc0d\"},{\"c0\":\"7f96b387b24d24de31a0620b47ac78eaae7567860ee6fa8719a468f1532c0704\",\"c1\":\"ada91d2d1be9a4ec731db9fba2c4f1b20f578a05ff1b29f41caca05bba9cc702\",\"z0\":\"7f7c4023a788ba136ea8a317de53df07db2588e656d4e1fc315d5013c9342a08\",\"z1\":\"e17fd3ca7b0a944b655d610d8bd7ca0f27bd71899831c98eb8e1596aae65e50e\"},{\"c0\":\"068b61421308003fede27fad7ae8ad46a8e5f52752c7fe05af043a4bed92d80d\",\"c1\":\"df539ebb63e7a55de17d2a1888434ce43a1070d6de0558102a49db842e5d9300\",\"z0\":\"dcb194e6b25cb79f3c949e76db76e4de7a75136d75dea347512aa65496c1fa02\",\"z1\":\"a19a24a25ede73f4a1fc13004eb2a52b5a4b0f5650fd64239746b8637c40ba05\"}],\"sumProof\":{\"c\":\"g662469715914d02189299f5b9ffb5e13a15ade7e4142eedd71d806730d27f04\",\"z\":\"3b66a4ea67ad16ab6a3524a5fa609499fcb360c7d3014ca48154e46b5845a409\"}}",
+      "error": "The ballot's sumProof.c isn't a canonical scalar."
+    },
+    {
+      "name": "a changed proof of knowledge",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 1,
+      "json": "{\"commitments\":[\"8016dbae185e82b4eedbce18a3ffa57d43441bba4f27a27e4699b6c388597514\",\"d043af960aad67dac46f0773dfea62b25c0940f9db797a629dcd29c80d49322c\"],\"proof\":\"f0cd681eacb016a06750bd20af1ccd2170415599bb2fd58c4f661fb8312a9d6db761b99a90964666500f646334a031a2ec4126962535be0f805d22855a0f010a\",\"ceremonyKey\":\"b4494502045b844024d2c29b1ce9a7e5c97a1aee0bc54d980eb799f92d0bde78\"}",
+      "error": "The proof of knowledge from Org2MSP doesn't verify."
+    },
+    {
+      "name": "Org1MSP's round 1 posted by Org2MSP",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 1,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\"}",
+      "error": "The proof of knowledge from Org2MSP doesn't verify."
+    },
+    {
+      "name": "a proof with the identity as R",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"0000000000000000000000000000000000000000000000000000000000000000cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\"}",
+      "error": "The proof of knowledge from Org1MSP doesn't verify."
+    },
+    {
+      "name": "a proof of 63 bytes",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"cfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\"}",
+      "error": "The proof of knowledge from Org1MSP doesn't verify."
+    },
+    {
+      "name": "a proof with z of l or more",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\"}",
+      "error": "The proof of knowledge from Org1MSP doesn't verify."
+    },
+    {
+      "name": "three commitments for a threshold of 2",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\",\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\"}",
+      "error": "Round 1 from Org1MSP has 3 commitments; this election's threshold is 2."
+    },
+    {
+      "name": "one commitment for a threshold of 2",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 2,
+      "json": "{\"commitments\":[\"a409e81b6ac1ff3272dce2d90ad8cd5a9617d8ed41c19115a897c47937d9e823\"],\"proof\":\"8614cb8efbdf1e704ef9ec40903980934668abce92890b628b62d45c5aecde7ff8fa89762b5ff1b813bf91f243bb25166cae73a7008c54bae2e13d9b5b9ba001\",\"ceremonyKey\":\"829601ced303a878704fab8604bc825962e80d9cb155b54ad463174fa1482917\"}",
+      "error": "Round 1 from Org3MSP has 1 commitment; this election's threshold is 2."
+    },
+    {
+      "name": "an identity commitment",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"0000000000000000000000000000000000000000000000000000000000000000\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\"}",
+      "error": "Commitment 1 from Org1MSP is the identity point."
+    },
+    {
+      "name": "an identity ceremony key",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"0000000000000000000000000000000000000000000000000000000000000000\"}",
+      "error": "The one-time key from Org1MSP is the identity point."
+    },
+    {
+      "name": "a non-canonical commitment",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"f3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\"}",
+      "error": "The round 1 post's commitments[0] isn't a canonical point."
+    },
+    {
+      "name": "a missing ceremony key",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\"}",
+      "error": "The round 1 post isn't in the version 1 format: ceremonyKey is missing."
+    },
+    {
+      "name": "an unknown field",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"commitments\":[\"5458b9ab2233385a5676ee2634060c70a8ac9b192838daa6bae8e9f39e3e824e\",\"468fd28b223d7d15da2c399c19ae14edcdfb2642527fd3257a041bbeff2ca96a\"],\"proof\":\"7ecfb78ce2019aaa9415bdd60ff53e4e12475648b78bd6c92da15fe85a8bd434cfdaf7b9d213101fb63f0b9af8799baaf66a9eac579e56a75e6e0a5527862d04\",\"ceremonyKey\":\"e0752b0d6ccbdb62a5b773cc61dddeec9fba0875045c58c9bae4970af663a44c\",\"round\":1}",
+      "error": "The round 1 post isn't in the version 1 format: it has an unknown field, round."
+    },
+    {
+      "name": "not JSON",
+      "kind": "round1",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "commitments",
+      "error": "The round 1 post isn't JSON."
+    },
+    {
+      "name": "a share missing for one trustee",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"}]}",
+      "error": "Round 2 from Org1MSP doesn't send exactly one share to each other trustee."
+    },
+    {
+      "name": "a share to the sender itself",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"},{\"to\":\"0100000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"5e249a63d94be90fdcaf41c2\",\"box\":\"c9c8bcc739cef6d4a286366664be5f9be4ea7547aa72188730361955a039d3e8812b49c86c8145c6cede68f106baa634\"}]}",
+      "error": "Round 2 from Org1MSP doesn't send exactly one share to each other trustee."
+    },
+    {
+      "name": "two shares to one trustee",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"},{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"5e249a63d94be90fdcaf41c2\",\"box\":\"c9c8bcc739cef6d4a286366664be5f9be4ea7547aa72188730361955a039d3e8812b49c86c8145c6cede68f106baa634\"}]}",
+      "error": "Round 2 from Org1MSP doesn't send exactly one share to each other trustee."
+    },
+    {
+      "name": "a share to a trustee that doesn't exist",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"},{\"to\":\"0800000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"5e249a63d94be90fdcaf41c2\",\"box\":\"c9c8bcc739cef6d4a286366664be5f9be4ea7547aa72188730361955a039d3e8812b49c86c8145c6cede68f106baa634\"}]}",
+      "error": "Round 2 from Org1MSP doesn't send exactly one share to each other trustee."
+    },
+    {
+      "name": "an extra share",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"},{\"to\":\"0300000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"5e249a63d94be90fdcaf41c2\",\"box\":\"c9c8bcc739cef6d4a286366664be5f9be4ea7547aa72188730361955a039d3e8812b49c86c8145c6cede68f106baa634\"},{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"}]}",
+      "error": "Round 2 from Org1MSP doesn't send exactly one share to each other trustee."
+    },
+    {
+      "name": "a nonce of 11 bytes",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"51537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"},{\"to\":\"0300000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"5e249a63d94be90fdcaf41c2\",\"box\":\"c9c8bcc739cef6d4a286366664be5f9be4ea7547aa72188730361955a039d3e8812b49c86c8145c6cede68f106baa634\"}]}",
+      "error": "The round 2 post's shares[0].nonce isn't 12 bytes of lowercase hex."
+    },
+    {
+      "name": "a box of 47 bytes",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"0200000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"},{\"to\":\"0300000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"5e249a63d94be90fdcaf41c2\",\"box\":\"c8bcc739cef6d4a286366664be5f9be4ea7547aa72188730361955a039d3e8812b49c86c8145c6cede68f106baa634\"}]}",
+      "error": "The round 2 post's shares[1].box isn't 48 bytes of lowercase hex."
+    },
+    {
+      "name": "a recipient that isn't a canonical scalar",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":[{\"to\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"nonce\":\"c251537323df6b144f20b9c3\",\"box\":\"b9376e049ffeb7ce23cf39d43740a9cb7da812e48519a16aace0465a397b403a6bfddf680ed28cf9bfca9c001ebdd0c0\"},{\"to\":\"0300000000000000000000000000000000000000000000000000000000000000\",\"nonce\":\"5e249a63d94be90fdcaf41c2\",\"box\":\"c9c8bcc739cef6d4a286366664be5f9be4ea7547aa72188730361955a039d3e8812b49c86c8145c6cede68f106baa634\"}]}",
+      "error": "The round 2 post's shares[0].to isn't a canonical scalar."
+    },
+    {
+      "name": "shares as a string",
+      "kind": "round2",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"shares\":\"none\"}",
+      "error": "The round 2 post isn't in the version 1 format: shares isn't a list."
+    },
+    {
+      "name": "Org1MSP's confirmation posted by Org2MSP",
+      "kind": "confirm",
+      "election": "budget-2027",
+      "index": 1,
+      "json": "{\"c\":\"0ae944220def9ca496887b7ee2011e4ff4e415edf9ddaf5325615b28e1ccca05\",\"z\":\"bbfe2aebed1bafd560dff409f528110064097266d7cac5bd5aab2255c0937907\"}",
+      "error": "The confirmation from Org2MSP doesn't match its verifying share."
+    },
+    {
+      "name": "a changed confirmation",
+      "kind": "confirm",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"c\":\"0ae944220def9ca496887b7ee2011e4ff4e415edf9ddaf5325615b28e1ccca05\",\"z\":\"bcfe2aebed1bafd560dff409f528110064097266d7cac5bd5aab2255c0937907\"}",
+      "error": "The confirmation from Org1MSP doesn't match its verifying share."
+    },
+    {
+      "name": "a confirmation with c of l or more",
+      "kind": "confirm",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"c\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"z\":\"bbfe2aebed1bafd560dff409f528110064097266d7cac5bd5aab2255c0937907\"}",
+      "error": "The confirmation's c isn't a canonical scalar."
+    },
+    {
+      "name": "a missing z",
+      "kind": "confirm",
+      "election": "budget-2027",
+      "index": 0,
+      "json": "{\"c\":\"0ae944220def9ca496887b7ee2011e4ff4e415edf9ddaf5325615b28e1ccca05\"}",
+      "error": "The confirmation isn't in the version 1 format: z is missing."
+    },
+    {
+      "name": "a share made with another key",
+      "kind": "dshare",
+      "election": "budget-2027",
+      "index": 1,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "json": "{\"shares\":[{\"d\":\"784e98bf13b9b69c8a32e4353f9665881927b6136be78acce813918ab968e77f\",\"c\":\"008dad127ff1750df7685f73dc0f0807ecf2bb50fd7deaea0bc9b20cb358a70a\",\"z\":\"619d84357241064514fac9829981d8b92372a104673294c26ecae1b96d312603\"},{\"d\":\"4008d848676cfa62a7fe49420a65c62a5022a45ca71e592b208eee2629bf451b\",\"c\":\"bfefba81cca015bdd7d91a5877f404f1c03e692cddc426ee5399605132e9d40c\",\"z\":\"b87b0f6e702b8417799a78c82daa54c921d2a3301cd902910666388382debb0d\"},{\"d\":\"e600ade6cb174ce19ff72cdee16c570a1c6700e3873aea449528da126d14a27c\",\"c\":\"4dfebf8a4b8af8c2ee571d559739ba289bbf37606c3cba49e35de183760d1a09\",\"z\":\"d21e021aef54d9ca34207ea5f2f35010456c4ec1379f38325c7d98b67d71e008\"}]}",
+      "error": "Share 0 from Org2MSP does not match its key."
+    },
+    {
+      "name": "Org1MSP's share posted by Org2MSP",
+      "kind": "dshare",
+      "election": "budget-2027",
+      "index": 1,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "json": "{\"shares\":[{\"d\":\"c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b\",\"c\":\"571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408\",\"z\":\"e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707\"},{\"d\":\"106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800\",\"c\":\"fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001\",\"z\":\"c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b\"},{\"d\":\"7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77\",\"c\":\"c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307\",\"z\":\"13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909\"}]}",
+      "error": "Share 0 from Org2MSP does not match its key."
+    },
+    {
+      "name": "two entries for three options",
+      "kind": "dshare",
+      "election": "budget-2027",
+      "index": 0,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "json": "{\"shares\":[{\"d\":\"c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b\",\"c\":\"571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408\",\"z\":\"e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707\"},{\"d\":\"106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800\",\"c\":\"fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001\",\"z\":\"c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b\"}]}",
+      "error": "The decryption share has 2 entries; this election has 3 options."
+    },
+    {
+      "name": "one entry for three options",
+      "kind": "dshare",
+      "election": "budget-2027",
+      "index": 0,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "json": "{\"shares\":[{\"d\":\"c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b\",\"c\":\"571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408\",\"z\":\"e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707\"}]}",
+      "error": "The decryption share has 1 entry; this election has 3 options."
+    },
+    {
+      "name": "a non-canonical d",
+      "kind": "dshare",
+      "election": "budget-2027",
+      "index": 0,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "json": "{\"shares\":[{\"d\":\"c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b\",\"c\":\"571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408\",\"z\":\"e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707\"},{\"d\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f\",\"c\":\"fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001\",\"z\":\"c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b\"},{\"d\":\"7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77\",\"c\":\"c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307\",\"z\":\"13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909\"}]}",
+      "error": "The decryption share's shares[1].d isn't a canonical point."
+    },
+    {
+      "name": "a changed c in entry 2",
+      "kind": "dshare",
+      "election": "budget-2027",
+      "index": 2,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "json": "{\"shares\":[{\"d\":\"60504ea8044ddb21ea68a82e2fad0ccdf5c0a1e9c2241b42d460672f5a21ec50\",\"c\":\"475298ba7fbdfb07dca9b92096d45979764087540a4349d67b4528b5450c3e0f\",\"z\":\"fcfd70292314464c8cf1bbaafd6e68de35c77cd78521a1c3525e8db764e61609\"},{\"d\":\"d40289a713aad87f7a34a1d7b42fb41c2f82bde4a5fad56d50cf34e7c9274e35\",\"c\":\"6ee328df9d8f437b8d52f29ae8ffad76800862464cbd2052beba9dfd732ddf0d\",\"z\":\"ef93766403b342be544b2a0c43a35f3168ae47cc3b8d1c5312ef165106d2600d\"},{\"d\":\"36dd6706865821c39d8f46750f3d572f8dbfecfccd48d61c0b1f7348c9f4841b\",\"c\":\"d13ad1bc7e631c39d0878128e5fec2d30818c93c4ee187ed65d8c89994dcc303\",\"z\":\"5caee027f8821ce67991c9f59bbebe773598801ae14c8b35626984812ba1da09\"}]}",
+      "error": "Share 2 from Org3MSP does not match its key."
+    },
+    {
+      "name": "a trustee field, which the contract takes from the caller",
+      "kind": "dshare",
+      "election": "budget-2027",
+      "index": 0,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "json": "{\"trustee\":\"0100000000000000000000000000000000000000000000000000000000000000\",\"shares\":[{\"d\":\"c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b\",\"c\":\"571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408\",\"z\":\"e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707\"},{\"d\":\"106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800\",\"c\":\"fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001\",\"z\":\"c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b\"},{\"d\":\"7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77\",\"c\":\"c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307\",\"z\":\"13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909\"}]}",
+      "error": "The decryption share isn't in the version 1 format: it has an unknown field, trustee."
+    },
+    {
+      "name": "a tally from one organisation alone",
+      "kind": "tally",
+      "election": "budget-2027",
+      "ballots": 5,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "posted": [
+        {
+          "index": 1,
+          "share": {
+            "shares": [
+              {
+                "d": "72ebd3a3aa4393c953461b71d4fdf2aa85e6ba209d9f13708fc2f0f733c8df0a",
+                "c": "25553ecf125e3dc48a09c22d96f47f7de3517aba6cd25879a35e8374f81f2d0d",
+                "z": "9a069b8c0bbe7143da6c1eb93a6a013b519c7c37c888dc9d9f57a49be7ef110d"
+              },
+              {
+                "d": "803ed3ad0899c691d8ad4c7872cb75752dd8f70d8957bb937dfe88103db3967a",
+                "c": "18df30e722b1ef65fba940335a24f1641849f773d5b89cc39a2ff5fa2cfa0305",
+                "z": "ebecad5123a796895bab1439e15e675504223e297d55d80548db594dea936300"
+              },
+              {
+                "d": "be2247b3810d150b4051b8df87a506e629877a33bdb479702c7d3be94a4bcc4c",
+                "c": "88b467fc5a5fdff83d161620d0557697dbe958b85391f7e5364fc8789f307e04",
+                "z": "cc5145541d2fcc52291c92230a5a8697146ae898f9aaa90e58a3e745e2ac5b04"
+              }
+            ]
+          }
+        }
+      ],
+      "error": "The tally needs 2 decryption shares; 1 has been posted."
+    },
+    {
+      "name": "a tally with no shares",
+      "kind": "tally",
+      "election": "budget-2027",
+      "ballots": 5,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "posted": [],
+      "error": "The tally needs 2 decryption shares; 0 have been posted."
+    },
+    {
+      "name": "a count larger than the number of ballots",
+      "kind": "tally",
+      "election": "budget-2027",
+      "ballots": 2,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "posted": [
+        {
+          "index": 0,
+          "share": {
+            "shares": [
+              {
+                "d": "c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b",
+                "c": "571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408",
+                "z": "e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707"
+              },
+              {
+                "d": "106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800",
+                "c": "fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001",
+                "z": "c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b"
+              },
+              {
+                "d": "7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77",
+                "c": "c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307",
+                "z": "13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909"
+              }
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "share": {
+            "shares": [
+              {
+                "d": "72ebd3a3aa4393c953461b71d4fdf2aa85e6ba209d9f13708fc2f0f733c8df0a",
+                "c": "25553ecf125e3dc48a09c22d96f47f7de3517aba6cd25879a35e8374f81f2d0d",
+                "z": "9a069b8c0bbe7143da6c1eb93a6a013b519c7c37c888dc9d9f57a49be7ef110d"
+              },
+              {
+                "d": "803ed3ad0899c691d8ad4c7872cb75752dd8f70d8957bb937dfe88103db3967a",
+                "c": "18df30e722b1ef65fba940335a24f1641849f773d5b89cc39a2ff5fa2cfa0305",
+                "z": "ebecad5123a796895bab1439e15e675504223e297d55d80548db594dea936300"
+              },
+              {
+                "d": "be2247b3810d150b4051b8df87a506e629877a33bdb479702c7d3be94a4bcc4c",
+                "c": "88b467fc5a5fdff83d161620d0557697dbe958b85391f7e5364fc8789f307e04",
+                "z": "cc5145541d2fcc52291c92230a5a8697146ae898f9aaa90e58a3e745e2ac5b04"
+              }
+            ]
+          }
+        }
+      ],
+      "error": "A count is larger than the number of ballots, so the totals or shares are wrong."
+    },
+    {
+      "name": "counts that don't add up to the number of ballots",
+      "kind": "tally",
+      "election": "budget-2027",
+      "ballots": 6,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "243c653b364cfcf458d2ee39d347a65291d0268fc15eaa7ec8b13ab3b0058a4f"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "posted": [
+        {
+          "index": 0,
+          "share": {
+            "shares": [
+              {
+                "d": "c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b",
+                "c": "571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408",
+                "z": "e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707"
+              },
+              {
+                "d": "106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800",
+                "c": "fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001",
+                "z": "c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b"
+              },
+              {
+                "d": "7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77",
+                "c": "c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307",
+                "z": "13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909"
+              }
+            ]
+          }
+        },
+        {
+          "index": 2,
+          "share": {
+            "shares": [
+              {
+                "d": "60504ea8044ddb21ea68a82e2fad0ccdf5c0a1e9c2241b42d460672f5a21ec50",
+                "c": "475298ba7fbdfb07dca9b92096d45979764087540a4349d67b4528b5450c3e0f",
+                "z": "fcfd70292314464c8cf1bbaafd6e68de35c77cd78521a1c3525e8db764e61609"
+              },
+              {
+                "d": "d40289a713aad87f7a34a1d7b42fb41c2f82bde4a5fad56d50cf34e7c9274e35",
+                "c": "6ee328df9d8f437b8d52f29ae8ffad76800862464cbd2052beba9dfd732ddf0d",
+                "z": "ef93766403b342be544b2a0c43a35f3168ae47cc3b8d1c5312ef165106d2600d"
+              },
+              {
+                "d": "36dd6706865821c39d8f46750f3d572f8dbfecfccd48d61c0b1f7348c9f4841b",
+                "c": "d03ad1bc7e631c39d0878128e5fec2d30818c93c4ee187ed65d8c89994dcc303",
+                "z": "5caee027f8821ce67991c9f59bbebe773598801ae14c8b35626984812ba1da09"
+              }
+            ]
+          }
+        }
+      ],
+      "error": "The counts add up to 5, not to the 6 ballots, so the totals or shares are wrong."
+    },
+    {
+      "name": "totals changed after the shares were checked",
+      "kind": "tally",
+      "election": "budget-2027",
+      "ballots": 5,
+      "totals": [
+        {
+          "a": "145787c36d81237028852063946a574374086180950b71554d3b94e6ca1bfe66",
+          "b": "ea8e8b2b0f04030b738932c1a3ccd6ae7c54a10aab016229511444afc189805b"
+        },
+        {
+          "a": "22d546897ef6920f04b941bb36cc15761fd5d36f7dd4bf0be7c0ed00cc17e842",
+          "b": "9e9d2dc8c39e9ce6baef65fcb8be9468b6fc0cc6e36b92cda856cc05a420870a"
+        },
+        {
+          "a": "66b96a2daed1746491040076f87e082c101b957be9b8bdc515e6886a464ea052",
+          "b": "3a34aadd1d42adacad046c70e6a8211d776ff3327cf036c90477639ab4dda067"
+        }
+      ],
+      "posted": [
+        {
+          "index": 0,
+          "share": {
+            "shares": [
+              {
+                "d": "c04c2d6c8b4bb9e2334906fc6fbe3ce171df8d4c0c7166d9893eea0c621a0a3b",
+                "c": "571f6b86cc9dbcc2266f5a6c7a0a2be6e83b593e7e70adf2c21c5558b281d408",
+                "z": "e092a5d34f5fcfbaa05f147a4d8d971379f6ad8b39319bfb42c9bc7be68bb707"
+              },
+              {
+                "d": "106c4440144d7df9754c67f1e93655ae98f4fb6e91bfbd22e0071da178cbc800",
+                "c": "fc7100b7cfe57ba5fa3b55f77c2b574c59989bc0168b10d73de7ec9ee77c0001",
+                "z": "c688397c9106761a3a1435c71534158b3f51c5d062961df72764143260563d0b"
+              },
+              {
+                "d": "7ea603de19b976d6b71477b774841842322b57ad924ad5966ddb72dbdf35fb77",
+                "c": "c95d9a6a840e2e00f40ab359e5fb6fedd1599d2c8ff044a1e876985b2e99c307",
+                "z": "13887e6bd806fe3522f55e856757728ac4ac09bfb85b8ee0725b9d1a217ff909"
+              }
+            ]
+          }
+        },
+        {
+          "index": 1,
+          "share": {
+            "shares": [
+              {
+                "d": "72ebd3a3aa4393c953461b71d4fdf2aa85e6ba209d9f13708fc2f0f733c8df0a",
+                "c": "25553ecf125e3dc48a09c22d96f47f7de3517aba6cd25879a35e8374f81f2d0d",
+                "z": "9a069b8c0bbe7143da6c1eb93a6a013b519c7c37c888dc9d9f57a49be7ef110d"
+              },
+              {
+                "d": "803ed3ad0899c691d8ad4c7872cb75752dd8f70d8957bb937dfe88103db3967a",
+                "c": "18df30e722b1ef65fba940335a24f1641849f773d5b89cc39a2ff5fa2cfa0305",
+                "z": "ebecad5123a796895bab1439e15e675504223e297d55d80548db594dea936300"
+              },
+              {
+                "d": "be2247b3810d150b4051b8df87a506e629877a33bdb479702c7d3be94a4bcc4c",
+                "c": "88b467fc5a5fdff83d161620d0557697dbe958b85391f7e5364fc8789f307e04",
+                "z": "cc5145541d2fcc52291c92230a5a8697146ae898f9aaa90e58a3e745e2ac5b04"
+              }
+            ]
+          }
+        }
+      ],
+      "error": "A count is larger than the number of ballots, so the totals or shares are wrong."
+    }
+  ]
+}

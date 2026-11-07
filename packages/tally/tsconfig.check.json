@@ -1,0 +1,11 @@
+{
+  // Type-checks the tests and scripts too, which the build leaves out.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "scripts"]
+}

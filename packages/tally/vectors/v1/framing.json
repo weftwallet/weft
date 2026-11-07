@@ -1,0 +1,141 @@
+{
+  "description": "frame(), expand_message_xmd with SHA-512 and Hs(). DST for Hs is weft-ballot-v1-challenge.",
+  "frame": [
+    {
+      "parts": [],
+      "framed": ""
+    },
+    {
+      "parts": [
+        {
+          "string": ""
+        }
+      ],
+      "framed": "00000000"
+    },
+    {
+      "parts": [
+        {
+          "string": "weft"
+        }
+      ],
+      "framed": "0000000477656674"
+    },
+    {
+      "parts": [
+        {
+          "int": 0
+        }
+      ],
+      "framed": "0000000400000000"
+    },
+    {
+      "parts": [
+        {
+          "int": 1
+        },
+        {
+          "int": 4294967295
+        }
+      ],
+      "framed": "000000040000000100000004ffffffff"
+    },
+    {
+      "parts": [
+        {
+          "bytes": ""
+        },
+        {
+          "bytes": "00ff"
+        }
+      ],
+      "framed": "000000000000000200ff"
+    },
+    {
+      "parts": [
+        {
+          "string": "Plan A"
+        },
+        {
+          "int": 3
+        },
+        {
+          "bytes": "c3a9"
+        }
+      ],
+      "framed": "00000006506c616e2041000000040000000300000002c3a9"
+    }
+  ],
+  "expandMessageXmd": [
+    {
+      "msg": "",
+      "dst": "QUUX-V01-CS02-with-expander-SHA512-256",
+      "length": 32,
+      "output": "6b9a7312411d92f921c6f68ca0b6380730a1a4d982c507211a90964c394179ba"
+    },
+    {
+      "msg": "616263",
+      "dst": "QUUX-V01-CS02-with-expander-SHA512-256",
+      "length": 32,
+      "output": "0da749f12fbe5483eb066a5f595055679b976e93abe9be6f0f6318bce7aca8dc"
+    },
+    {
+      "msg": "61626364656630313233343536373839",
+      "dst": "QUUX-V01-CS02-with-expander-SHA512-256",
+      "length": 128,
+      "output": "3f721f208e6199fe903545abc26c837ce59ac6fa45733f1baaf0222f8b7acb0424814fcb5eecf6c1d38f06e9d0a6ccfbf85ae612ab8735dfdf9ce84c372a77c8f9e1c1e952c3a61b7567dd0693016af51d2745822663d0c2367e3f4f0bed827feecc2aaf98c949b5ed0d35c3f1023d64ad1407924288d366ea159f46287e61ac"
+    },
+    {
+      "msg": "",
+      "dst": "weft-ballot-v1-challenge",
+      "length": 64,
+      "output": "ff3660eff0b3f1878c6df64644f1971fbf34643c277293ea9bd1ea8966b88abd57eddb806727a89625427d163a23cf0e8806ac2569e2b3262cbb054d29f39024"
+    },
+    {
+      "msg": "",
+      "dst": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "length": 64,
+      "output": "2f986b346b0a8f61ed8af7ec4b27e03394312afbe9ce11644ed320fd796b97c9c8b43038ec8af94451bfeef059d103a4ff7d8af5b75b92b82bf4d32a004a45bf"
+    }
+  ],
+  "hs": [
+    {
+      "label": "bit",
+      "parts": [],
+      "input": "00000003626974",
+      "xmd": "8981eb762e917d59cedf91240e9d3aed461fbb02a770ebacae3f279897d22f5a06e485857cb92ff96ab1421a99df311f1c5ad3569640ac7f25bcfa668ddf8483",
+      "scalar": "68c6cf771d2c782e658a1a7bd49fb9ebc92389ee6fc5db4974bb406703c9c002"
+    },
+    {
+      "label": "sum",
+      "parts": [
+        {
+          "bytes": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "int": 0
+        }
+      ],
+      "input": "0000000373756d0000002000000000000000000000000000000000000000000000000000000000000000000000000400000000",
+      "xmd": "df4dc7bc3b5a01f82942cc9444b4263dcaff7ea6c74105357e1b483fe9a86bdb171d9e37ca28ce2e0d0a25f5b97eaff7aec38fb33f6e0abe6b43d5762a982f4d",
+      "scalar": "626c81f522e857c1d3f16a78d481cc4fd96d2c2c5cfd7e0dddd24b250a342d06"
+    },
+    {
+      "label": "confirm",
+      "parts": [
+        {
+          "string": "budget-2027"
+        },
+        {
+          "int": 7
+        },
+        {
+          "bytes": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      ],
+      "input": "00000007636f6e6669726d0000000b6275646765742d32303237000000040000000700000020ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "xmd": "43478841a152eca2a2d31c909628284c36c0ce589c1b61a88a8184ec61436ba1d96e0fdbae60a96c5bdc4340dc758dd048adbad4e2403ce56313bfc663e47591",
+      "scalar": "7d00ddbc35776b8821a8b36e2f9e71f89a8c392176ac47dc19fc361eff668004"
+    }
+  ]
+}

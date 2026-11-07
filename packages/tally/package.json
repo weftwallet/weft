@@ -1,0 +1,55 @@
+{
+  "name": "@weftwallet/tally",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "The private tally's cryptography for Weft Experimental, the trustee tool and the explorer (ADR 0007). Unreviewed.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "weft-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./client": {
+      "weft-source": "./src/client.ts",
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    },
+    "./trustee": {
+      "weft-source": "./src/trustee.ts",
+      "types": "./dist/trustee.d.ts",
+      "import": "./dist/trustee.js"
+    },
+    "./verify": {
+      "weft-source": "./src/verify.ts",
+      "types": "./dist/verify.d.ts",
+      "import": "./dist/verify.js"
+    },
+    "./testing": {
+      "weft-source": "./src/testing.ts",
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.check.json --noEmit",
+    "test": "vitest run",
+    "vectors": "node scripts/vectors.ts",
+    "bench": "node scripts/bench.ts"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "vitest": "^5.0.5"
+  }
+}

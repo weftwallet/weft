@@ -1,0 +1,1935 @@
+{
+  "ballots": [
+    {
+      "election": "budget-2027",
+      "voter": {
+        "name": "ada",
+        "kind": "x509",
+        "mspId": "Org1MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d62334967595752684c43427562335167595342795a574673494739755a513d3d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "3ebb151ed659ec2acd305371fc2ef2c0d76b1cf172311fe20d0976a92d9b4b65"
+      },
+      "choice": 0,
+      "seed": "v1 budget-2027 ballot 0",
+      "randomness": {
+        "r": [
+          "edfd244e1d7a1da50363c6a62dea66c5aa6655af49417d8f291c34d5f6c0740e",
+          "d8ccce5c7e3217896c955d85da03b3bff615694b0ed0af5bded704140c89340f",
+          "9ae1e138ebfa405d3602ff121a994eec1ba26812e8abb5a17953df3cad8bac0f"
+        ],
+        "bits": [
+          {
+            "cs": "74ce10daa381c5e2e9a8c2bc1e901d09bc5d7f6b7394aed372915ca2d423f301",
+            "zs": "020942bd56d02da05f38ccb800b8c1659383259a4c7d25b4b53ac0c3279f7c0d",
+            "w": "eb1df26c075786c58fa7f1e37866f9a6b7d36c8cc99ee026dbeb3c042809c30a"
+          },
+          {
+            "cs": "7ed4aa0d925901c93a6f2e9c9b4f42ed0c9c9ec3b305c317f60e50b7f59dc00b",
+            "zs": "2bc2343033042612e30330ec85bc185ad660f4ab962dc9c72a4b3a82a3993a03",
+            "w": "3479dce863d46fcc61029bdc4f246c026e3da424ab9a895b9c798c9953deb000"
+          },
+          {
+            "cs": "2e4d5af29d4b27368bdee4d77f984e46a3e9d944732cbaed36ecb57e4bd3e008",
+            "zs": "c39e3c8bac1515b0074ff4c77ff769f3562b8d472163f96fec025eea68d8ff0f",
+            "w": "2f83086c610c76c7906ca94b029c81e711a1192706b08f8d4bc10a6712c69c06"
+          }
+        ],
+        "w": "ac7a4d4c8a14e2f816a87539bd3a670500df5658cec312ff7d14a8a18c393906"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "budget-2027",
+        "ciphertexts": [
+          {
+            "a": "a01ca6630a3eddd53eb41041556cddb665fed57f92a4c197e71aad446b8a4a72",
+            "b": "525da191e85e8dad1385c11b1678bd638c5deb355c546ae151ddca69a7d78725"
+          },
+          {
+            "a": "9cfe52ddb245d701aae9f0e2924f4feae3650dd81956a480438c7dbc7e838a0b",
+            "b": "98d066d7adee8b97bc8fceaad33659f9c48d0b6e223da6cf325a38317189d13f"
+          },
+          {
+            "a": "72b5ebf20f502286d9f74ff883366b7f309b4f427791e0eefa7a4b73d4d71d65",
+            "b": "d84136343cfc115daa0ea6e8e46f61036fac4a65723eefb8a2f7f661cb6a0c5e"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "74ce10daa381c5e2e9a8c2bc1e901d09bc5d7f6b7394aed372915ca2d423f301",
+            "c1": "5883f0363b3dfbddb5ff9047ac2adf4ecb52f43378c6eb36bf37441b4ef61f07",
+            "z0": "020942bd56d02da05f38ccb800b8c1659383259a4c7d25b4b53ac0c3279f7c0d",
+            "z1": "de837359ac8f206320b17705aa0156a93513e6071ca76c61dcccc5e0ea668202"
+          },
+          {
+            "c0": "072493e9f66ecde21aeea9760dde329231552269d4af1c3a12d5b120d14d190f",
+            "c1": "7ed4aa0d925901c93a6f2e9c9b4f42ed0c9c9ec3b305c317f60e50b7f59dc00b",
+            "z0": "d0c4138f450df991433dcc89059a0912f6a692be6f07a98e91626b0fb501780f",
+            "z1": "2bc2343033042612e30330ec85bc185ad660f4ab962dc9c72a4b3a82a3993a03"
+          },
+          {
+            "c0": "4c359ed5f11c11469b57d5d62c9ede2e918691dcafe3528d1983b50b0d74c40e",
+            "c1": "2e4d5af29d4b27368bdee4d77f984e46a3e9d944732cbaed36ecb57e4bd3e008",
+            "z0": "89d13d236af63a2aa080b9315bf0db5d63297aebfc74f4869cfc40fa5f8cd108",
+            "z1": "c39e3c8bac1515b0074ff4c77ff769f3562b8d472163f96fec025eea68d8ff0f"
+          }
+        ],
+        "sumProof": {
+          "c": "3e3ac31395b2b2000cd52c180bba72c23262c3c6b4271b43e34d06ec523d5e04",
+          "z": "1d1623c988959ea1adc0c6a6dd34833c2229969ce4e70868bf41f54aaf37d00e"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"a01ca6630a3eddd53eb41041556cddb665fed57f92a4c197e71aad446b8a4a72\",\"b\":\"525da191e85e8dad1385c11b1678bd638c5deb355c546ae151ddca69a7d78725\"},{\"a\":\"9cfe52ddb245d701aae9f0e2924f4feae3650dd81956a480438c7dbc7e838a0b\",\"b\":\"98d066d7adee8b97bc8fceaad33659f9c48d0b6e223da6cf325a38317189d13f\"},{\"a\":\"72b5ebf20f502286d9f74ff883366b7f309b4f427791e0eefa7a4b73d4d71d65\",\"b\":\"d84136343cfc115daa0ea6e8e46f61036fac4a65723eefb8a2f7f661cb6a0c5e\"}],\"bitProofs\":[{\"c0\":\"74ce10daa381c5e2e9a8c2bc1e901d09bc5d7f6b7394aed372915ca2d423f301\",\"c1\":\"5883f0363b3dfbddb5ff9047ac2adf4ecb52f43378c6eb36bf37441b4ef61f07\",\"z0\":\"020942bd56d02da05f38ccb800b8c1659383259a4c7d25b4b53ac0c3279f7c0d\",\"z1\":\"de837359ac8f206320b17705aa0156a93513e6071ca76c61dcccc5e0ea668202\"},{\"c0\":\"072493e9f66ecde21aeea9760dde329231552269d4af1c3a12d5b120d14d190f\",\"c1\":\"7ed4aa0d925901c93a6f2e9c9b4f42ed0c9c9ec3b305c317f60e50b7f59dc00b\",\"z0\":\"d0c4138f450df991433dcc89059a0912f6a692be6f07a98e91626b0fb501780f\",\"z1\":\"2bc2343033042612e30330ec85bc185ad660f4ab962dc9c72a4b3a82a3993a03\"},{\"c0\":\"4c359ed5f11c11469b57d5d62c9ede2e918691dcafe3528d1983b50b0d74c40e\",\"c1\":\"2e4d5af29d4b27368bdee4d77f984e46a3e9d944732cbaed36ecb57e4bd3e008\",\"z0\":\"89d13d236af63a2aa080b9315bf0db5d63297aebfc74f4869cfc40fa5f8cd108\",\"z1\":\"c39e3c8bac1515b0074ff4c77ff769f3562b8d472163f96fec025eea68d8ff0f\"}],\"sumProof\":{\"c\":\"3e3ac31395b2b2000cd52c180bba72c23262c3c6b4271b43e34d06ec523d5e04\",\"z\":\"1d1623c988959ea1adc0c6a6dd34833c2229969ce4e70868bf41f54aaf37d00e\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "3878b82f9a6559d8aecb2b3e27be2fa1d27fd211488101222083fcead437b850",
+            "B0": "ac7b8f114df8bcf0b23b3b5ab113acbb1a0210a6d6cf5aa1161bfb8af5a91975",
+            "A1": "0228dff3486e4bfcb35a996084809b8facdbd91893c42a39a64ff0324af8406d",
+            "B1": "c872d1d9ffe7ff3ab25602d7108e5294bdff0d58c07ee746ae5bd39390d41903",
+            "c": "cc510111dfbec0c09fa85304cbbafc5787b0739feb5a9a0a32c9a0bd221a1309"
+          },
+          {
+            "A0": "e8ba99643eb418b2dd655d7494c3127c6f5cf771e55b1679cb9f81bf72c3b305",
+            "B0": "58d5add419dea74cad8f6ae5ad5b8ac1bd9175bf6675bb133eef02fcccb64024",
+            "A1": "32e88f1cdc1458be7e6233cf4b30a61eb9f436e7e0301f2a08d3efc918f3eb23",
+            "B1": "f0a92a6bbe42500d554b38d9259c86123bc6bdb8dce2aff823714e8d3680ee40",
+            "c": "9824489a6e65bc537fc0e06fca33966a3ef1c02c88b5df5108e401d8c6ebd90a"
+          },
+          {
+            "A0": "78dac867571786a5e619137705d233f1832f72c6578cc816252b586ac865940c",
+            "B0": "d429424e2182fc017ed25f5ac7aee20055e5f21d23d575ff2458efafc3e47a47",
+            "A1": "b29d98aa90aab2ba9e30e45f03ccc42569e4743726eaf029cb23ea094a4ccc37",
+            "B1": "c665c845ddb7c62450366a9e197676ef24c49c25b19d3dc7d6db596e53da0f64",
+            "c": "8dae026b750526245099c20bce3c4e6034706b2123100d7b506f6b8a5847a507"
+          }
+        ],
+        "sum": {
+          "A": "b8621b1d692e4db132db64ac12033d44c59e52cc4423c6a4e3119275a079c542",
+          "B": "4ae5d75a2471b5581af1f25006d3787fa32e12c1bf54604b72df8c3c4c00f300",
+          "T1": "96c4c9a2f63f0c9209d047a3b98e812ed3a7fee40f453c7c271d12178044a10e",
+          "T2": "10dd8a180575959670200c86829075e2c86a7b6d9f90cb08312a80597f099018",
+          "c": "3e3ac31395b2b2000cd52c180bba72c23262c3c6b4271b43e34d06ec523d5e04"
+        }
+      },
+      "tracking": "4c1f81967d62bed784db50c1c7f6ffaba553fd9631131c075433be2ed0215fd3"
+    },
+    {
+      "election": "budget-2027",
+      "voter": {
+        "name": "grace",
+        "kind": "x509",
+        "mspId": "Org2MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d623349675a334a6859325573494735766443426849484a6c595777676232356c0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "cd869d4e36aa224fe599c31aedbed4ab3ff25d346dcc943abb56582ce3bd5c98"
+      },
+      "choice": 1,
+      "seed": "v1 budget-2027 ballot 1",
+      "randomness": {
+        "r": [
+          "876c4a1d8d5efff8211cd040c372843dc28cbe8e2dca245b5a485d144783370e",
+          "3b95fd2addecf11f7cb82af40daa7d1963de5459cd36d8de45cb6344a850e10b",
+          "3ad6c4ad83af8bd827aa864f833ceca38b3b90c4532e4a0ec8f32806c52be704"
+        ],
+        "bits": [
+          {
+            "cs": "51e3db22d27ba4c957e971917105c7a70279acfe0ba3901003b7e8b43e88bf0f",
+            "zs": "6d98d65bd4c29ebb5d58a2a4ef70d971291108289df02d9ac7fecd689fccc204",
+            "w": "da16fc892f8714fead3e220212d1b11e4ef00140ecc07a2ef7ea8deb189a2101"
+          },
+          {
+            "cs": "49ccc1670885fc2315af5e552211d63390e2dccfbc90348e1309cb8d0bc5b90c",
+            "zs": "e4429135ab5d6b37618c77fb74c45db170c8a69ecfe1b750a417c574f8dfa506",
+            "w": "10ccc3b2f7a8cc116ed397d34b15c4216f93fd40822595c3e0a8c73b646e3000"
+          },
+          {
+            "cs": "5aa621bb39ed3acd23ee5e96f3ded9e42030292420e0cd30443c503da028f200",
+            "zs": "cc37f07b8c6c6b6730a68130bfd87c4f87b9ada260635899a3ccadb05f615909",
+            "w": "de4a2635ab255854f8f8601e3a0ebe674b321f8b5b10e88b927ee6bc28ffe307"
+          }
+        ],
+        "w": "187c7fbf3d9e95bff83110e725ac025cd0fbd4ff3bc933c60449ab788fb2620b"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "budget-2027",
+        "ciphertexts": [
+          {
+            "a": "184f45f184c5bc98a7923794099346a67afc8ade55c9c9542ca2cf385bd3d233",
+            "b": "e674fcefb6ca4010d60e0ad77868dcebc6d913b28b1df01536868edcbda15751"
+          },
+          {
+            "a": "22fc4145f6a7af9924024202fddc7cd42170617577dcc486778bbdcfc0153f7f",
+            "b": "dab4ae70bfc2d8973ab5a8e74bc85800c68cb78d8d88bd980c6d99ae1803f753"
+          },
+          {
+            "a": "dc16dc13669377ad313ebea0c30a1b7eb4f2f467f46bf16b717dfb5965e02c27",
+            "b": "26e95fedf0869b8b03b048cff0892b2a6ba44f7bc32665c7444ab3cebd3f4478"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "e2451617e033ec385854232cc6dd009e65648607574f82ce7709b493e64b7203",
+            "c1": "51e3db22d27ba4c957e971917105c7a70279acfe0ba3901003b7e8b43e88bf0f",
+            "z0": "2e9bd413f8fdab96247f5acd7cc0854962ada96a41374aa962f6bf0340c7d200",
+            "z1": "6d98d65bd4c29ebb5d58a2a4ef70d971291108289df02d9ac7fecd689fccc204"
+          },
+          {
+            "c0": "49ccc1670885fc2315af5e552211d63390e2dccfbc90348e1309cb8d0bc5b90c",
+            "c1": "78f2fd3c59fa5d60e2064c2a96c749f5f9ccbdb72901e0d3558076b2d8beec08",
+            "z0": "e4429135ab5d6b37618c77fb74c45db170c8a69ecfe1b750a417c574f8dfa506",
+            "z1": "424d5650f987d8d9dcd9d82457678914a2029d6258488ebc2ee36ceaedbf1a01"
+          },
+          {
+            "c0": "37167b81ec7ba388d9e8acf45e6a13aa2c5661d9ecd7ef03d7745f4be8af8b0c",
+            "c1": "5aa621bb39ed3acd23ee5e96f3ded9e42030292420e0cd30443c503da028f200",
+            "z0": "a55ad420c315ca8ff23da45155c5634d52af979669cafb8224c146ae06be250d",
+            "z1": "cc37f07b8c6c6b6730a68130bfd87c4f87b9ada260635899a3ccadb05f615909"
+          }
+        ],
+        "sumProof": {
+          "c": "540f6b40d14640e914a309220843409bb6ca0776b2978e3b748f77edc9c48900",
+          "z": "aeff26ea51d0e5d9f042e6b110060f1db031e1b4436ffb2bc2213a3bad702c0b"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"184f45f184c5bc98a7923794099346a67afc8ade55c9c9542ca2cf385bd3d233\",\"b\":\"e674fcefb6ca4010d60e0ad77868dcebc6d913b28b1df01536868edcbda15751\"},{\"a\":\"22fc4145f6a7af9924024202fddc7cd42170617577dcc486778bbdcfc0153f7f\",\"b\":\"dab4ae70bfc2d8973ab5a8e74bc85800c68cb78d8d88bd980c6d99ae1803f753\"},{\"a\":\"dc16dc13669377ad313ebea0c30a1b7eb4f2f467f46bf16b717dfb5965e02c27\",\"b\":\"26e95fedf0869b8b03b048cff0892b2a6ba44f7bc32665c7444ab3cebd3f4478\"}],\"bitProofs\":[{\"c0\":\"e2451617e033ec385854232cc6dd009e65648607574f82ce7709b493e64b7203\",\"c1\":\"51e3db22d27ba4c957e971917105c7a70279acfe0ba3901003b7e8b43e88bf0f\",\"z0\":\"2e9bd413f8fdab96247f5acd7cc0854962ada96a41374aa962f6bf0340c7d200\",\"z1\":\"6d98d65bd4c29ebb5d58a2a4ef70d971291108289df02d9ac7fecd689fccc204\"},{\"c0\":\"49ccc1670885fc2315af5e552211d63390e2dccfbc90348e1309cb8d0bc5b90c\",\"c1\":\"78f2fd3c59fa5d60e2064c2a96c749f5f9ccbdb72901e0d3558076b2d8beec08\",\"z0\":\"e4429135ab5d6b37618c77fb74c45db170c8a69ecfe1b750a417c574f8dfa506\",\"z1\":\"424d5650f987d8d9dcd9d82457678914a2029d6258488ebc2ee36ceaedbf1a01\"},{\"c0\":\"37167b81ec7ba388d9e8acf45e6a13aa2c5661d9ecd7ef03d7745f4be8af8b0c\",\"c1\":\"5aa621bb39ed3acd23ee5e96f3ded9e42030292420e0cd30443c503da028f200\",\"z0\":\"a55ad420c315ca8ff23da45155c5634d52af979669cafb8224c146ae06be250d\",\"z1\":\"cc37f07b8c6c6b6730a68130bfd87c4f87b9ada260635899a3ccadb05f615909\"}],\"sumProof\":{\"c\":\"540f6b40d14640e914a309220843409bb6ca0776b2978e3b748f77edc9c48900\",\"z\":\"aeff26ea51d0e5d9f042e6b110060f1db031e1b4436ffb2bc2213a3bad702c0b\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "26bbb140f4cf81881ee688557256a6093dcd5ba74a33e77316f22b318bb9ef23",
+            "B0": "30ab2196696f555dfe6da57ae7f045d8f5b9a462fa9aca2c4c16a37c1d1e4079",
+            "A1": "f858556c870ac8ee84a18d93ab91cc1e3ff98d33c739c13cfc863425699d0317",
+            "B1": "a22d75c9e970500fc7054ee641899ef24b2bfaaeb02bd78f2070a4479ce3ea4a",
+            "c": "4655fcdc974c7eaad9a09d1a59e9e83068dd320663f212df7ac09c4825d43103"
+          },
+          {
+            "A0": "3ef1df951a2e40feb288b045af149c2d7c62080953da4ea6aa62fa12b412c95e",
+            "B0": "50f6e03cd2467568df2e86fc19d19c73adb132a07aa8b8bce7c355ce777a2527",
+            "A1": "c0a1c478cea8054238d81c55131b5ef20b419e444ef73f82c9957429aaf3ce3b",
+            "B1": "9a6b825015cbc3fd058b6e0af3f0e45dbb2db00d08cc4aa43947adcfd3e58a25",
+            "c": "d4eac947471c482c2119b3dcd9de40148aaf9a87e691146269894140e483a605"
+          },
+          {
+            "A0": "948235c71ab8c6aa17b3578cf370e9c9b83b29afbac8ceb953ae776c8afae277",
+            "B0": "40c9a246ba5e4c9cf6cfdccbb65e3d5a2d6054fb6f2b7603c80ab3f95b947b1e",
+            "A1": "10cac8b9d235f2aca31217f5ee501f9ed04ae62530f370afca55d3e37a3aa171",
+            "B1": "98b07be83faf3fd8ef8aa31fe2941a9e679cca8fd3d86f44eca1aa48478e662f",
+            "c": "91bc9c3c2669de55fdd60b8b5249ed8e4d868afd0cb8bd341bb1af8888d87d0d"
+          }
+        ],
+        "sum": {
+          "A": "dc7284591a14a5cbd9b08aeb093191cb49a383dd779cbd45fbd5f438ab0b700b",
+          "B": "4a0e286d03710ab91cbafe54f54681d484be29a58194e19c343752a7b696da45",
+          "T1": "1a03a5cf6ec407105be215856a5ceb8ce724fad3d19dc1e060357430ae194038",
+          "T2": "783977d69f85929e60c25bfa6ad41ced6adeb1cd98c360880c1022d6a27c4209",
+          "c": "540f6b40d14640e914a309220843409bb6ca0776b2978e3b748f77edc9c48900"
+        }
+      },
+      "tracking": "459e42a8be8682dda58c5c3cca683d12afcf1ae96f76fa8606b8fcec6c39e75f"
+    },
+    {
+      "election": "budget-2027",
+      "voter": {
+        "name": "alan",
+        "kind": "x509",
+        "mspId": "Org1MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d623349675957786862697767626d393049474567636d566862434276626d553d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "b0abeb170563c230edd0dec38b3370a5ecbfc6216d5dd6c5f1a23e39f70e640e"
+      },
+      "choice": 1,
+      "seed": "v1 budget-2027 ballot 2",
+      "randomness": {
+        "r": [
+          "ca96ea93b8d37be734118fcdeb3dce486c0a638885aebdc5f5fef751a33b6c0d",
+          "1322cc6a73180dd9b215e104de8a6cb738cb07ff302a56c9b30e8f13521f4703",
+          "a9932bde8f534cb9185940baabaa02c78c98aa72091c10e2dbbc916917aa4f03"
+        ],
+        "bits": [
+          {
+            "cs": "7b62e83d89c6ffcb9da7895b0c282f8c9685fc517d8758d8a81af9e3a83ac606",
+            "zs": "379a0af36cef8273f14a461a46866d0b41b6bee619f24357775e725eef69cb01",
+            "w": "02dd33e0d009b6172ef2c89bcebd2d612c044dff433077482428215d01aa370a"
+          },
+          {
+            "cs": "42773110301951e4ae89e8ff3713fc9b77bd353fafa78c67f4f85a010d9dbc05",
+            "zs": "21082e5480b68e8fd10a25387b5faed003377a57fae1bd6d7bbca15a52855d09",
+            "w": "728dd7235095059a833f3e1ba8d786497ca32b1015ca7a20e889b4a39b498f09"
+          },
+          {
+            "cs": "25eb51efe0efbeb65f76c5401919075efcc03ccdc12598e3e30b5a65716a6209",
+            "zs": "d2a2dcc2ff3762a8067e9843cc8e2954b2bb988c03e982eec8ed13c74740cf03",
+            "w": "b944d4aad10dd48051067898805355179e6197275616885ef3b04463c6048501"
+          }
+        ],
+        "w": "fcfcb93981113b659e17098fd6c604612b8db906f6d26fc99e53a79be1765c0c"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "budget-2027",
+        "ciphertexts": [
+          {
+            "a": "52f4371e196a5311c20709288afbdc1de3e1ae63faecc5e12bdfde8b167e3339",
+            "b": "46c10fa439994e603df3106383a5a85d073da189cf3f04a14e7cc6f57ba90e72"
+          },
+          {
+            "a": "ccaeb64c5be53b7c6e1c2862a9cc0cffcc6e6287a17bc8373425f608ba750a76",
+            "b": "642da3acf8f9a15d6b9f27a8b18903835b18bc941d6a8f9b6ba8c422a0c3fb2d"
+          },
+          {
+            "a": "165ff7960fbafb8703627e914bd144a83571afc5fedea08e7b6f827fa5719b1e",
+            "b": "3a1cfe3d857149cda9fb2f5dfa4356325ebb2cc337a18c65a5cb2e505412d057"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "c396355c9fe30d34834d05563d609a3e153f6744237a805a4b1d54c51bdad600",
+            "c1": "7b62e83d89c6ffcb9da7895b0c282f8c9685fc517d8758d8a81af9e3a83ac606",
+            "z0": "1a4f22c0e7868bd76df9b6c36ceff3c248d3a52d30cb139eb2814e60a3a57b0c",
+            "z1": "379a0af36cef8273f14a461a46866d0b41b6bee619f24357775e725eef69cb01"
+          },
+          {
+            "c0": "42773110301951e4ae89e8ff3713fc9b77bd353fafa78c67f4f85a010d9dbc05",
+            "c1": "e426b0cda20069bb5667cec4f4d51cf62de87b3652250235692281e65285290e",
+            "z0": "21082e5480b68e8fd10a25387b5faed003377a57fae1bd6d7bbca15a52855d09",
+            "z1": "09bcce482eef796a402d8e6365b968706a0c983a2cc539e87c0dd0c24b08900e"
+          },
+          {
+            "c0": "e16c296309a9c05b449bb2aac499160494d3501789b425d0426f61c114786b03",
+            "c1": "25eb51efe0efbeb65f76c5401919075efcc03ccdc12598e3e30b5a65716a6209",
+            "z0": "3408fc1c301fc8350b0db7a30fe6aa172f991c888c91c8285309ec7788f1cf0b",
+            "z1": "d2a2dcc2ff3762a8067e9843cc8e2954b2bb988c03e982eec8ed13c74740cf03"
+          }
+        ],
+        "sumProof": {
+          "c": "7c632b5fe80745f78f1a3be74304b9e29a269e33e204e63266174fb72b27c30b",
+          "z": "06cb3b8f35ab5d469cfc40abbf81e1a263e8eb8c75b5e60bebeeb7e8fad1ae09"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"52f4371e196a5311c20709288afbdc1de3e1ae63faecc5e12bdfde8b167e3339\",\"b\":\"46c10fa439994e603df3106383a5a85d073da189cf3f04a14e7cc6f57ba90e72\"},{\"a\":\"ccaeb64c5be53b7c6e1c2862a9cc0cffcc6e6287a17bc8373425f608ba750a76\",\"b\":\"642da3acf8f9a15d6b9f27a8b18903835b18bc941d6a8f9b6ba8c422a0c3fb2d\"},{\"a\":\"165ff7960fbafb8703627e914bd144a83571afc5fedea08e7b6f827fa5719b1e\",\"b\":\"3a1cfe3d857149cda9fb2f5dfa4356325ebb2cc337a18c65a5cb2e505412d057\"}],\"bitProofs\":[{\"c0\":\"c396355c9fe30d34834d05563d609a3e153f6744237a805a4b1d54c51bdad600\",\"c1\":\"7b62e83d89c6ffcb9da7895b0c282f8c9685fc517d8758d8a81af9e3a83ac606\",\"z0\":\"1a4f22c0e7868bd76df9b6c36ceff3c248d3a52d30cb139eb2814e60a3a57b0c\",\"z1\":\"379a0af36cef8273f14a461a46866d0b41b6bee619f24357775e725eef69cb01\"},{\"c0\":\"42773110301951e4ae89e8ff3713fc9b77bd353fafa78c67f4f85a010d9dbc05\",\"c1\":\"e426b0cda20069bb5667cec4f4d51cf62de87b3652250235692281e65285290e\",\"z0\":\"21082e5480b68e8fd10a25387b5faed003377a57fae1bd6d7bbca15a52855d09\",\"z1\":\"09bcce482eef796a402d8e6365b968706a0c983a2cc539e87c0dd0c24b08900e\"},{\"c0\":\"e16c296309a9c05b449bb2aac499160494d3501789b425d0426f61c114786b03\",\"c1\":\"25eb51efe0efbeb65f76c5401919075efcc03ccdc12598e3e30b5a65716a6209\",\"z0\":\"3408fc1c301fc8350b0db7a30fe6aa172f991c888c91c8285309ec7788f1cf0b\",\"z1\":\"d2a2dcc2ff3762a8067e9843cc8e2954b2bb988c03e982eec8ed13c74740cf03\"}],\"sumProof\":{\"c\":\"7c632b5fe80745f78f1a3be74304b9e29a269e33e204e63266174fb72b27c30b\",\"z\":\"06cb3b8f35ab5d469cfc40abbf81e1a263e8eb8c75b5e60bebeeb7e8fad1ae09\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "28cc832a95b217d26e31ab1fbf29b8dd3c121413b1f580ba60c3e5031115da7e",
+            "B0": "8e1e26e6da699aacf9c2fd0c99029b7dc0d88f982c5209a0470216d960dcfc7d",
+            "A1": "de8a9cfbe4862c1137782669fd36059bde4b1d8fc536e84845cd8bbd76dfb267",
+            "B1": "988e3e57a4645c69252ecacfdfd66315758dfebb259482a62efc48a4eb15355c",
+            "c": "3ef91d9a28aa0d0021f58eb14988c9caabc46396a001d932f4374da9c4149d07"
+          },
+          {
+            "A0": "9e28bd75a7a782f2ddc7ef43a2fd7b356fbabadec6f259ac2d146c3cadcb1253",
+            "B0": "2c77ba15e45abd1c5476e19b94a9efb95a55ce36588f7f90a12491407a0b6568",
+            "A1": "fee23cee18905212230ba14ad3b6d7aa794e4e59e7b2ac45f218568cba18cb24",
+            "B1": "3cad5d7aa7a21a1897d7e0ba99bac98d4f0ffabdb40ff824476fd33661b27b40",
+            "c": "39caeb80b8b6a7472f54bf214eef397da5a5b17501cd8e9c5d1bdce75f22e603"
+          },
+          {
+            "A0": "60a675d7c86abdab70c6629087b0d4020adc938e95bd948eb6d4492eab04916c",
+            "B0": "043016bc014c57a7985b5150498b29460e83ddf71ee5ae736cddfbc7ceef7154",
+            "A1": "2cc1636ede6c515aa02b904e3d54844af4778a8a6653f3d23cdee42282434140",
+            "B1": "f085bd2814544b072c43063c69afdadea6fb407e108d8ad7292961d900b8943a",
+            "c": "06587b52ea987f12a41178ebddb21d6290948de44adabdb3267bbb2686e2cd0c"
+          }
+        ],
+        "sum": {
+          "A": "2a321701a8497d31df538802e5626a42784513f5b1e90c4eb80b800675475233",
+          "B": "08a247f126070eca4a2bb07551be42246aed3a6ad82892979a55760f66c9a53f",
+          "T1": "fc283370fe62391451ce9770fc664c786a25e828753e0c9f470b95d078eeba2c",
+          "T2": "d4028f68a45fe60107ae68b389bb2b16301cf4b12d0521eb613a5362e88f3a21",
+          "c": "7c632b5fe80745f78f1a3be74304b9e29a269e33e204e63266174fb72b27c30b"
+        }
+      },
+      "tracking": "7903a0033abf83cfc52c818332bf8083b3ca5ac678148bbd293fdb8c3e22d159"
+    },
+    {
+      "election": "budget-2027",
+      "voter": {
+        "name": "edsger",
+        "kind": "x509",
+        "mspId": "Org2MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d623349675a57527a5a3256794c43427562335167595342795a574673494739755a513d3d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "ea60fb883929211f827f8d1bf160563fef9f1ca68bb60792515a75e360c5703c"
+      },
+      "choice": 1,
+      "seed": "v1 budget-2027 ballot 3",
+      "randomness": {
+        "r": [
+          "56d8a4e67529fd4dcefd655973b960ed3c0eb532f460f0574cbd72331f668907",
+          "78a37883fcd2ca6639aa2afdad97f4c26547d3e9be4e0f88dfa773534836880d",
+          "74803f7677e0ecdfc06cce5ccc4e9acde80074fc2658f59d540466393d3b0102"
+        ],
+        "bits": [
+          {
+            "cs": "946fc577f40e8750995afea5fbc23b3e9335855e076cb6c7a4a4491cea78ce06",
+            "zs": "67aa938c0d350d88eef0a8e746042d8c423bfac2fda9af1d5cd04fc7d1c7c506",
+            "w": "55eb02f0df5d28dc37247df461b3f5de13d5ff3f7de2120594b38de2692cca0e"
+          },
+          {
+            "cs": "6737d2d3d01c0f989041e5d1aaa151a1c44d4a1632e485214ef1b9329f39ab0c",
+            "zs": "109704e8b64375c170d3ab33a380876b8bdbde7fe2cdad02089b0e63454a510d",
+            "w": "23996811b95fe044968ffd7f255248f70cc3c386d6afd5d5d87ffc64e9004507"
+          },
+          {
+            "cs": "370c6689691a856694b9fac5d1e183829ac5a9e013d0827a7651dc171569d40e",
+            "zs": "a4bcf3036da68726e0521bf080999dccb1d96d5c94e2d83caff17be9dead110d",
+            "w": "e45ff09424a76feec0ed49dc50aefed3e09c3f05a4be863939a7febd899f4907"
+          }
+        ],
+        "w": "f233af6c922b9e26574e6a375940cfe7f5d9acb7ab671ae0d965a4c89b815a00"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "budget-2027",
+        "ciphertexts": [
+          {
+            "a": "a0021debdd396b67448cac677555c0bda3c357aa27ff50da9616104d4f4de124",
+            "b": "a6b02801d85cbff5961de51cc67c0c336e6358052f076472f53578f3caffc405"
+          },
+          {
+            "a": "ea5cfcd39fd9d1c87c15b9a79961d2e32bf0adc4d6808c25f2b3700a59d4635f",
+            "b": "a0c57f7c5862fa0aed9d815777c9d71ca1044fc205a72fcca11a399ad7bb2c28"
+          },
+          {
+            "a": "7e4e7c995d97b8561d7f20e6b63be4e70beeae74e8c0687270bf4e8e8b301437",
+            "b": "c68841150f9a33fc3b73418e7fafc5467250f6c4a2b5a698e0b28088215e4825"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "66ea913fe0da4d7c4d31c79a170605afb4c45d47ecadd8b2e92b1f8657388d0b",
+            "c1": "946fc577f40e8750995afea5fbc23b3e9335855e076cb6c7a4a4491cea78ce06",
+            "z0": "3c2f87ca1810a226e92e4e3acae88a6cc45b544016a68fe194d5519d26cff502",
+            "z1": "67aa938c0d350d88eef0a8e746042d8c423bfac2fda9af1d5cd04fc7d1c7c506"
+          },
+          {
+            "c0": "6737d2d3d01c0f989041e5d1aaa151a1c44d4a1632e485214ef1b9329f39ab0c",
+            "c1": "80ac9c8e89a3b7bf4f4f5080d79387dfa3c05bf95cc64600b00b8f99f01a9300",
+            "z0": "109704e8b64375c170d3ab33a380876b8bdbde7fe2cdad02089b0e63454a510d",
+            "z1": "1068e8ef6ab9adda5dc45ea489927505445c89a989d6c9fd9fd4c0d21cab7f0a"
+          },
+          {
+            "c0": "f8c2618222c064c45c3899eb2e6b0445d66f13b760b07cf3639bfceb8241db0e",
+            "c1": "370c6689691a856694b9fac5d1e183829ac5a9e013d0827a7651dc171569d40e",
+            "z0": "3d08f4075e1652399d8ac8396afe234e420c4b6d66f6607e1ce943c96802e80b",
+            "z1": "a4bcf3036da68726e0521bf080999dccb1d96d5c94e2d83caff17be9dead110d"
+          }
+        ],
+        "sumProof": {
+          "c": "0f7456a8c7e1517ec784eadfff645d4550dc825be848eba78518083efd04cc04",
+          "z": "4eea58379c79e64cb2ec826eae37fdae05a5066125c0f89300baac28ed4e1404"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"a0021debdd396b67448cac677555c0bda3c357aa27ff50da9616104d4f4de124\",\"b\":\"a6b02801d85cbff5961de51cc67c0c336e6358052f076472f53578f3caffc405\"},{\"a\":\"ea5cfcd39fd9d1c87c15b9a79961d2e32bf0adc4d6808c25f2b3700a59d4635f\",\"b\":\"a0c57f7c5862fa0aed9d815777c9d71ca1044fc205a72fcca11a399ad7bb2c28\"},{\"a\":\"7e4e7c995d97b8561d7f20e6b63be4e70beeae74e8c0687270bf4e8e8b301437\",\"b\":\"c68841150f9a33fc3b73418e7fafc5467250f6c4a2b5a698e0b28088215e4825\"}],\"bitProofs\":[{\"c0\":\"66ea913fe0da4d7c4d31c79a170605afb4c45d47ecadd8b2e92b1f8657388d0b\",\"c1\":\"946fc577f40e8750995afea5fbc23b3e9335855e076cb6c7a4a4491cea78ce06\",\"z0\":\"3c2f87ca1810a226e92e4e3acae88a6cc45b544016a68fe194d5519d26cff502\",\"z1\":\"67aa938c0d350d88eef0a8e746042d8c423bfac2fda9af1d5cd04fc7d1c7c506\"},{\"c0\":\"6737d2d3d01c0f989041e5d1aaa151a1c44d4a1632e485214ef1b9329f39ab0c\",\"c1\":\"80ac9c8e89a3b7bf4f4f5080d79387dfa3c05bf95cc64600b00b8f99f01a9300\",\"z0\":\"109704e8b64375c170d3ab33a380876b8bdbde7fe2cdad02089b0e63454a510d\",\"z1\":\"1068e8ef6ab9adda5dc45ea489927505445c89a989d6c9fd9fd4c0d21cab7f0a\"},{\"c0\":\"f8c2618222c064c45c3899eb2e6b0445d66f13b760b07cf3639bfceb8241db0e\",\"c1\":\"370c6689691a856694b9fac5d1e183829ac5a9e013d0827a7651dc171569d40e\",\"z0\":\"3d08f4075e1652399d8ac8396afe234e420c4b6d66f6607e1ce943c96802e80b\",\"z1\":\"a4bcf3036da68726e0521bf080999dccb1d96d5c94e2d83caff17be9dead110d\"}],\"sumProof\":{\"c\":\"0f7456a8c7e1517ec784eadfff645d4550dc825be848eba78518083efd04cc04\",\"z\":\"4eea58379c79e64cb2ec826eae37fdae05a5066125c0f89300baac28ed4e1404\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "bc5b301959a9522c405992ecf3ad3af336b4da3511477a811a2778bd31eafc44",
+            "B0": "146893a42079fb5425fd8e81e5e05f0e93fd95ca166ae87c471eace9a5095f6d",
+            "A1": "0cd094e386727bc5393796eb93aed8530c2349e9410617d9819c4c66b48d6c3a",
+            "B1": "bed60bb88b4a7257ed476078490187ce52a922eb88912d78bfbf6e49ee73a353",
+            "c": "0d86615aba86c27410efcd9d34cf61d847fae2a5f3198f7a8ed068a241b15b02"
+          },
+          {
+            "A0": "86cfe4895db05e8a52a893c8c241065853f8440cdadab868c6161e9a04d00842",
+            "B0": "125234b4c8f94798bba253a418842580d2fe7b86f403fb3261acc0674285dd41",
+            "A1": "3622f478ceec45b5380b5b892ca7d7888f96a56956707543d85219664731822e",
+            "B1": "d2220a6bf79b522fb5e3525342209bca4e033716c4b302540df36aec64e5892f",
+            "c": "e7e36e625ac0c657e09035528235d980680ea60f8faacc21fefc48cc8f543e0d"
+          },
+          {
+            "A0": "34ecf0588d19317569fa4149ec41f4439015d2807053181678b8b947c3eee603",
+            "B0": "2281d20d536c101ab498a58c5035c0feec8b23bba5451fb0fc96272eb8b0497b",
+            "A1": "d2488bc23f47141372b295f909b1fe08e0936233f46d0d1291701835d2225d7c",
+            "B1": "4a20030e8e65588a9cf49464c42a829cb88b8982ef8e6e818f2a848a07376e2f",
+            "c": "42fbd1ae7177d7d21a559c0e2253a9b27035bd977480ff6ddaecd80398aaaf0d"
+          }
+        ],
+        "sum": {
+          "A": "9e18a1592f083e55f2d5ac152f1d4cf3683311f5ec35fa50ff50b2fa319e2753",
+          "B": "4267df1105400a2ff3036fd9b433e16199d771c3682f898fb31e01be117a971e",
+          "T1": "7a17ab5255caf9285b329d7479bb4a6b8231054257909fff08a64fe06db01227",
+          "T2": "ba3e38d5b85278fa9450ae4b023e66aa5b4f0e70d106e8289d5d9cc6fc74004d",
+          "c": "0f7456a8c7e1517ec784eadfff645d4550dc825be848eba78518083efd04cc04"
+        }
+      },
+      "tracking": "7f8b15ce8d999473036b89d29502047739bd57b80392f3b7f88396839a193785"
+    },
+    {
+      "election": "budget-2027",
+      "voter": {
+        "name": "barbara",
+        "kind": "x509",
+        "mspId": "Org1MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d62334967596d4679596d467959537767626d393049474567636d566862434276626d553d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "289fea9bcb444bb3d30caa26b15d6eb7f3ac3a09aba7b309591aa3ae5fd7d088"
+      },
+      "choice": 2,
+      "seed": "v1 budget-2027 ballot 4",
+      "randomness": {
+        "r": [
+          "ed8a1994a91b3f9cda96db860b87ce041c338c804f6fd0158e7db461d157e90b",
+          "c0b7579c3228474078650c137de5fa35a1b6ae62abff8b9039af3ad4ddf27808",
+          "d0ac416a157470448b0c296e719913cda40084d4406432f0a68263259688a30b"
+        ],
+        "bits": [
+          {
+            "cs": "f4a1cc9891282ce639bd7c3fe096c5fdae87181ea3689ee005fcf11d86e3c704",
+            "zs": "2d44595870a6ad4122d024116baacaefbf98a781b2ac99274978fa42dc86820c",
+            "w": "f86d7727f8d5d27c90f1cc1ba3e87b0e1ac929bf4dfd5148aff7c319d3890c0b"
+          },
+          {
+            "cs": "786838755399455bcbbd28a7635b54f6230426f93ebdabb4bff9c391e2e1f407",
+            "zs": "b3c3278012e9b32385ef38022b9a0bf13bd63c82732c139b9f4d02db29cb2a03",
+            "w": "e07b833789505f691b494c668b79cd4a1332b27b7a3eb3f3ffef7db7c02e3f0f"
+          },
+          {
+            "cs": "bde080516246660f17b1690c756b2e31d5b3eb4d266729c819ca8faca1efaf01",
+            "zs": "4973fded943a818850cc0089623ea5c7112885b7f211ca73edbed21794fb7f09",
+            "w": "077fb7b5e052111ea88dc6e4b1ef8f1962edb1edce52391ba6b3ce092a026206"
+          }
+        ],
+        "w": "73185da2f2a55151f92726ce16a61147810d23b4a3c13ca2a3a9ce8d67ac3301"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "budget-2027",
+        "ciphertexts": [
+          {
+            "a": "6c52ec8062f77d8f674d51fdaa7600dee6e3dacb4d5f3bf621e304575292e83c",
+            "b": "42386f8ecbf417b75c3307d58ae0f705616fc32c4b7ad477504fcb4d158ea815"
+          },
+          {
+            "a": "387cc092b1eaca5ce128f9a470da066ae021351c75fd4b00b1a9ae6fd964af1f",
+            "b": "884e62bfc08d16ad06ce08d64491aba80fc4197ce0f0f7a4ae5d4359e13b8c3f"
+          },
+          {
+            "a": "f4bb8880f0c0f760788e07d442ca9e7ec091ca0623bbea6ae3ebd4d9d14ab160",
+            "b": "dc86de5de22f24793f70670d74cb97cf11ce6c0e284c12cfe61674a82c3ce62a"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "4281878078bc28ee89d992f64eebb38d61bce16a1e36172df5b9832ee8f61208",
+            "c1": "f4a1cc9891282ce639bd7c3fe096c5fdae87181ea3689ee005fcf11d86e3c704",
+            "z0": "f1b1ea46a3798610528aabb01720bce600e2b3d74493536f70c049533b429300",
+            "z1": "2d44595870a6ad4122d024116baacaefbf98a781b2ac99274978fa42dc86820c"
+          },
+          {
+            "c0": "52820143086ca1664172c26d6d2d84d92aa71719dceed4288af49a0dff585600",
+            "c1": "786838755399455bcbbd28a7635b54f6230426f93ebdabb4bff9c391e2e1f407",
+            "z0": "79a84505cc8d91c0e36e229972e211480cdeedacc5505f9d6b3ca1fcb78f2308",
+            "z1": "b3c3278012e9b32385ef38022b9a0bf13bd63c82732c139b9f4d02db29cb2a03"
+          },
+          {
+            "c0": "bde080516246660f17b1690c756b2e31d5b3eb4d266729c819ca8faca1efaf01",
+            "c1": "04760aed929e62f239e1586725d0a246aa37adfa2d80f497a99a0ed0a9a76a01",
+            "z0": "4973fded943a818850cc0089623ea5c7112885b7f211ca73edbed21794fb7f09",
+            "z1": "fc0fd1ae4526af860fa9c7c49a6d79f1fa7f3b1cfefa5561894b43accdb71f06"
+          }
+        ],
+        "sumProof": {
+          "c": "e3145de4ee5ce75d9d0c6007c20f1342c4eaf4a0adf51590779d3269a5328b0f",
+          "z": "60de3f42a379ee818d5515603b97d40561274f1a2e78d6f040408e098fbb0100"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"budget-2027\",\"ciphertexts\":[{\"a\":\"6c52ec8062f77d8f674d51fdaa7600dee6e3dacb4d5f3bf621e304575292e83c\",\"b\":\"42386f8ecbf417b75c3307d58ae0f705616fc32c4b7ad477504fcb4d158ea815\"},{\"a\":\"387cc092b1eaca5ce128f9a470da066ae021351c75fd4b00b1a9ae6fd964af1f\",\"b\":\"884e62bfc08d16ad06ce08d64491aba80fc4197ce0f0f7a4ae5d4359e13b8c3f\"},{\"a\":\"f4bb8880f0c0f760788e07d442ca9e7ec091ca0623bbea6ae3ebd4d9d14ab160\",\"b\":\"dc86de5de22f24793f70670d74cb97cf11ce6c0e284c12cfe61674a82c3ce62a\"}],\"bitProofs\":[{\"c0\":\"4281878078bc28ee89d992f64eebb38d61bce16a1e36172df5b9832ee8f61208\",\"c1\":\"f4a1cc9891282ce639bd7c3fe096c5fdae87181ea3689ee005fcf11d86e3c704\",\"z0\":\"f1b1ea46a3798610528aabb01720bce600e2b3d74493536f70c049533b429300\",\"z1\":\"2d44595870a6ad4122d024116baacaefbf98a781b2ac99274978fa42dc86820c\"},{\"c0\":\"52820143086ca1664172c26d6d2d84d92aa71719dceed4288af49a0dff585600\",\"c1\":\"786838755399455bcbbd28a7635b54f6230426f93ebdabb4bff9c391e2e1f407\",\"z0\":\"79a84505cc8d91c0e36e229972e211480cdeedacc5505f9d6b3ca1fcb78f2308\",\"z1\":\"b3c3278012e9b32385ef38022b9a0bf13bd63c82732c139b9f4d02db29cb2a03\"},{\"c0\":\"bde080516246660f17b1690c756b2e31d5b3eb4d266729c819ca8faca1efaf01\",\"c1\":\"04760aed929e62f239e1586725d0a246aa37adfa2d80f497a99a0ed0a9a76a01\",\"z0\":\"4973fded943a818850cc0089623ea5c7112885b7f211ca73edbed21794fb7f09\",\"z1\":\"fc0fd1ae4526af860fa9c7c49a6d79f1fa7f3b1cfefa5561894b43accdb71f06\"}],\"sumProof\":{\"c\":\"e3145de4ee5ce75d9d0c6007c20f1342c4eaf4a0adf51590779d3269a5328b0f\",\"z\":\"60de3f42a379ee818d5515603b97d40561274f1a2e78d6f040408e098fbb0100\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "acef9a63aeb299a7f579b2224d4b2faf928b1bf561a67b00ad3c71e714f1cb01",
+            "B0": "d03b58313cdda7fb35748a83e17a5c6478dee68524f7f77fb23b5c64a2b10442",
+            "A1": "6ed2bf407a059812847628a47b541b76126d5610cab179684bcb5c10f5a3f172",
+            "B1": "c449b23e2165477dfa76d1ec6248727f4ac039881dbc9acc42365dff766dc51d",
+            "c": "362354190ae554d4c3960f362f82798b1044fa88c19eb50dfbb5754c6edada0c"
+          },
+          {
+            "A0": "0657f7ddb9481d24f115c6de3bcfe7af32e3597430724dd1636babf3e0ea8c1c",
+            "B0": "106f23518690ad874172f19a1f62524820c349fa97682df227ffe1ffe44e6652",
+            "A1": "12b10ab76a082c49afc6a84b483348041cc908aed65a15da28745a1d949a4c1c",
+            "B1": "ecd8c8a5fbdb4280f556da03ccef33801bf106ca9648e06f639b4a07d32d143a",
+            "c": "caea39b85b05e7c10c30eb14d188d8cf4eab3d121bac80dd49ee5e9fe13a4b08"
+          },
+          {
+            "A0": "c80e0098e587c4d2e6915da6ff651ac65f0722a7ecfa9e6d3ff89ffb1d45aa14",
+            "B0": "f63dd7fd2ee2197340a9fb8828c3d7ff61af67530b5d3361165b5cdcbd59e979",
+            "A1": "3098bec363cd14ab6ac60b77e9fbdb86c980f7aa51b6e6d77dcc433a2256cd64",
+            "B1": "d8bad74cb754d4d7a6efbabdcefff0886f830ad5286d8547ea6492c2c5934c21",
+            "c": "c1568b3ef5e4c8015192c2739a3bd1777feb984854e71d60c3649e7c4b971a03"
+          }
+        ],
+        "sum": {
+          "A": "3c6de941f6cdd7a32cd8cbbe47034533ae7bf5cabfcfbc7f6bc0e6c86802a536",
+          "B": "fa1d7342a758465dab693812dc4ca4569212f5c9cda3f3bbe548ada568170d05",
+          "T1": "148154c5a275dd7877dcdc5d5b4eae8cf66c2f88176aa4f322c5d04c2518cb47",
+          "T2": "0cbe484f47dc5308040c16ecc9266e89f2b4b4591f6bce690fc071981afaaa78",
+          "c": "e3145de4ee5ce75d9d0c6007c20f1342c4eaf4a0adf51590779d3269a5328b0f"
+        }
+      },
+      "tracking": "4d5c404761a4218ce24df6635c2db174032d38cbba55171a6ceb7c85a0fead2f"
+    },
+    {
+      "election": "council-2027",
+      "voter": {
+        "name": "ada",
+        "kind": "x509",
+        "mspId": "Org1MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d62334967595752684c43427562335167595342795a574673494739755a513d3d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "975a5a3ece0bf4cff96ba5d94776099b19b1bd4bd741d358aef04b6204f2eacf"
+      },
+      "choice": 9,
+      "seed": "v1 council-2027 ballot 0",
+      "randomness": {
+        "r": [
+          "017ab453071832e2ce6061094647c538985173fd0a5cc5b3f9834cc3227e6c0a",
+          "0ed07bc293b42bdea91b83d24a770d11eeceac9077cc448e9e23406c6a611002",
+          "43aa4a6c39e06201b608e6e393816b3c4511da8de91240950bbe8fcf12b2bf0c",
+          "aa6025defac8591383ebfb0d49baa03fe0741021ee8fe690db2c0f1b5ff8f708",
+          "f38cadb9cbfeeed6b2ab5464f3a50faa9839f32e96e38da8c88fceb9b542cc06",
+          "e13601be1c8e4ccf4dd5cbb65430adf8fdd32014b0bfc16e2d8fe47bc883e40f",
+          "a42c59541d3a6d483a53b0dd34ce3f9977a0db6822272c8e5986967935d8fa0e",
+          "469682a03f585b12602c7d9c05a07db3919038e7f672229c0bbcd92376d60f07",
+          "fb9f6dde823d4047ece2710ca9f11ea140553f928acf451f3ac3c863bb7ead00",
+          "2f5d90f4138b6fa1a484b34df5db8698872a38ac19c8e2ccc71e526e5e0a6c0e"
+        ],
+        "bits": [
+          {
+            "cs": "fe8cd5402e93aaf1a1618a632e94688a6727cc3f321fca8594966d887edb0e01",
+            "zs": "47246d7175690461584c9ee7c59e4bd9d9543b199b6b423140d278572c23720b",
+            "w": "0465ce4758fc52031ff545b1002482fd2e0b0283bbcb1e2b7cbf2dd8fe497d02"
+          },
+          {
+            "cs": "147bd2cb083518dda908b2fd272f12057af504a6218cfabda55e118fefe01b00",
+            "zs": "6f2869aebe2697e6b55c4b85f5af8e7b462375a571065d6ab0fda7b920d4d10e",
+            "w": "1038558498345ca4624a1493cec6016dace2c4c693319c820564c78b6c300504"
+          },
+          {
+            "cs": "f730887f330a30c425fc50ebd0a23da491de1d6d14f3b7ffc50b1ba08b4e190e",
+            "zs": "b4f9692cb8c2f5c31df9541afec09aaf4cec067add42262edc2770b551433709",
+            "w": "ec2f0e8fc813188891320bc11ec6d56486ab67da81dbfdab603b3bb06af91a07"
+          },
+          {
+            "cs": "f9e2209c8ea065e1cef3ba24555525e046f5d9d48444d1437964fc3b1d809601",
+            "zs": "c1c0c2f8e637aa8b77648b78709c308572517150ce75467021a7372ee9aca807",
+            "w": "5a2326ab95425fe655df6d16d242ae68d9e3b29b7efef7bc0b0bc0f979a73709"
+          },
+          {
+            "cs": "881c674913f9e6a5e880fd904adf589b93dc26238da2b93aa1ea0e0cd4a7990a",
+            "zs": "09653da3d258bedd8ad8d815962cf552202d0f6ab6a551157686bbf411785a07",
+            "w": "4606fbc43521e4f407f5939857f1eea400d0845671c9001b7e259d8924f61f0b"
+          },
+          {
+            "cs": "2420b0c30587070facbc69626bf9c32c3f911c87860dcc95cf26263c67811d0b",
+            "zs": "ec044953f9603411b93f9be2487f221d8372a48bda27f670a443b0f3ca67c108",
+            "w": "fb7c270571b47ee75515151c54d6ef67c102eab1c656022b9a66c9d6d0aee00b"
+          },
+          {
+            "cs": "591dd762795d31b2a5430e64e131d35ca679d144870bc41eb9a33d7ba9ebe704",
+            "zs": "88729369f079905bbee7a0455953f272410ece825550c121c93dec93d9955d05",
+            "w": "5c470a8de04965abcde92122d897f6835a71ec1cd4a6332e00887dd87e09b506"
+          },
+          {
+            "cs": "e77fe64e8b4135fb602cda583eb54a61cfec7322ca1e4dcc2cb8acd03b51e305",
+            "zs": "5003709eeed66536e5d58907bf9b76c5f938eeff06a7d30e8d3c32351f480c02",
+            "w": "e11c778a31631f6c2021ef1588d8ee7e7b29dc18cef0fac3f91b7703a77d6000"
+          },
+          {
+            "cs": "3c226b1d726c90698ef1529342e8a1ffc8a0183f0dc724746e4b195729d3510b",
+            "zs": "24975121ece919631f65d7228f79ebb4f095b7f6365b581c31d9ffcd8070f60a",
+            "w": "0e0ae3b12e19922eb0aec56e484bf0364455ebf3e303170ca57de940254ab20e"
+          },
+          {
+            "cs": "db74078f7dfb879922b425728ac50a35e91712f422b5c411f89aaecdb5435f04",
+            "zs": "a39763df37c6a367692f52a9794e84a682805fa8264266dbaac8694873599803",
+            "w": "0803044cf375fe6f843236078a4c86e79666a3f430a910594721ad48dbe9f904"
+          }
+        ],
+        "w": "64db57ab020a35a310fb6a2228cb3811a39112ad0b31c4a86a0dbd3c2879ca0e"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "council-2027",
+        "ciphertexts": [
+          {
+            "a": "f629b2eb0677b1db1f9f55eaa5463e2b40044c1562b96c1f2980e3d11a309740",
+            "b": "8aa9d50e231177384564870d1044af83ee46eeb6023ba4565debf40dd3d5db42"
+          },
+          {
+            "a": "e0231d114df6cb8f9fad5ef788096d66871ad88b85810fe2546cbee35710f25a",
+            "b": "06e5915fe41d49090865076a3a75be9f4ffbeb028018221ec10a1ee52ce9ee4f"
+          },
+          {
+            "a": "06650b12f775dc709f34bd76a026f9bdce9a5e08675267137d90409516a9901d",
+            "b": "7e6b81cc3232ab90cb8c6888feeffa20927e8c50df122fd5ea3131039b03d772"
+          },
+          {
+            "a": "fafaf4e07086cac542f84d02dec8dcf302c297d845f64ca4c7afca7854b29068",
+            "b": "26162fb1be1fa1643e88bf5275f243c2f397a373d5cc0cc893334ad81735b93f"
+          },
+          {
+            "a": "fc524968a8312a8a06d5850e87892a2c86af8bf862d2aaadbfae39599694b72a",
+            "b": "182086637fd2e632ac7cba0aec7cf73f071b4a6a5f8e61ff90db497f67abd01e"
+          },
+          {
+            "a": "8ce69eb6b85900fbdc1c8c2f05d362f9f6a22d7296503020b2a3bf3460e1f271",
+            "b": "6a78a0ac96f4956cd9a375a66dc91e278b7b02e8ca9aee9d81c5ce63301eab69"
+          },
+          {
+            "a": "fe27998abdcfce9f0fac7e1916dcf1d3b953a89a99c1b689d82628752f9c145a",
+            "b": "c241491ca7a2139d287007d0fa0b2966fea4a884299be5dfbf5017bdd07efd16"
+          },
+          {
+            "a": "dee3f229ba48cd72ba4405394081663c9ef09f7567e732b5a4a3714f93913b27",
+            "b": "d2934fb2d9011152328f742145e2cb718d74283874871bff7097dfe532f81523"
+          },
+          {
+            "a": "ae674ed1b1b85eae10d40f289c5cf14efd7e445b4108351c82e4bf2ff479eb3e",
+            "b": "3e681bfd6f61e1426a74d4000e1ae9dd2949a07a7344d5ffd77bae7a8d87dd26"
+          },
+          {
+            "a": "26f74199d7475cee349b4bedb61d8382339d19ad5b1b234413d4ff2af644fb5f",
+            "b": "a24973ac9fce8df72d83ef54b8bb097e724cc20afc58b344f4adf566ec919d6a"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "3773f70765a19ac0b2c0fa8bced472d167dcb5704d8119f44cad3d5c3c5b380b",
+            "c1": "fe8cd5402e93aaf1a1618a632e94688a6727cc3f321fca8594966d887edb0e01",
+            "z0": "dcd0e8ac8d8de8c7627ae33712aa1e8ee7af6a1be7c5e8ea7961dfb3d93c2c0a",
+            "z1": "47246d7175690461584c9ee7c59e4bd9d9543b199b6b423140d278572c23720b"
+          },
+          {
+            "c0": "35c82a08c0e033930fb190ad1126f3715a40c76e28c6d1a9e6306660c5c8e40d",
+            "c1": "147bd2cb083518dda908b2fd272f12057af504a6218cfabda55e118fefe01b00",
+            "z0": "cf85b52b2fb0859ac9b1d7a566bcf38cde14d01f8d5950d7b299cb321b739d0b",
+            "z1": "6f2869aebe2697e6b55c4b85f5af8e7b462375a571065d6ab0fda7b920d4d10e"
+          },
+          {
+            "c0": "beefbf31819a3ba8484e3123572c3c4a2f43d156f431f26a9cdaf92b6980d30d",
+            "c1": "f730887f330a30c425fc50ebd0a23da491de1d6d14f3b7ffc50b1ba08b4e190e",
+            "z0": "0a322f00eada666f1aa5d914c2cecac7a08723a8672a3715240a3839f5603d00",
+            "z1": "b4f9692cb8c2f5c31df9541afec09aaf4cec067add42262edc2770b551433709"
+          },
+          {
+            "c0": "b25d46d7d40943aaf9e43da14b32508740cee971e893272a46493b0599c96400",
+            "c1": "f9e2209c8ea065e1cef3ba24555525e046f5d9d48444d1437964fc3b1d809601",
+            "z0": "71d4a31fe68ebf55bbbfb97669f0274f3fd6bc59017d1105f1c870049a646e04",
+            "z1": "c1c0c2f8e637aa8b77648b78709c308572517150ce75467021a7372ee9aca807"
+          },
+          {
+            "c0": "7805cbcbb35ea851173ecd574009efe17dd2daa827bb11e60c2c49fd8e377501",
+            "c1": "881c674913f9e6a5e880fd904adf589b93dc26238da2b93aa1ea0e0cd4a7990a",
+            "z0": "b6be9fc9e79dd31f208b4c42c611f61aaa86d6a723d3999b7c170491df2f120a",
+            "z1": "09653da3d258bedd8ad8d815962cf552202d0f6ab6a551157686bbf411785a07"
+          },
+          {
+            "c0": "f9ead0093ed475cc3a2dc7e16e4d3c62304bf4fb30c7e13ac6663bd51adacb0f",
+            "c1": "2420b0c30587070facbc69626bf9c32c3f911c87860dcc95cf26263c67811d0b",
+            "z0": "0c9db86a580015f08553f7e66e95f7f6934ace8da6f60c989e8b18c4dd19ee0b",
+            "z1": "ec044953f9603411b93f9be2487f221d8372a48bda27f670a443b0f3ca67c108"
+          },
+          {
+            "c0": "03f18f0d77cea6e6891e64e4546113f04730b5b4af86c951fcbfc57c3ab9fd0c",
+            "c1": "591dd762795d31b2a5430e64e131d35ca679d144870bc41eb9a33d7ba9ebe704",
+            "z0": "84a02d6225c9315a48f78b58dd88389279df1899baf2f15658a947cffa255406",
+            "z1": "88729369f079905bbee7a0455953f272410ece825550c121c93dec93d9955d05"
+          },
+          {
+            "c0": "77117bca4dd5b343419d984bca33dcfa408e521034f2ca35055a6c2a6f33d308",
+            "c1": "e77fe64e8b4135fb602cda583eb54a61cfec7322ca1e4dcc2cb8acd03b51e305",
+            "z0": "d8a334b2a9786892016ea97e131234e40490d0c70b5883373e034ffccb2c7204",
+            "z1": "5003709eeed66536e5d58907bf9b76c5f938eeff06a7d30e8d3c32351f480c02"
+          },
+          {
+            "c0": "579ceaed0550972acfd365d0357e17edc1e3e2c807b3720c155b039ea1ed6b0c",
+            "c1": "3c226b1d726c90698ef1529342e8a1ffc8a0183f0dc724746e4b195729d3510b",
+            "z0": "b03f5ed9ed93b1a76078808336ee0a91fbfd195bf402936b64ae2f5d16ceef06",
+            "z1": "24975121ece919631f65d7228f79ebb4f095b7f6365b581c31d9ffcd8070f60a"
+          },
+          {
+            "c0": "db74078f7dfb879922b425728ac50a35e91712f422b5c411f89aaecdb5435f04",
+            "c1": "4c5ab5c1cadf4b339d2f13c3677c10294c2e94fd2178bfbdf222de076e0e270f",
+            "z0": "a39763df37c6a367692f52a9794e84a682805fa8264266dbaac8694873599803",
+            "z1": "6bea48b9ba7490a780c0f3290bfdb9497d81ec5f367a5f902b0f022cd3af340f"
+          }
+        ],
+        "sumProof": {
+          "c": "1979f7d94b7ce9ca17451563f45e22e26cb4a7c1d3f8c5d558941e02a8b4aa0c",
+          "z": "a9902e342011f34a0e061e52a330941a0c9eebb47d1773348f6348480ef8ec06"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"council-2027\",\"ciphertexts\":[{\"a\":\"f629b2eb0677b1db1f9f55eaa5463e2b40044c1562b96c1f2980e3d11a309740\",\"b\":\"8aa9d50e231177384564870d1044af83ee46eeb6023ba4565debf40dd3d5db42\"},{\"a\":\"e0231d114df6cb8f9fad5ef788096d66871ad88b85810fe2546cbee35710f25a\",\"b\":\"06e5915fe41d49090865076a3a75be9f4ffbeb028018221ec10a1ee52ce9ee4f\"},{\"a\":\"06650b12f775dc709f34bd76a026f9bdce9a5e08675267137d90409516a9901d\",\"b\":\"7e6b81cc3232ab90cb8c6888feeffa20927e8c50df122fd5ea3131039b03d772\"},{\"a\":\"fafaf4e07086cac542f84d02dec8dcf302c297d845f64ca4c7afca7854b29068\",\"b\":\"26162fb1be1fa1643e88bf5275f243c2f397a373d5cc0cc893334ad81735b93f\"},{\"a\":\"fc524968a8312a8a06d5850e87892a2c86af8bf862d2aaadbfae39599694b72a\",\"b\":\"182086637fd2e632ac7cba0aec7cf73f071b4a6a5f8e61ff90db497f67abd01e\"},{\"a\":\"8ce69eb6b85900fbdc1c8c2f05d362f9f6a22d7296503020b2a3bf3460e1f271\",\"b\":\"6a78a0ac96f4956cd9a375a66dc91e278b7b02e8ca9aee9d81c5ce63301eab69\"},{\"a\":\"fe27998abdcfce9f0fac7e1916dcf1d3b953a89a99c1b689d82628752f9c145a\",\"b\":\"c241491ca7a2139d287007d0fa0b2966fea4a884299be5dfbf5017bdd07efd16\"},{\"a\":\"dee3f229ba48cd72ba4405394081663c9ef09f7567e732b5a4a3714f93913b27\",\"b\":\"d2934fb2d9011152328f742145e2cb718d74283874871bff7097dfe532f81523\"},{\"a\":\"ae674ed1b1b85eae10d40f289c5cf14efd7e445b4108351c82e4bf2ff479eb3e\",\"b\":\"3e681bfd6f61e1426a74d4000e1ae9dd2949a07a7344d5ffd77bae7a8d87dd26\"},{\"a\":\"26f74199d7475cee349b4bedb61d8382339d19ad5b1b234413d4ff2af644fb5f\",\"b\":\"a24973ac9fce8df72d83ef54b8bb097e724cc20afc58b344f4adf566ec919d6a\"}],\"bitProofs\":[{\"c0\":\"3773f70765a19ac0b2c0fa8bced472d167dcb5704d8119f44cad3d5c3c5b380b\",\"c1\":\"fe8cd5402e93aaf1a1618a632e94688a6727cc3f321fca8594966d887edb0e01\",\"z0\":\"dcd0e8ac8d8de8c7627ae33712aa1e8ee7af6a1be7c5e8ea7961dfb3d93c2c0a\",\"z1\":\"47246d7175690461584c9ee7c59e4bd9d9543b199b6b423140d278572c23720b\"},{\"c0\":\"35c82a08c0e033930fb190ad1126f3715a40c76e28c6d1a9e6306660c5c8e40d\",\"c1\":\"147bd2cb083518dda908b2fd272f12057af504a6218cfabda55e118fefe01b00\",\"z0\":\"cf85b52b2fb0859ac9b1d7a566bcf38cde14d01f8d5950d7b299cb321b739d0b\",\"z1\":\"6f2869aebe2697e6b55c4b85f5af8e7b462375a571065d6ab0fda7b920d4d10e\"},{\"c0\":\"beefbf31819a3ba8484e3123572c3c4a2f43d156f431f26a9cdaf92b6980d30d\",\"c1\":\"f730887f330a30c425fc50ebd0a23da491de1d6d14f3b7ffc50b1ba08b4e190e\",\"z0\":\"0a322f00eada666f1aa5d914c2cecac7a08723a8672a3715240a3839f5603d00\",\"z1\":\"b4f9692cb8c2f5c31df9541afec09aaf4cec067add42262edc2770b551433709\"},{\"c0\":\"b25d46d7d40943aaf9e43da14b32508740cee971e893272a46493b0599c96400\",\"c1\":\"f9e2209c8ea065e1cef3ba24555525e046f5d9d48444d1437964fc3b1d809601\",\"z0\":\"71d4a31fe68ebf55bbbfb97669f0274f3fd6bc59017d1105f1c870049a646e04\",\"z1\":\"c1c0c2f8e637aa8b77648b78709c308572517150ce75467021a7372ee9aca807\"},{\"c0\":\"7805cbcbb35ea851173ecd574009efe17dd2daa827bb11e60c2c49fd8e377501\",\"c1\":\"881c674913f9e6a5e880fd904adf589b93dc26238da2b93aa1ea0e0cd4a7990a\",\"z0\":\"b6be9fc9e79dd31f208b4c42c611f61aaa86d6a723d3999b7c170491df2f120a\",\"z1\":\"09653da3d258bedd8ad8d815962cf552202d0f6ab6a551157686bbf411785a07\"},{\"c0\":\"f9ead0093ed475cc3a2dc7e16e4d3c62304bf4fb30c7e13ac6663bd51adacb0f\",\"c1\":\"2420b0c30587070facbc69626bf9c32c3f911c87860dcc95cf26263c67811d0b\",\"z0\":\"0c9db86a580015f08553f7e66e95f7f6934ace8da6f60c989e8b18c4dd19ee0b\",\"z1\":\"ec044953f9603411b93f9be2487f221d8372a48bda27f670a443b0f3ca67c108\"},{\"c0\":\"03f18f0d77cea6e6891e64e4546113f04730b5b4af86c951fcbfc57c3ab9fd0c\",\"c1\":\"591dd762795d31b2a5430e64e131d35ca679d144870bc41eb9a33d7ba9ebe704\",\"z0\":\"84a02d6225c9315a48f78b58dd88389279df1899baf2f15658a947cffa255406\",\"z1\":\"88729369f079905bbee7a0455953f272410ece825550c121c93dec93d9955d05\"},{\"c0\":\"77117bca4dd5b343419d984bca33dcfa408e521034f2ca35055a6c2a6f33d308\",\"c1\":\"e77fe64e8b4135fb602cda583eb54a61cfec7322ca1e4dcc2cb8acd03b51e305\",\"z0\":\"d8a334b2a9786892016ea97e131234e40490d0c70b5883373e034ffccb2c7204\",\"z1\":\"5003709eeed66536e5d58907bf9b76c5f938eeff06a7d30e8d3c32351f480c02\"},{\"c0\":\"579ceaed0550972acfd365d0357e17edc1e3e2c807b3720c155b039ea1ed6b0c\",\"c1\":\"3c226b1d726c90698ef1529342e8a1ffc8a0183f0dc724746e4b195729d3510b\",\"z0\":\"b03f5ed9ed93b1a76078808336ee0a91fbfd195bf402936b64ae2f5d16ceef06\",\"z1\":\"24975121ece919631f65d7228f79ebb4f095b7f6365b581c31d9ffcd8070f60a\"},{\"c0\":\"db74078f7dfb879922b425728ac50a35e91712f422b5c411f89aaecdb5435f04\",\"c1\":\"4c5ab5c1cadf4b339d2f13c3677c10294c2e94fd2178bfbdf222de076e0e270f\",\"z0\":\"a39763df37c6a367692f52a9794e84a682805fa8264266dbaac8694873599803\",\"z1\":\"6bea48b9ba7490a780c0f3290bfdb9497d81ec5f367a5f902b0f022cd3af340f\"}],\"sumProof\":{\"c\":\"1979f7d94b7ce9ca17451563f45e22e26cb4a7c1d3f8c5d558941e02a8b4aa0c\",\"z\":\"a9902e342011f34a0e061e52a330941a0c9eebb47d1773348f6348480ef8ec06\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "b46484013370fa95f7d61a5d2adafc372b6c50689b2a48fe6c6aba5f31564a05",
+            "B0": "dc690dc6d5c653794fff8d9aedb71196e59820fd904ad7f68255318e446bb404",
+            "A1": "8c7309e66456d96bd5cc4f202fd11b04aa4ea13db1d1fd6d91bbcbb5e20b187e",
+            "B1": "8cf22a4cbe0d1546ce9757c6c3f3ba0b920734eb0d23fb48b387efae00e41353",
+            "c": "3500cd48933445b2542285effc68db5bcf0382b07fa0e379e143abe4ba36470c"
+          },
+          {
+            "A0": "2020aa264170666f49b2c51ef40e7aa3ca9e838a84648ac14bda0c4099325500",
+            "B0": "4a17ca90aee4d9538d6ad7cec330415460be827228503273a5eeffccc3204b59",
+            "A1": "341eb23f0c91d960820edf023050c7f937c4776aaebf527478f75b53224c9b79",
+            "B1": "38514f6016315d1d4371522a55ea72eb9bbc858fa57a24a68eaca45532ea8707",
+            "c": "4943fdd3c8154c70b9b942ab39550577d435cc144a52cc678c8f77efb4a9000e"
+          },
+          {
+            "A0": "3266faf963e60062c4a1f40ba85aee8de478316bcfe6b284b76ba961d8d37212",
+            "B0": "223b43f7c6d3c43fd182c1fad4e46ef2fcfcae785fc26c99558d1f74d9eafb10",
+            "A1": "0e99cb6cac58bf53ed7946967e95a1841f518964505ded61e635eac5c6f06a0d",
+            "B1": "d2b3d919acc6915bfa6949dc285a533c21a1a884144fcd1994a5b53605e0f826",
+            "c": "c84c52549a41591498ad8a6b49d59ad9c021efc30825aa6a62e614ccf4ceec0b"
+          },
+          {
+            "A0": "9e58a054b59bdce13cbbca088edc7397d2d1a6cd39842c97d32c84be60e66f27",
+            "B0": "4ce346f65aab3a7654aae0a60c2f702619300ff447508246131949c80e2c3941",
+            "A1": "64b89d8797f689154d3de43a83ca699aaf8c805ef70d63c13d11ebc979af4578",
+            "B1": "fe19289fd7c0d1ec8afe7b31f5c09c1ac67524e3a3407cefda82a0b35959d006",
+            "c": "ab40677363aaa88bc8d8f8c5a087756787c3c3466dd8f86dbfad3741b649fb01"
+          },
+          {
+            "A0": "fceb4f9546d6d8587c45c4735218f9841745e40951bb006bbd940429bb32d97d",
+            "B0": "b6b429ec21d45c5451eba0108408d02795ff2e8ca6b62a7802ed619cc5d11708",
+            "A1": "d82c0411bc82f4bcd6feaa19bbd760b84e87b3b813907215e7c67802722c6207",
+            "B1": "8c9e66e8666b837acfd8d4c0d9f3df4a5b22298157c1ed6019d95ccf09ff7751",
+            "c": "00223215c7578ff7ffbecae88ae8477d11af01ccb45dcb20ae16580963df0e0c"
+          },
+          {
+            "A0": "68c079745e5ad20788c8cd8b9789a17ff7f7f34e91e2ed3cf8e77367156d242b",
+            "B0": "38f37ff51a06498aa1bd2ecdc97f1192e6f3fc1d637c0d3cc4d61f2742048e48",
+            "A1": "12a2a697cfac9098b4de32062e4733f7f271007af7b03590643eb150a558de45",
+            "B1": "74b3cce56c34c0405550b12320c103ba32be62022d7dfb5f00bf2ce6d0062a30",
+            "c": "30378b7029f86a83104d39a1fb4c217a6fdc1083b7d4add0958d6111825be90a"
+          },
+          {
+            "A0": "6e42e45ade4b49bdf0e0aa9b4baba444b9660519c7872a8866f5f692cc965f08",
+            "B0": "2a8381b918b6773a3c35052efb7e65a22e367fdae2098b943b0e0403f0cf1346",
+            "A1": "ba6c855d55ea17ef298df1e78e45b252e501ac0e03a926eed31d5182ff5c6568",
+            "B1": "780c29f20e97bc54c3d2124d798c8041d46ceb4bc5996ca4640d37c68b6e595b",
+            "c": "6f3a7113d6c8c54059c57aa557990738eea986f936928d70b56303f8e3a4e501"
+          },
+          {
+            "A0": "d84efe3a0f662f91f9b9716b189add41faa8084dd3a7f65e0a9e17cffb23823a",
+            "B0": "aefb35e2fe2b68e0779cd59d84fe608d142099a738bc1e62b4c4273260040d2a",
+            "A1": "865fd166aa4c6df1d9ece745a71c8d6eac5cbb2d7120c72e2c994aafcc147300",
+            "B1": "7ed6e825eddeb71054d74567b4d7ecb15a7b2b18796f7d993ef0977d6072c51c",
+            "c": "5e916119d916e93ea2c972a408e9265c107bc632fe101802321219fbaa84b60e"
+          },
+          {
+            "A0": "304deb58406c6c5b93701646e7cf91faad39372933674a7977a9f1b0d806ff01",
+            "B0": "88bcb72cf27f7b84d24501752fb1a8b9bf7d022f96079e5c362d6b1346309d07",
+            "A1": "fabc4a81a44f3d406ec8e20be93a68a987bbab3a21bfeb032c5e33ef52c17131",
+            "B1": "92259ee3381edcc49240375b57a9d7acd2694b0c8a5d81487309524282aa1769",
+            "c": "a6ea5fae5d59153c8728c1c0996cdad78a84fb07157a978083a61cf5cac0bd07"
+          },
+          {
+            "A0": "f4e829a0a1db2de2aa831f9110dfce95f170c99f469cbeb5bf9856a80167317b",
+            "B0": "a69674c7b7d4b09137d8649e3f66bce27b96e2af903cbb6e54157ddf29e8911f",
+            "A1": "548924f512a201a863dd4d5483916c83b230a9efc8a249a5eb5009738abad56b",
+            "B1": "a829f52c421fe05e4fa7ed5ad8d07f00190dc8b7d5021d37159d2576f40a1f60",
+            "c": "3afbc6f32d78c174e946419213483c493546a6f1442d84cfeabd8cd523528603"
+          }
+        ],
+        "sum": {
+          "A": "b08c39c143b5b9ad04e6d93d6405818a1b583f97c70c8a41e506d4d8898b7f09",
+          "B": "0c9629b162c0846e4d652084f043c812f3b6781a0eb81e26210d88925a9c7e41",
+          "T1": "e2bec7c2bc446737e7a81ff5d71e0c6f1021f7ed91f7e56fd75900bdb0940050",
+          "T2": "666d73e3dd29b023320d157ac074535f16f45f7893525489aa6b9d767e96e651",
+          "c": "1979f7d94b7ce9ca17451563f45e22e26cb4a7c1d3f8c5d558941e02a8b4aa0c"
+        }
+      },
+      "tracking": "43b106764d83c3f4d8a9f360e2b79792fd8b7bc749a8f51d5884ac81f451c50b"
+    },
+    {
+      "election": "council-2027",
+      "voter": {
+        "name": "grace",
+        "kind": "x509",
+        "mspId": "Org2MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d623349675a334a6859325573494735766443426849484a6c595777676232356c0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "7e928166b9937ce2c2402dd68f2de887d648e97e969c534cb1428c09e7baaec7"
+      },
+      "choice": 0,
+      "seed": "v1 council-2027 ballot 1",
+      "randomness": {
+        "r": [
+          "6dcecd294bcf9186cba96f8932e1ae7c539114e9cc46f1c1d4fcb83b8adc2d08",
+          "6fb5afca0cac05e4a3bda3a8f0cfe905a61ab5dd273af91ebacbf7d248c70606",
+          "3d20a4325dc2272b854143c5d0b27be9dc0fed6bac6e39ce4f01a2bb73a3bc07",
+          "2102fe1bed71f1ea4a247fe909e7bda7049c5ae116291e9f385667b5088a3905",
+          "ebdbdfe37e1aba28e4e4fb672190556946e7e8790593b7262d696000f3be660c",
+          "58aab552da4fa3d7afb52e73cbc984eabd84a0e3f1290590316b22ca27981e06",
+          "ba354d92680262eae5b398ce97189b11a552adf96af22101ea06224960382309",
+          "d640bf361ebaf096f297c31678598de171e52ccc02a127894580c63ae58a450c",
+          "d2dbdfbd4623ef4a83263805eb0281ba160ab1176e6b5f656ecb9adf92d0cb03",
+          "4a13bb61ee3177e17514bd1fe83ecb0a25fe403e20a697d0cee5b3fbea5a0809"
+        ],
+        "bits": [
+          {
+            "cs": "15287442dc6b05e30c3b9497dfebeedfb5cd5506d563adc957a94f16eabd070f",
+            "zs": "b302340f3686f06461bb08ebc8a181be02296d36a730656fa557ada0f577e805",
+            "w": "a7b2b8e53c0555bd4e55370c1c915539097f7a0d69094c7092ab1b13a85e1d0d"
+          },
+          {
+            "cs": "3b00331cfeaec78cefb0ba03038f93da904d2cb97452d5db398e44d6bc912604",
+            "zs": "ba21f55aefd5f36c3bc766fa9266df76c154c638bd9f29855c47267686bf1006",
+            "w": "adb5e8afcae3586c1fe669b6aea7357b8c8f5d4993458b8e0d29ca856fa7410a"
+          },
+          {
+            "cs": "be5d62b43d293d6c9b02316549b1f242c5d8a0e820f97890f5fc407e727f8c07",
+            "zs": "76e69035b760318c2c9a047a8148319937236012ee686a2efdcaee59d653dc01",
+            "w": "aaf964d25330ab98f69c3b0d4d82f7374a23b9729cc6ca1c613abbafeff1de04"
+          },
+          {
+            "cs": "5d392029f0563f5c250ce39113ce430a208e25410b892fd9cb5bfb49452acf0c",
+            "zs": "6d38ebf6543fee569d9d9af36827bceb2dc1686d5a9d81b251849ab89d13f409",
+            "w": "f3bb39ff26f154a32c37fae2188e25a32e18c9e4c1cfb7d3ce6d00cbd0e2d100"
+          },
+          {
+            "cs": "92db3893ae2b3365aec16cb6b8a823d2f3dfe92468ac594401b290ce20efd402",
+            "zs": "1e66297f8115e6a57882ea74bfe8e362c1476d4bbd917654e0129b865b411f01",
+            "w": "89997a3654b9b66744976cf965ceb63d7e12daab5cd0da75c8c3c92f0ab21c05"
+          },
+          {
+            "cs": "e78ce42230654d5ee6ad1f2813019f9cc912abad2eefbfe71b0534068ff4af06",
+            "zs": "ca19dc730f8ec6f90b22a160884dbed42908c9bb4fc98ace0934531b9541a80b",
+            "w": "ec13436f36ab7554ea50db6ad06ff9ec51c474e9f4803e9430e3e0998f815901"
+          },
+          {
+            "cs": "f161de6c83b57e0cd0967ba806b530e0d5ad1a1f4157b1f3f25ea964355f290d",
+            "zs": "2e2283e8cd417e127638dcd23a84df437a974a6c33508fe520e288e058ca1808",
+            "w": "58c7ef96e50a0bc1f6d42b7f515cdad991de41b7fffd6b05d110fe143f7bef0b"
+          },
+          {
+            "cs": "eb996f7e0c473eb0bbb26decdf1c923d5b40dcd687acfbcb047186442fe5b201",
+            "zs": "8827b69780f7a9cd6c6e75cdeea3b05afe49aba262a29fb0fce83edc68d4c606",
+            "w": "26a360b238a3ce2421d4981e296584768e1627da9ec606632e36e91ec385d407"
+          },
+          {
+            "cs": "84cfab5812e13c047b006535634e1ff9cc58057123a645d889bb3a947b340706",
+            "zs": "0708b3065f05eb336afd1577f19ee77ddc0e5752f91b382d5bd0145815c5910f",
+            "w": "64a9e0c70b4a78e5bd0fac12dd4a3f148bfceed00e08105358128e0adb2ce407"
+          },
+          {
+            "cs": "6177cb66fb6863fdd351c2fd9080700d11099a63947f22b0f21d9aac21b51803",
+            "zs": "b3eb1d376f7f8adf82958792a646f119346bbe1540edd85022244202479ef307",
+            "w": "a232c388e816f0f4b082103b7d481fb10900e2792d3552db0a9f39b7b3c63f06"
+          }
+        ],
+        "w": "5e4c3b0fef797e7212038b13e0c5c8e0a99d59caa63a5b7d2a06aa9403b42606"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "council-2027",
+        "ciphertexts": [
+          {
+            "a": "d4d7cf2e30925f41ccfe57ac6f267f4b361e5317776437920fb0fa934ee9c822",
+            "b": "2c9b1a4ce3030b02b921b58bb88ee5a8c4961db33785caac7c17ebbea17a3917"
+          },
+          {
+            "a": "60d87aeb31d5d6924e006c5aef8aab18058b8aeddf09373b81a337df76214a75",
+            "b": "76f536c15a24a3a62a24d5ba4e85e7e3d46c4a0a3e78f5a649f7a0bc6546c950"
+          },
+          {
+            "a": "28c123e5a4e3067e7d29e093e335626d7f879c008d44ab22c720553365c48360",
+            "b": "1e850a1422c5a2655d596c4fddca8a57ee13c715b126aa9dfe03e313d8a90e5d"
+          },
+          {
+            "a": "1a2892c158af9a2f3fbf5636f4084db9e61c08628e162a21ce55cd6ae53f812f",
+            "b": "d0c92997e8a17008584bb266b9d71cf196d551358cb5963f5f27325c66672a5a"
+          },
+          {
+            "a": "664de932c6b618438da902a06a96e331dd9d745426b0224ee778412d9d65ab7e",
+            "b": "94e7499de7643d8d9d75d7301d065dc869d177892f5c8c8e15c282d53cbea372"
+          },
+          {
+            "a": "841de819d96a45adb304ba9e3343f3f20118aacde256971ccd6cd41d5323c877",
+            "b": "aaae0aa11270fdb20099135c4b51a5c0ff430a6b5984182a165bf0c356e7d30c"
+          },
+          {
+            "a": "7ea612825a74c54240380a18c62f890c6fa65547f7b998b6f7d4ae39f8f04921",
+            "b": "6210f52cdf5c29c265ca834d1c61ecf86dd83d68a25c21930819d975be78eb73"
+          },
+          {
+            "a": "90ce7bd27ab9b430639518b8a941830aa2b87fc28007e2c72bce603f180d0210",
+            "b": "5e2482f4e9953ce0d282f2033cdaac0475e5faf2b322591807d39dcf55a88a75"
+          },
+          {
+            "a": "56fdc3c9a3709d75a5888b477f58341e832b657c851fd26825d95e707eb8cb47",
+            "b": "ca6ab92db71512bb289fac91ffbf3197a7112139893aa993a7a3dd09edee4930"
+          },
+          {
+            "a": "b882350b2a3d9ee8bed104cf8294b1f6d00de410574efaa685ff90cbc7b7277b",
+            "b": "60201137729f189f8c944dc5505be78d0cef6f67480ced8ca63d6f7b78c0353c"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "15287442dc6b05e30c3b9497dfebeedfb5cd5506d563adc957a94f16eabd070f",
+            "c1": "7cd818cec6c143c6f6859890832af853cf55199e433315fb1ad5eff30c4ec40f",
+            "z0": "b302340f3686f06461bb08ebc8a181be02296d36a730656fa557ada0f577e805",
+            "z1": "60b0006f6987c1c0df87d7cc82edfba7d8439686c2a7071ee18f4265463e8f07"
+          },
+          {
+            "c0": "57d83d114884afcbd6f121d5faeeda53b5fb8d9c04b1bd8b9b2de04517bedc0b",
+            "c1": "3b00331cfeaec78cefb0ba03038f93da904d2cb97452d5db398e44d6bc912604",
+            "z0": "02b073ab1ab020205fe42439eb5c8312512fa7dfad6716578a463fb5a60aeb03",
+            "z1": "ba21f55aefd5f36c3bc766fa9266df76c154c638bd9f29855c47267686bf1006"
+          },
+          {
+            "c0": "fcb3400e2ac14f30e801a2ee5a3f884a1f04d4fe55689fd8134d8ff849d7e60c",
+            "c1": "be5d62b43d293d6c9b02316549b1f242c5d8a0e820f97890f5fc407e727f8c07",
+            "z0": "b611c46db960e36c1f911e224dc2737265cc0c932bc1cc49e659505bc4afbe00",
+            "z1": "76e69035b760318c2c9a047a8148319937236012ee686a2efdcaee59d653dc01"
+          },
+          {
+            "c0": "7a58f796b0c237b9548beb1ba96d6d88f2aede85638624e3ff102f16ea521f0a",
+            "c1": "5d392029f0563f5c250ce39113ce430a208e25410b892fd9cb5bfb49452acf0c",
+            "z0": "be8a7ad32e50762b270a2263c45adbe5521ea2ac7e8cd71ada6a066d88495e02",
+            "z1": "6d38ebf6543fee569d9d9af36827bceb2dc1686d5a9d81b251849ab89d13f409"
+          },
+          {
+            "c0": "f0f25d3c5604eb06510756f4c0b696e010226b19bf3f3e67b36caabb81e5cd0c",
+            "c1": "92db3893ae2b3365aec16cb6b8a823d2f3dfe92468ac594401b290ce20efd402",
+            "z0": "5a7ab2b503d360893cd0f045a4308f1ff541656671dc8cc88980d08ea6d66505",
+            "z1": "1e66297f8115e6a57882ea74bfe8e362c1476d4bbd917654e0129b865b411f01"
+          },
+          {
+            "c0": "226269bcf46b6a6265f86a6d8e156cd13f72fdae40372d83ea9c477e01ce6206",
+            "c1": "e78ce42230654d5ee6ad1f2813019f9cc912abad2eefbfe71b0534068ff4af06",
+            "z0": "7747ff98186d50d76d0aef6ac70da87f22139d7f4d2fc1cf528d085c6abdbf00",
+            "z1": "ca19dc730f8ec6f90b22a160884dbed42908c9bb4fc98ace0934531b9541a80b"
+          },
+          {
+            "c0": "6a5c4c3fd04b349439697fa86c7dd9b5a2932de130c6d334566896bbd2e0ce0d",
+            "c1": "f161de6c83b57e0cd0967ba806b530e0d5ad1a1f4157b1f3f25ea964355f290d",
+            "z0": "014a66b6e0f90ce280be93556a38c101cc4fc76fad4d49c6564d0cc4eca2e604",
+            "z1": "2e2283e8cd417e127638dcd23a84df437a974a6c33508fe520e288e058ca1808"
+          },
+          {
+            "c0": "62e5cbf5c539c40eb7db4ced0c9397da393137410b489e064e7fb89c8bb24909",
+            "c1": "eb996f7e0c473eb0bbb26decdf1c923d5b40dcd687acfbcb047186442fe5b201",
+            "z0": "99883911b996047a9a1d9fcca0f120876b861d2a4a4438d9342162faa98fa606",
+            "z1": "8827b69780f7a9cd6c6e75cdeea3b05afe49aba262a29fb0fce83edc68d4c606"
+          },
+          {
+            "c0": "6f87baeada6df0fee6b67cb126d6239c503547d5a6f1d5ce387c3a70294b1c0f",
+            "c1": "84cfab5812e13c047b006535634e1ff9cc58057123a645d889bb3a947b340706",
+            "z0": "0633ed2284780f0e01726c8f490e47f71ba005ab3696ea20ea78e430c0c89f0f",
+            "z1": "0708b3065f05eb336afd1577f19ee77ddc0e5752f91b382d5bd0145815c5910f"
+          },
+          {
+            "c0": "4c8b253d7946f53211f08bc0c438e69abbac887f062306c28280b01dfec31301",
+            "c1": "6177cb66fb6863fdd351c2fd9080700d11099a63947f22b0f21d9aac21b51803",
+            "z0": "a451d532cd417d8c7c6425e382f8a33a856d986f4ac498277670be6a1f41fd06",
+            "z1": "b3eb1d376f7f8adf82958792a646f119346bbe1540edd85022244202479ef307"
+          }
+        ],
+        "sumProof": {
+          "c": "61d2246894026b8117818b27ab23a08a4b501f797a3cf53ff0af529126de5f02",
+          "z": "8d62ccb483bae56f936ad2fa2f29d487ef95c53df85d3d3a4f5e8b75a955900d"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"council-2027\",\"ciphertexts\":[{\"a\":\"d4d7cf2e30925f41ccfe57ac6f267f4b361e5317776437920fb0fa934ee9c822\",\"b\":\"2c9b1a4ce3030b02b921b58bb88ee5a8c4961db33785caac7c17ebbea17a3917\"},{\"a\":\"60d87aeb31d5d6924e006c5aef8aab18058b8aeddf09373b81a337df76214a75\",\"b\":\"76f536c15a24a3a62a24d5ba4e85e7e3d46c4a0a3e78f5a649f7a0bc6546c950\"},{\"a\":\"28c123e5a4e3067e7d29e093e335626d7f879c008d44ab22c720553365c48360\",\"b\":\"1e850a1422c5a2655d596c4fddca8a57ee13c715b126aa9dfe03e313d8a90e5d\"},{\"a\":\"1a2892c158af9a2f3fbf5636f4084db9e61c08628e162a21ce55cd6ae53f812f\",\"b\":\"d0c92997e8a17008584bb266b9d71cf196d551358cb5963f5f27325c66672a5a\"},{\"a\":\"664de932c6b618438da902a06a96e331dd9d745426b0224ee778412d9d65ab7e\",\"b\":\"94e7499de7643d8d9d75d7301d065dc869d177892f5c8c8e15c282d53cbea372\"},{\"a\":\"841de819d96a45adb304ba9e3343f3f20118aacde256971ccd6cd41d5323c877\",\"b\":\"aaae0aa11270fdb20099135c4b51a5c0ff430a6b5984182a165bf0c356e7d30c\"},{\"a\":\"7ea612825a74c54240380a18c62f890c6fa65547f7b998b6f7d4ae39f8f04921\",\"b\":\"6210f52cdf5c29c265ca834d1c61ecf86dd83d68a25c21930819d975be78eb73\"},{\"a\":\"90ce7bd27ab9b430639518b8a941830aa2b87fc28007e2c72bce603f180d0210\",\"b\":\"5e2482f4e9953ce0d282f2033cdaac0475e5faf2b322591807d39dcf55a88a75\"},{\"a\":\"56fdc3c9a3709d75a5888b477f58341e832b657c851fd26825d95e707eb8cb47\",\"b\":\"ca6ab92db71512bb289fac91ffbf3197a7112139893aa993a7a3dd09edee4930\"},{\"a\":\"b882350b2a3d9ee8bed104cf8294b1f6d00de410574efaa685ff90cbc7b7277b\",\"b\":\"60201137729f189f8c944dc5505be78d0cef6f67480ced8ca63d6f7b78c0353c\"}],\"bitProofs\":[{\"c0\":\"15287442dc6b05e30c3b9497dfebeedfb5cd5506d563adc957a94f16eabd070f\",\"c1\":\"7cd818cec6c143c6f6859890832af853cf55199e433315fb1ad5eff30c4ec40f\",\"z0\":\"b302340f3686f06461bb08ebc8a181be02296d36a730656fa557ada0f577e805\",\"z1\":\"60b0006f6987c1c0df87d7cc82edfba7d8439686c2a7071ee18f4265463e8f07\"},{\"c0\":\"57d83d114884afcbd6f121d5faeeda53b5fb8d9c04b1bd8b9b2de04517bedc0b\",\"c1\":\"3b00331cfeaec78cefb0ba03038f93da904d2cb97452d5db398e44d6bc912604\",\"z0\":\"02b073ab1ab020205fe42439eb5c8312512fa7dfad6716578a463fb5a60aeb03\",\"z1\":\"ba21f55aefd5f36c3bc766fa9266df76c154c638bd9f29855c47267686bf1006\"},{\"c0\":\"fcb3400e2ac14f30e801a2ee5a3f884a1f04d4fe55689fd8134d8ff849d7e60c\",\"c1\":\"be5d62b43d293d6c9b02316549b1f242c5d8a0e820f97890f5fc407e727f8c07\",\"z0\":\"b611c46db960e36c1f911e224dc2737265cc0c932bc1cc49e659505bc4afbe00\",\"z1\":\"76e69035b760318c2c9a047a8148319937236012ee686a2efdcaee59d653dc01\"},{\"c0\":\"7a58f796b0c237b9548beb1ba96d6d88f2aede85638624e3ff102f16ea521f0a\",\"c1\":\"5d392029f0563f5c250ce39113ce430a208e25410b892fd9cb5bfb49452acf0c\",\"z0\":\"be8a7ad32e50762b270a2263c45adbe5521ea2ac7e8cd71ada6a066d88495e02\",\"z1\":\"6d38ebf6543fee569d9d9af36827bceb2dc1686d5a9d81b251849ab89d13f409\"},{\"c0\":\"f0f25d3c5604eb06510756f4c0b696e010226b19bf3f3e67b36caabb81e5cd0c\",\"c1\":\"92db3893ae2b3365aec16cb6b8a823d2f3dfe92468ac594401b290ce20efd402\",\"z0\":\"5a7ab2b503d360893cd0f045a4308f1ff541656671dc8cc88980d08ea6d66505\",\"z1\":\"1e66297f8115e6a57882ea74bfe8e362c1476d4bbd917654e0129b865b411f01\"},{\"c0\":\"226269bcf46b6a6265f86a6d8e156cd13f72fdae40372d83ea9c477e01ce6206\",\"c1\":\"e78ce42230654d5ee6ad1f2813019f9cc912abad2eefbfe71b0534068ff4af06\",\"z0\":\"7747ff98186d50d76d0aef6ac70da87f22139d7f4d2fc1cf528d085c6abdbf00\",\"z1\":\"ca19dc730f8ec6f90b22a160884dbed42908c9bb4fc98ace0934531b9541a80b\"},{\"c0\":\"6a5c4c3fd04b349439697fa86c7dd9b5a2932de130c6d334566896bbd2e0ce0d\",\"c1\":\"f161de6c83b57e0cd0967ba806b530e0d5ad1a1f4157b1f3f25ea964355f290d\",\"z0\":\"014a66b6e0f90ce280be93556a38c101cc4fc76fad4d49c6564d0cc4eca2e604\",\"z1\":\"2e2283e8cd417e127638dcd23a84df437a974a6c33508fe520e288e058ca1808\"},{\"c0\":\"62e5cbf5c539c40eb7db4ced0c9397da393137410b489e064e7fb89c8bb24909\",\"c1\":\"eb996f7e0c473eb0bbb26decdf1c923d5b40dcd687acfbcb047186442fe5b201\",\"z0\":\"99883911b996047a9a1d9fcca0f120876b861d2a4a4438d9342162faa98fa606\",\"z1\":\"8827b69780f7a9cd6c6e75cdeea3b05afe49aba262a29fb0fce83edc68d4c606\"},{\"c0\":\"6f87baeada6df0fee6b67cb126d6239c503547d5a6f1d5ce387c3a70294b1c0f\",\"c1\":\"84cfab5812e13c047b006535634e1ff9cc58057123a645d889bb3a947b340706\",\"z0\":\"0633ed2284780f0e01726c8f490e47f71ba005ab3696ea20ea78e430c0c89f0f\",\"z1\":\"0708b3065f05eb336afd1577f19ee77ddc0e5752f91b382d5bd0145815c5910f\"},{\"c0\":\"4c8b253d7946f53211f08bc0c438e69abbac887f062306c28280b01dfec31301\",\"c1\":\"6177cb66fb6863fdd351c2fd9080700d11099a63947f22b0f21d9aac21b51803\",\"z0\":\"a451d532cd417d8c7c6425e382f8a33a856d986f4ac498277670be6a1f41fd06\",\"z1\":\"b3eb1d376f7f8adf82958792a646f119346bbe1540edd85022244202479ef307\"}],\"sumProof\":{\"c\":\"61d2246894026b8117818b27ab23a08a4b501f797a3cf53ff0af529126de5f02\",\"z\":\"8d62ccb483bae56f936ad2fa2f29d487ef95c53df85d3d3a4f5e8b75a955900d\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "10c33f269197b297fb204c1fe7bba79e004ea560b26388d1602caf47811b3774",
+            "B0": "0cb25561f6404cb442a4bd75c415efd9b8583272af48d2889fff2dc50f096648",
+            "A1": "9c99a5a5b8bb35c8a29bc0ffe7387a4e0afb6d45e9f6074066793c46a0fd3d01",
+            "B1": "fc551d7f8a4527dde5d92c6910ff8846a36f57b7215f983f6d94e60cda94bc1d",
+            "c": "a42c97b388ca36512d243585841c081f85236fa41897c2c4727e3f0af70bcc0e"
+          },
+          {
+            "A0": "1eb9779929f0dd5b4e1c0b7a49ffcdcdb66665af7b49c0063e7ac36c5da29563",
+            "B0": "423980ad68390f1143fb58080383b222cb124a0300e57482cb1ea3d2939ce926",
+            "A1": "c238f4867860ec76c603c2abeafd156ac4336c4a94efbfc64ee3d9127b300c3e",
+            "B1": "5a211263a293261a1fa2752f39d3c0a226e54b658eed884e89c5755cac103225",
+            "c": "a5047bd02bd06400f005e5351f848f194649ba5579039367d5bb241cd44f0300"
+          },
+          {
+            "A0": "6cc807c35a0d512aaedb12bc5b3f7a0cf063357094d1251596534000843cee7b",
+            "B0": "fabb7e30b530b141c5f5d98e780df2ace5bbde239ee3f752bff9ba911654932b",
+            "A1": "80239d3a3870624401abd3205a33e010d93463b203b13953da3fbccc8c1e9346",
+            "B1": "bab8c575321831405902f0099c0bbe1c84c2f2ea58092071bef0e0838ae30320",
+            "c": "cd3dad654d877a44ad67dbb0c5f69b78e4dc74e776611869094ad076bc567304"
+          },
+          {
+            "A0": "ee1d1d20cdd1e3fbb020ed50041364f690865853c9b8c7c8374fbbecd1e95444",
+            "B0": "725c31de0d4229af37bccd8d0e25131d30f17d651e6d0ddc3e63a41acfa2865a",
+            "A1": "36ce9cc1ebe3cff1f2daf1083bd409e208c063657245c098c63dbeb9ac505742",
+            "B1": "049d1a3aae9a0abcb1b98984fa54a9bf579b92ab4ce47ec1d8c75a8e88f93a00",
+            "c": "eabd216386b664bda3fad60ade41d27d123d04c76e0f54bccb6c2a602f7dee06"
+          },
+          {
+            "A0": "6ad09c661466f74ba6360f2cd40d799fe1add67aadd33e357c61aa3847b0e25a",
+            "B0": "6cd869f3b546a1a4a835defb2249adac54c02a8c81850eeb587b9e030e858147",
+            "A1": "305da9dd0fcdcd5e0d332b0fb3c33388acb2d9be429b7f7e2468d957841f9761",
+            "B1": "ae324dc0ffd810173aa90b2807ee4b89babc67973e898edafabcb4531ee8474b",
+            "c": "82ce96cf04301e6cffc8c2aa795fbab20402553e27ec97abb41e3b8aa2d4a20f"
+          },
+          {
+            "A0": "a658c34a8667f920f76b2c199ef43aa7eb3ab644977149e37cd4adfe26d32714",
+            "B0": "82c9a363874f90ba7deed54611a2a65b837a694baa8d7dd17eae2a98c64a0d2b",
+            "A1": "320fc45b3f344de86a76b23c1fef8957263133e4b58e846a4e3934509481777c",
+            "B1": "b6085c4a641dce3572fa47adb303197cead7c9967ec45775896b30c7a1c56679",
+            "c": "09ef4ddf24d1b7c04ba68a95a1160b6e0985a85c6f26ed6a06a27b8490c2120d"
+          },
+          {
+            "A0": "b4be343f8ff9d0555d400c3924bfe68e43130439ba7847f093fd3d6431a66609",
+            "B0": "96ae06ef80d5cdf2fce12522c53657a69182742be5f95092f01080159115cd06",
+            "A1": "9e4558d29d7b98a8ed3c4603d3ef1c72409c170157b7a4f3b75264be8f3fe54c",
+            "B1": "def5d122547fd339908b39cb236c75db53625a8211b6115034d57e27aebc927e",
+            "c": "6eea344f399ea048336303ae94382b8178414800721d852849c73f200840f80a"
+          },
+          {
+            "A0": "ae0eb766e05f90978e67b64fc904353c259cefe38c038ba732a3e7a8738f870f",
+            "B0": "685c8a06cd92509b26178f5aa32459fa2c74357652c68bbf62dd77be71f0196f",
+            "A1": "fc83e4f96fa814612bd8b152f770438e5d06a438f5ea65160bf57ef23517c62f",
+            "B1": "1c8009dfa5794264e503d2ce522e74402251d278328989990ac74b7347751860",
+            "c": "4d7f3b74d28002bf728ebad9ecaf29189571131893f499d252f03ee1ba97fc0a"
+          },
+          {
+            "A0": "1c9221763343918161ae93e8b39c7880cd904957eb3f09a64c7d2501b94a8850",
+            "B0": "1c7d5f567b990fe3ad3a06a4d291ccd172107d2ea08e6f59c3cd50ef7ae27149",
+            "A1": "e43b48b05d7be72d4e9a8819f07e3844ad47610e1bd749be2257e56b55f27447",
+            "B1": "4867956a22912d3011aa12dfe466f4e8070501131e2397882794ef5de0a56b27",
+            "c": "068370e6d2eb1aab8b1aea43ab2a64801d8e4c46ca971ba7c2377504a57f2305"
+          },
+          {
+            "A0": "d6f50357654cb025c23d2bbe209c5aeb4171edcc542206b49dd80fbc136f0a4b",
+            "B0": "7cebb21f7271f6d2a6ef90bbffa4d90f94d1c456b8e34fa38d0be8c43527d43a",
+            "A1": "1688dad5c2c58eba4dbad48719c2b57d7a551b065b93c38862675e32f0311760",
+            "B1": "fccd345fb9a97699d1e6c8b39fa1f5a5f30da7dd9c981c6d1d10aac6eac54b58",
+            "c": "ad02f1a374af5830e5414ebe55b956a8ccb522e39aa22872759e4aca1f792c04"
+          }
+        ],
+        "sum": {
+          "A": "b6d6974376f196864539b3eb2fbea94b9e8d7293cbf44a25f0c565893223532a",
+          "B": "aceacf0eb482417a2beb4ba202310336fe278421ac260b9021b5aa316819fc75",
+          "T1": "2eb112839e28a89f1dc96c4e56886af200f2fc84cc149ed669dc7a782599b37d",
+          "T2": "3ef0596ec3395b286634a6a35ef71a9bfd64f56d23aaa870b0073e5e6f483d32",
+          "c": "61d2246894026b8117818b27ab23a08a4b501f797a3cf53ff0af529126de5f02"
+        }
+      },
+      "tracking": "e6a0ca51ecc67e28bc1a807783071b371bf051bb5c31d1143863f728e41113a7"
+    },
+    {
+      "election": "council-2027",
+      "voter": {
+        "name": "alan",
+        "kind": "x509",
+        "mspId": "Org1MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d623349675957786862697767626d393049474567636d566862434276626d553d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "a7de1a73a20c72898628899ce5b28ae585bf76d81c938b13e32a65a03e25e75c"
+      },
+      "choice": 4,
+      "seed": "v1 council-2027 ballot 2",
+      "randomness": {
+        "r": [
+          "c55ded54fccc1c380a08b3878989817cb060bf4fd75af36c0abb96cb392a1d06",
+          "48f2d99056e453dac472800e19a8b6d3bacd7d6a80e15a19ba93fd8d2ac20b02",
+          "26b154dc7f760d105ace2306d9a1acf1032c03ba627d59447e3c4aae6197300f",
+          "c0be068a7d44249980edcd1f8662aa9b46e26c86e11bbe527aa1e9805471e205",
+          "8202bc44f387b6df002c1f45eb51f0708b9b13b3ccea9e7f7f471e28b0a8c20c",
+          "53feba36465abca375551cc06410ffb72ff55f25aa8de7b8eeaa5d1d56306206",
+          "654a55cf0e3a5e6812274b57aeb10911fcc39fa3ab18b845caa98c8e82c24607",
+          "bbf8e8e6f59c1a91686d88bd290597cb5a73584c6f24e060c4e70dea13190e05",
+          "6005f0a8e3b015ea363bd600e2fcba98b3a34bef649a3b7352f25bc0ea553204",
+          "923a29ccb748e2b16214771f71c9a362c6d1f47c27fed969ab24bbb2fe42ed06"
+        ],
+        "bits": [
+          {
+            "cs": "e4c453628f869561528059d107a149b2838ca8497de49b58d4a967188b55da00",
+            "zs": "7654d34df0a3e2e789c28cec3950e487bee23f5b0279916b3a1c294d2a041605",
+            "w": "6310e13f7cca3628620c6b48128037c8e1856f8f588f0ba677dd463f95695802"
+          },
+          {
+            "cs": "23a8a37474158b20d2d8b1d180b12fb4e08e08e1c073ade27a603740bea18e0d",
+            "zs": "267140b970cb54022d0ae7247246d4ff04bf1361cd3b95f225c9db7d6d735109",
+            "w": "6403c811a61e8aa4113282ee9534393e8b8fdae60510e64ab29f0072289bc407"
+          },
+          {
+            "cs": "096481ce92777a1ba7ee4712d3b78fa636733988714f11bfe6cf47a73d3d7004",
+            "zs": "a49e5fd1012c84674aeb354504d91525fc40e874076449bf267e03157ac7040d",
+            "w": "ac7360017a12964468fd8eed3246c3e11ffe7eac442ced6708b862b77f01a20e"
+          },
+          {
+            "cs": "b42cc6dc1317d171f0423f78092751d9feae82b142c3aa8f8303d665979d0402",
+            "zs": "7bd162912b88eb15b7ea2662f68821f65f2331452322af9d17fa1e262d55660a",
+            "w": "c9964baa1a46c2490a40ba79955aa6284a617d35b633e2e5d95dc2e5e74cc709"
+          },
+          {
+            "cs": "b6d0a22864a4d7f64c45271319fed4fdf20e19c36d1dfcbaa6ae043a895a160e",
+            "zs": "7bfba12a3e9fb1944d93b9324c87943a8e930db6edbcb0657190f7dc5ffa3306",
+            "w": "dd1d23e78cff0dd2a8855622895d105e98dde57a9fc1ec1e52ee10948eec0f0e"
+          },
+          {
+            "cs": "4e90d219132ed4bd3191e2f155e639032f2c6544c1149b1850fd22b5a448450c",
+            "zs": "072631b9044f2a756f40d83552e993a5806f489490727f167ba909a75450fc00",
+            "w": "41bbe46c9c2b2d91240f81450f4d6b69fd59cbf35e67ec4118aacb12f303aa08"
+          },
+          {
+            "cs": "fc2322a119dd748513747a28b2f79ac970dc340c71705a7a855b00caf2934809",
+            "zs": "28400b482fe6de61097642363177fadf949ca77b536bb0b37ef3859862384f04",
+            "w": "d393d22d443b0e3b5dc136fb1ee95a10d286438c9912a8fc29ce415b62b7960a"
+          },
+          {
+            "cs": "23e019fd0072411d14384ab210a03be26564186880ef267d07db1ea4a8c3c108",
+            "zs": "f6d24c16c300014ef7c95fdbf6ca87d720fcdc40581551dce253daae7de94b0b",
+            "w": "b1cc1f301cef9bc6cb2e7741f2a3877a2a038f09a1a0507e56fd2edffd9a720b"
+          },
+          {
+            "cs": "941a372cf67a87daee0eee7ac178db18ce0074635938e09301d4b3f060cef801",
+            "zs": "3e056e0fe2be2f6f6662d38ec239e7a3d9cc798e34ce8497946ca89fb123db0a",
+            "w": "a64ef0a9cf9b4c851f7d1ee359469741aeb1045e495a8cf33b5b12854a3a0407"
+          },
+          {
+            "cs": "fe5be95589103ebe61f0ca41f0684bff2788ad4696a055e7345566c8e680a20d",
+            "zs": "562c27733b705620e8d60c3d4e029cd61323b61344a6f5e9c13ff3812ad1210f",
+            "w": "d4aeeb2283b0e6c68b4df316a93f78287566acb43eb1004c9b2194a96d74d60c"
+          }
+        ],
+        "w": "e12068f6c71d89fe0b7ad8137c64a1fa352b7da7a2afd620240a3f4bda6d6201"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "council-2027",
+        "ciphertexts": [
+          {
+            "a": "9643f0726e206491ccc7ad0e29e88330dd81f4adafa47a2565614bc40d96d354",
+            "b": "1e8d87cd26caad8f521eac7d2b2a73fa3eca76a790e254276ae8bc3a486adf30"
+          },
+          {
+            "a": "9071650667f87541d3ba7c9dac4bcc602d253b84a918868459dbbb3d97427839",
+            "b": "3c269cd338d0c44eb059202742b17f1832942d5e1fc3ca24c0ce110b250a0135"
+          },
+          {
+            "a": "a0a83dc9b9c7d461e9ad0a90a195c4092c8b5f0bac87cf30d6ec427b3ab42b23",
+            "b": "9233394703d13235e83198c3c38def3a08481773af1eed0a07a155bfb0514554"
+          },
+          {
+            "a": "00e87c7919310ec72c7605414a1cebadec1ac8d57b981d5f8b8ccbe13a39990c",
+            "b": "36e32d578ca301b56ebeba433194200e91f7a384a7d856a8cc24892cab4b4b37"
+          },
+          {
+            "a": "28487a36da84983669f9f3dfc87c17164722bfe20aca8cff6611b46af8597e3d",
+            "b": "44041d91fd04093f6cb9c9205446cb0d3a4139e2ea838a33f9ed8cf1053c6001"
+          },
+          {
+            "a": "5e8ea02398edcfa8e87364d14dbd995d663ca7ab664126964e87685cedc9c54a",
+            "b": "967fc70ce904c3b8372f890e6e207fc9bb092160ef0746e1870558f771d97075"
+          },
+          {
+            "a": "76ad6f95b9cfdcfb60b05feee9c7c044ff618685a67e9c0ab02bf013c3f0140a",
+            "b": "62098ccbd5849bb37295199ea2c9623f7ddd2b1e0287c498341b9ff00f1db82c"
+          },
+          {
+            "a": "147618d5549cddcdbb7f460806aa729d7f41c091caf1016d2c35ef0f35dc6541",
+            "b": "06d330536c19acefb1dc2ce9b99ee32291f52d090682986a8e1592f09df07e44"
+          },
+          {
+            "a": "fac77871f142b358fd751d68bd718ff11e26708470a392f52f6deadc71d4792f",
+            "b": "12ea6f04b0ca9a5f6e903664c650f095ca01b082b52147d72e16014715dd5c69"
+          },
+          {
+            "a": "a42d7d361b174f7cc207a7abadbbf33d523f909c3d393e75d6af91d273cb3d28",
+            "b": "800b5dc0e7fe93f44e3b3dcf35ad14a93c57fa8cda7eb78dc365000c92d4003c"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "1dbb4388fa9f08aa3e4e7c95a888aa1449b9879f1e7bc6e7dd2e6f7039763306",
+            "c1": "e4c453628f869561528059d107a149b2838ca8497de49b58d4a967188b55da00",
+            "z0": "020bd161fb1a1db674730e99db8630bf51efb5e0bb748ee6f1bead736b14e10c",
+            "z1": "7654d34df0a3e2e789c28cec3950e487bee23f5b0279916b3a1c294d2a041605"
+          },
+          {
+            "c0": "187b7ed9a1eeade1d9d752d3858c0e79a705a3e6505eae78ca108f163e7feb05",
+            "c1": "23a8a37474158b20d2d8b1d180b12fb4e08e08e1c073ade27a603740bea18e0d",
+            "z0": "d5b0069064b7bbd910d3f1781892e5e68ea6218e6b8336d80aace62ffdf52d05",
+            "z1": "267140b970cb54022d0ae7247246d4ff04bf1361cd3b95f225c9db7d6d735109"
+          },
+          {
+            "c0": "60ad11e12a9edc5afd8ddc37b9d1a45b8d13d3d08c1622edb8e641223ee0970c",
+            "c1": "096481ce92777a1ba7ee4712d3b78fa636733988714f11bfe6cf47a73d3d7004",
+            "z0": "2de5c85ca3bda413343aa1680675ce2d7a06afb1918fb05fb955f196d745aa02",
+            "z1": "a49e5fd1012c84674aeb354504d91525fc40e874076449bf267e03157ac7040d"
+          },
+          {
+            "c0": "59b304adbcb140b04d26e7840b43ea9cd984efb82c6332113a9f2170801ccb07",
+            "c1": "b42cc6dc1317d171f0423f78092751d9feae82b142c3aa8f8303d665979d0402",
+            "z0": "b072e5470bb22cdedbdf86991b88cd9f1091f39916aa2d54de93cb0ee9da0507",
+            "z1": "7bd162912b88eb15b7ea2662f68821f65f2331452322af9d17fa1e262d55660a"
+          },
+          {
+            "c0": "b6d0a22864a4d7f64c45271319fed4fdf20e19c36d1dfcbaa6ae043a895a160e",
+            "c1": "34dca14c85a90fa4989f0c1a77f54d337a61e28cc3f4a317167369f796b9b602",
+            "z0": "7bfba12a3e9fb1944d93b9324c87943a8e930db6edbcb0657190f7dc5ffa3306",
+            "z1": "b158ba8d66a61e407b275df79f920bd8e7b84227b4980a78d64a1f67c1dfbb04"
+          },
+          {
+            "c0": "993feede423ff5825a36624528afef965f8378c1e092db090bdc4939f43a7809",
+            "c1": "4e90d219132ed4bd3191e2f155e639032f2c6544c1149b1850fd22b5a448450c",
+            "z0": "d869709b3f3d0a4db89e70deccff7064a7e22b7d1f43ed5e5efd76a2c447650d",
+            "z1": "072631b9044f2a756f40d83552e993a5806f489490727f167ba909a75450fc00"
+          },
+          {
+            "c0": "8a073a62433ed8f352566cd707ec3fa732cd28ac329b9a14229a2d3de12bb806",
+            "c1": "fc2322a119dd748513747a28b2f79ac970dc340c71705a7a855b00caf2934809",
+            "z0": "64d6341fc7439d7b77b03d915c87429e683509c9df3394867c274ae29dbf3e07",
+            "z1": "28400b482fe6de61097642363177fadf949ca77b536bb0b37ef3859862384f04"
+          },
+          {
+            "c0": "9755a6de19cba947cbf2f5935463905640b8ab4170344c6205b7982a8be73a0e",
+            "c1": "23e019fd0072411d14384ab210a03be26564186880ef267d07db1ea4a8c3c108",
+            "z0": "ed91c9dc4d6c481e7060665885326ba13b2ee2c13c22b6c00e85a10c0d403405",
+            "z1": "f6d24c16c300014ef7c95fdbf6ca87d720fcdc40581551dce253daae7de94b0b"
+          },
+          {
+            "c0": "cfd12cd2b2a08ad6b91ba24ac6403a5f8221a1cd70443eef332c9bfd14817b0b",
+            "c1": "941a372cf67a87daee0eee7ac178db18ce0074635938e09301d4b3f060cef801",
+            "z0": "03c4c2c35d5f3b7bafcc39c4d8bb027d95683b783f3a49ce115222e43c48b305",
+            "z1": "3e056e0fe2be2f6f6662d38ec239e7a3d9cc798e34ce8497946ca89fb123db0a"
+          },
+          {
+            "c0": "6155f6d88313f66df697712a40f4cb69a59c0d87aabf8e73cf4621593a7ebb03",
+            "c1": "fe5be95589103ebe61f0ca41f0684bff2788ad4696a055e7345566c8e680a20d",
+            "z0": "cdf9c05c291ebd1df077a32c9e579cfa8f042cfea670cac642599b0e5375480c",
+            "z1": "562c27733b705620e8d60c3d4e029cd61323b61344a6f5e9c13ff3812ad1210f"
+          }
+        ],
+        "sumProof": {
+          "c": "764429e93958a99abf0a7d8eb20b70ade44499a75ab924c439d070dcdd34900c",
+          "z": "9a7aaeb59b931de6b61fde3818d5e4efc3700745b64b59d0eec21ee67a01cb05"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"council-2027\",\"ciphertexts\":[{\"a\":\"9643f0726e206491ccc7ad0e29e88330dd81f4adafa47a2565614bc40d96d354\",\"b\":\"1e8d87cd26caad8f521eac7d2b2a73fa3eca76a790e254276ae8bc3a486adf30\"},{\"a\":\"9071650667f87541d3ba7c9dac4bcc602d253b84a918868459dbbb3d97427839\",\"b\":\"3c269cd338d0c44eb059202742b17f1832942d5e1fc3ca24c0ce110b250a0135\"},{\"a\":\"a0a83dc9b9c7d461e9ad0a90a195c4092c8b5f0bac87cf30d6ec427b3ab42b23\",\"b\":\"9233394703d13235e83198c3c38def3a08481773af1eed0a07a155bfb0514554\"},{\"a\":\"00e87c7919310ec72c7605414a1cebadec1ac8d57b981d5f8b8ccbe13a39990c\",\"b\":\"36e32d578ca301b56ebeba433194200e91f7a384a7d856a8cc24892cab4b4b37\"},{\"a\":\"28487a36da84983669f9f3dfc87c17164722bfe20aca8cff6611b46af8597e3d\",\"b\":\"44041d91fd04093f6cb9c9205446cb0d3a4139e2ea838a33f9ed8cf1053c6001\"},{\"a\":\"5e8ea02398edcfa8e87364d14dbd995d663ca7ab664126964e87685cedc9c54a\",\"b\":\"967fc70ce904c3b8372f890e6e207fc9bb092160ef0746e1870558f771d97075\"},{\"a\":\"76ad6f95b9cfdcfb60b05feee9c7c044ff618685a67e9c0ab02bf013c3f0140a\",\"b\":\"62098ccbd5849bb37295199ea2c9623f7ddd2b1e0287c498341b9ff00f1db82c\"},{\"a\":\"147618d5549cddcdbb7f460806aa729d7f41c091caf1016d2c35ef0f35dc6541\",\"b\":\"06d330536c19acefb1dc2ce9b99ee32291f52d090682986a8e1592f09df07e44\"},{\"a\":\"fac77871f142b358fd751d68bd718ff11e26708470a392f52f6deadc71d4792f\",\"b\":\"12ea6f04b0ca9a5f6e903664c650f095ca01b082b52147d72e16014715dd5c69\"},{\"a\":\"a42d7d361b174f7cc207a7abadbbf33d523f909c3d393e75d6af91d273cb3d28\",\"b\":\"800b5dc0e7fe93f44e3b3dcf35ad14a93c57fa8cda7eb78dc365000c92d4003c\"}],\"bitProofs\":[{\"c0\":\"1dbb4388fa9f08aa3e4e7c95a888aa1449b9879f1e7bc6e7dd2e6f7039763306\",\"c1\":\"e4c453628f869561528059d107a149b2838ca8497de49b58d4a967188b55da00\",\"z0\":\"020bd161fb1a1db674730e99db8630bf51efb5e0bb748ee6f1bead736b14e10c\",\"z1\":\"7654d34df0a3e2e789c28cec3950e487bee23f5b0279916b3a1c294d2a041605\"},{\"c0\":\"187b7ed9a1eeade1d9d752d3858c0e79a705a3e6505eae78ca108f163e7feb05\",\"c1\":\"23a8a37474158b20d2d8b1d180b12fb4e08e08e1c073ade27a603740bea18e0d\",\"z0\":\"d5b0069064b7bbd910d3f1781892e5e68ea6218e6b8336d80aace62ffdf52d05\",\"z1\":\"267140b970cb54022d0ae7247246d4ff04bf1361cd3b95f225c9db7d6d735109\"},{\"c0\":\"60ad11e12a9edc5afd8ddc37b9d1a45b8d13d3d08c1622edb8e641223ee0970c\",\"c1\":\"096481ce92777a1ba7ee4712d3b78fa636733988714f11bfe6cf47a73d3d7004\",\"z0\":\"2de5c85ca3bda413343aa1680675ce2d7a06afb1918fb05fb955f196d745aa02\",\"z1\":\"a49e5fd1012c84674aeb354504d91525fc40e874076449bf267e03157ac7040d\"},{\"c0\":\"59b304adbcb140b04d26e7840b43ea9cd984efb82c6332113a9f2170801ccb07\",\"c1\":\"b42cc6dc1317d171f0423f78092751d9feae82b142c3aa8f8303d665979d0402\",\"z0\":\"b072e5470bb22cdedbdf86991b88cd9f1091f39916aa2d54de93cb0ee9da0507\",\"z1\":\"7bd162912b88eb15b7ea2662f68821f65f2331452322af9d17fa1e262d55660a\"},{\"c0\":\"b6d0a22864a4d7f64c45271319fed4fdf20e19c36d1dfcbaa6ae043a895a160e\",\"c1\":\"34dca14c85a90fa4989f0c1a77f54d337a61e28cc3f4a317167369f796b9b602\",\"z0\":\"7bfba12a3e9fb1944d93b9324c87943a8e930db6edbcb0657190f7dc5ffa3306\",\"z1\":\"b158ba8d66a61e407b275df79f920bd8e7b84227b4980a78d64a1f67c1dfbb04\"},{\"c0\":\"993feede423ff5825a36624528afef965f8378c1e092db090bdc4939f43a7809\",\"c1\":\"4e90d219132ed4bd3191e2f155e639032f2c6544c1149b1850fd22b5a448450c\",\"z0\":\"d869709b3f3d0a4db89e70deccff7064a7e22b7d1f43ed5e5efd76a2c447650d\",\"z1\":\"072631b9044f2a756f40d83552e993a5806f489490727f167ba909a75450fc00\"},{\"c0\":\"8a073a62433ed8f352566cd707ec3fa732cd28ac329b9a14229a2d3de12bb806\",\"c1\":\"fc2322a119dd748513747a28b2f79ac970dc340c71705a7a855b00caf2934809\",\"z0\":\"64d6341fc7439d7b77b03d915c87429e683509c9df3394867c274ae29dbf3e07\",\"z1\":\"28400b482fe6de61097642363177fadf949ca77b536bb0b37ef3859862384f04\"},{\"c0\":\"9755a6de19cba947cbf2f5935463905640b8ab4170344c6205b7982a8be73a0e\",\"c1\":\"23e019fd0072411d14384ab210a03be26564186880ef267d07db1ea4a8c3c108\",\"z0\":\"ed91c9dc4d6c481e7060665885326ba13b2ee2c13c22b6c00e85a10c0d403405\",\"z1\":\"f6d24c16c300014ef7c95fdbf6ca87d720fcdc40581551dce253daae7de94b0b\"},{\"c0\":\"cfd12cd2b2a08ad6b91ba24ac6403a5f8221a1cd70443eef332c9bfd14817b0b\",\"c1\":\"941a372cf67a87daee0eee7ac178db18ce0074635938e09301d4b3f060cef801\",\"z0\":\"03c4c2c35d5f3b7bafcc39c4d8bb027d95683b783f3a49ce115222e43c48b305\",\"z1\":\"3e056e0fe2be2f6f6662d38ec239e7a3d9cc798e34ce8497946ca89fb123db0a\"},{\"c0\":\"6155f6d88313f66df697712a40f4cb69a59c0d87aabf8e73cf4621593a7ebb03\",\"c1\":\"fe5be95589103ebe61f0ca41f0684bff2788ad4696a055e7345566c8e680a20d\",\"z0\":\"cdf9c05c291ebd1df077a32c9e579cfa8f042cfea670cac642599b0e5375480c\",\"z1\":\"562c27733b705620e8d60c3d4e029cd61323b61344a6f5e9c13ff3812ad1210f\"}],\"sumProof\":{\"c\":\"764429e93958a99abf0a7d8eb20b70ade44499a75ab924c439d070dcdd34900c\",\"z\":\"9a7aaeb59b931de6b61fde3818d5e4efc3700745b64b59d0eec21ee67a01cb05\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "da9a204cbbe82fcedceb1dcb3a865d19bfeba96f081abed82a68cc777add2245",
+            "B0": "640f01d92945a3d478f886b6ff30d0b0b3fc78f9880f95da2af3b177c4f3aa0b",
+            "A1": "3ef5c9be90ea1d9977134557a55622a64f43ecefe12ff3906b5a32763d971605",
+            "B1": "b890968f2435ff6e1b15f266f9137820ad65d2e090bda75ff1e52201c967ca45",
+            "c": "018097ea89269e0b91ced566b029f4c6cc4530e99b5f6240b2d8d688c4cb0d07"
+          },
+          {
+            "A0": "4e2b9719086a13b0a079b70ecf8566a82836be46acbf77b571f6cc819b1aa819",
+            "B0": "22670e6d890a16d2d5ed60ff78429eef177e601b2755242e7ad822287d9b086d",
+            "A1": "26cf6633820441def6e548ced7ec4e54eb435c74f0e32387b84d01d1ae4f784e",
+            "B1": "fadb966f8a80b4425231e0f8b14a9580fe9606ce2a5ef80dfae592f8fdadf072",
+            "c": "4e4f2cf1fba026aad5130d0228445f188894abc711d25b5b4571c656fc207a03"
+          },
+          {
+            "A0": "766aa6c3c3368414fa608155caa22c91f7b5b6523e5f05e7e0708f60bb2d8031",
+            "B0": "a82bd024b2e03cd9f09dd1105deec59c166a2806d230d2cedc9274149b9b764b",
+            "A1": "a8c0f1e4c1afb8f98b83db82f6394f176bcc703c46d4415a030d8fded2e57d0b",
+            "B1": "088769c11330dda9eee23d9743549b28c20911cb18c2ecede28b375c50ceb42c",
+            "c": "7c3d9d52a3b2441ecedf2ca7ad8f55edc3860c59fe6533ac9fb689c97b1d0801"
+          },
+          {
+            "A0": "7e347b2e02bb6690090a159d755dadfedaa2dad22721cb9e5467ea611f413e0c",
+            "B0": "686f5e1a5fcf09b78fcd472df6691921ba1f6e422b90e6c18782315e6ff5556d",
+            "A1": "da8ee7d720fb910ef39f229b00f3c73b2971cb4a548a373f6c4e38195b514863",
+            "B1": "d2fb6d1af8a7e7a0be20765a9f005e29c2eb47d1031f720aeb3f31261de26017",
+            "c": "0de0ca89d0c811223e6926fd146a3b76d833726a6f26dda0bda2f7d517bacf09"
+          },
+          {
+            "A0": "eab0cd25f0bbbea1d6b7e3791347105fbc041a497d5b6c9ac5cf5e0e1be40b76",
+            "B0": "7498c636b15f8f5610a37a94b386330088e9714afd7fd4f8f5db42df83a8c07d",
+            "A1": "b465a9d9dc3436ca2df42f41f3d0788e15e1dd5c2fc13cb4b5b86049b3d9875f",
+            "B1": "84e2cc626aaef7163e94ed2b2f4eb886e8b39e932972bdb3e5877c6409f4c65d",
+            "c": "fdd84e18cfead4420f483c8ab1f9431c6d70fb4f3112a0d2bc216e312014cd00"
+          },
+          {
+            "A0": "5c505403cb7f5f41d0ca2c7b9ae1dcb1746006b22864970e4aaa83e04918be2e",
+            "B0": "e41bc763c3eaad8c4a395c16a78ee0b800f74cdba4b58c37365601bd603a9719",
+            "A1": "76186c5545494646369e52f8cf6d512c76f4f7179960d1e0ffa502d69b505071",
+            "B1": "ba952114efb8494cb006fce739f5f103da15acf6fe1651ea1a777db21c729134",
+            "c": "fafbca9b3b0ab7e8b52a4d949f9b4a858eafdd05a2a776225bd96cee9883bd05"
+          },
+          {
+            "A0": "3ac2998e08daa478b79f383ed8c1323de89e93a81766893512008ed382c4273b",
+            "B0": "e29a26bf2e0c263bc7f7c55b545b53f3147dd12c65c9114da22dde6b324dfd14",
+            "A1": "a28de4280fe5e50703fda415e230935899b831342c75d00e6effcf31970d4b62",
+            "B1": "ca43346903f909cd4f09b7702e6e0431a4011b4198330772ccd94a966f4f2771",
+            "c": "995766a642b83a21902def5cdbe9fb5ba3a95db8a30bf58ea7f52d07d4bf0000"
+          },
+          {
+            "A0": "f88ec6ad006ec5c9ab7fe896305ee93e5e8e0daf1d440f7694ea109b89a0ae29",
+            "B0": "f073dabc6af4aec979e26a9f2d97095ccb1ce639639bbcb64b30b86b2796a061",
+            "A1": "baadec47469260d6ebd45f452210643ff7d5c5b0b824c65f0e1f294abbef276c",
+            "B1": "d49317db37bf83d83dc4f7552648afdf5f39f2349eae476c36bcd6889853f359",
+            "c": "cd61ca7e00dad80c098e48a38609ed23a61cc4a9f02373df0c92b7ce33abfc06"
+          },
+          {
+            "A0": "00e93833eccc5eb05aeffb0f8694fda878b978e09a308e515eefe600547e0b5d",
+            "B0": "42cae0c637ef8fc904f4fae213232dcd0d20417b28f7504fe8a72ba50a0cb733",
+            "A1": "d23f893e80df5c7211563c6ece0ef400888cad5a54ec5b344465351f2c832b0d",
+            "B1": "0ec67560ee51aa35867b6ffa7bd703eab1cda06de6068493cf5b1ca10881167d",
+            "c": "63ec63fea81b12b1a82a90c587b9157850221531ca7c1e8335004fee754f740d"
+          },
+          {
+            "A0": "c251fcd721316a646d24626ab6851f3a79fb329c97ae8fb0c750441e3eae0206",
+            "B0": "c6d95e35b4d79a452cdb2836c1b556c0aa57bd4b5da222bee5927ea9335a4304",
+            "A1": "8e9fb88b8d2dc86d95fc4e9308ea1379d6e1c0d0d3aa74624c337e31368d4b49",
+            "B1": "965d0bece59a541f949d7cec59b30337f78cd2cbbedcaa69f14694714caa890b",
+            "c": "72dde9d1f2c021d481eb44c951633854cd24bbcd4060e45a049c872121ff5d01"
+          }
+        ],
+        "sum": {
+          "A": "e2a732cc9ac4295c84d663079dd253d6665d66763dbc71bf7654d3b98893ed3f",
+          "B": "a2f3bfae1aa03d8ff9e1eea62a423ec7e6eb93d2b8388f5902677ea38c41f431",
+          "T1": "589d8eeaa55c694faff07fe100bc8b0bd34d1f75e2d781725f07b6585dc32436",
+          "T2": "70cfd6640440d150db7708a8258ef83bbe10096f6c50c2c7692797a8c0939f4d",
+          "c": "764429e93958a99abf0a7d8eb20b70ade44499a75ab924c439d070dcdd34900c"
+        }
+      },
+      "tracking": "d17c9179e31215e14e9d8e14104537d70acb74b96f8d253c19fed1d585d2d144"
+    },
+    {
+      "election": "council-2027",
+      "voter": {
+        "name": "edsger",
+        "kind": "x509",
+        "mspId": "Org2MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d623349675a57527a5a3256794c43427562335167595342795a574673494739755a513d3d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "6dfa831d1ca46223e015fe4d6b3ce820fd5ad5ee6d5d7bee9aa6a8a135ccd150"
+      },
+      "choice": 9,
+      "seed": "v1 council-2027 ballot 3",
+      "randomness": {
+        "r": [
+          "5c847905c9c1588ba057d68f50c2c6179adc0ffe10a293a717512483e2748b08",
+          "dd6ca13608819c79b40c1c75148208b6bb7f9832345d0294638015d56019bb08",
+          "6ec6e2bd8361a9958b8e6c5a3ed5f089e46b387d329a8f023c90edfb750b3408",
+          "20328978dca332622b210a8a901ce47d7b5db31fb26f046c788084d40d175d0c",
+          "671ec0634e48c88c7c87e44ce82b0e55eeac45a93d4b626e58638194637b1101",
+          "75d7d057ff0d474f7eb246f2ed108ab02602bedc7a06fec76a3e2eb819ef6e02",
+          "922e6c060a22bf320ae6949d3bb4926dccf81014937860b9aff25c986e936709",
+          "7e95d01bbea925b9be54b3717353df6a80ca54b712c0b1f9bc26a6a64a01c50d",
+          "3f8853941330cd072240bbe6ff46edb672f76693c028b73f20ea3bff11f36e0f",
+          "d7258b67ba717bda1e8c7cbbf8d85b83f1f56173111b2cb850bb8ada66cc6b06"
+        ],
+        "bits": [
+          {
+            "cs": "441d95bb8e1ffb64daf449dfa68830db891cdf5acf1ac8b1df972d1ac8ab5404",
+            "zs": "ed563cc755e174625f5ede039b154b331b06c5d6a002dea5e120e38596ce1201",
+            "w": "3da72a51e2fa4c0bc47e01dd19ae6b9a525c2aa9a68865c49ae48249432b300a"
+          },
+          {
+            "cs": "7466ee5adbdd0a220fc964fc606e2722da8dab1a6701a182e63e711185646308",
+            "zs": "4b4a76a98c2eacb2b209b744ecd20e5a8ebece456783af2ad9611fe53cbb720e",
+            "w": "1b0b521186c83f6d53545befd81b166a6837fc0007c5d4d52608961f90a70a0e"
+          },
+          {
+            "cs": "f809a5c711d5e675a0d85c6f2d7d9314ef8f039df9d25be8321e908384701f0d",
+            "zs": "e27049a18db494cf44ae6ad9470168e49f3cf0dd793a28dd378954acff348106",
+            "w": "d472d53d1e9dcca1f9fc7d702870eb8483593080511fcad7e617ed9740f43f0e"
+          },
+          {
+            "cs": "22bfa7d9c95e86981473d3a7ad921f3e51705ed11d1bb915b12442ca91b53403",
+            "zs": "a91b1df3ea87b1f58fc3f021a37dc53d24e8142b684f601d92482e68a47bfd06",
+            "w": "e264862f00fd518bba79849f7e71a2ea8c0e2cd155ad6d66bae888c1522a4100"
+          },
+          {
+            "cs": "3add947d0fe005393d506f682fd111b9928b0aa2aaa7fcb95417516508e3f109",
+            "zs": "ede2815ee8bffce8769d6c9480807c3312818710433560147ac85a63c3ccac01",
+            "w": "bb301a7cc0d2a422ab2ea7d035435a3c3979dfd671ae8105e1a80047e6f4510b"
+          },
+          {
+            "cs": "1ed0b7a78bdc9588eef688d240cf71ea9d2d6a160a43d62abd13a9bce497e701",
+            "zs": "4c4f0a4dfa705d40230733412fbf8543d56dcbcd9e56d74ffb5a2319a4f3e402",
+            "w": "06a60790073921ccc41a1ea29b7bc745cdac79881f90df02ca859d642a01a20f"
+          },
+          {
+            "cs": "eefb0a4cd904b4d5e3cd1232b3beab74465db90941e2ce4f0d1df14e32150806",
+            "zs": "53b42ffa3dcf4b443f0e8476b2d1db10b7371e17b156466a4e1f4baed8b64b0a",
+            "w": "616917d4dede81522cb1aaa8113ddbe57aa62bb04169d78e2b7c30566a75210f"
+          },
+          {
+            "cs": "f69d61150995ec2bcf3510a5b83d46a56df7b37176b13654fd4f13b414af5d0b",
+            "zs": "d5115a7b9e63d93300c3334916da0a9392f7f15031fa8524c505186f4d441e03",
+            "w": "b091b1c2cba9ce940a313f85efb021ed9a340082aa1c447832ec0382dbc60106"
+          },
+          {
+            "cs": "6210f2d0849933b5228f182bd645ad784a08111859f06d84138b046efcc43f07",
+            "zs": "e06e35b0a91b132e24558f339026a929b3d9aedbf61c411b9f6a0fd70881700f",
+            "w": "2ecc081fb7dabdceaaf83108a6e45b94ca81c07984c5a8a3dbe0d399fb9d6b0d"
+          },
+          {
+            "cs": "e43241b789dd693a721194a4930a425517b2964ebd5af94206147f940e685d01",
+            "zs": "83014cdaf33018e40acc5ebe479e1d2d7d399ea604a367bdec4ac2edb03b8f0b",
+            "w": "869c17f825350d921b18046e1c15c2c8ea9922f244d9c723bdcfccb743236a0f"
+          }
+        ],
+        "w": "29b247a08364dd4f5738f1af0e344060d9e31c0816e1a0fdf6135a7497f8f207"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "council-2027",
+        "ciphertexts": [
+          {
+            "a": "e82979a8e122b74dbd5c31f2768a0508e64373421d88f0beca227a8fb0f5bb25",
+            "b": "728ecf873896a799f1969827132ad43c03d61e681cb276c12603845440a50c4b"
+          },
+          {
+            "a": "6aed833983ea1f843c7d1c10a0bf68f1a26edf7c76c6a9afdca32a775c80a25e",
+            "b": "b43d5ba3cb865ae213202aaac0ea511e14fbe3922ccf925b132324b445d15f0b"
+          },
+          {
+            "a": "4cfcd3e13808414c015e1f315ad16187e0d29e540f89ad09f8c588b5fd099e22",
+            "b": "90a51b1eecf1a2cece9d05a587ae3c8418da2ff42e721acfaf982e2e6eb8951d"
+          },
+          {
+            "a": "d4ecd6002c4432dbf9aa03871554fada71fe95482b7d950ee7a3890a66b47c3a",
+            "b": "0e16009a88e49604b9c3a0372463e046017520da7cdbe952215be1f36fcc296e"
+          },
+          {
+            "a": "800a6ebe8fe29011ec0c3ab1546853015f62d5891d88e674eddfbf755a224e49",
+            "b": "2402352bff594cebbf2b9ed76657f935b5ba118c8929c3d137c91957218ae65f"
+          },
+          {
+            "a": "582505b53d1898c70f76b31d46c55958c00457524cf49e7544175728624bc93f",
+            "b": "86cce05a8fe5a2ac1f0edcecc6ee4c1424630e3549c0f839e958e60f71e44415"
+          },
+          {
+            "a": "a6bec9c20d89f05b30adcafbad1f5089b0aa30d9cff28b8cff8f5913d5d68827",
+            "b": "5a4785b835e9293a67a1eea59feadf010f7e59932bca3d677c117656d75dcd4c"
+          },
+          {
+            "a": "16a24cb416685e4fa2ac00cdd0a39e4546a4c1d00074beec7ba8c36d096bc360",
+            "b": "624fb47a4a16e6bdd1f83996f25082b4339ebd4d6ba4522620c7b54fa9d1954c"
+          },
+          {
+            "a": "fab335d54eb83063bbad700b3d3d84d664c54e1cdd9164336d7695c8fe8a8b78",
+            "b": "167e9024b165c1fa733b75d6b2e62c02975a940debe9ecdff8f901e588daf918"
+          },
+          {
+            "a": "a67ffdda8912624a0e00ad463ae41ab2990777f1ae2159ce66916345a26c6975",
+            "b": "7c3f4421a95f3077ea9743231ad2b01e8aeb8cc79dc772bd952a19c753cf5e59"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "95d04cd9ceff329f6b16a7a488b6867749c7f3b5dcc54cd9cffb5a2d40d4ea06",
+            "c1": "441d95bb8e1ffb64daf449dfa68830db891cdf5acf1ac8b1df972d1ac8ab5404",
+            "z0": "eb271087158389825db69c2130d2b91675bff399cd62c977f552ebd6af34aa09",
+            "z1": "ed563cc755e174625f5ede039b154b331b06c5d6a002dea5e120e38596ce1201"
+          },
+          {
+            "c0": "71ee20de76845cde1df7e653eb4b31d4ba67346e72bf23d30f2b5450a795030b",
+            "c1": "7466ee5adbdd0a220fc964fc606e2722da8dab1a6701a182e63e711185646308",
+            "z0": "830cf4bc3efe6384f3d98e31e0c1ad564ef1fedc3da0f6e52a343ef725702200",
+            "z1": "4b4a76a98c2eacb2b209b744ecd20e5a8ebece456783af2ad9611fe53cbb720e"
+          },
+          {
+            "c0": "c5b8855d59f844a3449c29fed468e08bcc3f263ff4db78612cb8e94a88632208",
+            "c1": "f809a5c711d5e675a0d85c6f2d7d9314ef8f039df9d25be8321e908384701f0d",
+            "z0": "79e21abccedf9320a62836b12b3bf09db211a761cfec97597fe816bed2a4d100",
+            "z1": "e27049a18db494cf44ae6ad9470168e49f3cf0dd793a28dd378954acff348106"
+          },
+          {
+            "c0": "972fdac1a5b43fd37f6e46a764c5d06b19efd68062f818602206f0a47c717904",
+            "c1": "22bfa7d9c95e86981473d3a7ad921f3e51705ed11d1bb915b12442ca91b53403",
+            "z0": "0e74cb7f2fc7a4e21301eb9d36eb71ff4742d93939f16f73645dc6eaf1700309",
+            "z1": "a91b1df3ea87b1f58fc3f021a37dc53d24e8142b684f601d92482e68a47bfd06"
+          },
+          {
+            "c0": "648b3e1c2787a9e310f3fc1f3790133355379740242cadaa3aa3f8aab1188b03",
+            "c1": "3add947d0fe005393d506f682fd111b9928b0aa2aaa7fcb95417516508e3f109",
+            "z0": "eab35af0f370d4a96d3db2c1ecffeea3b0d200599b2b759582569c2d54b35106",
+            "z1": "ede2815ee8bffce8769d6c9480807c3312818710433560147ac85a63c3ccac01"
+          },
+          {
+            "c0": "dd2779af1cd12a1af2cd64fa441d00650907edb5febec3b85ba21564f4353b0b",
+            "c1": "1ed0b7a78bdc9588eef688d240cf71ea9d2d6a160a43d62abd13a9bce497e701",
+            "z0": "822bec98bf0e01f547580dba77e6a76c2130176e6c259f253ac30f5210bfa80d",
+            "z1": "4c4f0a4dfa705d40230733412fbf8543d56dcbcd9e56d74ffb5a2319a4f3e402"
+          },
+          {
+            "c0": "19453670f4c7cf0ae528b3c5fafadfabbcef3b9fcda5a6df5669957af892d300",
+            "c1": "eefb0a4cd904b4d5e3cd1232b3beab74465db90941e2ce4f0d1df14e32150806",
+            "z0": "0d1b73831b2241bccb220235ee73c956365962a581cee40caa8d64b326c86e00",
+            "z1": "53b42ffa3dcf4b443f0e8476b2d1db10b7371e17b156466a4e1f4baed8b64b0a"
+          },
+          {
+            "c0": "b80bac3872ae0c5c7253569329d0427c6bdc1812c36e6e92303cc6a66f9d6c06",
+            "c1": "f69d61150995ec2bcf3510a5b83d46a56df7b37176b13654fd4f13b414af5d0b",
+            "z0": "5c81747a3f9c2884dbe4a7c1f7aff511d6ba7fa39c7a9c6fd631e7f70aef8e0b",
+            "z1": "d5115a7b9e63d93300c3334916da0a9392f7f15031fa8524c505186f4d441e03"
+          },
+          {
+            "c0": "6d1b4e009f346b495a15a2d92106b7e605126c69fa0fd1be273ea0d91f519e08",
+            "c1": "6210f2d0849933b5228f182bd645ad784a08111859f06d84138b046efcc43f07",
+            "z0": "7fb61befc91a38adfbc58cc9436786467e8e5a1e63b19fe1e7378c3fab7f1105",
+            "z1": "e06e35b0a91b132e24558f339026a929b3d9aedbf61c411b9f6a0fd70881700f"
+          },
+          {
+            "c0": "e43241b789dd693a721194a4930a425517b2964ebd5af94206147f940e685d01",
+            "c1": "0a6b0649c88f18482d5ff8d33732af1cb9969d98d6efd270e955f6b624841e01",
+            "z0": "83014cdaf33018e40acc5ebe479e1d2d7d399ea604a367bdec4ac2edb03b8f0b",
+            "z1": "ba4b75034246ebc5a390b851b76a00e756be42c08b4bf66788ba13c65a9a8b07"
+          }
+        ],
+        "sumProof": {
+          "c": "9198d3da3d4b9a7ee84237bd5a034137109ab9ac8de34b0a67d37570971d6604",
+          "z": "058efcd57d85ca03830327364cf3ccfefaa7ca90637a9354a3c14fbf25fb9a0f"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"council-2027\",\"ciphertexts\":[{\"a\":\"e82979a8e122b74dbd5c31f2768a0508e64373421d88f0beca227a8fb0f5bb25\",\"b\":\"728ecf873896a799f1969827132ad43c03d61e681cb276c12603845440a50c4b\"},{\"a\":\"6aed833983ea1f843c7d1c10a0bf68f1a26edf7c76c6a9afdca32a775c80a25e\",\"b\":\"b43d5ba3cb865ae213202aaac0ea511e14fbe3922ccf925b132324b445d15f0b\"},{\"a\":\"4cfcd3e13808414c015e1f315ad16187e0d29e540f89ad09f8c588b5fd099e22\",\"b\":\"90a51b1eecf1a2cece9d05a587ae3c8418da2ff42e721acfaf982e2e6eb8951d\"},{\"a\":\"d4ecd6002c4432dbf9aa03871554fada71fe95482b7d950ee7a3890a66b47c3a\",\"b\":\"0e16009a88e49604b9c3a0372463e046017520da7cdbe952215be1f36fcc296e\"},{\"a\":\"800a6ebe8fe29011ec0c3ab1546853015f62d5891d88e674eddfbf755a224e49\",\"b\":\"2402352bff594cebbf2b9ed76657f935b5ba118c8929c3d137c91957218ae65f\"},{\"a\":\"582505b53d1898c70f76b31d46c55958c00457524cf49e7544175728624bc93f\",\"b\":\"86cce05a8fe5a2ac1f0edcecc6ee4c1424630e3549c0f839e958e60f71e44415\"},{\"a\":\"a6bec9c20d89f05b30adcafbad1f5089b0aa30d9cff28b8cff8f5913d5d68827\",\"b\":\"5a4785b835e9293a67a1eea59feadf010f7e59932bca3d677c117656d75dcd4c\"},{\"a\":\"16a24cb416685e4fa2ac00cdd0a39e4546a4c1d00074beec7ba8c36d096bc360\",\"b\":\"624fb47a4a16e6bdd1f83996f25082b4339ebd4d6ba4522620c7b54fa9d1954c\"},{\"a\":\"fab335d54eb83063bbad700b3d3d84d664c54e1cdd9164336d7695c8fe8a8b78\",\"b\":\"167e9024b165c1fa733b75d6b2e62c02975a940debe9ecdff8f901e588daf918\"},{\"a\":\"a67ffdda8912624a0e00ad463ae41ab2990777f1ae2159ce66916345a26c6975\",\"b\":\"7c3f4421a95f3077ea9743231ad2b01e8aeb8cc79dc772bd952a19c753cf5e59\"}],\"bitProofs\":[{\"c0\":\"95d04cd9ceff329f6b16a7a488b6867749c7f3b5dcc54cd9cffb5a2d40d4ea06\",\"c1\":\"441d95bb8e1ffb64daf449dfa68830db891cdf5acf1ac8b1df972d1ac8ab5404\",\"z0\":\"eb271087158389825db69c2130d2b91675bff399cd62c977f552ebd6af34aa09\",\"z1\":\"ed563cc755e174625f5ede039b154b331b06c5d6a002dea5e120e38596ce1201\"},{\"c0\":\"71ee20de76845cde1df7e653eb4b31d4ba67346e72bf23d30f2b5450a795030b\",\"c1\":\"7466ee5adbdd0a220fc964fc606e2722da8dab1a6701a182e63e711185646308\",\"z0\":\"830cf4bc3efe6384f3d98e31e0c1ad564ef1fedc3da0f6e52a343ef725702200\",\"z1\":\"4b4a76a98c2eacb2b209b744ecd20e5a8ebece456783af2ad9611fe53cbb720e\"},{\"c0\":\"c5b8855d59f844a3449c29fed468e08bcc3f263ff4db78612cb8e94a88632208\",\"c1\":\"f809a5c711d5e675a0d85c6f2d7d9314ef8f039df9d25be8321e908384701f0d\",\"z0\":\"79e21abccedf9320a62836b12b3bf09db211a761cfec97597fe816bed2a4d100\",\"z1\":\"e27049a18db494cf44ae6ad9470168e49f3cf0dd793a28dd378954acff348106\"},{\"c0\":\"972fdac1a5b43fd37f6e46a764c5d06b19efd68062f818602206f0a47c717904\",\"c1\":\"22bfa7d9c95e86981473d3a7ad921f3e51705ed11d1bb915b12442ca91b53403\",\"z0\":\"0e74cb7f2fc7a4e21301eb9d36eb71ff4742d93939f16f73645dc6eaf1700309\",\"z1\":\"a91b1df3ea87b1f58fc3f021a37dc53d24e8142b684f601d92482e68a47bfd06\"},{\"c0\":\"648b3e1c2787a9e310f3fc1f3790133355379740242cadaa3aa3f8aab1188b03\",\"c1\":\"3add947d0fe005393d506f682fd111b9928b0aa2aaa7fcb95417516508e3f109\",\"z0\":\"eab35af0f370d4a96d3db2c1ecffeea3b0d200599b2b759582569c2d54b35106\",\"z1\":\"ede2815ee8bffce8769d6c9480807c3312818710433560147ac85a63c3ccac01\"},{\"c0\":\"dd2779af1cd12a1af2cd64fa441d00650907edb5febec3b85ba21564f4353b0b\",\"c1\":\"1ed0b7a78bdc9588eef688d240cf71ea9d2d6a160a43d62abd13a9bce497e701\",\"z0\":\"822bec98bf0e01f547580dba77e6a76c2130176e6c259f253ac30f5210bfa80d\",\"z1\":\"4c4f0a4dfa705d40230733412fbf8543d56dcbcd9e56d74ffb5a2319a4f3e402\"},{\"c0\":\"19453670f4c7cf0ae528b3c5fafadfabbcef3b9fcda5a6df5669957af892d300\",\"c1\":\"eefb0a4cd904b4d5e3cd1232b3beab74465db90941e2ce4f0d1df14e32150806\",\"z0\":\"0d1b73831b2241bccb220235ee73c956365962a581cee40caa8d64b326c86e00\",\"z1\":\"53b42ffa3dcf4b443f0e8476b2d1db10b7371e17b156466a4e1f4baed8b64b0a\"},{\"c0\":\"b80bac3872ae0c5c7253569329d0427c6bdc1812c36e6e92303cc6a66f9d6c06\",\"c1\":\"f69d61150995ec2bcf3510a5b83d46a56df7b37176b13654fd4f13b414af5d0b\",\"z0\":\"5c81747a3f9c2884dbe4a7c1f7aff511d6ba7fa39c7a9c6fd631e7f70aef8e0b\",\"z1\":\"d5115a7b9e63d93300c3334916da0a9392f7f15031fa8524c505186f4d441e03\"},{\"c0\":\"6d1b4e009f346b495a15a2d92106b7e605126c69fa0fd1be273ea0d91f519e08\",\"c1\":\"6210f2d0849933b5228f182bd645ad784a08111859f06d84138b046efcc43f07\",\"z0\":\"7fb61befc91a38adfbc58cc9436786467e8e5a1e63b19fe1e7378c3fab7f1105\",\"z1\":\"e06e35b0a91b132e24558f339026a929b3d9aedbf61c411b9f6a0fd70881700f\"},{\"c0\":\"e43241b789dd693a721194a4930a425517b2964ebd5af94206147f940e685d01\",\"c1\":\"0a6b0649c88f18482d5ff8d33732af1cb9969d98d6efd270e955f6b624841e01\",\"z0\":\"83014cdaf33018e40acc5ebe479e1d2d7d399ea604a367bdec4ac2edb03b8f0b\",\"z1\":\"ba4b75034246ebc5a390b851b76a00e756be42c08b4bf66788ba13c65a9a8b07\"}],\"sumProof\":{\"c\":\"9198d3da3d4b9a7ee84237bd5a034137109ab9ac8de34b0a67d37570971d6604\",\"z\":\"058efcd57d85ca03830327364cf3ccfefaa7ca90637a9354a3c14fbf25fb9a0f\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "ee752c6c97c265287b44b6a6374710632651af3fe60f049b6795f03358904663",
+            "B0": "7ec784424a9e7043e572a85e975b1424542ad73d5c67da1694d538c379bc0039",
+            "A1": "de91e8f0a00e8bd93eb4f0de72db33518e63f602602245b925e741319e57a336",
+            "B1": "04a24ab4e916273da3087c5c97aa9c70738e92738d74327cd459ca1a0c75f659",
+            "c": "d9ede1945d1f2e04460bf1832f3fb752d3e3d210ace0148baf93884708803f0b"
+          },
+          {
+            "A0": "ca37826666198d77077ed8bdac13052a2e0671c1cd5c51ae46d39472c3727f5f",
+            "B0": "5e730fe3b3b439ec84f96748779842c2a12fe6d2aaefd7e3e2f8d394cf19ec3d",
+            "A1": "fefe48108481926a4cb1d21038371e4c2eb9923fd25f0b9e03ed464e46aadf5f",
+            "B1": "9cd620a58ff4fade73783a978bb052f013291119aa98c552baf4912f2f1aea52",
+            "c": "f88019dc37ff54a8562354ad6dc079e194f5df88d9c0c455f669c5612cfa6603"
+          },
+          {
+            "A0": "40ad31319f7f99edee12c2fba48e1d775b3be6a394d81adc0afc8f583df62107",
+            "B0": "3e86e2ae219f354bd397a8a306bd4bae882d8c9b0d5d43cc1575ff0d5ebf0d0f",
+            "A1": "823e12e46a9db93abc234d839dcecec0227b6a66f8423ed4c56bee99f6fa5b4f",
+            "B1": "a04cf5067376834068ac3e7b1b60f6152d72928f8b914287c10c0e856f86a05b",
+            "c": "d0ee34c8506a19c10ed88eca23ec948bbbcf29dcedaed4495fd679ce0cd44105"
+          },
+          {
+            "A0": "f85e8d8539534a7071a125810846aaacff2873a4759a1d55e8106ab7f97d912e",
+            "B0": "1e8f0be48b67d9b6e71c981b943178fcb98ee5379d7e7876c5f78685635fa229",
+            "A1": "005df81041a5d2425cad1c5a9668964e3bdb8466a0b59c0a29ca7d264a5dba76",
+            "B1": "a4d4d2936d676502f8ed0885084eb006201e1b208733b7bf0012c2c2eba49721",
+            "c": "b9ee819b6f13c66b94e1194f1258f0a96a5f35528013d275d32a326f0e27ae07"
+          },
+          {
+            "A0": "34b93c97fb5b26237d3decc11863458b7c4d2e043d59babe24558cf07ed3ff45",
+            "B0": "1ca8a41d9f02072a1c9ac057943cb44f8441ff9b63d9e58b2c28a12f14e34b2d",
+            "A1": "fa939069e8661201d714fbb6408403e8a2d9d18ac6dd0b4d7b0480d67b6e2205",
+            "B1": "86c7d618a1d4a55b4d7da8c808d49da663a23efe68fcffd95f5403d795b3d119",
+            "c": "9e68d3993667af1c4e436c88666125ece7c2a1e2ced3a9648fba4910bafb7c0d"
+          },
+          {
+            "A0": "ced0dd7ece641cb5550ec3ed74ab0173e3852fbba4760416a63d44b93a23462a",
+            "B0": "5e24d2bcf0ccdebcabb459109c05de34d01806d7086ddc051d081807275d426b",
+            "A1": "ce06245baf410cdf97b3c926874492665f852b20c3f60d63c2a221c7b801ad40",
+            "B1": "707948c885da8f9d88daa18a7e6d5da9bb532da364f0408d80dfec6e7446494e",
+            "c": "fbf73057a8adc0a2e0c4edcc85ec714fa73457cc08029ae318b6be20d9cd220d"
+          },
+          {
+            "A0": "aef4be4494b65dada2613917bb0711e85b50560881b3714ed1bd2c85d040d81d",
+            "B0": "b2f9145cff305e505a8eb6d9c552c64a519507e274c179d674dcdce68fd97318",
+            "A1": "66e91a32e0e52bed362d397ad52ff0bd6b29a2153d2a394e9c94201c0d4c750e",
+            "B1": "20811e6de673dfa1ff87cde715fc2bee19cbc7257682045bba21c1cf7c2dfa7e",
+            "c": "074141bccdcc83e0c8f6c5f7adb98b20034df5a80e88752f648686c92aa8db06"
+          },
+          {
+            "A0": "d6b095b29cfd39b97bd3614500d5d8819f88069b35c3d941377be5bf22c29f4a",
+            "B0": "96a0cea66c57665bb1096676f34555a8619797659399e967dbc2077e6eef535c",
+            "A1": "a04734d3a73e628cc7f1c160f411f7f83df983e45feb8d35c340a383268c1a07",
+            "B1": "60500f4edfca318be28b8270ddf74ed364282254232d1b33a954d6a64dcbd66d",
+            "c": "c1d517f160e0e62f6bec6e950314aa0cd9d3cc833920a5e62d8cd95a844cca01"
+          },
+          {
+            "A0": "58483d6f94aa3b9722b6d903b861ceb05b4d18d022d9d937507e7f2d342b754d",
+            "B0": "d67f2ee5a0a49dbb752b9e0c0cf25e6629480032aeb9be5100d51500c4e8da5e",
+            "A1": "267b1e89e330d7e476e0654472ed0cf1beffb8161d02e9771d677cf1ba4d7447",
+            "B1": "0278adff555cad6422a1c207a1475c63a0b9f2a897331441810a75005d7fe868",
+            "c": "cf2b40d123ce9efe7ca4ba04f84b645f501a7d8153003f433bc9a4471c16de0f"
+          },
+          {
+            "A0": "46aaa61e07d78bf65df1e78e1a9da61f6648c06f9cc64617616cc20eec14da1b",
+            "B0": "de341a3033847e3152af0ce85215ce46dd4589d7a8ae391f04ad572088833f1e",
+            "A1": "4269132fb71eb6cd96643728077601c011ef9bc10510a42eeb64b092b6ff2768",
+            "B1": "669516befa51d396f6c0569595f9abc7248c2f436c51f757985c7d17de0dcb6a",
+            "c": "ee9d4700526d82829f708c78cb3cf171d04834e7934accb3ef69754b33ec7b02"
+          }
+        ],
+        "sum": {
+          "A": "e66e9955f6ae59809747ac3aa2adb9129abc571562825167d25252f157d20834",
+          "B": "54f7832b01cb4ddecbc2b6611589cdfee5148b6c1bcc8b3e90c3352f5d459569",
+          "T1": "bef8b14e86613fc4acc3aedd8ab99422e210ce1d07f52a032cd07c5f4754dc05",
+          "T2": "be0b26d4cd926742dafd6b6d06a1390236a1a9f2bca7ecd13ac68071a0348445",
+          "c": "9198d3da3d4b9a7ee84237bd5a034137109ab9ac8de34b0a67d37570971d6604"
+        }
+      },
+      "tracking": "800b99d5c120cbd3b3786c7a2d60bd17782fda32ff0e56a348d09a4c9d00a851"
+    },
+    {
+      "election": "referendum-2027",
+      "voter": {
+        "name": "ada",
+        "kind": "x509",
+        "mspId": "Org1MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d62334967595752684c43427562335167595342795a574673494739755a513d3d0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "6048eb07a2973a05df73fa610cbe31da26a3e049541f46610d89632af7dca84b"
+      },
+      "choice": 0,
+      "seed": "v1 referendum-2027 ballot 0",
+      "randomness": {
+        "r": [
+          "016da65011b42e0e7933b54c7dfb709477d28c7e9cdbd360a662d26472765400",
+          "c8343d8174306a25c9cf0fa9f894f2a0dec7b45cf2352f812e1af2f84dc4c409"
+        ],
+        "bits": [
+          {
+            "cs": "3b764d1c9395f8340d77dae4f736942c8d85518e75a83e29f6f1d72405d77f0b",
+            "zs": "fbc69f156dd6b92deb9de7f67b8d1fe138ff0b21933360be73fb5d00664bcd02",
+            "w": "0dfc08e2b2402eed033f20bbdb38d136bea8e8042f8e44fe33bec1f2be624d06"
+          },
+          {
+            "cs": "6d627a6269aa12fbb205bd78e7ed8da1705d645e84533ebc20e860093c70d602",
+            "zs": "c911f7442ec2e01be76cb6535077a9b95d13679a5a02f008953e159407f24701",
+            "w": "436e067bfd5effc56053162a0fc2761683837be9d6dc8d56ab3519fb8a8b390a"
+          }
+        ],
+        "w": "2b6e4c98d6307d1ecc84be5b569218925342e9c9a1a16516c5a6ced5763bae0e"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "referendum-2027",
+        "ciphertexts": [
+          {
+            "a": "2690e979a38722d4574a69a1fbdaba106f519d3b250405fb2fab78bcce99c24f",
+            "b": "40c91e9e666a05080949a4a8ce2f25e5d038fd7360498814c7c0e59ee4b10f4a"
+          },
+          {
+            "a": "0e6b56b22761d1022bbc0bf704d90e41a7a3850ca60ae87988995382ef02f854",
+            "b": "b421a2badc4be5e70628fa537aea113fc720d179ef8b343b3221d89e4b63010e"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "3b764d1c9395f8340d77dae4f736942c8d85518e75a83e29f6f1d72405d77f0b",
+            "c1": "d3728bb3ece9d33eebdd288cb043037756878a9f3af419588d4f0f424acf5c0b",
+            "z0": "fbc69f156dd6b92deb9de7f67b8d1fe138ff0b21933360be73fb5d00664bcd02",
+            "z1": "f595a795c6353f9c14d6adbd9d144af6d34907b0373d0c66bd2f7d5f37633e08"
+          },
+          {
+            "c0": "8fc8df9beef44adf8facbf956a1bf4f1e996eefa9d0e4532e69f3b630cdd570c",
+            "c1": "6d627a6269aa12fbb205bd78e7ed8da1705d645e84533ebc20e860093c70d602",
+            "z0": "2ea5d4d2959ae79cbad405184c0b8d18886a94596deea77d4a143c5f67432a03",
+            "z1": "c911f7442ec2e01be76cb6535077a9b95d13679a5a02f008953e159407f24701"
+          }
+        ],
+        "sumProof": {
+          "c": "033b315ab20a450234473db81c80637aa64fd89744c0ed696e0c29e3c579af00",
+          "z": "46d016ab866874d8f4b038753c6557288ee891e0373239aca781e19ad182a808"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"referendum-2027\",\"ciphertexts\":[{\"a\":\"2690e979a38722d4574a69a1fbdaba106f519d3b250405fb2fab78bcce99c24f\",\"b\":\"40c91e9e666a05080949a4a8ce2f25e5d038fd7360498814c7c0e59ee4b10f4a\"},{\"a\":\"0e6b56b22761d1022bbc0bf704d90e41a7a3850ca60ae87988995382ef02f854\",\"b\":\"b421a2badc4be5e70628fa537aea113fc720d179ef8b343b3221d89e4b63010e\"}],\"bitProofs\":[{\"c0\":\"3b764d1c9395f8340d77dae4f736942c8d85518e75a83e29f6f1d72405d77f0b\",\"c1\":\"d3728bb3ece9d33eebdd288cb043037756878a9f3af419588d4f0f424acf5c0b\",\"z0\":\"fbc69f156dd6b92deb9de7f67b8d1fe138ff0b21933360be73fb5d00664bcd02\",\"z1\":\"f595a795c6353f9c14d6adbd9d144af6d34907b0373d0c66bd2f7d5f37633e08\"},{\"c0\":\"8fc8df9beef44adf8facbf956a1bf4f1e996eefa9d0e4532e69f3b630cdd570c\",\"c1\":\"6d627a6269aa12fbb205bd78e7ed8da1705d645e84533ebc20e860093c70d602\",\"z0\":\"2ea5d4d2959ae79cbad405184c0b8d18886a94596deea77d4a143c5f67432a03\",\"z1\":\"c911f7442ec2e01be76cb6535077a9b95d13679a5a02f008953e159407f24701\"}],\"sumProof\":{\"c\":\"033b315ab20a450234473db81c80637aa64fd89744c0ed696e0c29e3c579af00\",\"z\":\"46d016ab866874d8f4b038753c6557288ee891e0373239aca781e19ad182a808\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "4eeeff44325c8c0aa2c7f8036ce6e9c3102ac0baa8181c0a4c657a23ad5b7c4e",
+            "B0": "98ae497e8180284dc4487a515a7808abafbd4a053c0cae52bdae846891ad6379",
+            "A1": "10d26ca4d285349143012af320237c58a7d380257cd12cefa4671538ba470b34",
+            "B1": "b40f10176000a6e98145e2bd1ae6b18b3251e621cf89c61bed9cc4c1b9690d19",
+            "c": "2115e372651cba1b22b80bcec980b88ee30cdc2db09c58818341e7664fa6dc06"
+          },
+          {
+            "A0": "5cd72f876a729ad3b54212612b41d5e732bcf0db3acef4b27612802418916a49",
+            "B0": "20d277a06dbe9cf2107aa44f6f18eb75cc956e9c174c46db7600a6f1a90da028",
+            "A1": "ae80d60fd37e2dcd02f38b7a9a139af80d0d0ed6d57f743862708e3bb9396101",
+            "B1": "94e238b312e07f89a0f9a1c4b377f1fe4a2487101130a0ec2ec416a9fbb2a135",
+            "c": "fc2a5afe579f5dda42b27c0e520982935af45259226283ee06889c6c484d2e0f"
+          }
+        ],
+        "sum": {
+          "A": "5842916b844ceb62e9fcd1570ded1e2d5901c2e1bc320d9f4f8983ec9299b905",
+          "B": "4a560beb41b19600de8e3fe6257b5010a12d51a3468877ee85bc763f508d486a",
+          "T1": "422de70bcf4a18f7e0a55f1b1f3cee280a4cfc0821407f2235a85f3f1c353e57",
+          "T2": "7a43d2a5da0c95062099569f116486659ecb03e1783d349adf591ef5d5050016",
+          "c": "033b315ab20a450234473db81c80637aa64fd89744c0ed696e0c29e3c579af00"
+        }
+      },
+      "tracking": "3fb0900d77d57f5f7ffe9b89f21c5379a48d73b0def2864511f2df24790189fa"
+    },
+    {
+      "election": "referendum-2027",
+      "voter": {
+        "name": "anon",
+        "kind": "idemix",
+        "mspId": "ChairVoters2027MSP",
+        "pseudonym": "a066e7fa8163e58753c82ac0223132da27f39df85d3a5ed13c26f08a7ce44254d5825999604ff6e13da7d43596e1258893b87820a845a40f6990f67edb49e7d4",
+        "tag": "6daf184a7fe77dce813371c07dcc5bbddaf9b16990874252ecef35ab638bb015"
+      },
+      "choice": 1,
+      "seed": "v1 referendum-2027 ballot 1",
+      "randomness": {
+        "r": [
+          "b911e1d1412d29df7cf5e61a596afd777090e2a0cba27f5fa385b639493b2705",
+          "e8bfaf93b12e155f9714bd4fa1e0841d6e51ee8316ca4f19795be329af92ab09"
+        ],
+        "bits": [
+          {
+            "cs": "708e1cfe9a7d534aa5893f6786b5d626eb826429e99750ec74337a6a8383cf08",
+            "zs": "d68c9673b2e290cdcb546be76f081bb32c6f2f313981e5597a2e473c0ec9200d",
+            "w": "58d86d3aff201a5990005a4de2a2ca9ab46fcfe09ab803ce69a23d451a8b3a0d"
+          },
+          {
+            "cs": "3286e1cf577f36d996c9495443093def2ed6ab6ef7d7155f634e141e97a3840d",
+            "zs": "ec97d3baa0703b82535381f69fc62efc6165749951f1d1f3e0b3f859e643d80e",
+            "w": "e93bb554adfd835f6f3484b6c333b8fdc792bd6553b1798a3e57814f4da6fa03"
+          }
+        ],
+        "w": "8f05daf834f4deb4aa64db775c60a3f532805e168cfde5eda4a2aad6f411a300"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "referendum-2027",
+        "ciphertexts": [
+          {
+            "a": "8aa4e8376690c10352097f0058e2ac099bd4ce17f8ec27f8f61c19dbae56ed46",
+            "b": "263832eb281b233d250e97a8ad3bd9a70a9547b1750ad881a9a7b2ac755ef553"
+          },
+          {
+            "a": "e0b7f23b3bc439e1df8ca168b53a976f01f7990df1042a3b897eed3aaff6ec7b",
+            "b": "16acdcc1f095cddd651a57653929e98b94bea631f4c25ca0100e69128876aa23"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "03bc3c58208c3ac15d6720c355d2d78a5cd571ef91329e176eeec8f99e87020b",
+            "c1": "708e1cfe9a7d534aa5893f6786b5d626eb826429e99750ec74337a6a8383cf08",
+            "z0": "5a75160b6b312256dc4981f115c105730df28b649110db7037206e73774e3f06",
+            "z1": "d68c9673b2e290cdcb546be76f081bb32c6f2f313981e5597a2e473c0ec9200d"
+          },
+          {
+            "c0": "3286e1cf577f36d996c9495443093def2ed6ab6ef7d7155f634e141e97a3840d",
+            "c1": "63a1a686b672c2278270a5a86ef6da33d09db62b95ef75979058dcce641adf01",
+            "z0": "ec97d3baa0703b82535381f69fc62efc6165749951f1d1f3e0b3f859e643d80e",
+            "z1": "020a68c599fa873b39c25ba7d614dc8e94df65b09da4fca4abb0b66daa3a8309"
+          }
+        ],
+        "sumProof": {
+          "c": "e6d42d4678ed1ee38b70b16129bf5303c1aab1e43d1301eb8b3ada4a90648e06",
+          "z": "c3a937449b7225182a290b8c7ac42372a4b596d5ede52a35860cd875d195f204"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"referendum-2027\",\"ciphertexts\":[{\"a\":\"8aa4e8376690c10352097f0058e2ac099bd4ce17f8ec27f8f61c19dbae56ed46\",\"b\":\"263832eb281b233d250e97a8ad3bd9a70a9547b1750ad881a9a7b2ac755ef553\"},{\"a\":\"e0b7f23b3bc439e1df8ca168b53a976f01f7990df1042a3b897eed3aaff6ec7b\",\"b\":\"16acdcc1f095cddd651a57653929e98b94bea631f4c25ca0100e69128876aa23\"}],\"bitProofs\":[{\"c0\":\"03bc3c58208c3ac15d6720c355d2d78a5cd571ef91329e176eeec8f99e87020b\",\"c1\":\"708e1cfe9a7d534aa5893f6786b5d626eb826429e99750ec74337a6a8383cf08\",\"z0\":\"5a75160b6b312256dc4981f115c105730df28b649110db7037206e73774e3f06\",\"z1\":\"d68c9673b2e290cdcb546be76f081bb32c6f2f313981e5597a2e473c0ec9200d\"},{\"c0\":\"3286e1cf577f36d996c9495443093def2ed6ab6ef7d7155f634e141e97a3840d\",\"c1\":\"63a1a686b672c2278270a5a86ef6da33d09db62b95ef75979058dcce641adf01\",\"z0\":\"ec97d3baa0703b82535381f69fc62efc6165749951f1d1f3e0b3f859e643d80e\",\"z1\":\"020a68c599fa873b39c25ba7d614dc8e94df65b09da4fca4abb0b66daa3a8309\"}],\"sumProof\":{\"c\":\"e6d42d4678ed1ee38b70b16129bf5303c1aab1e43d1301eb8b3ada4a90648e06\",\"z\":\"c3a937449b7225182a290b8c7ac42372a4b596d5ede52a35860cd875d195f204\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "02c75b6d219cfeb2c49e16ad9456fb808f8ca119130b6f7d4c473e902032b418",
+            "B0": "64a5c24ca9b959209eec1b69ddc7675214985d3f2e41720057b5f1732e56531e",
+            "A1": "3eb1a4e07cb2ec4f29288ec65e938fc396a3010d3e6758ab56362186bad4014e",
+            "B1": "80949f3cbf08fd2fbe9e24f3a4538a32fdcb369db9f063a6646c05bf57b0d132",
+            "c": "867663f9a0a67bb32c546887fd8dcf9c4758d6187bcaee03e3214364220bd203"
+          },
+          {
+            "A0": "1a6134ec6bd6361c0741d8b04ae3f03935af98c86a56da809058bc611738d34d",
+            "B0": "2af2e4eee29a9401615471998700b30a53e53bdd57c10024b45940ec768ab226",
+            "A1": "20465ca5d064c19a8e1cb38cc1f371a2a06fa127bf85fa436adf2d5042ce835c",
+            "B1": "cc587465d10feea0a11b4c0844db288fc5c275e3ea345b3df39aaa4fbcfd5c61",
+            "c": "952788560ef2f800193aeffcb1ff1723ff73629a8cc78bf6f3a6f0ecfbbd630f"
+          }
+        ],
+        "sum": {
+          "A": "84303af94343525fef47d1ab950c57bec97f0ed7e3bf258669bd158a527a5d05",
+          "B": "18167310691c6ac5f8f676e420f815a557fccf38e16d19cde418d26b250cd37e",
+          "T1": "747685b562ced7f27c30c62155a01d85b1ffa23f59877cc95d2deecdc2e3174d",
+          "T2": "38a3d3536ce94f0387064feacc7cf9a252a0a74b136dcbafc59beca3f39b8b60",
+          "c": "e6d42d4678ed1ee38b70b16129bf5303c1aab1e43d1301eb8b3ada4a90648e06"
+        }
+      },
+      "tracking": "a1a02d5aef80a61b32c08392bd3a0657802c3ae296531c3b9b986bdac86cae67"
+    },
+    {
+      "election": "referendum-2027",
+      "voter": {
+        "name": "grace",
+        "kind": "x509",
+        "mspId": "Org2MSP",
+        "idBytes": "2d2d2d2d2d424547494e2043455254494649434154452d2d2d2d2d0a6447567a6443426a5a584a3061575a70593246305a53426d623349675a334a6859325573494735766443426849484a6c595777676232356c0a2d2d2d2d2d454e442043455254494649434154452d2d2d2d2d0a",
+        "tag": "1efe09466d2dc58dca315cf719509543e5c59aa90046946c8b5bd424d6a38cec"
+      },
+      "choice": 0,
+      "seed": "v1 referendum-2027 ballot 2",
+      "randomness": {
+        "r": [
+          "4d2dd623ee1c74da702e068b755e71eb4a2f122136bf4fcaecb87ca4d8b99909",
+          "25f24717a56584e7496784edad5eb50d79d5dda990e6215ddc3da7e19e7cb406"
+        ],
+        "bits": [
+          {
+            "cs": "34769c08c03095be10a2160682e5be3b2b978c50efcb799f05f135595526a005",
+            "zs": "5ee42c3246a5a9e98df9d27f41cc7cd8bc70537598625c9c67aab5bfef4f480b",
+            "w": "d7c8ea94b903a4e8010d8b08f086c01d97720896c42fa5d9d9afbd54d8a78f02"
+          },
+          {
+            "cs": "965089aac73773921a3ac3a2778a28a69b5a7f9b3d8b842997c00f5c1fb38501",
+            "zs": "487540ea88d116e51d441132371581f9849ac8dbd345cba9478cee239fa8bf0d",
+            "w": "88d5c37e392cda46ceb869708ac913afc17bb0c653bad78a43efeb537ecc400d"
+          }
+        ],
+        "w": "daf839b212721cd2cbc05064e812a6bc98afa2b7fe82b98fa8f97d0c6488a100"
+      },
+      "ballot": {
+        "v": 1,
+        "electionId": "referendum-2027",
+        "ciphertexts": [
+          {
+            "a": "c225e8fc4bc9c04fa45d043220631879aa4e409a4ea16fafdda04f72fdc64c74",
+            "b": "12fd8bad9778534de12f239f94f62c71091fb1bc0324f4e9bc43c9ae333f6c13"
+          },
+          {
+            "a": "305f8d3913ee8c2fc9be365f2c6479ece3117d621239f9e5b227b6c1c9ba3775",
+            "b": "a2af044c521b1559d2bdb1406f91fa817743082b7802f7fef477f2a57f7df216"
+          }
+        ],
+        "bitProofs": [
+          {
+            "c0": "34769c08c03095be10a2160682e5be3b2b978c50efcb799f05f135595526a005",
+            "c1": "cc7988ac6ac75ef748262395cdfc684cd4a17ee38312ab3d8ba908a9697f8707",
+            "z0": "5ee42c3246a5a9e98df9d27f41cc7cd8bc70537598625c9c67aab5bfef4f480b",
+            "z1": "bb8664f3e770703213e68ca7fe10b28d28c5513e4a5d25f4b8004bebf9b83f05"
+          },
+          {
+            "c0": "b1ec572f40f652a39184b23a9092a2dcc57ba5098fc8cbcf55edc07eefe21706",
+            "c1": "965089aac73773921a3ac3a2778a28a69b5a7f9b3d8b842997c00f5c1fb38501",
+            "z0": "da7bd4c8b689e75356e5e07db09c7bbb2923db6660aa370437da60156f849005",
+            "z1": "487540ea88d116e51d441132371581f9849ac8dbd345cba9478cee239fa8bf0d"
+          }
+        ],
+        "sumProof": {
+          "c": "5963b30f6c6ba65ed26b4d7d6b93abe0c53b8b479adda93853b698aadcf7b801",
+          "z": "b06a77c61bebe5df432484b7e1776bb11f951912e9e8d61af786a33014cf3300"
+        }
+      },
+      "json": "{\"v\":1,\"electionId\":\"referendum-2027\",\"ciphertexts\":[{\"a\":\"c225e8fc4bc9c04fa45d043220631879aa4e409a4ea16fafdda04f72fdc64c74\",\"b\":\"12fd8bad9778534de12f239f94f62c71091fb1bc0324f4e9bc43c9ae333f6c13\"},{\"a\":\"305f8d3913ee8c2fc9be365f2c6479ece3117d621239f9e5b227b6c1c9ba3775\",\"b\":\"a2af044c521b1559d2bdb1406f91fa817743082b7802f7fef477f2a57f7df216\"}],\"bitProofs\":[{\"c0\":\"34769c08c03095be10a2160682e5be3b2b978c50efcb799f05f135595526a005\",\"c1\":\"cc7988ac6ac75ef748262395cdfc684cd4a17ee38312ab3d8ba908a9697f8707\",\"z0\":\"5ee42c3246a5a9e98df9d27f41cc7cd8bc70537598625c9c67aab5bfef4f480b\",\"z1\":\"bb8664f3e770703213e68ca7fe10b28d28c5513e4a5d25f4b8004bebf9b83f05\"},{\"c0\":\"b1ec572f40f652a39184b23a9092a2dcc57ba5098fc8cbcf55edc07eefe21706\",\"c1\":\"965089aac73773921a3ac3a2778a28a69b5a7f9b3d8b842997c00f5c1fb38501\",\"z0\":\"da7bd4c8b689e75356e5e07db09c7bbb2923db6660aa370437da60156f849005\",\"z1\":\"487540ea88d116e51d441132371581f9849ac8dbd345cba9478cee239fa8bf0d\"}],\"sumProof\":{\"c\":\"5963b30f6c6ba65ed26b4d7d6b93abe0c53b8b479adda93853b698aadcf7b801\",\"z\":\"b06a77c61bebe5df432484b7e1776bb11f951912e9e8d61af786a33014cf3300\"}}",
+      "trace": {
+        "bits": [
+          {
+            "A0": "3001ffad603981443a9f0bb5dce90582c0db457b37eda427525b76891ff3197b",
+            "B0": "fa66dede1a105d6499574bd173659083904293ad7014e2edaa742bf1c655413f",
+            "A1": "acd34506b2c25492f0d70112a621280eb9c1faebcfde869ffd388b211295897e",
+            "B1": "d44d1a8843e87041ed005bffb44a39023b079877b32d545eba5d3e98da6d3579",
+            "c": "00f024b52af8f3b559c8399b4fe22788ff380b3473de24dd909a3e02bfa5270d"
+          },
+          {
+            "A0": "84c54f41706a69c8236148f074eab398c99f0782f7af7caf3d32dcd25ee06379",
+            "B0": "1a57736e690775dd9e039e20dab8f6ba821c9fda4a68c91655e67816bd804250",
+            "A1": "40ac9c0b7b0bbe06401a9cf1e279a1458d46e82dcc8ed90b1395c7c9aa10b118",
+            "B1": "c084373e4c7f8e609bce58e2efe45b53e6175117e7c60fb27671765808a4aa69",
+            "c": "473de1d9072ec635acbe75dd071dcb8261d624a5cc5350f9ecadd0da0e969d07"
+          }
+        ],
+        "sum": {
+          "A": "586e0da1230bea3402c73198b732bd3327cb1440d72175fa9fc6dd6e86fc1d21",
+          "B": "4af99cad7b870ceecbbb36b768bec9a69ff81de30a69a86a21d05dc0f2dd2735",
+          "T1": "8a91d76d9730e06e2a2a9271080b7a9a98ec02d1419996101232f66fe3470d53",
+          "T2": "f418fc03a111f9b013194f40b85c48b2a6155fbdeea39f6e17baf1dd73ffa25f",
+          "c": "5963b30f6c6ba65ed26b4d7d6b93abe0c53b8b479adda93853b698aadcf7b801"
+        }
+      },
+      "tracking": "ebad388cae05121eec246b7f857d2dac013887047dc5f43b48ed985fada87af7"
+    }
+  ]
+}
