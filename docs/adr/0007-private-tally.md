@@ -2,7 +2,7 @@
 
 Proposed on 1 November 2026 as an experiment, and revised on 7 November 2026. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Only the cryptography is built so far: `@weftwallet/tally` and the contract's verifiers in `internal/tally`.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. Only the cryptography and the contract are built so far: `@weftwallet/tally`, and `examples/private-ballot-contract` with its verifiers in `internal/tally`.
 
 ## Context and problem
 

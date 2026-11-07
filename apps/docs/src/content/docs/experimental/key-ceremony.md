@@ -4,7 +4,7 @@ description: What a trustee organisation does before and after a private electio
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The contract's side of the ceremony is built. `weft-trustee` isn't, and the page describes its planned design.
 :::
 
 A private election's key is shared among its trustee organisations. Before voting, they run a key ceremony over the ledger, which ends with an election key whose secret none of them holds. After voting, k of them each post a decryption share of the totals. The [specification](/experimental/private-tally-spec/#key-ceremony) has the cryptography, and this page covers what a trustee does.
