@@ -13,9 +13,18 @@ import {
   type RefObject,
   type SelectHTMLAttributes,
 } from "react";
-import LOADER from "@weftwallet/brand/logo/loaders/weft.svg?raw";
+import LOADER_MAIN from "@weftwallet/brand/logo/loaders/weft.svg?raw";
+import LOADER_EXPERIMENTAL from "@weftwallet/brand/logo/loaders/experimental.svg?raw";
 import { EXPERIMENTAL, PRODUCT_NAME } from "../lib/experimental";
-import LOADER_SMALL from "@weftwallet/brand/logo/loaders/weft-small.svg?raw";
+
+/**
+ * The loader: Weft's, or in Weft Experimental its pinked one, as its mark is
+ * (SYSTEM.md, Marks and Loading). The normal build folds the choice and
+ * carries only Weft's.
+ */
+const LOADER = EXPERIMENTAL ? LOADER_EXPERIMENTAL : LOADER_MAIN;
+/** The class of the loader's moving pick (packages/brand/scripts/loaders.mjs), which seatLoader takes over. */
+const LOADER_PICK = EXPERIMENTAL ? "weft-loader-experimental" : "weft-loader-weft";
 
 /* Icons: 24px stroke icons, decorative unless labelled. ------------- */
 
@@ -389,8 +398,9 @@ export function Select({ children, bare = false, ...props }: SelectHTMLAttribute
 
 /**
  * Working: Weft's loader, the mark with its middle pick pulled through,
- * seated and drawn out (packages/brand/logo/loaders). It's decorative: the
- * words beside it say what's happening. It keeps turning with reduced motion.
+ * seated and drawn out (packages/brand/logo/loaders), on the pinked tile in
+ * Weft Experimental. It's decorative: the words beside it say what's
+ * happening. It keeps turning with reduced motion.
  */
 export function Spinner({ small = false, size }: { small?: boolean; size?: number }) {
   return (
@@ -476,7 +486,7 @@ const easeInOut = cubicBezier(0.65, 0, 0.35, 1);
  * Resolves when the beat ends. `host` holds the loader (Spinner).
  */
 export function seatLoader(host: Element | null): Promise<void> {
-  const picks = host ? [...host.querySelectorAll<SVGPathElement>(".weft-loader-weft")] : [];
+  const picks = host ? [...host.querySelectorAll<SVGPathElement>(`.${LOADER_PICK}`)] : [];
   const timing = picks[0]?.getAnimations()[0]?.effect?.getComputedTiming();
   if (!picks.length || !timing) return Promise.resolve();
   const whole = tokenMs("--weft-duration-fast", 140);
@@ -494,7 +504,7 @@ export function seatLoader(host: Element | null): Promise<void> {
   const m = (timing.progress ?? 0) * pass;
   // From here the pick is drawn from script, not the loader's keyframes.
   const own = (path: SVGPathElement, offset: number) => {
-    path.classList.remove("weft-loader-weft");
+    path.classList.remove(LOADER_PICK);
     path.setAttribute("stroke-dasharray", "28 200");
     path.setAttribute("stroke-dashoffset", String(offset));
   };

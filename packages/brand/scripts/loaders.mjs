@@ -9,6 +9,9 @@
  *
  * Each product passes its own thing through:
  *   - weft (also the wallet and the docs): the middle of its three picks.
+ *   - experimental (Weft Experimental, docs/adr/0009): the wallet's middle
+ *     pick, on its pinked tile, with the warps stopping above the teeth, as
+ *     in its mark (scripts/marks.mjs).
  *   - playground: its unfinished last pick, which comes to rest halfway, as
  *     in its mark.
  *   - network: a pick through its bare warps that never stays.
@@ -44,6 +47,9 @@ const TENSION = "cubic-bezier(0.3, 0.7, 0.2, 1)"; // ease-tension
 const IN_OUT = "cubic-bezier(0.65, 0, 0.35, 1)"; // ease-in-out
 
 const FILLED = { tile: `<rect x="2" y="2" width="44" height="44" rx="12" fill="${THREAD}"/>`, ground: THREAD, thread: INK };
+/** Weft Experimental's tile: the teal tile with its bottom edge pinked in ten teeth, 4px deep, as scripts/marks.mjs draws it. */
+const PINKED_TILE = `<path d="M2 14a12 12 0 0 1 12-12H34a12 12 0 0 1 12 12V42${Array.from({ length: 20 }, (_, i) => `L${+(46 - 2.2 * (i + 1)).toFixed(1)} ${i % 2 ? 42 : 46}`).join("")}Z" fill="${THREAD}"/>`;
+const PINKED = { tile: PINKED_TILE, ground: THREAD, thread: INK };
 const FRAMED = { tile: `<rect x="3" y="3" width="42" height="42" rx="11" fill="${INK}" stroke="${THREAD}" stroke-width="2"/>`, ground: INK, thread: THREAD };
 
 const LOADERS = {
@@ -52,6 +58,17 @@ const LOADERS = {
     ...FILLED,
     warps: [17, 31],
     span: [8, 40],
+    picks: [
+      { y: 14, from: 10, to: 38, under: [31] },
+      { y: 24, from: 10, to: 38, under: [17], moves: true },
+      { y: 34, from: 10, to: 38, under: [31] },
+    ],
+  },
+  experimental: {
+    name: "Weft Experimental",
+    ...PINKED,
+    warps: [17, 31],
+    span: [8, 38],
     picks: [
       { y: 14, from: 10, to: 38, under: [31] },
       { y: 24, from: 10, to: 38, under: [17], moves: true },
@@ -129,11 +146,15 @@ function draw(id, L) {
 const r = (x, y, w, h, fill) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
 const SMALL_FILLED = { tile: `<rect width="16" height="16" rx="4" fill="${THREAD}"/>`, ground: THREAD, thread: INK };
 const SMALL_FRAMED = { tile: `<rect width="16" height="16" rx="4" fill="${THREAD}"/><rect x="1" y="1" width="14" height="14" rx="3" fill="${INK}"/>`, ground: INK, thread: THREAD };
+/** The pinked tile on the 16px grid: 2px teeth along the bottom two rows, as scripts/marks.mjs draws it. */
+const SMALL_PINKED = { tile: `<path d="M0 4Q0 0 4 0H12Q16 0 16 4V16H14V14H12V16H10V14H8V16H6V14H4V16H2V14H0Z" fill="${THREAD}"/>`, ground: THREAD, thread: INK };
 
 // Each: the warps (x of each 2px warp), the still picks (2px rows, from the
 // small marks), and the moving pick's row, length and the warps it passes under.
 const SMALL = {
   weft: { ...SMALL_FILLED, warps: [4, 10], still: [{ y: 4, under: [10] }], moving: { y: 10, length: 12, under: [4] } },
+  // The warps a pixel shorter, to clear the teeth, as in the small mark.
+  experimental: { ...SMALL_PINKED, warps: [4, 10], warpHeight: 11, still: [{ y: 4, under: [10] }], moving: { y: 10, length: 12, under: [4] } },
   playground: { ...SMALL_FILLED, warps: [4, 10], still: [{ y: 4, under: [10] }], moving: { y: 10, length: 6, under: [4] } },
   network: { ...SMALL_FRAMED, warps: [3, 7, 11], still: [], moving: { y: 7, length: 12, under: [7], leaves: true } },
   explorer: { ...SMALL_FRAMED, warps: [3, 7, 11], still: [{ y: 3, under: [7] }, { y: 11, under: [7] }], moving: { y: 7, length: 12, under: [3, 11] } },
@@ -158,7 +179,7 @@ function drawSmall(id, S) {
   <style>.${cls}{animation:${cls} ${PERIOD}ms infinite}@keyframes ${cls}{${keyframes}}</style>
   ${S.tile}
   <g shape-rendering="crispEdges">
-  ${S.warps.map((x) => r(x, 2, 2, 12, S.thread)).join("")}
+  ${S.warps.map((x) => r(x, 2, 2, S.warpHeight ?? 12, S.thread)).join("")}
   ${S.still.map(still).join("\n  ")}
   <svg x="${lane[0]}" y="0" width="${span}" height="16" viewBox="${lane[0]} 0 ${span} 16"><g class="${cls}">${r(lane[0], m.y - 1, m.length, 4, S.ground)}${r(lane[0], m.y, m.length, 2, S.thread)}</g></svg>
   ${m.under.map((x) => under(x, m.y)).join("")}
