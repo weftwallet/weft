@@ -659,3 +659,39 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
   /* The pick is not drawn. */
   .table tr.is-new { animation: none; }
 }
+
+/* Private elections (docs/adr/0007), shown only with WEFT_EXPERIMENTAL=1:
+   the fingerprint, the key ceremony's posts, the full check's progress in
+   the browser's workers, and the voter's own ballot. */
+.private-banner { margin: var(--weft-space-2) 0 var(--weft-space-5); }
+.section-gap > h2 + .lead + *, .section-gap > h2 + .card, .section-gap > h2 + .table, .section-gap > h2 + form { margin-top: var(--weft-space-4); }
+.warn-text { color: var(--weft-warn-text); }
+/* The election fingerprint, in five groups of four, in Mono, as Weft shows it before a vote. */
+.fp { font-size: var(--weft-type-lg); line-height: var(--weft-leading-lg); color: var(--weft-text-strong); }
+.step-block { display: block; margin-top: 2px; }
+.hexline { overflow-wrap: anywhere; color: var(--weft-text-muted); }
+.config-more dd > .small.subtle:not(:first-child) { margin-top: var(--weft-space-2); }
+.table tr.is-yours > td { background: var(--weft-accent-soft); }
+.xcheck { display: flex; flex-direction: column; gap: var(--weft-space-4); }
+.xcheck__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--weft-space-3); }
+.xcheck__step { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--weft-space-1) var(--weft-space-4); align-items: baseline; font-size: var(--weft-type-md); line-height: var(--weft-leading-md); }
+.xcheck__word { font-variant-numeric: tabular-nums; text-align: right; }
+.xcheck__detail { grid-column: 1 / -1; }
+/* The ballots' progress: a line drawn as the workers report, in answer to the press. */
+.xcheck__bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--weft-bg-sunken); border: 1px solid var(--weft-line); overflow: hidden; }
+.xcheck__bar > span { display: block; height: 100%; background: var(--weft-accent-text); transform-origin: 0 50%; transform: scaleX(0); transition: transform var(--weft-duration-deliberate) var(--weft-ease-out); }
+.xcheck__bar--bad > span { background: var(--weft-danger-text); }
+.xcheck__actions { display: flex; flex-wrap: wrap; gap: var(--weft-space-3); align-items: center; }
+/* Stop checking keeps its place while it isn't offered, so nothing moves when a check starts. */
+.xcheck__stop { margin-inline-start: auto; }
+.xcheck__stop[aria-hidden="true"] { visibility: hidden; }
+.section-gap > .table + .check { margin-top: var(--weft-space-3); }
+/* On a phone each option's bar takes the row under its name and count. */
+@media (max-width: 480px) {
+  #result .tally__row { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--weft-space-2); }
+  #result .tally__bar { grid-column: 1 / -1; grid-row: 2; }
+}
+.xcheck .banner { margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .xcheck__bar > span { transition-duration: 0s; }
+}

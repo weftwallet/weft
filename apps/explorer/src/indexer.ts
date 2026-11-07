@@ -13,6 +13,7 @@ import type { ExplorerDb } from "./db.ts";
 import { configChanges } from "./channel-config.ts";
 import { decodeBlock, type DecodedBlock } from "./decode.ts";
 import { publishBlock, publishedChannels, type Policy } from "./policy.ts";
+import { indexPrivateBlock } from "./private-elections.ts";
 
 export interface ChannelStatus {
   channel: string;
@@ -35,11 +36,13 @@ export class Indexer {
   private readonly policy: Policy;
   private readonly db: ExplorerDb;
   private readonly log: Log;
+  private readonly experimental: boolean;
 
   constructor(config: ExplorerConfig, policy: Policy, db: ExplorerDb, log: Log = { info: console.log, warn: console.warn }) {
     this.policy = policy;
     this.db = db;
     this.log = log;
+    this.experimental = config.experimental;
     const credentials = config.peerTlsCaCert
       ? grpc.credentials.createSsl(config.peerTlsCaCert)
       : grpc.credentials.createInsecure();
@@ -113,7 +116,7 @@ export class Indexer {
         this.update(channel, { state: "following", lastError: null });
         this.log.info(`Following ${channel} from block ${startBlock}`);
         for await (const block of blocks) {
-          indexBlock(this.db, this.policy, decodeBlock(block));
+          indexBlock(this.db, this.policy, decodeBlock(block), { experimental: this.experimental });
           this.update(channel, { lastBlockAt: Date.now() });
           delay = 1000;
         }
@@ -147,9 +150,11 @@ export class Indexer {
 /**
  * Stores one decoded block. Config blocks also update who the channel's
  * members are (who may sign in) and the configuration each later config
- * block is compared with.
+ * block is compared with. With `experimental` (WEFT_EXPERIMENTAL=1), a
+ * channel whose policy names privateElections also has its private-ballot
+ * transactions indexed as elections (private-elections.ts).
  */
-export function indexBlock(db: ExplorerDb, policy: Policy, decoded: DecodedBlock): void {
+export function indexBlock(db: ExplorerDb, policy: Policy, decoded: DecodedBlock, options: { experimental?: boolean } = {}): void {
   for (const tx of decoded.transactions) {
     if (tx.members) db.setMembers(decoded.channel, tx.members);
     if (tx.config) {
@@ -160,4 +165,5 @@ export function indexBlock(db: ExplorerDb, policy: Policy, decoded: DecodedBlock
     }
   }
   db.addBlock(publishBlock(policy, decoded));
+  if (options.experimental) indexPrivateBlock(db, policy, decoded);
 }

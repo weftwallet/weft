@@ -13,6 +13,8 @@ import type { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
 import { requesterIsMember, verifyExplorerRequest } from "./checkpoints.ts";
 import { checkReceipt, elections } from "./elections.ts";
 import { PUBLIC_PRODUCTS, receiptOrigins, type ProductAddresses } from "./config.ts";
+import { electionList, electionView, publishedBallot } from "./private-elections.ts";
+import * as privatePages from "./private-pages.ts";
 
 export interface ServerOptions {
   name: string;
@@ -36,8 +38,17 @@ export interface ServerOptions {
   products?: ProductAddresses;
   /** Who may hand an election page a receipt's choice and salt. Defaults to Weft Playground where the products are. */
   receiptOrigins?: string[];
+  /**
+   * WEFT_EXPERIMENTAL=1 (docs/adr/0009): private election pages and their
+   * API for channels whose policy names privateElections, and the full
+   * check's worker. Off by default, and then none of it is served.
+   */
+  experimental?: boolean;
   logger?: boolean;
 }
+
+/** The full check's Web Worker, bundled by scripts/build-worker.mjs. */
+export const FULL_CHECK_WORKER = join(dirname(fileURLToPath(import.meta.url)), "../dist/worker/full-check.js");
 
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -80,6 +91,9 @@ const ASSETS: Record<string, { type: string; body: () => Buffer }> = {
 };
 
 const PAGE = 20;
+/** Ballots on one page of a private election's table, and at most in one API answer. */
+const BALLOT_PAGE = 50;
+const BALLOT_API_PAGE = 1000;
 const CONTRACT_PAGE = 50;
 /** Most headers one request returns. */
 const HEADERS = 1000;
@@ -92,6 +106,7 @@ function int(value: unknown): number | undefined {
 
 export function buildServer(options: ServerOptions): FastifyInstance {
   const { db, channels, policy } = options;
+  const experimental = options.experimental === true;
   const auth = options.auth ?? new Auth();
   // Errors the router finds before any route runs (a malformed address) go
   // to the same handler as the routes' own, set below.
@@ -135,10 +150,16 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       receiptOrigins: trustedOpeners,
       elections: (channel) => {
         const contract = policy.channels[channel]?.elections;
-        return !!contract && visible.includes(channel) && canSeeContract(channel, contract);
+        return (!!contract && visible.includes(channel) && canSeeContract(channel, contract)) || canSeePrivate(channel);
       },
+      ...(experimental ? { privateElections: canSeePrivate } : {}),
     };
-    return { viewer, memberOf, visible, canSee, canSeeContract, view, site };
+    /** Private elections, only with WEFT_EXPERIMENTAL=1 and a channel that names privateElections. */
+    function canSeePrivate(channel: string): boolean {
+      const contract = policy.channels[channel]?.privateElections;
+      return experimental && !!contract && visible.includes(channel) && canSeeContract(channel, contract);
+    }
+    return { viewer, memberOf, visible, canSee, canSeeContract, canSeePrivate, view, site };
   }
 
   const send = (reply: FastifyReply, body: string, code = 200) =>
@@ -179,11 +200,24 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     reply.header("x-content-type-options", "nosniff");
     reply.header("referrer-policy", "no-referrer");
     if (!request.url.startsWith("/api/") && !request.url.startsWith("/assets/")) {
-      reply.header("content-security-policy", "default-src 'self'; script-src 'unsafe-inline'; style-src 'self'; img-src 'self'; font-src 'self'; frame-ancestors 'none'");
+      // The private elections' full check runs in workers from /assets/full-check.js.
+      reply.header(
+        "content-security-policy",
+        `default-src 'self'; script-src 'unsafe-inline'; style-src 'self'; img-src 'self'; font-src 'self'; ${experimental ? "worker-src 'self'; " : ""}frame-ancestors 'none'`,
+      );
     }
   });
 
   app.get<{ Params: { "*": string } }>("/assets/*", async (request, reply) => {
+    if (experimental && request.params["*"] === "full-check.js") {
+      let body: Buffer;
+      try {
+        body = readFileSync(FULL_CHECK_WORKER);
+      } catch {
+        return reply.code(404).send();
+      }
+      return reply.header("content-type", "text/javascript; charset=utf-8").header("cache-control", "no-cache").send(body);
+    }
     const entry = ASSETS[request.params["*"]];
     if (!entry) return reply.code(404).send();
     return reply.header("content-type", entry.type).header("cache-control", "public, max-age=86400").send(entry.body());
@@ -406,17 +440,27 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   }
 
   app.get<{ Params: { channel: string } }>("/channels/:channel/elections", async (request, reply) => {
-    const data = electionData(request, request.params.channel);
+    const { channel } = request.params;
+    const s = scope(request);
+    if (s.canSeePrivate(channel)) {
+      const main = electionData(request, channel);
+      const ballotContract = main ? pages.electionsList(channel, main.list) : undefined;
+      return send(reply, privatePages.privateElectionsPage(s.site, channel, electionList(db, policy, channel), ballotContract));
+    }
+    const data = electionData(request, channel);
     if (!data) {
       return notFound(reply, scope(request).site, { title: "Elections not found", heading: "This channel has no published elections", asked: asked(request), signIn: MEMBERS });
     }
     return send(reply, pages.electionsPage(data.s.site, request.params.channel, data.list));
   });
 
-  app.get<{ Params: { channel: string; id: string }; Querystring: { tx?: string; commitment?: string } }>(
+  app.get<{ Params: { channel: string; id: string }; Querystring: { tx?: string; commitment?: string; tracking?: string; before?: string } }>(
     "/channels/:channel/elections/:id",
     async (request, reply) => {
       const { channel, id } = request.params;
+      const s = scope(request);
+      const privateView = s.canSeePrivate(channel) ? electionView(db, policy, channel, id) : null;
+      if (privateView) return send(reply, privateElectionPage(s.site, privateView, request.query));
       const data = electionData(request, channel);
       const election = data?.list.find((e) => e.id === id);
       if (!data || !election) {
@@ -446,6 +490,74 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     },
   );
 
+  /* Private elections (docs/adr/0007), with WEFT_EXPERIMENTAL=1 --------- */
+
+  /** A private election's page: ?tracking= checks a tracking code and shows its ballot's page of the table; ?before= pages the table. */
+  function privateElectionPage(site: pages.Site, view: NonNullable<ReturnType<typeof electionView>>, query: { tracking?: string; before?: string }): string {
+    const { channel, id } = view;
+    let tracking: privatePages.TrackingLookup | null = null;
+    if (query.tracking !== undefined) {
+      const code = query.tracking.trim();
+      const error = code === "" ? "Enter the tracking code from your receipt." : /^[0-9a-f]{64}$/i.test(code) ? "" : "A tracking code is 64 characters, 0 to 9 and a to f.";
+      tracking = { code, error, ballot: error ? null : db.privateBallot(channel, id, code.toLowerCase()) };
+    }
+    const position = /^(\d+)\.(\d+)$/.exec(query.before ?? "");
+    let before: [number, number] | undefined = position ? [Number(position[1]), Number(position[2])] : undefined;
+    // The ballot a tracking code found is on the page shown, marked as the voter's.
+    const found = tracking?.ballot;
+    if (!before && found && db.privateBallotsNewer(channel, id, found) >= BALLOT_PAGE) before = [found.block, found.index + 1];
+    const rows = db.privateBallotPage(channel, id, { ...(before ? { before } : {}), limit: BALLOT_PAGE + 1 });
+    const shown = rows.slice(0, BALLOT_PAGE);
+    const url = privatePages.privateElectionUrl(channel, id);
+    const at = (b: { block: number; index: number }) => `${url}?before=${b.block}.${b.index}#ballots`;
+    let newer: string | null = null;
+    if (before && shown[0]) {
+      const ahead = db.privateBallotPage(channel, id, { after: [shown[0].block, shown[0].index], limit: BALLOT_PAGE + 1 });
+      newer = ahead.length === 0 ? null : ahead.length <= BALLOT_PAGE ? `${url}#ballots` : at(ahead[BALLOT_PAGE]!);
+    }
+    const older = rows.length > BALLOT_PAGE ? at(shown.at(-1)!) : null;
+    return privatePages.privateElectionPage(site, view, { rows: shown, newer, older }, tracking);
+  }
+
+  const nothing = (reply: FastifyReply) => reply.code(404).send({ error: "Nothing was found at this address." });
+
+  app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/private-elections", async (request, reply) => {
+    const { channel } = request.params;
+    return scope(request).canSeePrivate(channel) ? electionList(db, policy, channel) : nothing(reply);
+  });
+
+  app.get<{ Params: { channel: string; id: string } }>("/api/v1/channels/:channel/private-elections/:id", async (request, reply) => {
+    const { channel, id } = request.params;
+    const view = scope(request).canSeePrivate(channel) ? electionView(db, policy, channel, id) : null;
+    return view ?? nothing(reply);
+  });
+
+  // Every ballot, in ledger order, a page at a time: what the browser's full check reads.
+  app.get<{ Params: { channel: string; id: string }; Querystring: { offset?: string; limit?: string } }>(
+    "/api/v1/channels/:channel/private-elections/:id/ballots",
+    async (request, reply) => {
+      const { channel, id } = request.params;
+      if (!scope(request).canSeePrivate(channel) || !db.privateElection(channel, id)) return nothing(reply);
+      const offset = int(request.query.offset) ?? 0;
+      const limit = Math.min(int(request.query.limit) ?? BALLOT_API_PAGE, BALLOT_API_PAGE);
+      const { total } = db.privateBallotCount(channel, id);
+      return { total, offset, ballots: db.privateBallots(channel, id, { offset, limit }).map((b, i) => publishedBallot(b, offset + i)) };
+    },
+  );
+
+  // A tracking code, or a ballot's transaction ID, as the page's check finds it.
+  app.get<{ Params: { channel: string; id: string; code: string } }>(
+    "/api/v1/channels/:channel/private-elections/:id/tracking/:code",
+    async (request, reply) => {
+      const { channel, id, code } = request.params;
+      const view = scope(request).canSeePrivate(channel) ? electionView(db, policy, channel, id) : null;
+      if (!view) return nothing(reply);
+      const b = /^[0-9a-f]{64}$/i.test(code) ? db.privateBallot(channel, id, code.toLowerCase()) : null;
+      if (!b) return { found: false };
+      return { found: true, inTotals: view.totals !== null, counted: view.tally !== null, ballot: publishedBallot(b, -1) };
+    },
+  );
+
   /* API: the same view as the pages, for whoever is asking ------------ */
 
   app.get("/api/v1/status", async (request) => {
@@ -464,6 +576,8 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           privateData: cp.privateData,
           membersOnly: Object.entries(cp.contracts).filter(([, l]) => l === "members").map(([name]) => name),
           elections: s.site.elections(c.channel),
+          // Experimental: private elections, whose ballots' voter tags are published even when submitters aren't.
+          ...(s.canSeePrivate(c.channel) ? { privateElections: true, voterTags: true } : {}),
         };
         return { ...c, level: channelLevel(policy, c.channel), publishes, peerHeight: st?.peerHeight ?? null, state: st?.state ?? "starting" };
       }),

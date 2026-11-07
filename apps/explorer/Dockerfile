@@ -9,10 +9,13 @@ COPY packages/brand packages/brand
 COPY packages/protocol packages/protocol
 COPY packages/core packages/core
 COPY packages/ui packages/ui
+# The private tally (docs/adr/0007), for the experimental private election pages.
+COPY packages/tally packages/tally
 COPY apps/explorer apps/explorer
 RUN pnpm install --frozen-lockfile --filter @weftwallet/explorer... \
  && pnpm --filter @weftwallet/protocol build \
  && pnpm --filter @weftwallet/core build \
+ && pnpm --filter @weftwallet/tally build \
  && pnpm --filter @weftwallet/explorer build \
  && pnpm deploy --filter @weftwallet/explorer --prod --legacy /out
 

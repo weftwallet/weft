@@ -15,13 +15,18 @@ function identity(mspId: string, cert = "not a certificate"): Uint8Array {
 export interface TxSpec {
   txId: string;
   chaincode: string;
-  args: string[];
-  writes?: { key: string; value?: string; ns?: string }[];
+  /** Arguments, as text or, for a test of bytes that aren't UTF-8, as bytes. */
+  args: (string | Uint8Array)[];
+  writes?: { key: string; value?: string | Uint8Array; ns?: string }[];
   /** Private data writes: only their hashes go in the block, as peers record them. */
   privateWrites?: { collection: string; key: string; value?: string }[];
   creator?: string;
+  /** The creator's id_bytes: its certificate, as Fabric carries it. */
+  creatorCert?: string;
   endorsers?: string[];
   event?: string;
+  /** The event's payload, "event-data" by default. */
+  eventPayload?: string;
   config?: boolean;
   /** Config transactions: member organisations and their root certificates (PEM). */
   members?: { mspId: string; rootCerts: string[]; crls?: string[] }[];
@@ -36,7 +41,7 @@ function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
   ts.setSeconds(seconds);
   channelHeader.setTimestamp(ts);
   const signatureHeader = new common.SignatureHeader();
-  signatureHeader.setCreator(identity(spec.creator ?? "Org1MSP"));
+  signatureHeader.setCreator(identity(spec.creator ?? "Org1MSP", spec.creatorCert));
   const header = new common.Header();
   header.setChannelHeader(channelHeader.serializeBinary());
   header.setSignatureHeader(signatureHeader.serializeBinary());
@@ -131,7 +136,7 @@ function envelope(channel: string, spec: TxSpec, seconds: number): Uint8Array {
     if (spec.event) {
       const event = new peer.ChaincodeEvent();
       event.setEventName(spec.event);
-      event.setPayload(Buffer.from("event-data"));
+      event.setPayload(Buffer.from(spec.eventPayload ?? "event-data"));
       action.setEvents(event.serializeBinary());
     }
     const prp = new peer.ProposalResponsePayload();

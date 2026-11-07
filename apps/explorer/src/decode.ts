@@ -13,6 +13,11 @@ export interface Party {
   /** The certificate's common name, when it parses. */
   name: string | null;
   certificate: string;
+  /**
+   * SerializedIdentity.id_bytes, unchanged: what the private-ballot contract
+   * makes a voter tag from (private-elections.ts). Never stored or published.
+   */
+  idBytes: Uint8Array;
 }
 
 export interface Write {
@@ -132,7 +137,8 @@ export function blockDataHash(data: Uint8Array[]): string {
 function party(serialized: Uint8Array): Party | null {
   if (serialized.length === 0) return null;
   const identity = msp.SerializedIdentity.deserializeBinary(serialized);
-  const certificate = Buffer.from(identity.getIdBytes_asU8()).toString("utf8");
+  const idBytes = identity.getIdBytes_asU8();
+  const certificate = Buffer.from(idBytes).toString("utf8");
   let name: string | null = null;
   try {
     const subject = new X509Certificate(certificate).subject;
@@ -140,7 +146,7 @@ function party(serialized: Uint8Array): Party | null {
   } catch {
     /* not a certificate (for example an idemix identity); keep the MSP ID */
   }
-  return { mspId: identity.getMspid(), name, certificate };
+  return { mspId: identity.getMspid(), name, certificate, idBytes };
 }
 
 function timestampOf(header: common.ChannelHeader): number | null {

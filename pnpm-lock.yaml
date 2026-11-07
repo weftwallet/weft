@@ -62,6 +62,9 @@ importers:
       '@weftwallet/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@weftwallet/tally':
+        specifier: workspace:*
+        version: link:../../packages/tally
       '@weftwallet/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -87,6 +90,9 @@ importers:
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
+      rolldown:
+        specifier: 1.2.14
+        version: 1.2.14
       vitest:
         specifier: ^5.0.5
         version: 5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1))

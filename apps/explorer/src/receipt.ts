@@ -101,3 +101,37 @@ export function acceptHandoff(
   if (typeof d.salt !== "string" || !/^[0-9a-f]{32,128}$/.test(d.salt)) return null;
   return { option: d.option, salt: d.salt };
 }
+
+/**
+ * A version 2 receipt (docs/adr/0007, cast-ballot.md), for a private
+ * election's Check your tracking code form, from a file, a drop or a paste:
+ *
+ *   { "type": "weft-ballot-receipt", "version": 2, "channel": "privatevote-budget-2027",
+ *     "electionId": "budget-2027", "txId": "…", "blockNumber": 41, "tracking": "…" }
+ *
+ * It holds no choice and no randomness, so it fills only the tracking code.
+ * Like readReceipt, the page inlines its source (private-pages.ts), so it
+ * refers to nothing outside itself.
+ */
+export function readTrackingReceipt(text: string, electionId: string): { ok: true; tracking: string } | { ok: false; message: string } {
+  let r: any;
+  try {
+    r = JSON.parse(text);
+  } catch {
+    return { ok: false, message: "Weft Explorer couldn't read that file. Choose the receipt Weft saved, a .json file." };
+  }
+  if (!r || typeof r !== "object" || Array.isArray(r)) return { ok: false, message: "That file isn't a ballot receipt. It has no tracking code." };
+  if (r.type !== undefined && r.type !== "weft-ballot-receipt") return { ok: false, message: "That file isn't a ballot receipt. Choose the receipt Weft saved." };
+  if (r.version === 1 || (r.version === undefined && r.commitment !== undefined)) {
+    return { ok: false, message: "That's a version 1 receipt, for an election on the ballot contract. This election's receipts are version 2 and carry a tracking code." };
+  }
+  if (r.version !== 2) {
+    return { ok: false, message: typeof r.version === "number" ? `That receipt is version ${r.version}. This explorer reads version 2 receipts for private elections.` : "That file isn't a ballot receipt. It has no tracking code." };
+  }
+  const election = typeof r.electionId === "string" ? r.electionId.trim() : "";
+  if (election && election !== electionId) return { ok: false, message: `That receipt is for ${election}, not this election. Open ${election}'s page to check it.` };
+  const tracking = typeof r.tracking === "string" ? r.tracking.trim().toLowerCase() : "";
+  if (!tracking) return { ok: false, message: "That file isn't a ballot receipt. It has no tracking code." };
+  if (!/^[0-9a-f]{64}$/.test(tracking)) return { ok: false, message: "That receipt's tracking code isn't 64 characters, 0 to 9 and a to f." };
+  return { ok: true, tracking };
+}

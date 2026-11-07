@@ -15,9 +15,9 @@
     "assets"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-worker.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "node ../../scripts/dev.mjs --default WEFT_EXPLORER_PRODUCTS_DOMAIN=dev --conditions=weft-source --disable-warning=ExperimentalWarning --watch src/main.ts",
+    "dev": "node scripts/build-worker.mjs && node ../../scripts/dev.mjs --default WEFT_EXPLORER_PRODUCTS_DOMAIN=dev --conditions=weft-source --disable-warning=ExperimentalWarning --watch src/main.ts",
     "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning dist/main.js",
     "test": "vitest run",
     "sample": "node --disable-warning=ExperimentalWarning src/test/serve-sample.ts"
@@ -30,6 +30,7 @@
     "@hyperledger/fabric-protos": "^0.3.7",
     "@weftwallet/brand": "workspace:*",
     "@weftwallet/core": "workspace:*",
+    "@weftwallet/tally": "workspace:*",
     "@weftwallet/ui": "workspace:*",
     "fastify": "^5.12.7",
     "yaml": "^2.9.1"
@@ -40,6 +41,7 @@
     "@types/node": "^26.6.5",
     "google-protobuf": "^3.21.4",
     "reflect-metadata": "^0.2.2",
+    "rolldown": "1.2.14",
     "vitest": "^5.0.5"
   }
 }

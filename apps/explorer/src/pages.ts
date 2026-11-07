@@ -29,6 +29,8 @@ export interface Site {
   peers: (channel: string) => PeerStatus[];
   /** Whether the channel has elections this viewer can see. */
   elections: (channel: string) => boolean;
+  /** Whether the channel's elections include private ones (docs/adr/0007), shown only with WEFT_EXPERIMENTAL=1. */
+  privateElections?: (channel: string) => boolean;
   /** The network page, which checks this explorer against the others from outside it. */
   networkPage?: string;
   /** Where the other Weft products are (WEFT_EXPLORER_PRODUCTS_DOMAIN). */
@@ -103,10 +105,10 @@ const BG = {
   light: /\[data-theme="light"\]\s*\{[^}]*?--weft-bg:\s*(#[0-9a-fA-F]{6})/.exec(TOKENS)?.[1] ?? "#F5F3EE",
 };
 
-const enc = encodeURIComponent;
-const channelUrl = (channel: string) => `/channels/${enc(channel)}`;
-const blockUrl = (channel: string, n: number) => `/channels/${enc(channel)}/blocks/${n}`;
-const txUrl = (channel: string, id: string) => `/channels/${enc(channel)}/transactions/${enc(id)}`;
+export const enc = encodeURIComponent;
+export const channelUrl = (channel: string) => `/channels/${enc(channel)}`;
+export const blockUrl = (channel: string, n: number) => `/channels/${enc(channel)}/blocks/${n}`;
+export const txUrl = (channel: string, id: string) => `/channels/${enc(channel)}/transactions/${enc(id)}`;
 const contractUrl = (channel: string, name: string) => `/channels/${enc(channel)}/contracts/${enc(name)}`;
 
 /** An identifier cut in the middle, keeping 8 characters at each end, because people check the ends. */
@@ -115,7 +117,7 @@ export function cut(value: string): string {
 }
 
 /** A shortened identifier. Copying it copies the whole value. */
-function short(value: string): Html {
+export function short(value: string): Html {
   if (value.length <= 17) return html`${value}`;
   return html`<span data-copy="${value}" title="${value}">${cut(value)}</span>`;
 }
@@ -124,12 +126,12 @@ function short(value: string): Html {
  * An identifier in full, in groups of four so two can be compared block by
  * block. The gaps are margins, not spaces, so copying gives the plain value.
  */
-function grouped(value: string, attrs: Html | string = ""): Html {
+export function grouped(value: string, attrs: Html | string = ""): Html {
   const groups = value.match(/.{1,4}/g) ?? [value];
   return html`<span class="mono hash grouped" data-copy="${value}"${attrs}>${groups.map((g, i) => html`${i ? raw("<wbr>") : ""}<span>${g}</span>`)}</span>`;
 }
 
-function time(at: number | null): Html {
+export function time(at: number | null): Html {
   if (at === null) return html`<span class="subtle">unknown</span>`;
   const iso = new Date(at).toISOString();
   return html`<time datetime="${iso}" title="${iso.replace("T", " ").replace(/\.\d+Z$/, " UTC")}">${iso.slice(0, 16).replace("T", " ")} UTC</time>`;
@@ -162,7 +164,7 @@ function status(validation: string, redacted = false): Html {
 }
 
 /** Technical detail behind "Details": a code, a raw message. */
-function errorDetails(detail: string | null | undefined): Html {
+export function errorDetails(detail: string | null | undefined): Html {
   if (!detail) return html``;
   return html`<details class="error-details"><summary>Details</summary><p>${detail}</p></details>`;
 }
@@ -308,12 +310,12 @@ function search(query: string): Html {
  * A field's reserved error line (SYSTEM.md, Errors): always present, 20px
  * tall, so nothing below the field moves when a message fades into it.
  */
-function fieldError(id: string, message = ""): Html {
+export function fieldError(id: string, message = ""): Html {
   return html`<p class="field__status${message ? " field-error" : ""}" id="${id}">${message}</p>`;
 }
 
 /** A field's attributes when the server already found it wrong. */
-function invalid(errorId: string | null): Html {
+export function invalid(errorId: string | null): Html {
   return errorId ? html` aria-invalid="true" aria-describedby="${errorId}"` : html``;
 }
 
@@ -996,7 +998,7 @@ function txRows(txs: TransactionRow[], options: { showBlock?: boolean; empty?: s
 }
 
 /** Breadcrumbs, ending with the page itself. */
-function crumbs(...links: ([string, string, boolean?] | string)[]): Html {
+export function crumbs(...links: ([string, string, boolean?] | string)[]): Html {
   return html`<nav class="crumbs" aria-label="Breadcrumb"><ol>${links.map((l) =>
     typeof l === "string"
       ? html`<li><span aria-current="page">${l}</span></li>`
@@ -1008,7 +1010,7 @@ function crumbs(...links: ([string, string, boolean?] | string)[]): Html {
  * A pair of links between pages: newer first, then older. One with nowhere
  * to go stays in its place, disabled, so the other doesn't move.
  */
-function pager(label: string, newer: [string, string | null], older: [string, string | null], rel = false): Html {
+export function pager(label: string, newer: [string, string | null], older: [string, string | null], rel = false): Html {
   const link = ([text, href]: [string, string | null], relation: string) =>
     href ? html`<a href="${href}"${rel ? raw(` rel="${relation}"`) : ""}>${text}</a>` : html`<a class="pager__none" role="link" aria-disabled="true">${text}</a>`;
   return html`<nav class="pager" aria-label="${label}">${link(newer, "next")}${link(older, "prev")}</nav>`;
@@ -1100,7 +1102,11 @@ export function channelPage(
         )}</ul>`}
   </section>
 </div>
-${site.elections(name) ? html`<p class="elections-link"><a href="${channelUrl(name)}/elections">Elections on ${name}</a> <span class="subtle">ballots, results and receipt checks</span></p>` : ""}
+${site.elections(name)
+  ? html`<p class="elections-link"><a href="${channelUrl(name)}/elections">Elections on ${name}</a> <span class="subtle">${
+      site.privateElections?.(name) ? "encrypted ballots, the key ceremony, the count and a check of every proof" : "ballots, results and receipt checks"
+    }</span></p>`
+  : ""}
 <section><h2>${range ?? "Blocks"}</h2><div data-live="blocks">${blockRows(site, blocks, empty)}
 ${newer || older ? pager("Pages of blocks", ["Newer blocks", newer], ["Older blocks", older]) : ""}</div>
 </section>`,
@@ -1614,14 +1620,19 @@ export function electionsPage(site: Site, channel: string, list: ElectionView[])
     `Elections on ${channel}`,
     html`${crumbs(["Overview", "/"], [channel, channelUrl(channel), true], "Elections")}
 <h1>Elections</h1>
-<p class="lead">Ballots are kept private. The ledger holds a commitment for each one and, once voting closes, the count. Anyone can count the commitments here, and any voter can check their own.</p>
+${electionsList(channel, list)}`,
+    { live: true },
+  );
+}
+
+/** The ballot contract's elections: the lead and the table, also shown under a channel's private elections. */
+export function electionsList(channel: string, list: ElectionView[]): Html {
+  return html`<p class="lead">Ballots are kept private. The ledger holds a commitment for each one and, once voting closes, the count. Anyone can count the commitments here, and any voter can check their own.</p>
 <div data-live="elections">${list.length === 0
   ? html`<p class="empty">No elections on ${channel} yet. An election appears here once someone creates one with the channel's ballot contract.</p>`
   : html`<table class="table"><thead><tr><th>Election</th><th>Closes</th><th class="num">Ballots</th><th>State</th></tr></thead><tbody>${[...list].reverse().map(
       (e) => html`<tr><td><a class="row-link" href="${electionUrl(channel, e.id)}">${e.title}</a><div class="mono subtle small">${e.id}</div></td><td data-label="Closes">${time(Date.parse(e.closesAt))}</td><td class="num mono" data-label="Ballots">${e.commitments}</td><td>${electionState(e)}</td></tr>`,
-    )}</tbody></table>`}</div>`,
-    { live: true },
-  );
+    )}</tbody></table>`}</div>`;
 }
 
 export function electionPage(

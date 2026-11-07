@@ -16,8 +16,11 @@
  *                              # count only, or with each key's and value's SHA-256
  *       privateElections: private-ballot
  *                              # experimental, needs WEFT_EXPERIMENTAL=1: the
- *                              # private-ballot contract (docs/adr/0007). Parsed
- *                              # only; private election pages aren't built yet.
+ *                              # private-ballot contract (docs/adr/0007), whose
+ *                              # elections get pages and the full check
+ *                              # (private-elections.ts). Needs values: show, and
+ *                              # publishes each ballot's voter tag even with
+ *                              # submitter: hide.
  */
 
 import { createHash } from "node:crypto";
@@ -38,8 +41,13 @@ export interface ChannelPolicy {
   elections?: string;
   /**
    * Experimental (docs/adr/0009): the private-ballot contract on this channel
-   * (examples/private-ballot-contract). Allowed only when the explorer is
-   * started with WEFT_EXPERIMENTAL=1 (config.ts). Nothing reads it yet.
+   * (examples/private-ballot-contract), whose elections get pages and the
+   * browser's full check (private-elections.ts, private-pages.ts). Allowed
+   * only when the explorer is started with WEFT_EXPERIMENTAL=1 (config.ts),
+   * and only with values: show, since the pages are made from the contract's
+   * arguments and writes. Every ballot's voter tag is published, even with
+   * submitter: hide, because every ballot proof is bound to it; the
+   * submitter's certificate, name and MSP ID stay hidden.
    */
   privateElections?: string;
   /**
@@ -83,6 +91,11 @@ export function parsePolicy(source: unknown): Policy {
     }
     if (c.privateElections !== undefined && (typeof c.privateElections !== "string" || !c.privateElections)) {
       throw new Error(`channels.${name}.privateElections must be the private-ballot contract's name.`);
+    }
+    if (c.privateElections !== undefined && values === "hash") {
+      throw new Error(
+        `channels.${name} has privateElections and values: hash. Private election pages are made from the contract's arguments and writes, which values: hash publishes as hashes only. Set values: show for ${name}, or remove privateElections.`,
+      );
     }
     channels[name] = {
       level: level(c.level, `channels.${name}.level`),
