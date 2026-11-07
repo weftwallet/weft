@@ -6,6 +6,7 @@
 pnpm playground:up       # first run downloads Fabric (5 to 10 minutes)
 pnpm playground:up --https   # the same, with the CA on https://localhost:7443 (needs mkcert)
 pnpm playground:up --experimental   # also Weft Experimental's channels (needs Go)
+pnpm playground:count budget-2027   # with --experimental: close an election early and count it
 pnpm dev                 # in another terminal: the sites, then open http://localhost:4323
 pnpm playground:down     # stop everything and remove the network
 pnpm playground:status   # what's running
@@ -42,18 +43,60 @@ pnpm playground:explorer # start or restart only the explorers, on a running sta
 |---|---|---|
 | Voters' CA | Docker, `https://localhost:7058`, CA `ca-chair-2027` | One per election with voter credentials, each with its own issuer key ([ADR 0008](../docs/adr/0008-idemix-voter-credentials.md)). The playground has one, `chair-2027`. Its CA runs in the container `ca_voters_chair_2027` from `compose-voters-ca.yaml`, with the same image and start command as test-network's CAs, and its home mounted from `.state/voters-ca/chair-2027/server`. Its idemix issuer key is ChairVoters2027MSP's. Demo voters `voter1` to `voter5`, secrets `voter1pw` to `voter5pw`, affiliation `voters`, one enrolment each. No CA proxy for the browser yet |
 | A channel per election, `privatevote-<election id>` | Both peers and the orderer | `privatevote-budget-2027` for `budget-2027` and `privatevote-chair-2027` for `chair-2027`. Each is created from its own genesis block (`.state/private-channels/<channel>`), with Org1MSP and Org2MSP, which endorse and administer it, and the election's idemix organisation if it has one, ChairVoters2027MSP for `chair-2027`. Contracts and their lifecycle need both organisations' peers, and channel configuration updates need both organisations' admins |
-| `private-ballot` contract | Every election's channel | [`examples/private-ballot-contract`](../examples/private-ballot-contract), in Go, deployed with test-network's `deployCC -ccl go` and the endorsement policy `AND('Org1MSP.peer','Org2MSP.peer')`. `.state/private-channels/<channel>/private-ballot.json` records the sequence and a hash of the source, and a change to the source deploys it again with the next sequence. Each organisation's peer then answers `GetElection`. The key ceremony and the seeded elections wait for `weft-trustee`: `seedElections` in `experimental.mjs` is their hook |
+| `private-ballot` contract | Every election's channel | [`examples/private-ballot-contract`](../examples/private-ballot-contract), in Go, deployed with test-network's `deployCC -ccl go` and the endorsement policy `AND('Org1MSP.peer','Org2MSP.peer')`. `.state/private-channels/<channel>/private-ballot.json` records the sequence and a hash of the source, and a change to the source deploys it again with the next sequence. Each organisation's peer then answers `GetElection` |
+| Trustees | Each organisation's CA | `trustee1` at Org1's CA and `trustee2` at Org2's, secrets `trustee1pw` and `trustee2pw`, registered with `weft.trustee=true` in the enrolment certificate. Their credentials, a connection file for [`weft-trustee`](../packages/trustee) on each election's channel and a random passphrase are in `.state/trustees/org1` and `.state/trustees/org2`. See [the key ceremony and counting](#the-key-ceremony-and-counting) |
+| Seeded election | `privatevote-budget-2027` | `budget-2027`, Budget 2027, with Plan A, Plan B and Plan C, open for 30 days, with Org1MSP and Org2MSP as trustees, 2 of 2, and X.509 voters from both. `chair-2027` isn't seeded, since its voters use voter credentials ([ADR 0008](../docs/adr/0008-idemix-voter-credentials.md)) |
 | Relay | `http://localhost:8787` | Started with `WEFT_EXPERIMENTAL=1` and `WEFT_IDEMIX_MSP_IDS=ChairVoters2027MSP`, one MSP ID per election. The invite also lists every election's channel |
 | Explorers | As above | Started with `WEFT_EXPERIMENTAL=1`, with a copy of their policy in `.state` that also publishes every election's channel with `privateElections: private-ballot` |
 
-Build the wallet with `pnpm --filter @weftwallet/extension build:experimental` and load it in a browser profile without Weft. `pnpm playground:up` without the flag on a running stack restarts the relay and the explorers without the experimental settings and stops the voters' CA containers. The channels stay on the network until `pnpm playground:down`, which removes them, the voters' CA containers and their homes in `.state` with everything else.
+Build the wallet with `pnpm --filter @weftwallet/extension build:experimental` and load it in a browser profile without Weft. `pnpm playground:up` without the flag on a running stack restarts the relay and the explorers without the experimental settings and stops the voters' CA containers. The channels stay on the network until `pnpm playground:down`, which removes them, the voters' CA containers and their homes, and the trustees' folders in `.state` with everything else.
+
+### The key ceremony and counting
+
+After the contract, `seedElections` in `experimental.mjs` builds `weft-trustee` (`packages/trustee`), registers and enrols the two trustee identities, and writes, for each organisation:
+
+| File in `.state/trustees/<org>` | Holds |
+|---|---|
+| `msp/` | The trustee identity's certificate and key, from `fabric-ca-client enroll` |
+| `<channel>.yaml` | `weft-trustee`'s connection file for that election's channel: the organisation's peer, its TLS CA, the MSP ID, the certificate and key, the channel, the contract, and `home: state` |
+| `passphrase` | A random passphrase for the state folders, mode 0600 |
+| `state/<channel>/<election>/` | `weft-trustee`'s state folder: the key share, encrypted with that passphrase |
+
+Then, for each election in `ELECTIONS` with a `seed` and X.509 voters, it runs as Org1's trustee `weft-trustee create`, and then `commit`, `share` and `confirm` for Org1 and Org2 in turn. The last `confirm` opens the election and checks its fingerprint. An election that already exists is left as it is, so running `up` again changes nothing; one left in its key ceremony gets the rounds it is missing. Last, each organisation's trustee reads every election through its own peer's gateway, and `up` prints what each answered.
+
+To run `weft-trustee` by hand as Org1's trustee, from the repository's root:
+
+```sh
+WEFT_TRUSTEE_PASSPHRASE=$(cat playground/.state/trustees/org1/passphrase) \
+  node packages/trustee/dist/cli.js status --election budget-2027 \
+  --connection playground/.state/trustees/org1/privatevote-budget-2027.yaml
+```
+
+`pnpm playground:count <election>` counts an election without waiting for its planned closing time. As each organisation's trustee in turn, it runs `weft-trustee close --early`, until the election closes, then `decrypt`, the second of which publishes the tally, and prints the counts. After eight ballots:
+
+```
+[1] Counting budget-2027 with Org1MSP and Org2MSP
+    Org1MSP  ✓ Asked to close budget-2027 in block 20. 1 of 2 trustees have asked; voting closes when 2 have.
+    Org2MSP  ✓ Closed budget-2027 in block 21: 2 of 2 trustees asked. Added up 8 ballots per option.
+    ...
+    Org2MSP  ✓ 2 of 2 shares are in. Published the tally in block 24.
+
+Budget 2027 (budget-2027), counted
+
+  Plan A   3
+  Plan B   4
+  Plan C   1
+  8 ballots
+```
+
+A step that has already happened is skipped, so it can run again. A counted election stays counted: `pnpm playground:down` and `up --experimental` seed a new one.
 
 ### Adding an election
 
-Each election is one entry in `ELECTIONS` in `experimental.mjs`. An election with X.509 voters, the private tally only, has its ID:
+Each election is one entry in `ELECTIONS` in `experimental.mjs`. An election with X.509 voters, the private tally only, has its ID, and a `seed` if `up` should create and open it:
 
 ```js
-{ id: "budget-2028" },
+{ id: "budget-2028", seed: { title: "Budget 2028", options: ["Plan A", "Plan B", "Plan C"], openForDays: 30 } },
 ```
 
 An election with voter credentials also has `voterOrg`, its MSP ID and its CA's name and ports:
@@ -62,7 +105,7 @@ An election with voter credentials also has `voterOrg`, its MSP ID and its CA's 
 { id: "chair-2028", voterOrg: { mspId: "ChairVoters2028MSP", ca: { name: "ca-chair-2028", port: 7158, operations: 17158 } } },
 ```
 
-The next `pnpm playground:up --experimental` creates the election's channel, `privatevote-budget-2028` or `privatevote-chair-2028`, joins the orderer and both peers to it, deploys `private-ballot` on it, and restarts the relay and the explorers with the new channel in the invite and the policies. With `voterOrg`, it first starts the election's CA in its own container, registers the demo voters and writes its MSP folder to `.state/voters-msp/ChairVoters2028MSP`, and the relay gets the new MSP ID in `WEFT_IDEMIX_MSP_IDS`. The other elections' channels don't change. The election's ID names its channel, so it uses lower-case letters, digits, dots and hyphens, starting with a letter, as Fabric's channel names do.
+The next `pnpm playground:up --experimental` creates the election's channel, `privatevote-budget-2028` or `privatevote-chair-2028`, joins the orderer and both peers to it, deploys `private-ballot` on it, seeds it if it has a `seed`, and restarts the relay and the explorers with the new channel in the invite and the policies. With `voterOrg`, it first starts the election's CA in its own container, registers the demo voters and writes its MSP folder to `.state/voters-msp/ChairVoters2028MSP`, and the relay gets the new MSP ID in `WEFT_IDEMIX_MSP_IDS`. The other elections' channels don't change. The election's ID names its channel, so it uses lower-case letters, digits, dots and hyphens, starting with a letter, as Fabric's channel names do.
 
 A channel holds one election's idemix organisation at most. Fabric recommends one idemix MSP per channel, because the MSP ID tells idemix organisations apart, and a channel per election keeps elections apart: one election's voters can't read another's ballots, and closing one election changes no other channel. The channel's Admins policy names Org1's and Org2's admins, so a configuration update needs both. Under `MAJORITY Admins`, which test-network's channels use, the idemix organisation would count, and one organisation's admin with an admin credential from the voters' CA would be enough.
 

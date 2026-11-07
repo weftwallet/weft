@@ -14,9 +14,19 @@
  *      organisation if it has one. privatevote-budget-2027 has none, and
  *      privatevote-chair-2027 has ChairVoters2027MSP.
  *   3. The private-ballot contract (examples/private-ballot-contract,
- *      docs/adr/0007) on the channel, endorsed by Org1 and Org2, and a hook
- *      for the key ceremony and the seeded elections, which need the trustee
- *      tool (weft-trustee) and aren't built yet.
+ *      docs/adr/0007) on the channel, endorsed by Org1 and Org2.
+ *   4. A trustee identity for each organisation, trustee1 for Org1 and
+ *      trustee2 for Org2, registered at its CA with weft.trustee=true, and a
+ *      connection file for weft-trustee (packages/trustee) on each
+ *      election's channel, in .state/trustees/<org>.
+ *   5. Each election that has a `seed` and X.509 voters, created with
+ *      weft-trustee, with the key ceremony run for Org1 and Org2, 2 of 2,
+ *      and opened. budget-2027 is open for 30 days. An election that already
+ *      exists is left as it is.
+ *
+ * countElection, for `pnpm playground:count <election>`, closes an election
+ * early with both trustees, posts both decryption shares and publishes the
+ * tally, with weft-trustee.
  *
  * cli.mjs passes in the network's layout (paths and addresses, for Fabric's
  * test-network), its output helpers, startCaServer, which runs a voters'
@@ -24,8 +34,8 @@
  * contract with test-network's deployCC. This file knows nothing about Docker.
  */
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -39,8 +49,11 @@ export const PRIVATE_CONTRACT = "private-ballot";
  * election's voters can't read another's ballots, and closing one changes no
  * other, and each channel gets the private-ballot contract.
  *
- * An election with X.509 voters (the private tally only) has just its ID.
- * An election with voter credentials also has `voterOrg`: its idemix MSP,
+ * An election with X.509 voters (the private tally only) has its ID, and a
+ * `seed` if playground:up should create and open it: its title, options and
+ * how many days it stays open. Org1 and Org2 are its trustees, 2 of 2, and
+ * their X.509 identities vote. An election with voter credentials also has
+ * `voterOrg`: its idemix MSP,
  * named after it, and its voters' CA, run in its own container on its own
  * ports with its own issuer key (docs/adr/0008). Fabric recommends one idemix
  * MSP per channel, which the channel per election gives. Ports stay clear of
@@ -50,7 +63,9 @@ export const PRIVATE_CONTRACT = "private-ballot";
  * voterOrg its CA and MSP folder, on the next `playground:up --experimental`.
  */
 export const ELECTIONS = [
-  { id: "budget-2027" },
+  { id: "budget-2027", seed: { title: "Budget 2027", options: ["Plan A", "Plan B", "Plan C"], openForDays: 30 } },
+  // Voting with voter credentials comes with docs/adr/0008's step, so chair-2027
+  // gets its channel and the contract, and isn't seeded yet.
   { id: "chair-2027", voterOrg: { mspId: "ChairVoters2027MSP", ca: { name: "ca-chair-2027", port: 7058, operations: 17058 } } },
 ];
 /** The elections with voter credentials, each with a voters' CA and an idemix organisation. */
@@ -98,6 +113,17 @@ export function paths(state) {
     legacy: [join(state, "privatevote"), join(state, "privatevote-channel")],
     votersCa,
     votersMsp,
+    /** Each organisation's trustee identity, connection files, passphrase and weft-trustee state. */
+    trustees: join(state, "trustees"),
+    trustee: (org) => {
+      const dir = join(state, "trustees", org.msp.replace(/MSP$/, "").toLowerCase());
+      return {
+        dir,
+        msp: join(dir, "msp"),
+        passphrase: join(dir, "passphrase"),
+        connection: (e) => join(dir, `${electionChannel(e)}.yaml`),
+      };
+    },
     /**
      * An election with voter credentials: the CA's home (the container's,
      * mounted), its admin's client home, and its MSP folder.
@@ -415,7 +441,8 @@ async function createElectionChannel(election, net, state, { note, fail }) {
 }
 
 /** The contract's source, examples/private-ballot-contract. */
-export const contractSource = resolve(dirname(fileURLToPath(import.meta.url)), "..", "examples", "private-ballot-contract");
+export const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+export const contractSource = join(repoRoot, "examples", "private-ballot-contract");
 
 /**
  * A hash of the files the peer builds the contract from: go.mod, go.sum and
@@ -453,8 +480,8 @@ export const endorsementPolicy = (net) => `AND(${net.orgs.map((o) => `'${o.msp}.
  * once per network and again, with the next sequence, when its source changes.
  *
  * Then each organisation's peer answers GetElection for the election, which
- * starts the contract on it: until the elections are seeded, the answer is
- * "There's no election <id>."
+ * starts the contract on it: before an election is seeded, the answer is
+ * "There's no election <id>." seedElections follows.
  */
 export function deployPrivateBallot(net, state, tools) {
   const { step, note, fail, deployContract } = tools;
@@ -503,16 +530,250 @@ export function queryElection(net, org, channel, id) {
   return result.output.includes(refusal) ? { ok: true, output: refusal } : { ok: false, output: lastLine(result.output) };
 }
 
+/* ------------------------------------------------------------------ */
+/* The trustees, the key ceremony and the seeded elections             */
+/* ------------------------------------------------------------------ */
+
+/** weft-trustee, built from packages/trustee. */
+export const trusteeTool = () => join(repoRoot, "packages", "trustee", "dist", "cli.js");
+/** Each organisation's trustee identity: trustee1 for the first organisation, trustee2 for the second. */
+export const trusteeUser = (net, org) => {
+  const n = net.orgs.indexOf(org) + 1;
+  return { id: `trustee${n}`, secret: `trustee${n}pw` };
+};
+
 /**
- * Hook, phase c of step 4: the key ceremony with weft-trustee for Org1 and
- * Org2, 2 of 2, with a trustee identity (weft.trustee=true) at each
- * organisation's CA, and the seeded elections. budget-2027 is seeded open
- * for 30 days; chair-2027 gets the contract and isn't seeded until voter
- * credentials are built (docs/adr/0008). The trustee tool doesn't exist yet,
- * so the hook only says so.
+ * Registers and enrols each organisation's trustee identity at its CA, with
+ * weft.trustee=true in the enrolment certificate, as an explorer's identity is
+ * set up (key-ceremony.md). The certificate and key go in
+ * .state/trustees/<org>/msp, and next to them weft-trustee's connection file
+ * for each election's channel, <channel>.yaml, a random passphrase for its
+ * state folder (0600), and the state folder itself, state/.
  */
-export function seedElections(_net, _state, { note }) {
-  note(`not seeded yet: the key ceremony needs weft-trustee, so ${ELECTIONS.map((e) => e.id).join(" and ")} ${ELECTIONS.length === 1 ? "has" : "have"} no election record`);
+export function setUpTrustees(net, state, { note, fail }) {
+  const client = join(net.bin, "fabric-ca-client");
+  for (const org of net.orgs) {
+    const files = paths(state).trustee(org);
+    const user = trusteeUser(net, org);
+    const { ca } = org;
+    const caClient = (home, args) => capture(client, [...args, "--caname", ca.name, "--tls.certfiles", ca.tlsCa], { FABRIC_CA_CLIENT_HOME: home });
+    const registered = caClient(ca.registrar, [
+      "register", "-u", ca.url,
+      "--id.name", user.id, "--id.secret", user.secret, "--id.type", "client",
+      "--id.attrs", "weft.trustee=true:ecert",
+    ]);
+    if (!registered.ok && !/already registered/i.test(registered.output)) fail(`Couldn't register ${user.id} at ${org.msp}'s CA.`, lastLine(registered.output));
+    mkdirSync(files.dir, { recursive: true, mode: 0o700 });
+    if (!existsSync(join(files.msp, "signcerts", "cert.pem"))) {
+      const host = new URL(ca.url).host;
+      const enrolled = caClient(files.dir, ["enroll", "-u", `https://${user.id}:${user.secret}@${host}`, "-M", files.msp]);
+      if (!enrolled.ok) fail(`Couldn't enrol ${user.id} at ${org.msp}'s CA.`, lastLine(enrolled.output));
+    }
+    if (!existsSync(files.passphrase)) writeFileSync(files.passphrase, `${randomBytes(24).toString("hex")}\n`, { mode: 0o600 });
+    chmodSync(files.passphrase, 0o600);
+    const peer = org.peers[0];
+    for (const election of ELECTIONS) {
+      writeFileSync(
+        files.connection(election),
+        `# Written by playground/experimental.mjs: ${org.msp}'s trustee, ${user.id}, for ${electionChannel(election)}.
+# From this folder: WEFT_TRUSTEE_PASSPHRASE=$(cat passphrase) weft-trustee status --election ${election.id} --connection ${electionChannel(election)}.yaml
+peer: ${peer.address}
+${peer.hostAlias ? `peerHostAlias: ${peer.hostAlias}\n` : ""}tlsCa: ${peer.tlsCa}
+msp: ${org.msp}
+cert: msp/signcerts
+key: msp/keystore
+channel: ${electionChannel(election)}
+contract: ${PRIVATE_CONTRACT}
+home: state
+`,
+      );
+    }
+    note(`${user.id} for ${org.msp}, with weft.trustee=true, in .state/trustees/${relative(paths(state).trustees, files.dir)}`);
+  }
+}
+
+/** Runs weft-trustee as an organisation's trustee, with its passphrase. */
+export function runTrustee(net, state, org, election, command, args = []) {
+  const files = paths(state).trustee(org);
+  const result = spawnSync(process.execPath, [trusteeTool(), command, "--election", election.id, "--connection", files.connection(election), ...args], {
+    encoding: "utf8",
+    env: { ...process.env, WEFT_TRUSTEE_PASSPHRASE: readFileSync(files.passphrase, "utf8").trim() },
+  });
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+  return { ok: result.status === 0, stdout: result.stdout ?? "", output };
+}
+
+/** The election as an organisation's trustee reads it through its own peer, or the failure. */
+function trusteeStatus(net, state, org, election) {
+  const r = runTrustee(net, state, org, election, "status", ["--json"]);
+  if (r.ok) return { report: JSON.parse(r.stdout) };
+  if (r.output.includes(`There's no election ${election.id}.`)) return { missing: true };
+  return { error: r.output };
+}
+
+/** The first ✗ line of weft-trustee's output, and its hint. */
+const failedLines = (output) => {
+  const lines = output.split("\n");
+  const at = lines.findIndex((l) => l.startsWith("✗"));
+  return at < 0 ? lastLine(output) : lines.slice(at, at + 2).join("\n  ");
+};
+
+const pad2 = (n) => String(n).padStart(2, "0");
+/** Now plus some days, on the minute, as the contract writes times. */
+export function closingTime(days, now = new Date()) {
+  const d = new Date(now.getTime() + days * 86_400_000);
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:00.000Z`;
+}
+
+/**
+ * Builds weft-trustee, sets up the trustees, and creates and opens each
+ * election in ELECTIONS that has a seed and X.509 voters: CreateElection as
+ * Org1's trustee, then commit, share and confirm for Org1 and Org2 in turn,
+ * the last confirm opening it. An election that already exists, in any
+ * state, is left as it is, except one still in its key ceremony, whose
+ * remaining rounds are run. Then each organisation's trustee reads every
+ * election through its own peer's gateway.
+ */
+export function seedElections(net, state, tools) {
+  const { step, note } = tools;
+  step("E4", "Experimental: trustee identities, the key ceremony and the seeded elections");
+  // Built every time, with the packages it uses, as the relay and the explorers are.
+  const built = spawnSync("pnpm", ["--filter", "@weftwallet/trustee...", "build"], { cwd: repoRoot, encoding: "utf8" });
+  if (built.status !== 0) {
+    note(`couldn't build weft-trustee, so nothing is seeded: ${lastLine(`${built.stdout ?? ""}${built.stderr ?? ""}`.trim())}`);
+    return;
+  }
+  setUpTrustees(net, state, tools);
+  const [creator] = net.orgs;
+  for (const election of ELECTIONS) {
+    if (election.voterOrg) {
+      note(`${election.id}: not seeded. Its voters use voter credentials, which come with docs/adr/0008's step`);
+      continue;
+    }
+    if (!election.seed) {
+      note(`${election.id}: not seeded, since it has no seed in ELECTIONS`);
+      continue;
+    }
+    const outcome = seedElection(net, state, election, creator);
+    note(`${election.id}: ${outcome}`);
+  }
+  // The smoke check: every election's channel answers through each organisation's gateway.
+  for (const election of ELECTIONS) {
+    for (const org of net.orgs) {
+      const read = trusteeStatus(net, state, org, election);
+      const what = read.report ? `${election.id} is ${read.report.election.state}` : read.missing ? `There's no election ${election.id}.` : null;
+      note(what ? `${electionChannel(election)}: ${org.msp}'s gateway answers GetElection as ${trusteeUser(net, org).id}: ${what}` : `${electionChannel(election)}: ${org.msp}'s gateway didn't answer: ${failedLines(read.error)}`);
+    }
+  }
+}
+
+function seedElection(net, state, election, creator) {
+  const first = trusteeStatus(net, state, creator, election);
+  if (first.error) return `couldn't read it through ${creator.msp}'s peer, so it isn't seeded: ${failedLines(first.error)}`;
+  if (first.report && first.report.election.state !== "keygen") return `already exists, in ${first.report.election.state}; left as it is`;
+  if (first.missing) {
+    const { title, options, openForDays } = election.seed;
+    const created = runTrustee(net, state, creator, election, "create", [
+      "--title", title,
+      ...options.flatMap((o) => ["--option", o]),
+      "--closes-at", closingTime(openForDays),
+      ...net.orgs.flatMap((o) => ["--trustee", o.msp]),
+      "--threshold", String(net.orgs.length),
+    ]);
+    if (!created.ok) return `couldn't create it: ${failedLines(created.output)}`;
+  }
+  // The rounds each trustee hasn't posted yet, in order.
+  for (const [round, command] of [["round1", "commit"], ["round2", "share"], ["confirmation", "confirm"]]) {
+    for (const [i, org] of net.orgs.entries()) {
+      const now = trusteeStatus(net, state, org, election);
+      if (!now.report) return `stopped in the key ceremony: ${failedLines(now.error ?? "")}`;
+      if (now.report.election.state !== "keygen") break;
+      if (now.report.ceremony.trustees[i][round]) continue;
+      const r = runTrustee(net, state, org, election, command);
+      if (!r.ok) return `stopped in the key ceremony, at ${command} for ${org.msp}: ${failedLines(r.output)}. Run pnpm playground:down and up again`;
+    }
+  }
+  const after = trusteeStatus(net, state, creator, election);
+  if (!after.report) return `couldn't read it after the key ceremony: ${failedLines(after.error ?? "")}`;
+  const rec = after.report.election;
+  if (rec.state === "keygen") {
+    const opened = runTrustee(net, state, creator, election, "open");
+    if (!opened.ok) return `the key ceremony finished and it didn't open: ${failedLines(opened.output)}`;
+  }
+  const open = trusteeStatus(net, state, creator, election).report?.election;
+  if (open?.state !== "open") return `the key ceremony finished and it is in ${open?.state ?? "an unknown state"}`;
+  return `created, key ceremony run for ${list(net.orgs.map((o) => o.msp))}, ${open.threshold} of ${open.trustees.length}, and open until ${when(open.closesAt)}; fingerprint ${open.fingerprint.match(/.{4}/g).join(" ")}`;
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** "17:00 UTC on 31 January 2027", as weft-trustee writes times. */
+const when = (iso) => {
+  const d = new Date(iso);
+  return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())} UTC on ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+};
+
+const list = (items) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
+
+/**
+ * pnpm playground:count <election>: closes the election early with every
+ * organisation's trustee (k = n in the playground), posts each decryption
+ * share, publishes the tally and prints the counts. Each step that has
+ * already happened is skipped, so it can run again.
+ */
+export function countElection(net, state, id, { step, note, fail }) {
+  const election = ELECTIONS.find((e) => e.id === id);
+  if (!election) fail(`There's no election ${id} in the playground's list.`, `The elections are ${list(ELECTIONS.map((e) => e.id))}, in ELECTIONS in playground/experimental.mjs.`);
+  const files = paths(state).trustee(net.orgs[0]);
+  if (!existsSync(files.connection(election))) fail("The playground has no trustees set up.", "Run pnpm playground:up --experimental first.");
+  step(1, `Counting ${id} with ${list(net.orgs.map((o) => o.msp))}`);
+  const show = (org, output) => {
+    for (const line of output.split("\n").filter(Boolean)) console.log(`    ${org.msp.padEnd(8)} ${line}`);
+  };
+  const read = (org) => {
+    const r = trusteeStatus(net, state, org, election);
+    if (r.missing) fail(`There's no election ${id} on ${electionChannel(election)}.`, election.voterOrg ? "It isn't seeded until voter credentials are built (docs/adr/0008)." : "Run pnpm playground:up --experimental to seed it.");
+    if (r.error) fail(`Couldn't read ${id} through ${org.msp}'s peer.`, failedLines(r.error));
+    return r.report;
+  };
+  let report = read(net.orgs[0]);
+  if (report.election.state === "keygen" || report.election.state === "failed" || report.election.state === "cancelled") {
+    fail(`${id} can't be counted: it is in ${report.election.state}.`);
+  }
+  if (report.election.state === "open") {
+    for (const [i, org] of net.orgs.entries()) {
+      if (report.ceremony.trustees[i].closeRequested) continue;
+      let r = runTrustee(net, state, org, election, "close", ["--early"]);
+      // A ballot committed while the close was endorsed: the contract asks for the close again.
+      if (!r.ok && /PHANTOM_READ_CONFLICT|MVCC_READ_CONFLICT/.test(r.output)) r = runTrustee(net, state, org, election, "close", ["--early"]);
+      show(org, r.output);
+      if (!r.ok) fail(`${org.msp}'s trustee couldn't close ${id}.`);
+      report = read(org);
+      if (report.election.state !== "open") break;
+    }
+  }
+  if (report.election.state === "decrypting") {
+    for (const org of net.orgs) {
+      const posted = (report.shares?.shares ?? []).some((s) => s.msp === org.msp);
+      if (posted) continue;
+      const r = runTrustee(net, state, org, election, "decrypt");
+      show(org, r.output);
+      if (!r.ok) fail(`${org.msp}'s trustee couldn't post its decryption share for ${id}.`);
+      report = read(org);
+      if (report.election.state === "counted") break;
+    }
+  }
+  if (report.election.state === "decrypting") {
+    const r = runTrustee(net, state, net.orgs[0], election, "publish");
+    show(net.orgs[0], r.output);
+    if (!r.ok) fail(`Couldn't publish the tally for ${id}.`);
+    report = read(net.orgs[0]);
+  }
+  const { tally, options, title } = report.election;
+  const width = Math.max(...options.map((o) => o.length));
+  console.log(`\n${title} (${id}), counted\n`);
+  for (const o of options) console.log(`  ${o.padEnd(width)}   ${tally.counts[o]}`);
+  console.log(`  ${tally.total} ${tally.total === 1 ? "ballot" : "ballots"}\n`);
+  return tally;
 }
 
 /**
@@ -523,5 +784,5 @@ export function seedElections(_net, _state, { note }) {
 export function clean(state) {
   const p = paths(state);
   const policies = explorerNames.map((name) => join(state, `${name}-experimental.yaml`));
-  for (const path of [p.marker, p.channels, ...p.legacy, p.votersMsp, ...policies, p.votersCa]) rmSync(path, { recursive: true, force: true });
+  for (const path of [p.marker, p.channels, ...p.legacy, p.votersMsp, p.trustees, ...policies, p.votersCa]) rmSync(path, { recursive: true, force: true });
 }

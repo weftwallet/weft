@@ -25,6 +25,7 @@
     "playground:down": "node playground/cli.mjs down",
     "playground:status": "node playground/cli.mjs status",
     "playground:explorer": "node playground/cli.mjs explorer",
+    "playground:count": "node playground/cli.mjs count",
     "test:e2e": "WEFT_PRODUCTS=dev pnpm --filter @weftwallet/relay... --filter @weftwallet/site --filter @weftwallet/docs --filter @weftwallet/playground --filter @weftwallet/network build && pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/extension build:e2e:experimental && pnpm --filter @weftwallet/e2e test"
   },
   "devDependencies": {

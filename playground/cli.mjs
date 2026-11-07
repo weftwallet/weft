@@ -11,6 +11,9 @@
  *                           experimental.mjs); needs Go. Combines with --https
  *   pnpm playground:explorer
  *                           start (or restart) only the explorer, on a running stack
+ *   pnpm playground:count <election>
+ *                           with --experimental: closes the election early with both
+ *                           trustees, decrypts it and prints the counts
  *   pnpm playground:status  what's running
  *   pnpm playground:down    stop everything and remove the network
  *
@@ -39,8 +42,10 @@
  * (compose-voters-ca.yaml), a channel for each election,
  * privatevote-<election id>, with the election's idemix organisation if it
  * has one (privatevote-budget-2027 has none; privatevote-chair-2027 has
- * ChairVoters2027MSP), and the private-ballot contract on each channel,
- * deployed with deployCC -ccl go. The relay and the explorers then start with
+ * ChairVoters2027MSP), the private-ballot contract on each channel,
+ * deployed with deployCC -ccl go, a trustee identity at each organisation's
+ * CA, and budget-2027 created, its key ceremony run and opened with
+ * weft-trustee. The relay and the explorers then start with
  * WEFT_EXPERIMENTAL=1, and the invite and explorers include every election's channel.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -254,7 +259,9 @@ function startNetwork() {
   // A new network has none of the old one's contracts or channels.
   rmSync(join(state, "ballot-deployed"), { force: true });
   rmSync(join(state, "members-channel"), { force: true });
-  for (const path of [experimentalNetwork.paths(state).channels, ...experimentalNetwork.paths(state).legacy]) rmSync(path, { recursive: true, force: true });
+  // The trustee identities belong to the old network's CAs, and their state to its elections.
+  const x = experimentalNetwork.paths(state);
+  for (const path of [x.channels, x.trustees, ...x.legacy]) rmSync(path, { recursive: true, force: true });
   run("./network.sh", ["down"], { cwd: testNetwork, env });
   run("./network.sh", ["up", "createChannel", "-c", CHANNEL, "-ca"], { cwd: testNetwork, env });
   run(
@@ -428,13 +435,22 @@ function testNetworkLayout() {
   const organizations = join(testNetwork, "organizations");
   const ordererOrg = join(organizations, "ordererOrganizations", "example.com");
   const orderer = join(ordererOrg, "orderers", "orderer.example.com", "tls");
-  const peerOrg = (n, port) => {
+  const peerOrg = (n, port, caPort) => {
     const dir = join(organizations, "peerOrganizations", `org${n}.example.com`);
     return {
       msp: `Org${n}MSP`,
       mspDir: join(dir, "msp"),
       adminMsp: join(dir, "users", `Admin@org${n}.example.com`, "msp"),
-      peers: [{ address: `localhost:${port}`, tlsCa: join(dir, "tlsca", `tlsca.org${n}.example.com-cert.pem`), anchor: { host: `peer0.org${n}.example.com`, port } }],
+      peers: [
+        {
+          address: `localhost:${port}`,
+          hostAlias: `peer0.org${n}.example.com`,
+          tlsCa: join(dir, "tlsca", `tlsca.org${n}.example.com-cert.pem`),
+          anchor: { host: `peer0.org${n}.example.com`, port },
+        },
+      ],
+      // test-network's CA for the organisation, and the home where registerEnroll.sh enrolled its registrar.
+      ca: { url: `https://localhost:${caPort}`, name: `ca-org${n}`, tlsCa: join(organizations, "fabric-ca", `org${n}`, "ca-cert.pem"), registrar: dir },
     };
   };
   return {
@@ -448,7 +464,7 @@ function testNetworkLayout() {
       tlsCa: join(ordererOrg, "tlsca", "tlsca.example.com-cert.pem"),
       admins: [{ address: "localhost:7053", tls: { cert: join(orderer, "server.crt"), key: join(orderer, "server.key") } }],
     },
-    orgs: [peerOrg(1, 7051), peerOrg(2, 9051)],
+    orgs: [peerOrg(1, 7051, 7054), peerOrg(2, 9051, 8054)],
   };
 }
 
@@ -621,7 +637,10 @@ ${x.ELECTIONS.map((e) => `  Channel     ${x.electionChannel(e)}: Org1MSP and Org
 ${x.voterElections().map((e) => `  Voters' CA  ${e.id}: https://localhost:${e.voterOrg.ca.port}, CA ${e.voterOrg.ca.name}, MSP ${e.voterOrg.mspId}`).join("\n")}
   Voters      ${x.DEMO_VOTERS[0].id} to ${x.DEMO_VOTERS.at(-1).id} (secret <id>pw), affiliation ${x.VOTER_AFFILIATION}, one enrolment each
   Contract    ${x.PRIVATE_CONTRACT} on every election's channel, endorsed by ${bold("Org1 and Org2")}
-  Elections   not seeded yet: the key ceremony needs weft-trustee
+  Trustees    trustee1 (Org1MSP) and trustee2 (Org2MSP), weft.trustee=true, 2 of 2;
+              weft-trustee connection files in .state/trustees/<org>/<channel>.yaml
+  Elections   ${x.ELECTIONS.map((e) => (e.seed && !e.voterOrg ? `${e.id} (open)` : `${e.id} (not seeded)`)).join(", ")}
+  Count       ${bold(`pnpm playground:count ${x.ELECTIONS.find((e) => e.seed && !e.voterOrg)?.id ?? "<election>"}`)} closes it early and prints the counts
   Wallet      ${bold("pnpm --filter @weftwallet/extension build:experimental")}, then load
               apps/extension/.output-experimental/chrome-mv3 in a browser profile without Weft
 `;
@@ -732,11 +751,24 @@ async function status() {
   }
 }
 
+/**
+ * Experimental: closes an election early with both trustees, decrypts it and
+ * prints the counts (experimental.mjs, countElection), so a tester sees a
+ * count without waiting for its planned closing time.
+ */
+async function count([id]) {
+  if (!existsSync(experimentalNetwork.paths(state).marker)) {
+    fail("The playground isn't running its experimental channels.", "Run pnpm playground:up --experimental first.");
+  }
+  if (!id) fail("Say which election to count.", `For example: pnpm playground:count ${experimentalNetwork.ELECTIONS[0].id}`);
+  experimentalNetwork.countElection(testNetworkLayout(), state, id, tools);
+}
+
 const [command, ...flags] = process.argv.slice(2).filter((a) => a !== "--");
-const commands = { up, down, status, explorer };
-const unknown = flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
+const commands = { up, down, status, explorer, count };
+const unknown = command === "count" ? flags.slice(1) : flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
 if (!commands[command] || unknown.length) {
-  console.log("Usage: node playground/cli.mjs <up [--https] [--experimental]|explorer|down|status>");
+  console.log("Usage: node playground/cli.mjs <up [--https] [--experimental]|count <election>|explorer|down|status>");
   if (unknown.length) console.log(`Unknown option: ${unknown.join(" ")}`);
   process.exit(command ? 1 : 0);
 }
