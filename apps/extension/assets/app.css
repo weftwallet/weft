@@ -374,6 +374,19 @@ textarea {
   line-height: var(--weft-leading-3xl);
 }
 
+/* Weft Experimental's name, in text, beside the mark in the popup's header and
+   after the welcome's wordmark (lib/experimental.ts). Normal Weft has none. */
+.build-tag {
+  flex: none;
+  white-space: nowrap;
+  letter-spacing: normal;
+}
+
+.wordmark .build-tag {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 .page {
   padding: 16px;
   display: flex;

@@ -8,10 +8,14 @@
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
+    "dev:experimental": "WEFT_EXPERIMENTAL=1 wxt",
+    "dev:firefox:experimental": "WEFT_EXPERIMENTAL=1 wxt -b firefox",
     "build": "wxt build",
+    "build:experimental": "WEFT_EXPERIMENTAL=1 wxt build",
     "zip": "wxt zip",
     "typecheck": "wxt prepare && tsc --noEmit",
     "build:e2e": "WEFT_E2E=1 wxt build",
+    "build:e2e:experimental": "WEFT_E2E=1 WEFT_EXPERIMENTAL=1 wxt build",
     "test": "vitest run"
   },
   "dependencies": {

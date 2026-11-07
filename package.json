@@ -14,6 +14,7 @@
     "test": "pnpm -r test",
     "dev": "node scripts/dev-all.mjs",
     "dev:extension": "pnpm --filter @weftwallet/extension dev",
+    "dev:extension:experimental": "pnpm --filter @weftwallet/extension dev:experimental",
     "dev:site": "pnpm --filter @weftwallet/site dev",
     "dev:docs": "pnpm --filter @weftwallet/docs dev",
     "dev:playground": "pnpm --filter @weftwallet/playground dev",
@@ -24,7 +25,7 @@
     "playground:down": "node playground/cli.mjs down",
     "playground:status": "node playground/cli.mjs status",
     "playground:explorer": "node playground/cli.mjs explorer",
-    "test:e2e": "WEFT_PRODUCTS=dev pnpm --filter @weftwallet/relay... --filter @weftwallet/site --filter @weftwallet/docs --filter @weftwallet/playground --filter @weftwallet/network build && pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/e2e test"
+    "test:e2e": "WEFT_PRODUCTS=dev pnpm --filter @weftwallet/relay... --filter @weftwallet/site --filter @weftwallet/docs --filter @weftwallet/playground --filter @weftwallet/network build && pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/extension build:e2e:experimental && pnpm --filter @weftwallet/e2e test"
   },
   "devDependencies": {
     "@laravel/multiplex": "^0.4.5",

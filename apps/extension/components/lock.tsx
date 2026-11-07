@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { browser } from "wxt/browser";
+import { PRODUCT_NAME } from "../lib/experimental";
 import { ui } from "../lib/messages";
 import { unlockWithPasskey } from "../lib/passkey";
 import * as check from "../lib/validate";
@@ -198,7 +199,7 @@ export function Unlock({
     >
       <main className="page lock-screen">
         <div className="centre stack stack--tight">
-          <h1 className="lock-screen__title">Weft is locked</h1>
+          <h1 className="lock-screen__title">{PRODUCT_NAME} is locked</h1>
           <p className="muted flat">{subtitle}</p>
         </div>
         <Field label="Password" {...field} error={fieldError}>

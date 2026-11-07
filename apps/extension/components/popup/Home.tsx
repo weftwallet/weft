@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { ActivityRecord } from "../../lib/db";
+import { EXPERIMENTAL, PRODUCT_NAME } from "../../lib/experimental";
 import { ui, type IdentityView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import { CopyButton, useFeedback } from "../feedback";
@@ -95,9 +96,14 @@ export function Home({
     <>
       <header className="header">
         <h1 ref={heading} tabIndex={-1} className="visually-hidden">
-          Weft
+          {PRODUCT_NAME}
         </h1>
         <Logo size={28} />
+        {EXPERIMENTAL && (
+          <span className="chip build-tag" aria-hidden="true">
+            Experimental
+          </span>
+        )}
         <div className={`channel-picker ${channels.length > 1 ? "channel-picker--choice" : ""}`}>
           <span className="channel-picker__msp mono" title={active.mspId}>
             {active.mspId}

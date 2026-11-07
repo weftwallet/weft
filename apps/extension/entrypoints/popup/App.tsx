@@ -9,6 +9,7 @@ import { CreatePassword, Unlock } from "../../components/lock";
 import { TxDetail } from "../../components/popup/TxDetail";
 import { usePendingApproval, useUiEvents, useWallet, type Route } from "../../components/popup/state";
 import { FeedbackProvider, useFeedback } from "../../components/feedback";
+import { EXPERIMENTAL } from "../../lib/experimental";
 import { Button, ErrorDetails, ReplayMark, Spinner, Splash, StatusScreen, WeaveMark, clockTime, tokenMs, useFocusOnArrival } from "../../components/ui";
 
 /** How deep each screen sits, so moving deeper slides one way and back the other. */
@@ -301,11 +302,23 @@ function Welcome({ navigate }: { navigate: (r: Route) => void }) {
       <div className="welcome__words">
         <h1 ref={heading} tabIndex={-1} className="wordmark">
           weft
+          {EXPERIMENTAL && (
+            <>
+              {" "}
+              <span className="chip build-tag">Experimental</span>
+            </>
+          )}
         </h1>
         <p className="muted">
           An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued you and signs only
           the transactions you approve.
         </p>
+        {EXPERIMENTAL && (
+          <p className="muted">
+            This is Weft Experimental, a separate build for testing features that no one outside the project has reviewed. It
+            shares no identities, keys or settings with Weft.
+          </p>
+        )}
       </div>
       {joining ? (
         <div className="waiting" role="status">

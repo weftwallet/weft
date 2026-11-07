@@ -14,6 +14,7 @@ import {
   type SelectHTMLAttributes,
 } from "react";
 import LOADER from "@weftwallet/brand/logo/loaders/weft.svg?raw";
+import { PRODUCT_NAME } from "../lib/experimental";
 import LOADER_SMALL from "@weftwallet/brand/logo/loaders/weft-small.svg?raw";
 
 /* Icons: 24px stroke icons, decorative unless labelled. ------------- */
@@ -131,7 +132,7 @@ export function Icon({ name, size = 20, color = "currentColor" }: { name: IconNa
  * The Weft mark for 32px and below, drawn on a 16px pixel grid so threads and
  * gaps stay crisp. Use WeaveMark for anything larger.
  */
-export function Logo({ size = 24, label = "Weft" }: { size?: number; label?: string | null }) {
+export function Logo({ size = 24, label = PRODUCT_NAME }: { size?: number; label?: string | null }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const ink = "var(--weft-ink)";
   const thread = "var(--weft-thread)";
@@ -179,7 +180,7 @@ export function Brand() {
   return (
     <div className="brand">
       <Logo size={20} label={null} />
-      <span>Weft</span>
+      <span>{PRODUCT_NAME}</span>
     </div>
   );
 }

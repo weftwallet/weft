@@ -26,6 +26,22 @@ pnpm --filter @weftwallet/extension build -b firefox       # writes .output/fire
 
 To load a build by hand, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on** and pick `manifest.json` in `.output/firefox-mv3`. Firefox removes a temporary add-on when it closes.
 
+## Weft Experimental
+
+`WEFT_EXPERIMENTAL=1` builds Weft Experimental from this same project: a separate extension for features that no one outside the project has reviewed and that aren't part of Weft ([ADR 0009](../../docs/adr/0009-experimental-track.md), [Experimental features](../docs/src/content/docs/experimental/overview.md)). It isn't offered in browser stores.
+
+```sh
+pnpm --filter @weftwallet/extension dev:experimental            # its own Chrome, profile in .wxt/chrome-data-experimental
+pnpm --filter @weftwallet/extension dev:firefox:experimental    # its own Firefox, profile in .wxt/firefox-data-experimental
+pnpm --filter @weftwallet/extension build:experimental          # .output-experimental/chrome-mv3
+pnpm --filter @weftwallet/extension build:experimental -b firefox
+pnpm --filter @weftwallet/extension build:e2e:experimental      # .output-e2e-experimental, for the e2e tests
+```
+
+It is named Weft Experimental, in the manifest, the popup and the windows' titles, and its welcome says it is a separate build. It has its own output folder, so Chrome gives the unpacked extension its own ID, and its own Firefox add-on ID, `experimental@weft.ifeanyiugwu.dev`. Its storage is therefore its own, and it shares no identities, keys, receipts or settings with Weft. Load it in a browser profile without Weft, since the first of the two to load on a page provides `window.weft`.
+
+`lib/experimental.ts` holds the one constant that gates experimental code, `EXPERIMENTAL`, which `wxt.config.ts` sets at build time from `import.meta.env.WEFT_EXPERIMENTAL`. Experimental code runs only inside `if (EXPERIMENTAL)`, so the normal build leaves it out; the e2e tests check that the normal build contains none of it. The same file lists the experimental features that `window.weft.features` adds: none yet, so both builds report `["receipts"]`. `castBallot` and then `voterCredentials` are added there when they are built.
+
 ## How it fits together
 
 ```
@@ -49,6 +65,7 @@ web page ──window.weft──▶ inpage.content.ts   (main world, no privileg
 | `lib/provider.ts` | Connect checks, approval windows, evaluate/submit through the relay, activity records. |
 | `lib/wallet.ts` | Identities and networks: enrol, import, CSR, re-enrol, signing. |
 | `lib/db.ts` | IndexedDB. Private keys are non-extractable `CryptoKey`s. |
+| `lib/experimental.ts` | The build switch for Weft Experimental: `EXPERIMENTAL`, the product's name, and `window.weft.features`. |
 | `lib/receipts.ts` | Ballot receipts kept at the user's request, their choice and salt sealed with a key derived from the vault key (ADR 0006). |
 | `entrypoints/popup/` | Home, identities, add-identity flows, transaction detail. |
 | `entrypoints/approve/` | Connect and signature approval screens, with "Keep the receipt in Weft" for a vote. |
@@ -61,3 +78,5 @@ The manifest asks only for `storage`. CA and relay hosts differ per organisation
 ## Icons
 
 `public/icon/*.png` are rendered from `packages/brand/logo` by `scripts/render-icons.mjs`. The 16 and 32px icons use the pixel-fitted `mark-small.svg`; 48 and 128 use the full `mark.svg`.
+
+`public/icon-experimental/*.png` are Weft Experimental's, rendered by the same script from `logo/products/experimental.svg` and `experimental-small.svg`: the main mark with its bottom edge pinked. Each build ships only its own set.

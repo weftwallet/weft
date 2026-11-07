@@ -10,6 +10,20 @@ import { source } from "../../vite.source.ts";
 // folder so it's never mistaken for a release build.
 const e2e = process.env.WEFT_E2E === "1";
 
+// WEFT_EXPERIMENTAL=1 builds Weft Experimental (docs/adr/0009), a separate
+// extension: its own name, its own folder (so Chrome gives the unpacked
+// extension its own ID), its own Firefox add-on ID, and therefore its own
+// storage. lib/experimental.ts reads the constant defined below, and the
+// normal build leaves out every branch that tests it.
+const experimental = process.env.WEFT_EXPERIMENTAL === "1";
+const productName = experimental ? "Weft Experimental" : "Weft";
+/** .output, .output-e2e, .output-experimental or .output-e2e-experimental. */
+const outDir = [".output", e2e && "e2e", experimental && "experimental"].filter(Boolean).join("-");
+/** The dev browsers' profiles, kept apart so the two wallets never share one. */
+/** Weft Experimental has its own icon, the main mark with a pinked edge. */
+const iconDir = experimental ? "icon-experimental" : "icon";
+const profileSuffix = experimental ? "-experimental" : "";
+
 // Before reusing a Firefox profile, web-ext reads Firefox's own profiles.ini
 // to make sure it isn't your everyday profile. macOS can refuse a terminal
 // that read, and web-ext then stops. Where it can't be read, the dev Firefox
@@ -36,22 +50,39 @@ const keepFirefoxProfile = firefoxProfileCheckable();
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   // Reads the workspace packages from their source, so a stale build is never used.
-  vite: () => source,
-  outDir: e2e ? ".output-e2e" : ".output",
+  vite: () => ({
+    ...source,
+    define: { "import.meta.env.WEFT_EXPERIMENTAL": JSON.stringify(experimental) },
+    plugins: [
+      {
+        // The windows' titles ("Weft · Approve request") name the product.
+        name: "weft-product-name",
+        transformIndexHtml: (html: string) => html.replace(/<title>Weft\b/, `<title>${productName}`),
+      },
+    ],
+  }),
+  outDir,
   // pnpm dev:extension opens its own Chrome with Weft loaded, and dev:firefox
   // its own Firefox. Each keeps its profile in .wxt (chrome-data and
   // firefox-data), so the wallet you set up there is still there the next
   // time. Delete the folder to start from a new wallet. Your own settings
   // for them go in web-ext.config.ts next to this file, which git ignores.
   webExt: {
-    chromiumArgs: ["--user-data-dir=./.wxt/chrome-data"],
-    ...(keepFirefoxProfile ? { firefoxProfile: "./.wxt/firefox-data", keepProfileChanges: true } : {}),
+    chromiumArgs: [`--user-data-dir=./.wxt/chrome-data${profileSuffix}`],
+    ...(keepFirefoxProfile ? { firefoxProfile: `./.wxt/firefox-data${profileSuffix}`, keepProfileChanges: true } : {}),
   },
   hooks: {
+    // Each build ships only its own icons: public/icon for Weft,
+    // public/icon-experimental for Weft Experimental.
+    "build:publicAssets": (_wxt, files) => {
+      const other = experimental ? "icon/" : "icon-experimental/";
+      const keep = files.filter((file) => !file.relativeDest.startsWith(other));
+      files.splice(0, files.length, ...keep);
+    },
     ready: (wxt) => {
       if (wxt.config.command !== "serve" || wxt.config.browser !== "firefox") return;
       // web-ext only reuses a Firefox profile folder that exists.
-      if (keepFirefoxProfile) mkdirSync(".wxt/firefox-data", { recursive: true });
+      if (keepFirefoxProfile) mkdirSync(`.wxt/firefox-data${profileSuffix}`, { recursive: true });
       else wxt.logger.warn("This Firefox starts with a new profile, because the terminal can't read Firefox's profiles.ini, which web-ext checks before reusing one. See the extension README.");
     },
   },
@@ -60,20 +91,23 @@ export default defineConfig({
   // hosts there.
   manifestVersion: 3,
   manifest: ({ browser }) => ({
-    name: "Weft Wallet",
-    description: "An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued you and signs only the transactions you approve.",
+    name: experimental ? "Weft Experimental" : "Weft Wallet",
+    description: experimental
+      ? "Weft built with experimental features that no one outside the project has reviewed. For testing only."
+      : "An identity wallet for Hyperledger Fabric. It holds the certificate your organisation's CA issued you and signs only the transactions you approve.",
     // alarms: an hourly check for expiring certificates (lib/certificate-watch.ts).
     permissions: ["storage", "unlimitedStorage", "activeTab", "alarms"],
     // CA and relay hosts differ per organisation, so access is requested at
     // runtime, per host, when the user adds a network.
     optional_host_permissions: ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
     ...(e2e ? { host_permissions: ["http://localhost/*", "http://127.0.0.1/*"] } : {}),
-    action: { default_title: "Weft Wallet" },
-    icons: { 16: "icon/16.png", 32: "icon/32.png", 48: "icon/48.png", 128: "icon/128.png" },
+    action: { default_title: experimental ? "Weft Experimental" : "Weft Wallet" },
+    icons: Object.fromEntries([16, 32, 48, 128].map((size) => [size, `${iconDir}/${size}.png`])),
     // Firefox wants an add-on ID, and new add-ons must say what data they
-    // collect: none, which needs Firefox 140.
+    // collect: none, which needs Firefox 140. Weft Experimental has an ID of
+    // its own, so Firefox installs it alongside Weft with separate storage.
     ...(browser === "firefox"
-      ? { browser_specific_settings: { gecko: { id: "wallet@weft.ifeanyiugwu.dev", strict_min_version: "140.0", data_collection_permissions: { required: ["none"] } }, gecko_android: { strict_min_version: "142.0" } } }
+      ? { browser_specific_settings: { gecko: { id: experimental ? "experimental@weft.ifeanyiugwu.dev" : "wallet@weft.ifeanyiugwu.dev", strict_min_version: "140.0", data_collection_permissions: { required: ["none"] } }, gecko_android: { strict_min_version: "142.0" } } }
       : {}),
   }),
 });
