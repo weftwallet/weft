@@ -11,9 +11,10 @@
  *                           experimental.mjs); needs Go. Combines with --https
  *   pnpm playground:explorer
  *                           start (or restart) only the explorer, on a running stack
- *   pnpm playground:count <election>
+ *   pnpm playground:count <election> [--channel <channel>]
  *                           with --experimental: closes the election early with both
- *                           trustees, decrypts it and prints the counts
+ *                           trustees, decrypts it and prints the counts. --channel
+ *                           counts one that isn't in experimental.mjs's list
  *   pnpm playground:status  what's running
  *   pnpm playground:down    stop everything and remove the network
  *
@@ -756,19 +757,25 @@ async function status() {
  * prints the counts (experimental.mjs, countElection), so a tester sees a
  * count without waiting for its planned closing time.
  */
-async function count([id]) {
+async function count([id, ...rest]) {
   if (!existsSync(experimentalNetwork.paths(state).marker)) {
     fail("The playground isn't running its experimental channels.", "Run pnpm playground:up --experimental first.");
   }
-  if (!id) fail("Say which election to count.", `For example: pnpm playground:count ${experimentalNetwork.ELECTIONS[0].id}`);
-  experimentalNetwork.countElection(testNetworkLayout(), state, id, tools);
+  if (!id || id.startsWith("--")) fail("Say which election to count.", `For example: pnpm playground:count ${experimentalNetwork.ELECTIONS[0].id}`);
+  const at = rest.indexOf("--channel");
+  const channel = at >= 0 ? rest[at + 1] : undefined;
+  if (at >= 0 && (!channel || channel.startsWith("--"))) fail("Say which channel the election is on.", `For example: pnpm playground:count ${id} --channel privatevote-budget-2027`);
+  experimentalNetwork.countElection(testNetworkLayout(), state, id, tools, { channel });
 }
 
 const [command, ...flags] = process.argv.slice(2).filter((a) => a !== "--");
 const commands = { up, down, status, explorer, count };
-const unknown = command === "count" ? flags.slice(1) : flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
+const unknown =
+  command === "count"
+    ? flags.slice(1).filter((f, i, all) => !(f === "--channel" || all[i - 1] === "--channel"))
+    : flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
 if (!commands[command] || unknown.length) {
-  console.log("Usage: node playground/cli.mjs <up [--https] [--experimental]|count <election>|explorer|down|status>");
+  console.log("Usage: node playground/cli.mjs <up [--https] [--experimental]|count <election> [--channel <channel>]|explorer|down|status>");
   if (unknown.length) console.log(`Unknown option: ${unknown.join(" ")}`);
   process.exit(command ? 1 : 0);
 }

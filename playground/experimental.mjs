@@ -26,7 +26,9 @@
  *
  * countElection, for `pnpm playground:count <election>`, closes an election
  * early with both trustees, posts both decryption shares and publishes the
- * tally, with weft-trustee.
+ * tally, with weft-trustee. With `--channel`, it counts an election that
+ * isn't in ELECTIONS, on one of their channels, such as one the e2e tests
+ * create with seedElection.
  *
  * cli.mjs passes in the network's layout (paths and addresses, for Fabric's
  * test-network), its output helpers, startCaServer, which runs a voters'
@@ -70,8 +72,12 @@ export const ELECTIONS = [
 ];
 /** The elections with voter credentials, each with a voters' CA and an idemix organisation. */
 export const voterElections = () => ELECTIONS.filter((e) => e.voterOrg);
-/** The election's channel, for example privatevote-budget-2027. */
-export const electionChannel = (e) => `${PRIVATE_CHANNEL_PREFIX}-${e.id}`;
+/**
+ * The election's channel, for example privatevote-budget-2027. An election
+ * that isn't in ELECTIONS, such as one the e2e tests create, names the
+ * channel it is on.
+ */
+export const electionChannel = (e) => e.channel ?? `${PRIVATE_CHANNEL_PREFIX}-${e.id}`;
 /** Every election's channel, for the invite and the explorers' policies. */
 export const privateChannels = () => ELECTIONS.map(electionChannel);
 /** Fabric's rule for channel names. */
@@ -667,7 +673,14 @@ export function seedElections(net, state, tools) {
   }
 }
 
-function seedElection(net, state, election, creator) {
+/**
+ * Creates one election with weft-trustee as `creator`'s trustee, runs the key
+ * ceremony for every organisation in net.orgs and opens it, or finishes the
+ * ceremony of one already created. Says what happened in one line. Used for
+ * each seeded election, and by the e2e tests for an election of their own on
+ * an existing channel ({ id, channel, seed }).
+ */
+export function seedElection(net, state, election, creator) {
   const first = trusteeStatus(net, state, creator, election);
   if (first.error) return `couldn't read it through ${creator.msp}'s peer, so it isn't seeded: ${failedLines(first.error)}`;
   if (first.report && first.report.election.state !== "keygen") return `already exists, in ${first.report.election.state}; left as it is`;
@@ -720,18 +733,30 @@ const list = (items) => (items.length <= 1 ? items.join("") : `${items.slice(0, 
  * share, publishes the tally and prints the counts. Each step that has
  * already happened is skipped, so it can run again.
  */
-export function countElection(net, state, id, { step, note, fail }) {
-  const election = ELECTIONS.find((e) => e.id === id);
-  if (!election) fail(`There's no election ${id} in the playground's list.`, `The elections are ${list(ELECTIONS.map((e) => e.id))}, in ELECTIONS in playground/experimental.mjs.`);
+export function countElection(net, state, id, { step, note, fail }, { channel } = {}) {
+  const listed = ELECTIONS.find((e) => e.id === id);
+  // An election that isn't in the list, such as one the e2e tests create, is counted on the channel given.
+  const election = listed && (!channel || channel === electionChannel(listed)) ? listed : channel ? { id, channel } : null;
+  if (!election) {
+    fail(
+      `There's no election ${id} in the playground's list.`,
+      `The elections are ${list(ELECTIONS.map((e) => e.id))}, in ELECTIONS in playground/experimental.mjs. For another election, give its channel: pnpm playground:count ${id} --channel <channel>.`,
+    );
+  }
   const files = paths(state).trustee(net.orgs[0]);
-  if (!existsSync(files.connection(election))) fail("The playground has no trustees set up.", "Run pnpm playground:up --experimental first.");
+  if (!existsSync(files.connection(election))) {
+    fail(
+      listed || !existsSync(files.dir) ? "The playground has no trustees set up." : `The playground's trustees have no connection file for ${electionChannel(election)}.`,
+      listed || !existsSync(files.dir) ? "Run pnpm playground:up --experimental first." : `Count an election on one of the channels in ELECTIONS: ${list(privateChannels())}.`,
+    );
+  }
   step(1, `Counting ${id} with ${list(net.orgs.map((o) => o.msp))}`);
   const show = (org, output) => {
     for (const line of output.split("\n").filter(Boolean)) console.log(`    ${org.msp.padEnd(8)} ${line}`);
   };
   const read = (org) => {
     const r = trusteeStatus(net, state, org, election);
-    if (r.missing) fail(`There's no election ${id} on ${electionChannel(election)}.`, election.voterOrg ? "It isn't seeded until voter credentials are built (docs/adr/0008)." : "Run pnpm playground:up --experimental to seed it.");
+    if (r.missing) fail(`There's no election ${id} on ${electionChannel(election)}.`, election.voterOrg ? "It isn't seeded until voter credentials are built (docs/adr/0008)." : listed ? "Run pnpm playground:up --experimental to seed it." : "Check the election's ID and its channel.");
     if (r.error) fail(`Couldn't read ${id} through ${org.msp}'s peer.`, failedLines(r.error));
     return r.report;
   };

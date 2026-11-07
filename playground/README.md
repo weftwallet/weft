@@ -49,7 +49,7 @@ pnpm playground:explorer # start or restart only the explorers, on a running sta
 | Relay | `http://localhost:8787` | Started with `WEFT_EXPERIMENTAL=1` and `WEFT_IDEMIX_MSP_IDS=ChairVoters2027MSP`, one MSP ID per election. The invite also lists every election's channel |
 | Explorers | As above | Started with `WEFT_EXPERIMENTAL=1`, with a copy of their policy in `.state` that also publishes every election's channel with `privateElections: private-ballot` |
 
-Build the wallet with `pnpm --filter @weftwallet/extension build:experimental` and load it in a browser profile without Weft. `pnpm playground:up` without the flag on a running stack restarts the relay and the explorers without the experimental settings and stops the voters' CA containers. The channels stay on the network until `pnpm playground:down`, which removes them, the voters' CA containers and their homes, and the trustees' folders in `.state` with everything else.
+Build the wallet with `pnpm --filter @weftwallet/extension build:experimental` and load it in a browser profile without Weft. Weft Playground then shows its Private election section, which lists the elections from Org1's explorer and casts with `weft_castBallot`: join as `alice` or `bob`, choose `budget-2027` and press Vote in Weft. `pnpm playground:up` without the flag on a running stack restarts the relay and the explorers without the experimental settings and stops the voters' CA containers. The channels stay on the network until `pnpm playground:down`, which removes them, the voters' CA containers and their homes, and the trustees' folders in `.state` with everything else.
 
 ### The key ceremony and counting
 
@@ -90,6 +90,8 @@ Budget 2027 (budget-2027), counted
 ```
 
 A step that has already happened is skipped, so it can run again. A counted election stays counted: `pnpm playground:down` and `up --experimental` seed a new one.
+
+An election that isn't in `ELECTIONS`, on one of their channels, is counted with its channel: `pnpm playground:count e2e-mw6z8voa --channel privatevote-budget-2027`. The e2e tests' experimental-stack project creates such an election for each run, with `seedElection` and the trustees above, votes in it from a site and from Weft Playground, and counts it this way (`e2e/support/experimental.ts`).
 
 ### Adding an election
 
