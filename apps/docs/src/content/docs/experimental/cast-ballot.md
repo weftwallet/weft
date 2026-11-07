@@ -1,10 +1,10 @@
 ---
 title: Casting a ballot
-description: The planned weft_castBallot method, its request and result, the approval window, receipt version 2 and feature detection.
+description: The weft_castBallot method in Weft Experimental, its request and result, the approval window, receipt version 2 and feature detection.
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. `weft_castBallot`, its approval window, receipt version 2 in Weft and the SDK's `castBallot()` are built. The explorer's election pages, its receipt check and the playground's Private election section aren't built yet, and the page describes their planned design. [What is built](#what-is-built) has the details.
 :::
 
 `weft_castBallot` asks Weft to cast a ballot in a private election on the [private-ballot contract](/experimental/contract-api/). The voter chooses in Weft's approval window, Weft encrypts and proves the ballot, and the web app gets the transaction and a receipt, never the choice. Only Weft Experimental offers it, and normal Weft answers `4200` UnsupportedMethod. ([ADR 0007](/reference/decisions/))
@@ -50,7 +50,18 @@ const result = await window.weft.request({
 
 Each election has its own channel, `privatevote-budget-2027` for `budget-2027` and `privatevote-chair-2027` for `chair-2027`. An election with X.509 voters gets its own channel too, for the same reason as one with voter credentials: other elections' voters aren't members of its channel and can't read its ballots, and closing it changes no other channel.
 
-The request carries no choice, no key and no ballot. The web app can't preselect an option. A helper in `@weftwallet/sdk` is planned.
+The request carries no choice, no key and no ballot. The web app can't preselect an option: Weft refuses a request with any other field, such as `choice`, with `-32602`.
+
+`@weftwallet/sdk` has a helper:
+
+```ts
+import { getWeft } from "@weftwallet/sdk";
+
+const weft = await getWeft();
+if (weft.supports("castBallot")) {
+  const { transactionId, receipt } = await weft.castBallot({ channel: "privatevote-budget-2027", chaincode: "private-ballot", electionId: "budget-2027" });
+}
+```
 
 `weft_castBallot` doesn't need `weft_connect`, as `weft_addNetwork` doesn't. A voter credential is never connected to a site, and the web app has no reason to learn the voter's identity before the vote. Weft asks every time.
 
@@ -59,11 +70,13 @@ The request carries no choice, no key and no ballot. The web app can't preselect
 Before any window opens, Weft checks the params. A missing or malformed field fails with `-32602`, and a request from a site that already has one waiting fails with `-32002`. Everything after that happens in the approval window, because reading the election is a signed request and Weft may be locked:
 
 1. If Weft is locked, the window asks for the password or a passkey first ([ADR 0005](/reference/decisions/)).
-2. Weft finds a network of the voter's with that channel. With none, it fails with `4300`.
+2. Weft finds a network of the voter's with that channel. With none, it fails with `4300`. When the network was added from an invite, the invite may list the channel now, since each election gets a channel of its own: the window offers Refresh from invite, and the request waits. If the refreshed invite lists the channel, Weft adds it to the network and goes on. Otherwise, or if the voter presses Reject or closes the window, the request fails with `4300`.
 3. It reads the election with `GetElection`, by endorsing without submitting. The relay builds the proposal, Weft checks it (ADR 0001's check) and signs it with the identity it holds for the channel: its voter credential for that channel if it has one, otherwise the active identity. The relay returns the endorsing peers' signed responses, and Weft sends nothing to the orderer.
-4. It checks that a peer of its identity's own organisation signed the response, with a certificate that chains to that organisation's CA, so the relay can't change the record. If the signature doesn't verify, it fails with `4400`. See [the limits](#reading-the-election) below.
+4. It checks that a peer of its identity's own organisation signed the response, with a certificate that chains to that organisation's CA, so the relay can't change the record. If the signature doesn't verify, it fails with `4400`. See [Reading the election](#reading-the-election) below.
 5. It checks the record: a private-ballot record of version 1, in `open`. It computes the election context and the [election fingerprint](/experimental/private-tally-spec/#the-election-fingerprint) itself from the record's fields, and refuses a record whose `context` or `fingerprint` differs. Any other record fails with `4400`.
-6. It picks the identity that votes. For X.509 voters, the active identity, if its MSP is one of the election's voter organisations. For voter credentials, the credential Weft holds for the election's voter MSP whose issuer key is the one the election pinned. With neither, it fails with `4300`.
+6. It picks the identity that votes. For X.509 voters, the active identity, if its MSP is one of the election's voter organisations. For voter credentials, the credential Weft holds for the election's voter MSP whose issuer key is the one the election pinned. With neither, it fails with `4300`. Weft Experimental can't hold voter credentials yet, so an election with voter credentials fails with `4300` too.
+
+When Weft's own activity has a committed ballot from this identity in this election, the first screen says so. The contract still decides, and refuses a second ballot.
 
 An election in `open` whose `closesAt` has passed is still open: the trustees haven't [closed it](/experimental/contract-api/#closeelection), and the contract still accepts ballots. Weft lets the voter vote, and the window says the election is past its planned closing time.
 
@@ -73,7 +86,15 @@ Any failure in these steps shows in the window. The site gets `4300` or `4400` a
 
 The election key comes from the ledger, never from the web app. A key the web app chose could be one whose secret it holds, and a finished ballot from the web app couldn't be checked to hold the option the voter saw.
 
-The peer's signature check needs the organisation's CA chain, which Fabric CA returns at enrolment and Weft doesn't keep today. Until it does, and for identities enrolled before it does, Weft reads the election without that check and the window says so. For a voter credential, whose organisation has no peers, the check is defined with [voter credentials](/experimental/voter-credentials/). Without the check, the election fingerprint in the window, which every explorer shows too, is how the voter can check the record.
+The peer's signature check needs the organisation's CA chain, which Fabric CA returns at enrolment. Weft Experimental keeps it with each identity it enrols or re-enrols through a CA. Weft, as you install it, keeps nothing new. An identity added with Import PEM or a certificate request has no chain, and nor has one enrolled before Weft Experimental kept it: re-enrolling it in Weft Experimental keeps one. For those, Weft reads the election without the check and the confirm screen says so. For a voter credential, whose organisation has no peers, the check is defined with [voter credentials](/experimental/voter-credentials/). Without the check, the election fingerprint in the window, which every explorer shows too, is how the voter can check the record.
+
+With the chain, Weft accepts the answer only when:
+
+- its proposal hash is the hash of the proposal Weft signed, as Fabric's endorser computes it, so the answer is to this read of this election on this channel;
+- it comes from the contract the site named, with status 200;
+- an endorsement from the voter's own MSP carries a certificate with the `peer` role that chains to the kept CA chain and is in date, and its signature over the proposal response and the endorser verifies.
+
+Weft reads the record from inside the signed bytes, never from the relay's copy of the result. Without the chain, it still checks the proposal hash, the contract and the status.
 
 The read is signed by the voter's identity, so the relay and the endorsing peers see that this identity read the election, as they do for any evaluation. The window says that Weft read the election through the relay.
 
@@ -84,7 +105,7 @@ When the voter presses Sign and vote, Weft's background worker:
 1. encrypts the choice under the election key and makes the proofs, bound to the election and to the voter tag, about 20 ms for three options;
 2. for a voter credential, makes a new idemix identity for the transaction and the per-election pseudonym proof, bound to the ballot's tracking code;
 3. discards the encryption randomness;
-4. asks the relay to build the proposal for `CastBallot` or `CastAnonymousBallot`, and checks the proposal's arguments are exactly the ballot it made (ADR 0001's check, with the creator compared byte for byte for a voter credential);
+4. asks the relay to build the proposal for `CastBallot` or `CastAnonymousBallot`, and checks the proposal's arguments are exactly the ballot it made, byte for byte (ADR 0001's check). The creator's `id_bytes` must be exactly the bytes the voter tag was made from, which are the ones the relay put in the read's proposal, with or without the PEM's trailing newline: a ballot bound to another tag would be refused. For a voter credential, the creator is compared byte for byte too;
 5. signs, endorses, submits and waits for the commit, as `weft_submit` does;
 6. computes the tracking code itself and compares it with the one the contract returned.
 
@@ -98,18 +119,20 @@ The first is for choosing:
 
 - the site's origin, as the browser reports it;
 - the election's title, channel, contract and planned closing time, with "Past its planned closing time. The trustees haven't closed it yet." when it has passed;
-- the options, from the election record, none selected. Next stays disabled until the voter picks one.
+- the options, from the election record, none selected. Review your vote stays disabled until the voter picks one, and the line under the options says why.
 
-The second is for confirming, with the choice at the top and Change choice to go back to the first screen:
+The second is for confirming, titled with the choice ("Vote for Plan B?"), with the choice at the top and Change choice to go back to the first screen:
 
 - who holds the key: "Org1MSP and Org2MSP each hold part of this election's key. Any 2 of them together could read your ballot.";
 - the election fingerprint, labelled "Election fingerprint", in five groups of four, with "Weft worked this out from the election's record. Every explorer shows the same.";
-- who signs, and what the network sees. For an X.509 voter: the identity's name and MSP, and "Every organisation can see that you voted." For a voter credential: "An anonymous member of ChairVoters2027MSP", what the network sees (the voter organisation, the shared affiliation, the role), that a second vote from the credential will be refused, and that the vote can't be linked to the voter's other ballots;
+- who signs, and what the network sees, under "Voting as". For an X.509 voter: the identity's name and MSP, and "Every organisation can see that you voted." For a voter credential: "An anonymous member of ChairVoters2027MSP", what the network sees (the voter organisation, the shared affiliation, the role), that a second vote from the credential will be refused, and that the vote can't be linked to the voter's other ballots;
 - that Weft read the election, and sends the ballot, through the relay at the relay's host, which sees the voter's network address but not the choice, and whether Weft checked the peer's signature on the election;
 - Keep the receipt in Weft, off;
 - Sign and vote.
 
 The choice stays in the window and the worker. It leaves them only encrypted. Closing the window, or Reject on either screen, fails the request with `4001`.
+
+While Weft works, the title says "Encrypting, signing and submitting" and the body dims. Once the ballot commits, the footer says the block and the tracking code, whether Weft kept the receipt, and links to the explorer's check, and the window closes after a moment. A failure after Sign and vote says what happened at the top of the body, with Close.
 
 ## Result
 
@@ -180,13 +203,25 @@ A voter tag names no one. Anyone who holds the voter's certificate can compute i
 
 Election pages are made from the contract's arguments, so the explorer refuses to start with `privateElections` and `values: hash` on the same channel.
 
+## What is built
+
+In Weft Experimental, built with `WEFT_EXPERIMENTAL=1`:
+
+- `weft_castBallot`, with the steps above, in the background worker (`apps/extension/lib/ballot/`), and the approval window's two screens and every failure (`entrypoints/approve/cast-ballot.tsx`). Normal Weft contains none of it and answers `4200`.
+- `"castBallot"` in `window.weft.features`.
+- The CA chain kept at enrolment and re-enrolment, and the peer signature check on the read.
+- Receipt version 2: kept with its transaction, with the sealed note of the choice, in the popup's activity and transaction detail, with Download receipt, Copy receipt and Check in the explorer.
+- In `@weftwallet/protocol`, `CastBallotParams`, `CastBallotResult`, `BallotReceiptV2` and `4400` as `ExperimentalErrorCode.ElectionUnavailable`; in `@weftwallet/sdk`, `castBallot()`.
+
+Not built yet: anonymous ballots with voter credentials (ADR 0008's step), the explorer's election pages with the tracking code check and what it publishes, and the playground's Private election section, which Weft Playground shows, empty, for Weft Experimental.
+
 ## Errors
 
 | Code | Name | When |
 |---|---|---|
 | `4001` | UserRejected | The voter closed the window, at any step, or pressed Reject, except while the relay isn't answering. |
 | `4200` | UnsupportedMethod | Normal Weft: it doesn't offer `weft_castBallot`. |
-| `4300` | NoIdentity | Weft has no network with that channel, or no identity that can vote in this election. `data.voterMsps` lists the organisations whose voters can. The window says which. |
+| `4300` | NoIdentity | Weft has no identity, no network with that channel, or no identity that can vote in this election. `data.voterMsps` lists the organisations whose voters can. The window says which. When the network's invite may list the channel now, the window offers Refresh from invite and the request waits for it. |
 | `4301` | CertificateExpired | The X.509 identity that would vote has expired. |
 | `4400` | ElectionUnavailable | Weft couldn't read an open private election with that ID: it doesn't exist, isn't open, its record isn't one Weft reads, its `context` or `fingerprint` isn't the one Weft computed, or the peer's signature on it doesn't verify. `data.state` has the state when there is one. The window says which. New in Weft Experimental. |
 | `-32002` | RequestPending | This site already has a request waiting in Weft. |
