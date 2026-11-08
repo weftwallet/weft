@@ -239,6 +239,17 @@ export interface StatusReport {
   fingerprint: string | null;
 }
 
+/** Who votes: the Voters row, and for voter credentials the pinned issuer key's row. */
+function voterLines(rec: ElectionRecord): string[] {
+  if (rec.voters.kind === "idemix") {
+    return [
+      row("Voters", `Voter credentials from ${rec.voters.msp}, affiliation ${rec.voters.affiliation}, role ${rec.voters.role}`),
+      row("Issuer key", `SHA-256 ${shortTx(rec.voters.issuerKeyHash)}, curve ${rec.voters.curve}, pinned`),
+    ];
+  }
+  return [row("Voters", `X.509 identities of ${list(rec.voters.msps)}`)];
+}
+
 export async function status(env: Env, o: StatusOptions): Promise<number> {
   const rec = await getElection(env, o.election);
   const cer = await getCeremony(env, o.election);
@@ -278,6 +289,7 @@ export async function status(env: Env, o: StatusOptions): Promise<number> {
   out.line(`${rec.title} (${id}) on ${env.connection.channel}`);
   out.line(row("State", states[rec.state]));
   out.line(row("Trustees", trusteesLine(rec)));
+  for (const l of voterLines(rec)) out.line(l);
   out.line(row("You", youLine(env, rec)));
   if (fingerprint) out.line(row("Key", `${formatFingerprint(fingerprint)}, the election fingerprint`));
   if (report.saved.keyShare) out.line(row("Saved", `your key share, encrypted, in ${state.shown}`));
@@ -398,12 +410,7 @@ export async function create(env: Env, o: CreateOptions): Promise<number> {
   env.out.done(`Created ${rec.id} in block ${r.block}. It stays in keygen until the key ceremony ends. Transaction ${shortTx(r.txId)}.`);
   env.out.line();
   env.out.line(row("Trustees", trusteesLine(rec)));
-  if (rec.voters.kind === "idemix") {
-    env.out.line(row("Voters", `Voter credentials from ${rec.voters.msp}, affiliation ${rec.voters.affiliation}, role ${rec.voters.role}`));
-    env.out.line(row("Issuer key", `SHA-256 ${shortTx(rec.voters.issuerKeyHash)}, curve ${rec.voters.curve}, pinned`));
-  } else {
-    env.out.line(row("Voters", `X.509 identities of ${list(voters)}`));
-  }
+  for (const l of voterLines(rec)) env.out.line(l);
   env.out.line(row("Closing", `${when(rec.closesAt)}, planned. Voting stays open until ${rec.threshold} trustees close it.`));
   env.out.line();
   env.out.line(`Each trustee now runs ${CMD} commit --election ${rec.id} to post round 1.`);

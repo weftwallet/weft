@@ -77,6 +77,7 @@ describe("the transcripts in the step 4 model", () => {
       "Budget 2027 (budget-2027) on privatevote-budget-2027",
       "State      keygen: the key ceremony is running",
       "Trustees   Org1MSP (1) and Org2MSP (2). Any 2 of 2 can decrypt.",
+      "Voters     X.509 identities of Org1MSP and Org2MSP",
       "You        trustee1, for Org1MSP",
       "",
       "Round 1    Org1MSP waiting   Org2MSP waiting",
@@ -208,6 +209,7 @@ describe("the transcripts in the step 4 model", () => {
       "Budget 2027 (budget-2027) on privatevote-budget-2027",
       "State      open: voting is open until 17:00 UTC on 31 January 2027",
       "Trustees   Org1MSP (1) and Org2MSP (2). Any 2 of 2 can decrypt.",
+      "Voters     X.509 identities of Org1MSP and Org2MSP",
       "You        trustee1, for Org1MSP",
       `Key        ${fp}, the election fingerprint`,
       `Saved      your key share, encrypted, in ${folder(t1)}`,
@@ -270,7 +272,7 @@ describe("the failure messages in the step 4 model", () => {
       lines: ["✗ This identity can't act as a trustee: its certificate doesn't carry weft.trustee=true.", "  Register a trustee identity with that attribute at Org1MSP's CA, as for an explorer."],
     });
     expect(contract.calls.length).toBe(calls);
-    expect((await run(alice, (env) => cmd.status(env, e))).lines[3]).toBe("You        alice, for Org1MSP. Its certificate doesn't carry weft.trustee=true, so it can only read");
+    expect((await run(alice, (env) => cmd.status(env, e))).lines[4]).toBe("You        alice, for Org1MSP. Its certificate doesn't carry weft.trustee=true, so it can only read");
   });
 
   it("reports a share that doesn't match its sender's commitments, and the election fails", async () => {
@@ -376,6 +378,13 @@ describe("the other paths", () => {
       issuerKeyHash: hash,
       curve: "FP256BN_AMCL",
     });
+    // status shows who votes, and the pinned key.
+    expect((await run(t1, (env) => cmd.status(env, { election: ID }))).lines.slice(2, 6)).toEqual([
+      "Trustees   Org1MSP (1) and Org2MSP (2). Any 2 of 2 can decrypt.",
+      "Voters     Voter credentials from ChairVoters2027MSP, affiliation voters, role member",
+      `Issuer key SHA-256 ${hash.slice(0, 8)}…${hash.slice(-8)}, curve FP256BN_AMCL, pinned`,
+      "You        trustee1, for Org1MSP",
+    ]);
     expect(Object.keys(sent.voters as object)).toEqual(["kind", "msp", "affiliation", "role", "issuerPublicKey", "issuerKeyHash", "curve"]);
   });
 
