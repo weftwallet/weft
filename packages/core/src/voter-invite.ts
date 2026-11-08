@@ -10,6 +10,8 @@ import type { VoterInvite } from "@weftwallet/protocol";
 import { InviteError } from "./invite.ts";
 
 const HEX64 = /^[0-9a-f]{64}$/;
+/** The longest title a voter invite may give, in UTF-16 code units: the review card shows it whole. */
+export const VOTER_INVITE_TITLE_MAX = 200;
 
 function text(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
@@ -49,6 +51,9 @@ export function parseVoterInvite(value: unknown, source = "This document"): Vote
   }
   if (v.explorerUrl !== undefined && !url(v.explorerUrl)) throw bad('"explorerUrl" must be an http or https URL');
   if (v.caName !== undefined && !text(v.caName)) throw bad('"caName" must be a name');
+  if (v.title !== undefined && (!text(v.title) || v.title.trim() === "" || v.title.length > VOTER_INVITE_TITLE_MAX)) {
+    throw bad(`"title" must be text of 1 to ${VOTER_INVITE_TITLE_MAX} characters`);
+  }
   if (!text(v.issuerKeyHash) || !HEX64.test(v.issuerKeyHash)) throw bad('"issuerKeyHash" must be 64 lowercase hex characters');
   if (v.curve !== "FP256BN_AMCL") throw bad('"curve" must be FP256BN_AMCL');
   if (!Array.isArray(v.endorsers) || v.endorsers.length === 0) throw bad('"endorsers" must list at least one organisation');
@@ -72,6 +77,7 @@ export function parseVoterInvite(value: unknown, source = "This document"): Vote
     channel: v.channel as string,
     chaincode: v.chaincode as string,
     electionId: v.electionId as string,
+    ...(v.title !== undefined ? { title: v.title as string } : {}),
     issuerKeyHash: v.issuerKeyHash as string,
     curve: "FP256BN_AMCL",
     endorsers,

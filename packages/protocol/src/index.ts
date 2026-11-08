@@ -586,6 +586,12 @@ export interface VoterInvite {
   channel: string;
   chaincode: string;
   electionId: string;
+  /**
+   * The election's title, as the organisers give it. Weft Experimental shows
+   * it until it has read the election, then shows the title in the election's
+   * own record instead.
+   */
+  title?: string;
   /** SHA-256 of the IssuerPublicKey bytes the CA serves, in lowercase hex, the value the election pins. */
   issuerKeyHash: string;
   curve: "FP256BN_AMCL";

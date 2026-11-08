@@ -35,13 +35,18 @@ const hostOf = (url: string) => {
 /* Joining                                                             */
 /* ------------------------------------------------------------------ */
 
-/** What the voter joins, before any secret is typed, with the one sentence about revocation (D13). */
+/**
+ * What the voter joins, before any secret is typed, with the one sentence
+ * about revocation (D13). It is named by the invite's title when it gives
+ * one, with the election's ID under it.
+ */
 function VoterInviteCard({ invite }: { invite: VoterInvite }) {
   return (
     <>
       <section className="card" aria-label="Voter invite">
         <span className="eyebrow">You're joining an election as a voter</span>
-        <div className="card__title wrap-anywhere">{invite.electionId}</div>
+        <div className="card__title wrap-anywhere">{invite.title ?? invite.electionId}</div>
+        {invite.title && <div className="mono subtle type-xs wrap-anywhere">{invite.electionId}</div>}
         <dl className="details">
           <dt>Network</dt>
           <dd>{invite.network}</dd>

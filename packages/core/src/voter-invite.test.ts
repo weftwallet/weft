@@ -35,6 +35,14 @@ describe("parseVoterInvite", () => {
     expect(parseVoterInvite(bare)).toEqual(bare);
   });
 
+  it("keeps an optional title, as given", () => {
+    const titled = parseVoterInvite({ ...invite, title: "Chair 2027" });
+    expect(titled.title).toBe("Chair 2027");
+    expect(titled).toEqual({ ...invite, title: "Chair 2027" });
+    expect("title" in parseVoterInvite(invite)).toBe(false);
+    expect(parseVoterInvite({ ...invite, title: "x".repeat(200) }).title).toHaveLength(200);
+  });
+
   it("checks every field, naming the source", () => {
     const bad = (change: Record<string, unknown>) => () => parseVoterInvite({ ...invite, ...change }, "x.json");
     expect(bad({ weftVoterInvite: 2 })).toThrow('x.json isn\'t a voter invite Weft Experimental can use: "weftVoterInvite" must be 1.');
@@ -46,6 +54,10 @@ describe("parseVoterInvite", () => {
     expect(bad({ relayUrl: "relay" })).toThrow(/"relayUrl" must be an http or https URL/);
     expect(bad({ explorerUrl: "nope" })).toThrow(/"explorerUrl" must be an http or https URL/);
     expect(bad({ caName: "" })).toThrow(/"caName" must be a name/);
+    expect(bad({ title: "" })).toThrow(/"title" must be text of 1 to 200 characters/);
+    expect(bad({ title: "   " })).toThrow(/"title" must be text of 1 to 200 characters/);
+    expect(bad({ title: 2027 })).toThrow(/"title" must be text of 1 to 200 characters/);
+    expect(bad({ title: "x".repeat(201) })).toThrow(/"title" must be text of 1 to 200 characters/);
     expect(bad({ issuerKeyHash: "F".repeat(64) })).toThrow(/"issuerKeyHash" must be 64 lowercase hex characters/);
     expect(bad({ curve: "BN254" })).toThrow(/"curve" must be FP256BN_AMCL/);
     expect(bad({ endorsers: [] })).toThrow(/"endorsers" must list at least one organisation/);

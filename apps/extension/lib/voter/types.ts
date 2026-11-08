@@ -31,7 +31,7 @@ export interface VoterCredentialRecord {
   /** The credential's organisational unit and role, which every voter of the election shares. */
   affiliation: string;
   role: "member";
-  /** The election's title, once Weft has read the election; until then, its ID is shown. */
+  /** The election's title, once Weft has read the election; until then, the invite's title, or the election's ID, is shown. */
   title: string | null;
   sealed: {
     /** { secretKey, credential, cri } as JSON, bound to `${id} secret`. */
@@ -46,7 +46,7 @@ export interface VoterCredentialRecord {
 export interface VoterCredentialView {
   id: string;
   electionId: string;
-  /** The election's title, or its ID until Weft has read it. */
+  /** The election's title from its record, or until Weft has read it, the invite's title or the election's ID. */
   title: string;
   channel: string;
   chaincode: string;
@@ -78,7 +78,7 @@ export function credentialView(record: VoterCredentialRecord, voted: VoterCreden
   return {
     id: record.id,
     electionId: i.electionId,
-    title: record.title ?? i.electionId,
+    title: record.title ?? i.title ?? i.electionId,
     channel: i.channel,
     chaincode: i.chaincode,
     mspId: i.mspId,

@@ -272,6 +272,15 @@ describe("voter invites", () => {
     expect(() => loadVoterInvites(folder({ "chair-2027.json": "{" }), options)).toThrow(/isn't JSON/);
   });
 
+  it("serve a title when the invite gives one, and refuse an empty one at startup", async () => {
+    const options = { experimental: true, idemixMspIds: [VOTERS] };
+    const titled = loadVoterInvites(folder({ "chair-2027.json": { ...invite, title: "Chair 2027" } }), options);
+    const { app } = relay({ voterInvites: titled });
+    const ok = await app.inject({ method: "GET", url: VOTER_INVITE_PATH("chair-2027") });
+    expect(ok.json()).toEqual({ ...invite, title: "Chair 2027" });
+    expect(() => loadVoterInvites(folder({ "chair-2027.json": { ...invite, title: "" } }), options)).toThrow(/"title" must be text of 1 to 200 characters/);
+  });
+
   it("are checked field by field", () => {
     const bad = (change: Record<string, unknown>) => () => parseVoterInvite({ ...invite, ...change }, "x.json");
     expect(bad({ weftVoterInvite: 2 })).toThrow('x.json isn\'t a voter invite Weft Experimental can use: "weftVoterInvite" must be 1.');

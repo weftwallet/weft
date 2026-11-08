@@ -33,7 +33,7 @@ vi.mock("../vault", () => ({
 }));
 
 const { openCredential, openEnrollmentId, sealCredential, voterKey, VOTER_KEY_INFO } = await import("./seal");
-const { addVoterCredential, credentialFor, removeVoterCredential, voterCredentialViews } = await import("./store");
+const { addVoterCredential, credentialFor, rememberTitle, removeVoterCredential, voterCredentialViews } = await import("./store");
 const { anonymousActivity, anonymousEntries, anonymousReceiptView, removeAnonymousReceipt, saveAnonymous } = await import("./activity");
 const { ModuleCallError, SignerGoneError, portSigner, serveSigner } = await import("./remote");
 
@@ -130,6 +130,17 @@ describe("the store", () => {
     expect(await credentialFor({ channel: "privatevote-chair-2027", chaincode: "other", electionId: "chair-2027" })).toBeNull();
     await removeVoterCredential("cred-1");
     expect((await voterCredentialViews()).map((v) => v.id)).toEqual(["cred-3"]);
+  });
+
+  it("names a credential by the invite's title until Weft reads the election, then by the record's", async () => {
+    const r = await record();
+    await addVoterCredential({ ...r, invite: { ...r.invite, title: "Chair 2027, as invited" } });
+    await addVoterCredential(await record("cred-2", "chair-2028"));
+    const before = await voterCredentialViews();
+    expect(before.map((v) => v.title)).toEqual(["Chair 2027, as invited", "chair-2028"]);
+    await rememberTitle("cred-1", "Chair 2027");
+    await rememberTitle("cred-2", "Chair 2028");
+    expect((await voterCredentialViews()).map((v) => v.title)).toEqual(["Chair 2027", "Chair 2028"]);
   });
 
   it("refuses a record that isn't shaped as a credential", async () => {

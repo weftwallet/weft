@@ -47,6 +47,7 @@ export async function addVoterCredential(record: VoterCredentialRecord): Promise
     record.id.length > 0 &&
     i?.weftVoterInvite === 1 &&
     HEX64.test(i.issuerKeyHash) &&
+    (i.title === undefined || typeof i.title === "string") &&
     Array.isArray(i.endorsers) &&
     i.endorsers.length > 0 &&
     i.endorsers.every((e) => PEM.test(e.caChain)) &&
