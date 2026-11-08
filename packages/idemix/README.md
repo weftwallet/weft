@@ -11,7 +11,7 @@ The module does what a wallet needs to hold a voter credential and sign with it:
 - `sign`: sign a Fabric message as that identity: the proposal, the transaction or the commit status request, never fabric-gateway's wrapper bytes;
 - `pseudonym`: the credential's [per-election pseudonym](../../apps/docs/src/content/docs/experimental/private-tally-spec.md#the-per-election-pseudonym) P, the same for every identity of the credential in one election, from which Weft makes the voter tag before it makes the ballot;
 - `pseudonymProof`: the proof that P and the identity's Nym hold the same secret key, for the ballot's tracking code, which is `CastAnonymousBallot`'s `pseudonymJson`;
-- `verifyIdentity`: check a transaction's idemix creator against the loaded issuer key, as a peer's idemix MSP validates it, and return what it discloses: the Nym, the organisational unit and the role;
+- `verifyIdentity`: check a transaction's idemix creator against the loaded issuer key, as a peer's idemix MSP validates it, and return what it discloses: the Nym, the organisational unit and the role. The proof is checked by the contract's own `pseudonym.Key.VerifyIdentity`, which `CastAnonymousBallot` runs against the pinned key;
 - `verifyPseudonym`: check a ballot's pseudonym proof against the creator's Nym, the issuer key and the ballot's tracking code, with the contract's own verifier and messages;
 - `dispose` and `wipe`: zero and drop an identity's secrets, or every identity's and the issuer key.
 

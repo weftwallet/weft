@@ -217,6 +217,13 @@ export const identityFailures = {
       detail: `${refreshed ? `The latest invite for ${networkName} still doesn't list` : `Your network ${networkName} doesn't have`} the channel ${ctx.params.channel}. Ask your administrator whether your organisation votes in this election. ${NO_BALLOT}`,
       technical: "4300 NoIdentity.",
     }),
+  /** The certificate has no enrolment ID the contract can read, so the contract would refuse its ballot. */
+  noEnrolmentId: (ctx: FailureContext, name: string, refusal: string): ReadFailure =>
+    final(ErrorCode.NoIdentity, refusal, {
+      title: "This identity can't vote here",
+      detail: `The contract tells voters apart by the enrolment ID in their certificate's common name, and it can't read one from ${name}'s certificate. Make an identity from your organisation's CA active in Weft, then vote again from ${ctx.siteHost}. ${NO_BALLOT}`,
+      technical: `4300 NoIdentity. The contract would refuse the ballot with: ${refusal}`,
+    }),
   notVoter: (ctx: FailureContext, voterMsps: string[], name: string, mspId: string): ReadFailure =>
     final(
       ErrorCode.NoIdentity,

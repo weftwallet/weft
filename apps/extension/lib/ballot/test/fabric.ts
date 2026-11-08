@@ -7,7 +7,7 @@ import "reflect-metadata";
 import { BasicConstraintsExtension, KeyUsageFlags, KeyUsagesExtension, X509CertificateGenerator } from "@peculiar/x509";
 import { CommitError, Message, RelayError, fromBase64, generateKeyPair, signForFabric, toBase64, utf8 } from "@weftwallet/core";
 import type { ContractCall, RelayCommitStatusResponse, RelaySigner, X509Signer } from "@weftwallet/protocol";
-import { electionContext, electionFingerprint, fromHex, toHex, trusteeId, voterTagIdemix, voterTagX509, type Election } from "@weftwallet/tally";
+import { electionContext, electionFingerprint, fromHex, toHex, trusteeId, voterTagFromCertificate, voterTagIdemix, type Election } from "@weftwallet/tally";
 import { TallyError, checkBallot } from "@weftwallet/tally/verify";
 import type { BallotRelay } from "../cast";
 
@@ -242,9 +242,9 @@ export class FakeRelay implements BallotRelay {
     }
     if (fn === "CastBallot") {
       if (this.record.state !== "open") return { error: this.record.state === "decrypting" || this.record.state === "counted" ? "Voting has closed." : `The election isn't open: it is in ${String(this.record.state)}.` };
-      const tag = voterTagX509(this.election.channel, this.election.electionId, s.creator.mspId, s.creator.idBytes);
-      if (this.ballots.some((b) => b.tag === toHex(tag))) return { error: "This identity has already voted in this election." };
       try {
+        const tag = voterTagFromCertificate(this.election.channel, this.election.electionId, s.creator.mspId, s.creator.idBytes);
+        if (this.ballots.some((b) => b.tag === toHex(tag))) return { error: "This identity has already voted in this election." };
         const checked = checkBallot(this.election, tag, args[1] ?? "");
         const tracking = this.lies.tracking ?? checked.tracking;
         this.ballots.push({ txId: s.txId, tracking: checked.tracking, ballot: args[1]!, tag: toHex(tag) });

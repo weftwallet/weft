@@ -15,7 +15,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { encryptBallot } from "@weftwallet/tally/client";
-import { electionFingerprint, formatFingerprint, pemIdBytes, voterTagX509 } from "@weftwallet/tally";
+import { electionFingerprint, formatFingerprint, utf8, voterTagFromCertificate } from "@weftwallet/tally";
 import { afterAll, describe, expect, it } from "vitest";
 import * as cmd from "./commands.ts";
 import { resolveConnection } from "./connection.ts";
@@ -82,7 +82,7 @@ describe.skipIf(!ready)("weft-trustee on a running network", () => {
     const rec = JSON.parse(await (await t1.env.ledger()).evaluate("GetElection", ID)) as cmd.ElectionRecord;
     const election = { channel: t1.env.connection.channel, chaincode: t1.env.connection.contract, electionId: ID, options: rec.options, threshold: 2, trustees: rec.trustees.map((t) => t.msp), publicKey: rec.publicKey!, verifyingShares: rec.verifyingShares! };
     for (const [t, choice] of [[t1, 0], [t2, 2]] as const) {
-      const tag = voterTagX509(election.channel, ID, t.identity.msp, pemIdBytes(t.identity.certificate));
+      const tag = voterTagFromCertificate(election.channel, ID, t.identity.msp, utf8(t.identity.certificate));
       await (await t.env.ledger()).submit("CastBallot", ID, encryptBallot(election, tag, choice).json);
     }
     await t1.run((env) => cmd.close(env, { ...e, early: true }));

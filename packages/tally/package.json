@@ -43,7 +43,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.check.json --noEmit",
     "test": "vitest run",
     "vectors": "node scripts/vectors.ts",
-    "bench": "node scripts/bench.ts"
+    "bench": "node scripts/bench.ts",
+    "timing": "node scripts/timing.ts"
   },
   "dependencies": {
     "@noble/curves": "2.4.0",

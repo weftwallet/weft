@@ -13,7 +13,7 @@
  */
 
 import type { IdemixSync, PseudonymProof } from "@weftwallet/idemix";
-import { electionContext, electionFingerprint, fromHex, toHex, voterTagIdemix, voterTagX509, type Election, type ElectionSetup } from "@weftwallet/tally";
+import { electionContext, electionFingerprint, fromHex, toHex, voterTagFromCertificate, voterTagIdemix, type Election, type ElectionSetup } from "@weftwallet/tally";
 import {
   TallyError,
   addTotals,
@@ -177,7 +177,7 @@ export function checkOneBallot(e: Election, b: PublishedBallot, ledger?: Ledger,
       if (!p) return "It has no pseudonym, and this election's ballots are anonymous.";
       if (toHex(voterTagIdemix(e.channel, e.electionId, anonymous.msp, p)) !== b.voterTag) return "Its voter tag isn't the one its pseudonym gives.";
     } else if (b.creator) {
-      const own = toHex(voterTagX509(e.channel, e.electionId, b.creator.mspId, base64(b.creator.idBytes)));
+      const own = toHex(voterTagFromCertificate(e.channel, e.electionId, b.creator.mspId, base64(b.creator.idBytes)));
       if (own !== b.voterTag) return "Its voter tag isn't the one its submitter's certificate gives.";
     }
     const checked = checkBallot(e, tag, JSON.stringify(b.ballot), ledger, anonymous ? "idemix" : "x509");

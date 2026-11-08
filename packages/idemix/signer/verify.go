@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/IBM/idemix/bccsp/schemes/dlog/bridge"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
-	"github.com/IBM/idemix/bccsp/types"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"google.golang.org/protobuf/proto"
 
@@ -38,7 +36,10 @@ var ErrIdentityNotValid = errors.New("The one-off identity's proof isn't valid f
 // validates it: it decodes the Nym, the OU and the role, and verifies the
 // proof that the Nym belongs to a credential from this issuer key with
 // that OU and role, with the enrolment ID and the revocation handle hidden.
-// It doesn't check the creator's signature over a transaction.
+// The proof is checked by the contract's own pseudonym.Key.VerifyIdentity,
+// which CastAnonymousBallot runs against the pinned key, so an explorer
+// and the contract check each creator with the same code. It doesn't check
+// the creator's signature over a transaction.
 func (k *IssuerKey) VerifyIdentity(idBytes []byte) (out *VerifiedIdentity, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -72,13 +73,7 @@ func (k *IssuerKey) VerifyIdentity(idBytes []byte) (out *VerifiedIdentity, err e
 	default:
 		return nil, fmt.Errorf("The creator's role, %s, isn't one a credential can have.", role.Role)
 	}
-	scheme := &bridge.SignatureScheme{Translator: k.tr, Idemix: k.idemix()}
-	if err := scheme.Verify(k.pk, sid.Proof, nil, nym, []types.IdemixAttribute{
-		{Type: types.IdemixBytesAttribute, Value: []byte(ou.OrganizationalUnitIdentifier)},
-		{Type: types.IdemixIntAttribute, Value: roleValue},
-		{Type: types.IdemixHiddenAttribute},
-		{Type: types.IdemixHiddenAttribute},
-	}, rhIndex, eidIndex, 0, nil, 0, types.Basic, nil); err != nil {
+	if err := k.scope.VerifyIdentity(sid.Proof, nym, ou.OrganizationalUnitIdentifier, roleValue); err != nil {
 		return nil, ErrIdentityNotValid
 	}
 	names := map[msp.MSPRole_MSPRoleType]string{msp.MSPRole_MEMBER: "member", msp.MSPRole_ADMIN: "admin"}

@@ -93,7 +93,7 @@ func LoadIssuerKey(raw []byte) (*IssuerKey, error) {
 	if hsk.IsInfinity() || hrand.IsInfinity() {
 		return nil, errors.New("the issuer key's HSk or HRand is the identity")
 	}
-	scope := &pseudonym.Key{HSk: hsk, HRand: hrand, Hash: sha256.Sum256(raw)}
+	scope := &pseudonym.Key{HSk: hsk, HRand: hrand, Hash: sha256.Sum256(raw), PK: ipk.PK}
 	return &IssuerKey{curve: c, tr: tr, pk: ipk, raw: bytes.Clone(raw), scope: scope}, nil
 }
 

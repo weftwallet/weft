@@ -78,6 +78,9 @@ describe("failures before the vote", () => {
     expect(said(identityFailures.channel(ctx, "Weft playground", true)).view.detail).toMatch(/^The latest invite for Weft playground still doesn't list/);
     expect(said(identityFailures.notVoter({ ...ctx, title: "Budget 2027" }, ["Org1MSP", "Org2MSP"], "carol", "Org3MSP")).error).toMatchObject({ code: 4300, data: { voterMsps: ["Org1MSP", "Org2MSP"] } });
     expect(said(identityFailures.noCredential(ctx, "ChairVoters2027MSP")).error).toMatchObject({ code: 4300, data: { voterMsps: ["ChairVoters2027MSP"] } });
+    const noId = said(identityFailures.noEnrolmentId(ctx, "alice", "This identity can't vote in this election: its certificate has no enrolment ID."));
+    expect(noId.error).toMatchObject({ code: 4300, message: "This identity can't vote in this election: its certificate has no enrolment ID." });
+    expect(noId.view.detail).toMatch(/^The contract tells voters apart by the enrolment ID in their certificate's common name, and it can't read one from alice's certificate\./);
   });
 });
 

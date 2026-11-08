@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
-import { formatFingerprint, voterTagX509, toHex } from "@weftwallet/tally";
+import { enrolmentId, formatFingerprint, voterTagFromCertificate, voterTagX509, toHex } from "@weftwallet/tally";
 import { describe, expect, it } from "vitest";
 import { RecordError, chainCas, electionFrom, parseElectionRecord } from "./read";
 import { makeOrg, recordOf, testElection } from "./test/fabric";
 
 const vectors = JSON.parse(readFileSync(new URL("../../../../packages/tally/vectors/v1/context.json", import.meta.url), "utf8")) as {
   elections: { channel: string; chaincode: string; electionId: string; options: string[]; threshold: number; trustees: string[]; publicKey: string; verifyingShares: string[]; ctx: string; fingerprint: string }[];
-  voterTags: { channel: string; electionId: string; mspId: string; kind: string; idBytes: string; tag: string }[];
+  voterTags: { channel: string; electionId: string; mspId: string; kind: string; idBytes: string; enrolmentId: string; tag: string }[];
 };
 
 const read = (record: Record<string, unknown>) => parseElectionRecord(JSON.stringify(record), "budget-2027");
@@ -106,16 +106,18 @@ describe("the election record", () => {
   });
 });
 
-describe("the voter tag's idBytes", () => {
-  it("are the creator's id_bytes exactly, trailing newline and all", () => {
-    for (const v of vectors.voterTags.filter((t) => t.kind === "x509")) {
+describe("the voter tag's enrolment ID", () => {
+  it("is the common name in the creator's certificate, however its PEM is written", () => {
+    const x509 = vectors.voterTags.filter((t) => t.kind === "x509");
+    expect(x509.length).toBeGreaterThan(0);
+    for (const v of x509) {
       const bytes = Uint8Array.from(Buffer.from(v.idBytes, "hex"));
-      expect(toHex(voterTagX509(v.channel, v.electionId, v.mspId, bytes))).toBe(v.tag);
-      // The same certificate without its trailing newline is another voter tag.
+      expect(enrolmentId(bytes)).toBe(v.enrolmentId);
+      expect(toHex(voterTagX509(v.channel, v.electionId, v.mspId, v.enrolmentId))).toBe(v.tag);
+      // The same certificate without its trailing newline is the same voter.
       const text = new TextDecoder().decode(bytes);
-      if (text.endsWith("\n")) {
-        expect(toHex(voterTagX509(v.channel, v.electionId, v.mspId, new TextEncoder().encode(text.trimEnd())))).not.toBe(v.tag);
-      }
+      expect(text.endsWith("\n")).toBe(true);
+      expect(toHex(voterTagFromCertificate(v.channel, v.electionId, v.mspId, new TextEncoder().encode(text.trimEnd())))).toBe(v.tag);
     }
   });
 });

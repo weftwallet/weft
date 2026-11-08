@@ -25,7 +25,10 @@ func randomScalar() *r255.Scalar {
 }
 
 // proveForBench encrypts a choice and proves it, as the specification's
-// prover does. Test only: constant-time multiplications, no reuse.
+// prover does: the same operations for a 0 and a 1, with both candidates
+// for b and for the simulated branch's target computed and the message
+// picking between them by index. Test only, since the contract never
+// proves: constant-time multiplications, no reuse.
 func proveForBench(p *Prepared, tag []byte, choice int) string {
 	G := generator()
 	L := len(p.Options)
@@ -33,30 +36,27 @@ func proveForBench(p *Prepared, tag []byte, choice int) string {
 	A, B, R := identity(), identity(), r255.NewScalar()
 	for j := 0; j < L; j++ {
 		r := randomScalar()
-		a := r255.NewElement().ScalarBaseMult(r)
-		b := r255.NewElement().ScalarMult(r, p.H)
-		real := 0
+		m := 0
 		if j == choice {
-			b.Add(b, G)
-			real = 1
+			m = 1
 		}
-		Y := []*r255.Element{b, r255.NewElement().Subtract(b, G)}
+		a := r255.NewElement().ScalarBaseMult(r)
+		rH := r255.NewElement().ScalarMult(r, p.H)
+		plus := r255.NewElement().Add(rH, G)
+		minus := r255.NewElement().Subtract(rH, G)
+		b := [2]*r255.Element{rH, plus}[m]
+		target := [2]*r255.Element{minus, plus}[m]
 		cs, zs, w := randomScalar(), randomScalar(), randomScalar()
 		ncs := r255.NewScalar().Negate(cs)
 		As := r255.NewElement().MultiScalarMult([]*r255.Scalar{zs, ncs}, []*r255.Element{G, a})
-		Bs := r255.NewElement().MultiScalarMult([]*r255.Scalar{zs, ncs}, []*r255.Element{p.H, Y[1-real]})
+		Bs := r255.NewElement().MultiScalarMult([]*r255.Scalar{zs, ncs}, []*r255.Element{p.H, target})
 		Ar, Br := r255.NewElement().ScalarBaseMult(w), r255.NewElement().ScalarMult(w, p.H)
-		com := [][]*r255.Element{{Ar, Br}, {As, Bs}}
-		if real == 1 {
-			com = [][]*r255.Element{{As, Bs}, {Ar, Br}}
-		}
+		com := [2][2][]*r255.Element{{{Ar, Br}, {As, Bs}}, {{As, Bs}, {Ar, Br}}}[m]
 		c := Hs(LabelBit, p.Ctx, tag, j, a.Bytes(), b.Bytes(), com[0][0].Bytes(), com[0][1].Bytes(), com[1][0].Bytes(), com[1][1].Bytes())
 		cr := r255.NewScalar().Subtract(c, cs)
 		zr := r255.NewScalar().Add(w, r255.NewScalar().Multiply(cr, r))
-		cv, zv := [2]*r255.Scalar{cr, cs}, [2]*r255.Scalar{zr, zs}
-		if real == 1 {
-			cv, zv = [2]*r255.Scalar{cs, cr}, [2]*r255.Scalar{zs, zr}
-		}
+		cv := [2][2]*r255.Scalar{{cr, cs}, {cs, cr}}[m]
+		zv := [2][2]*r255.Scalar{{zr, zs}, {zs, zr}}[m]
 		cts[j] = map[string]string{"a": pointHex(a), "b": pointHex(b)}
 		bits[j] = map[string]string{"c0": scalarHex(cv[0]), "c1": scalarHex(cv[1]), "z0": scalarHex(zv[0]), "z1": scalarHex(zv[1])}
 		A.Add(A, a)
@@ -80,7 +80,7 @@ func benchElection(b *testing.B, L int) *Prepared {
 
 func TestBenchProverMakesValidBallots(t *testing.T) {
 	p := fuzzElection(t)
-	tag := VoterTagX509(p.Channel, p.ElectionID, "Org1MSP", []byte("bench"))
+	tag := VoterTagX509(p.Channel, p.ElectionID, "Org1MSP", "bench")
 	for choice := 0; choice < len(p.Options); choice++ {
 		if _, err := CheckBallot(p, tag, proveForBench(p, tag, choice), newLedger(nil, nil), false); err != nil {
 			t.Fatal(err)
@@ -91,7 +91,7 @@ func TestBenchProverMakesValidBallots(t *testing.T) {
 func BenchmarkEncryptAndProve(b *testing.B) {
 	for _, L := range []int{3, 10} {
 		p := benchElection(b, L)
-		tag := VoterTagX509(p.Channel, p.ElectionID, "Org1MSP", []byte("bench"))
+		tag := VoterTagX509(p.Channel, p.ElectionID, "Org1MSP", "bench")
 		b.Run(fmt.Sprintf("options=%d", L), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				proveForBench(p, tag, i%L)
@@ -103,7 +103,7 @@ func BenchmarkEncryptAndProve(b *testing.B) {
 func BenchmarkVerifyBallot(b *testing.B) {
 	for _, L := range []int{3, 10} {
 		p := benchElection(b, L)
-		tag := VoterTagX509(p.Channel, p.ElectionID, "Org1MSP", []byte("bench"))
+		tag := VoterTagX509(p.Channel, p.ElectionID, "Org1MSP", "bench")
 		ballot := proveForBench(p, tag, 1)
 		ledger := newLedger(nil, nil)
 		b.Run(fmt.Sprintf("options=%d", L), func(b *testing.B) {

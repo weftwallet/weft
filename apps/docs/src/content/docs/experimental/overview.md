@@ -47,7 +47,7 @@ A voter credential is an Idemix credential from the election's own idemix CA, he
 
 | Party | Main product | Private tally, X.509 voters | Private tally with voter credentials |
 |---|---|---|---|
-| Public explorer visitor | Neither who voted nor the choice, when the explorer hides submitters | Not the choice. A voter tag for each ballot, which names no one, and who voted when the explorer shows submitters. Can re-check the whole count | Neither, and can re-check the whole count |
+| Public explorer visitor | Neither who voted nor the choice, when the explorer hides submitters | Not the choice. A voter tag for each ballot, which names no one but matches a voter's MSP ID and enrolment ID for anyone who knows or guesses them, and who voted when the explorer shows submitters. Can re-check the whole count | Neither, and can re-check the whole count |
 | Member organisations | Who voted, and the choice in the private collection | Who voted, not the choice | Neither: an anonymous member of the voter organisation |
 | Endorsing peers | Who voted, and the choice | Who voted, not the choice | Neither |
 | The relay | The certificate, the choice and the voter's network address | The certificate, a ciphertext and the network address | A ciphertext, the network address and the timing |

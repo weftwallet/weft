@@ -28,6 +28,7 @@ export {
   type TrusteeSecret,
 } from "./ceremony.ts";
 export { randomScalar, type RandomSource } from "./random.ts";
+export { ATTR, STRING, certificatePem, fabricSubject, pem, testCertificate, type Attribute, type CertificateOptions, type Name } from "./certificates.ts";
 
 /** A deterministic RandomSource for the test vectors, never for real elections. */
 export function seededRandom(seed: string): RandomSource & { readonly drawn: number } {

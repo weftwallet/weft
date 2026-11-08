@@ -60,7 +60,8 @@ An idemix organisation in the channel accepts every credential from its issuer k
 
 - the creator's MSP ID is the election's voter MSP;
 - the creator is an idemix identity, not an X.509 one;
-- the creator's organisational unit is the affiliation the election names, and its role is member. The peer's idemix MSP has already checked that the credential behind the transaction's Nym carries both, so a creator can't claim them.
+- the creator's organisational unit is the affiliation the election names, and its role is member;
+- the creator's proof verifies against the issuer key the election pinned, with that affiliation and role. This is the check the peer's idemix MSP makes against the key in the channel's configuration, made again against the pinned key, so a creator can't claim attributes its credential doesn't have, and a credential from any other key is refused, even if the channel's configuration has been changed to that key ([The creator's proof](/experimental/private-tally-spec/#the-creators-proof)).
 
 These refuse the bootstrap admin's credentials, the credentials of every identity outside the voters' affiliation, and every admin credential, whichever route issued them. They can't tell two credentials of one voter ID apart, or a voter from an ID a registrar added to the affiliation. Steps 3, 4 and 7 above cover the first, and the CA operator is trusted with the voter roll for the second.
 
@@ -176,9 +177,9 @@ proof (P, c, ssk, sr): P and Nym have the same sk, bound to the ballot's trackin
 
 The [specification](/experimental/private-tally-spec/#the-per-election-pseudonym) defines the bytes, the checks and the security argument. `pseudonymJson` carries `pseudonym`, `c`, `ssk` and `sr` in lowercase hex, 160 bytes in all.
 
-The proof shows the sk behind P is the sk inside the transaction's Nym, which the peer has already checked against the channel's issuer key. It is bound to that Nym and to the ballot, so another voter can't reuse it, and a replay was refused in the prototype. Pseudonyms in different elections can't be linked, under the decisional Diffie-Hellman assumption in G1. The enrolment ID isn't used as the input, because the CA and anyone with the voter list know it.
+The proof shows the sk behind P is the sk inside the transaction's Nym, which the contract has checked belongs to a credential from the pinned issuer key. It is bound to that Nym and to the ballot, so another voter can't reuse it, and a replay was refused in the prototype. Pseudonyms in different elections can't be linked, under the decisional Diffie-Hellman assumption in G1. The enrolment ID isn't used as the input, because the CA and anyone with the voter list know it.
 
-The voter tag that binds the ballot's proofs is made from P (see the [specification](/experimental/private-tally-spec/#the-voter-tag)), and the contract marks the tag as voted. Weft's approval window, its transaction detail and explorers show that tag as the ballot's Pseudonym, shortened to its first and last 8 hex characters as a tracking code is, so the voter can find their ballot. This proof is Weft's own cryptography, about 150 lines of Go in the contract's `pseudonym` package, which the WebAssembly module compiles too, and needs an external review.
+The voter tag that binds the ballot's proofs is made from P (see the [specification](/experimental/private-tally-spec/#the-voter-tag)), and the contract marks the tag as voted. Weft's approval window, its transaction detail and explorers show that tag as the ballot's Pseudonym, shortened to its first and last 8 hex characters as a tracking code is, so the voter can find their ballot. This proof is Weft's own cryptography, about 150 lines of Go in the contract's `pseudonym` package, which the WebAssembly module compiles too, and needs an external review. The same package has the check of the creator's proof, about 40 lines around IBM idemix's own verifier, which the contract and the module's `verifyIdentity` both call.
 
 ## The relay
 

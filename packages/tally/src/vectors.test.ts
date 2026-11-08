@@ -26,6 +26,8 @@ import {
   utf8,
   voterTagIdemix,
   voterTagX509,
+  voterTagFromCertificate,
+  enrolmentId,
   type Ballot,
   type Ciphertext,
   type Election,
@@ -104,12 +106,33 @@ describe("context.json", () => {
   });
   it("gives voter tags bound to the channel and election", () => {
     for (const t of context.voterTags) {
-      const tag = t.kind === "x509" ? voterTagX509(t.channel, t.electionId, t.mspId, hex(t.idBytes)) : voterTagIdemix(t.channel, t.electionId, t.mspId, hex(t.pseudonym));
+      if (t.kind === "x509") expect(enrolmentId(hex(t.idBytes))).toBe(t.enrolmentId);
+      const part = t.kind === "x509" ? t.enrolmentId : hex(t.pseudonym);
+      expect(toHex(frame([t.kind === "x509" ? "weft-voter x509 v2" : "weft-voter idemix v1", t.channel, t.electionId, t.mspId, part]))).toBe(t.input);
+      const tag = t.kind === "x509" ? voterTagFromCertificate(t.channel, t.electionId, t.mspId, hex(t.idBytes)) : voterTagIdemix(t.channel, t.electionId, t.mspId, hex(t.pseudonym));
       expect(toHex(tag)).toBe(t.tag);
     }
     const ada = context.voterTags.filter((t: any) => t.name === "ada");
     expect(ada).toHaveLength(2);
     expect(ada[0].tag).not.toBe(ada[1].tag);
+  });
+  it("reads each certificate's enrolment ID as the contract does", () => {
+    expect(context.enrolmentIds.length).toBeGreaterThanOrEqual(15);
+    for (const c of context.enrolmentIds) expect(enrolmentId(hex(c.idBytes)), c.name).toBe(c.enrolmentId);
+  });
+  it("gives one tag for every spelling of a certificate and every certificate of one enrolment ID", () => {
+    const fabric = context.enrolmentIds.filter((c: any) => c.name.startsWith("Fabric CA"));
+    // The five spellings of the review packet's checks/pem-voter-tag, and more.
+    for (const s of ["as written", "without the trailing newline", "with two trailing newlines", "with text before the block", "with text after the block"]) {
+      expect(fabric.map((c: any) => c.name)).toContain(`Fabric CA, the first enrolment, ${s}`);
+    }
+    expect(new Set(fabric.map((c: any) => c.idBytes)).size).toBe(fabric.length);
+    const tags = new Set(fabric.map((c: any) => toHex(voterTagFromCertificate("privatevote-budget-2027", "budget-2027", "Org1MSP", hex(c.idBytes)))));
+    expect(tags).toEqual(new Set([toHex(voterTagX509("privatevote-budget-2027", "budget-2027", "Org1MSP", "voter1"))]));
+    // The re-enrolment's certificate differs from the first in its key, serial number and OUs.
+    const [first, , renewed] = fabric.filter((c: any) => c.name.endsWith("as written"));
+    expect(renewed.name).toContain("re-enrolment");
+    expect(renewed.idBytes).not.toBe(first.idBytes);
   });
   it("sorts the trustees' MSP IDs for the fingerprint", () => {
     const e = elections["council-2027"]!;
@@ -227,6 +250,9 @@ describe("negative.json", () => {
           message = refusal(() => checkBallot(e, hex(c.voterTag), c.json, ledger, c.voter));
           break;
         }
+        case "voter":
+          message = refusal(() => enrolmentId(hex(c.idBytes)));
+          break;
         case "round1":
           message = refusal(() => checkRound1(e, c.index, c.json));
           break;

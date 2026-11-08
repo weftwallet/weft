@@ -29,7 +29,7 @@ function time(f: () => void, runs: number): number {
 console.log(`Node ${process.version}, ${cpus()[0]?.model ?? "unknown CPU"}, ${cpus().length} cores`);
 for (const L of [3, 10]) {
   const e = byOptions[L]!;
-  const tag = voterTagX509(e.channel, e.electionId, "Org1MSP", new TextEncoder().encode("bench"));
+  const tag = voterTagX509(e.channel, e.electionId, "Org1MSP", "bench");
   const runs = L === 3 ? 100 : 40;
   const prove = time(() => encryptBallot(e, tag, 1), runs);
   const { json } = encryptBallot(e, tag, 1);

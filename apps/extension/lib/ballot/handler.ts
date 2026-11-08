@@ -35,7 +35,7 @@ import {
   type CastBallotParams,
   type CastBallotResult,
 } from "@weftwallet/protocol";
-import { encryptBallot, fromHex, toHex, voterTagIdemix, voterTagX509, type Election } from "@weftwallet/tally/client";
+import { TallyError, encryptBallot, enrolmentId, fromHex, toHex, voterTagIdemix, voterTagX509, type Election } from "@weftwallet/tally/client";
 import { db, newId, type ActivityRecord, type IdentityRecord, type NetworkRecord, type ReceiptRecordV2 } from "../db";
 import type { ApprovalOutcome, ApprovalView, BallotElectionView, BallotReadView, ReceiptOutcome } from "../messages";
 import { notifyNetworkChanged } from "../sites";
@@ -82,6 +82,8 @@ interface Session {
     record: ElectionRecord;
     election: Election;
     idBytes: Uint8Array;
+    /** For an X.509 voter: the enrolment ID the voter tag is made from. */
+    enrolmentId: string;
     view: BallotElectionView;
     /** For an election with voter credentials: the credential that read it, and votes. */
     credential?: VoterCredentialRecord;
@@ -268,6 +270,15 @@ async function readFor(session: Session): Promise<BallotReadView> {
   if (!record.voters.msps.includes(active.record.mspId)) {
     return fail(session, identityFailures.notVoter(titled, record.voters.msps, summary.name, active.record.mspId));
   }
+  // The voter tag is made from the enrolment ID in the certificate the relay
+  // put in the read's proposal, as the contract reads it.
+  let voterId: string;
+  try {
+    voterId = enrolmentId(read.idBytes);
+  } catch (error) {
+    if (error instanceof TallyError) return fail(session, identityFailures.noEnrolmentId(titled, summary.name, error.message));
+    throw error;
+  }
   const view: BallotElectionView = {
     title: record.title,
     electionId: record.id,
@@ -285,7 +296,7 @@ async function readFor(session: Session): Promise<BallotReadView> {
     alreadyVoted: await earlierBallot(active.record.id, params),
   };
   session.pending = null;
-  session.read = { identityId: active.record.id, networkId: active.network.id, record, election: read.open.election, idBytes: read.idBytes, view };
+  session.read = { identityId: active.record.id, networkId: active.network.id, record, election: read.open.election, idBytes: read.idBytes, enrolmentId: voterId, view };
   return { status: "ready", election: view };
 }
 
@@ -349,7 +360,7 @@ async function readAnonymous(session: Session, credential: VoterCredentialRecord
     anonymous: { mspId: invite.mspId, affiliation: record.voters.affiliation, role: record.voters.role, pseudonym: tag, relayOperator: invite.relayOperator, checked: read.checked },
   };
   session.pending = null;
-  session.read = { identityId: credential.id, networkId: "", record, election: read.open.election, idBytes: new Uint8Array(), view, credential };
+  session.read = { identityId: credential.id, networkId: "", record, election: read.open.election, idBytes: new Uint8Array(), enrolmentId: "", view, credential };
   return { status: "ready", election: view };
 }
 
@@ -420,9 +431,10 @@ async function cast<A extends { view: ApprovalView; decision: { promise: Promise
     const sealed = decision.keepReceipt ? await vault.sealReceipt(base.id, utf8(JSON.stringify({ option: options[choice] }))) : null;
     const sign = await signerFor(identity);
     const signer = { mspId: identity.mspId, certificate: identity.certificate };
-    // The voter tag is made from the creator's id_bytes exactly as the relay
-    // builds them, which castBallotCall checks again before signing.
-    const tag = voterTagX509(params.channel, params.electionId, identity.mspId, read.idBytes);
+    // The voter tag is made from the enrolment ID in the certificate the
+    // relay put in the read's proposal. castBallotCall checks that the
+    // proposal it signs carries that certificate, byte for byte.
+    const tag = voterTagX509(params.channel, params.electionId, identity.mspId, read.enrolmentId);
     // The encryption randomness never leaves encryptBallot.
     const ballot = encryptBallot(read.election, tag, choice);
     ctx.tracking = ballot.tracking;

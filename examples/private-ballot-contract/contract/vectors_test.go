@@ -87,6 +87,8 @@ type negativeVector struct {
 	Kind     string `json:"kind"`
 	Election string `json:"election"`
 	Error    string `json:"error"`
+	MspID    string `json:"mspId"`
+	IDBytes  string `json:"idBytes"`
 	VoterTag string `json:"voterTag"`
 	Voter    string `json:"voter"`
 	Ledger   struct {
@@ -468,6 +470,9 @@ func TestNegativeVectorsThroughTheContract(t *testing.T) {
 				t.Fatalf("%q: no voter has tag %s", c.Name, c.VoterTag)
 			}
 			got = n.endorse(voter.identity(t), "CastBallot", e.ElectionID, c.JSON)
+		case "voter":
+			// An X.509 creator the contract refuses before it reads the ballot.
+			got = stage(c.Election, 4).endorse(identity{c.MspID, unhex(t, c.IDBytes)}, "CastBallot", e.ElectionID, c.JSON)
 		case "round1":
 			got = stage(c.Election, 0).endorse(trustee(t, e.Trustees[c.Index]), "PostCommitments", e.ElectionID, c.JSON)
 		case "round2":
@@ -500,7 +505,7 @@ func TestNegativeVectorsThroughTheContract(t *testing.T) {
 			t.Errorf("%s %q:\n got %q\nwant %q", c.Kind, c.Name, got.err, c.Error)
 		}
 	}
-	for _, k := range []string{"ballot", "round1", "round2", "confirm", "dshare", "tally"} {
+	for _, k := range []string{"voter", "ballot", "round1", "round2", "confirm", "dshare", "tally"} {
 		if kinds[k] == 0 {
 			t.Errorf("no negative vectors of kind %s ran", k)
 		}

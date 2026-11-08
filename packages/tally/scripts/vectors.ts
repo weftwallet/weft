@@ -8,7 +8,7 @@
  * Every random value comes from seededRandom(seed) in src/testing.ts, with
  * one seed per step, so adding a vector doesn't change the others.
  */
-import { writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { ristretto255 } from "@noble/curves/ed25519.js";
@@ -42,6 +42,7 @@ import {
   utf8,
   voterTagIdemix,
   voterTagX509,
+  enrolmentId,
   type Ballot,
   type Ciphertext,
   type DecryptionSharePost,
@@ -65,6 +66,7 @@ import {
   TallyError,
   type Ledger,
 } from "../src/verify.ts";
+import { ATTR, STRING, certificatePem, fabricSubject, pem, testCertificate, type Name } from "../src/certificates.ts";
 
 const P = ristretto255.Point;
 const Fn = P.Fn;
@@ -116,23 +118,50 @@ const SETUPS: Record<string, ElectionSetup> = {
   },
 };
 
-/** Synthetic PEM: the tag hashes the bytes Fabric carries, so a real certificate isn't needed. */
-const pem = (name: string) => `-----BEGIN CERTIFICATE-----\n${Buffer.from(`test certificate for ${name}, not a real one`).toString("base64")}\n-----END CERTIFICATE-----\n`;
-
 interface Voter {
   name: string;
   kind: "x509" | "idemix";
   mspId: string;
-  /** idBytes for X.509, the 64-byte pseudonym P for idemix */
+  /** id_bytes for X.509 (a PEM certificate), the 64-byte pseudonym P for idemix */
   bytes: Uint8Array;
 }
 
+/** An X.509 voter with a test certificate whose subject is in Fabric CA's shape, with the name as its common name. */
 function x509(name: string, mspId: string): Voter {
-  return { name, kind: "x509", mspId, bytes: utf8(pem(name)) };
+  return { name, kind: "x509", mspId, bytes: utf8(certificatePem({ seed: name, subject: fabricSubject(name) })) };
 }
 
+/** The tag part after the MSP ID: the enrolment ID for X.509, read from the certificate as the contract reads it, or P. */
+const voterPart = (v: Voter): Part => (v.kind === "x509" ? enrolmentId(v.bytes) : v.bytes);
+
 function tagOf(setup: ElectionSetup, v: Voter): Uint8Array {
-  return v.kind === "x509" ? voterTagX509(setup.channel, setup.electionId, v.mspId, v.bytes) : voterTagIdemix(setup.channel, setup.electionId, v.mspId, v.bytes);
+  return v.kind === "x509" ? voterTagX509(setup.channel, setup.electionId, v.mspId, enrolmentId(v.bytes)) : voterTagIdemix(setup.channel, setup.electionId, v.mspId, v.bytes);
+}
+
+/* ---------- enrolment IDs ---------- */
+
+/** Certificates Fabric CA issued for one enrolment ID, from scripts/fixtures/fabric-ca.json. */
+const FABRIC_CA = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "fabric-ca.json"), "utf8")) as {
+  description: string;
+  certificates: { name: string; how: string; pem: string }[];
+};
+
+/** Other spellings of one PEM certificate that Go's pem.Decode reads as the same certificate. */
+function spellings(text: string): [string, string][] {
+  const trimmed = text.replace(/\n+$/, "");
+  const body = trimmed.split("\n");
+  return [
+    ["as written", text],
+    ["without the trailing newline", trimmed],
+    ["with two trailing newlines", trimmed + "\n\n"],
+    ["with text before the block", "x\n" + text],
+    ["with text after the block", text + "x"],
+    ["with CRLF line endings", body.join("\r\n") + "\r\n"],
+    ["with its base64 on one line", [body[0], body.slice(1, -1).join(""), body.at(-1)].join("\n") + "\n"],
+    ["with a header line", [body[0], "Comment: the same certificate", ...body.slice(1)].join("\n") + "\n"],
+    ["with spaces and tabs at the ends of lines", body.map((l, i) => (i === 0 || i === body.length - 1 ? l : l + " \t")).join("\n") + "\n"],
+    ["after a BEGIN line with no END line", "-----BEGIN CERTIFICATE-----\n" + text],
+  ];
 }
 
 const VOTERS = {
@@ -283,7 +312,8 @@ function setupJson(name: string, s: ElectionSetup) {
 }
 
 function voterJson(setup: ElectionSetup, v: Voter) {
-  return { name: v.name, kind: v.kind, mspId: v.mspId, [v.kind === "x509" ? "idBytes" : "pseudonym"]: toHex(v.bytes), tag: toHex(tagOf(setup, v)) };
+  const who = v.kind === "x509" ? { idBytes: toHex(v.bytes), enrolmentId: enrolmentId(v.bytes) } : { pseudonym: toHex(v.bytes) };
+  return { name: v.name, kind: v.kind, mspId: v.mspId, ...who, tag: toHex(tagOf(setup, v)) };
 }
 
 function modify<T>(x: T, f: (y: T) => void): T {
@@ -338,12 +368,33 @@ export async function generateVectors(): Promise<Record<string, string>> {
       ...[VOTERS.ada, VOTERS.grace, VOTERS.anon].flatMap((v) =>
         ["budget-2027", "referendum-2027"].map((name) => {
           const s = SETUPS[name]!;
-          const parts: Part[] = [v.kind === "x509" ? LABELS.voterX509 : LABELS.voterIdemix, s.channel, s.electionId, v.mspId, v.bytes];
+          const parts: Part[] = [v.kind === "x509" ? LABELS.voterX509 : LABELS.voterIdemix, s.channel, s.electionId, v.mspId, voterPart(v)];
           return { channel: s.channel, electionId: s.electionId, ...voterJson(s, v), input: toHex(frame(parts)) };
         }),
       ),
     ],
+    enrolmentIds: [
+      ...FABRIC_CA.certificates.flatMap((c, n) =>
+        (n === 0 ? spellings(c.pem) : [["as written", c.pem] as [string, string]]).map(([how, text]) => ({
+          name: `Fabric CA, ${c.name}, ${how}`,
+          idBytes: toHex(utf8(text)),
+          enrolmentId: enrolmentId(utf8(text)),
+        })),
+      ),
+      ...(
+        [
+          ["a UTF8String common name with letters outside ASCII", [...fabricSubject("x").slice(0, 4), [[ATTR.CN, STRING.utf8, "Zoë Ngozi-Ọkafọr"]]]],
+          ["a common name in the first RDN", [[[ATTR.CN, STRING.printable, "grace"]], [[ATTR.O, STRING.printable, "Hyperledger"]]]],
+          ["a common name in a multi-valued RDN", [[[ATTR.OU, STRING.printable, "client"], [ATTR.CN, STRING.utf8, "alan"]]]],
+        ] as [string, Name][]
+      ).map(([name, subject]) => {
+        const text = certificatePem({ seed: name, subject });
+        return { name, idBytes: toHex(utf8(text)), enrolmentId: enrolmentId(utf8(text)) };
+      }),
+    ],
   };
+  const ids = new Set(context.enrolmentIds.filter((c) => c.name.startsWith("Fabric CA")).map((c) => c.enrolmentId));
+  if (ids.size !== 1 || !ids.has("voter1")) throw new Error("the Fabric CA certificates give more than one enrolment ID");
 
   /* ballots.json and tracking.json */
   const ballots: unknown[] = [];
@@ -512,6 +563,28 @@ export async function generateVectors(): Promise<Record<string, string>> {
   ballotCase("a scalar of 2^256 - 1", withBallot((b) => (b.sumProof.z = "ff".repeat(32))));
   ballotCase("a scalar in uppercase hex", withBallot((b) => (b.bitProofs[2]!.z1 = b.bitProofs[2]!.z1.toUpperCase())));
   ballotCase("a scalar with a non-hex character", withBallot((b) => (b.sumProof.c = "g" + b.sumProof.c.slice(1))));
+
+  // The X.509 creator, which CastBallot reads before the ballot.
+  const voterCase = (name: string, idBytes: Uint8Array) => {
+    negative.push({ name, kind: "voter", election: "budget-2027", mspId: "Org1MSP", idBytes: toHex(idBytes), json: JSON.stringify(valid), error: expectError(() => enrolmentId(idBytes)) });
+  };
+  const subjectCase = (name: string, subject: Name, issuer?: Name) => voterCase(name, utf8(certificatePem({ seed: name, subject, ...(issuer ? { issuer } : {}) })));
+  const fabric = fabricSubject("ada");
+  const withCn = (cn: Name[number]) => [...fabric.slice(0, 4), cn];
+  voterCase("id_bytes that aren't PEM", utf8("ada's certificate"));
+  voterCase("a PEM block of another type", utf8(pem("PUBLIC KEY", testCertificate({ seed: "another type", subject: fabric }))));
+  voterCase("a PEM certificate whose base64 doesn't decode", utf8("-----BEGIN CERTIFICATE-----\nMIIB!!!!\n-----END CERTIFICATE-----\n"));
+  voterCase("a PEM certificate whose bytes aren't a certificate", utf8(pem("CERTIFICATE", utf8("not a certificate"))));
+  voterCase("a certificate followed by other bytes in its PEM block", utf8(certificatePem({ seed: "trailing", subject: fabric, trailing: Uint8Array.of(0) })));
+  subjectCase("a PrintableString common name with a character PrintableString doesn't have", withCn([[ATTR.CN, STRING.printable, "ada@example"]]));
+  subjectCase("a UTF8String common name that isn't UTF-8", withCn([[ATTR.CN, STRING.utf8, Uint8Array.of(0x61, 0xff)]]));
+  subjectCase("a subject without a common name", fabric.slice(0, 4));
+  subjectCase("a common name in the issuer only", fabric.slice(0, 4), fabricSubject("Weft test CA"));
+  subjectCase("two common names in two RDNs", [...fabric, [[ATTR.CN, STRING.printable, "ada2"]]]);
+  subjectCase("two common names in one RDN", withCn([[ATTR.CN, STRING.printable, "ada"], [ATTR.CN, STRING.printable, "ada2"]]));
+  subjectCase("an empty common name", withCn([[ATTR.CN, STRING.printable, ""]]));
+  subjectCase("a common name as a BMPString", withCn([[ATTR.CN, STRING.bmp, Uint8Array.of(0, 0x61, 0, 0x64, 0, 0x61)]]));
+  subjectCase("a common name as an IA5String", withCn([[ATTR.CN, STRING.ia5, "ada"]]));
 
   // Round 1.
   const r1Case = (name: string, index: number, post: unknown, election = "budget-2027") => {

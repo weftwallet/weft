@@ -15,7 +15,7 @@ const DST_BYTES = utf8(DST);
 
 export const LABELS = {
   context: "weft-ballot v1",
-  voterX509: "weft-voter x509 v1",
+  voterX509: "weft-voter x509 v2",
   voterIdemix: "weft-voter idemix v1",
   bit: "bit",
   sum: "sum",

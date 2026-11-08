@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { encryptBallot } from "@weftwallet/tally/client";
-import { electionFingerprint, formatFingerprint, utf8, voterTagX509, type Election } from "@weftwallet/tally";
+import { electionFingerprint, formatFingerprint, voterTagX509, type Election } from "@weftwallet/tally";
 import { beforeEach, describe, expect, it } from "vitest";
 import * as cmd from "./commands.ts";
 import { FakeContract } from "./test/fake-contract.ts";
@@ -52,14 +52,14 @@ function electionOf(): Election {
   return { channel: CHANNEL, chaincode: "private-ballot", electionId: ID, options: rec.options, threshold: rec.threshold, trustees: rec.trustees.map((x) => x.msp), publicKey: rec.publicKey!, verifyingShares: rec.verifyingShares! };
 }
 
-/** Casts one ballot per choice, from voters with made-up certificates. */
+/** Casts one ballot per choice, from voters with made-up enrolment IDs. */
 async function vote(choices: number[]) {
   const election = electionOf();
   for (const [n, choice] of choices.entries()) {
     const msp = n % 2 ? "Org2MSP" : "Org1MSP";
-    const idBytes = utf8(`voter ${n}`);
-    const ballot = encryptBallot(election, voterTagX509(CHANNEL, ID, msp, idBytes), choice);
-    await contract.ledgerFor({ msp, trustee: false, idBytes }).submit("CastBallot", ID, ballot.json);
+    const enrolmentId = `voter${n}`;
+    const ballot = encryptBallot(election, voterTagX509(CHANNEL, ID, msp, enrolmentId), choice);
+    await contract.ledgerFor({ msp, trustee: false, enrolmentId }).submit("CastBallot", ID, ballot.json);
   }
 }
 

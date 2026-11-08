@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	r255 "github.com/gtank/ristretto255"
@@ -124,12 +125,18 @@ func TestContextAndTags(t *testing.T) {
 			Channel    string `json:"channel"`
 			ElectionID string `json:"electionId"`
 			Kind       string `json:"kind"`
-			MspID      string `json:"mspId"`
-			IDBytes    string `json:"idBytes"`
-			Pseudonym  string `json:"pseudonym"`
-			Input      string `json:"input"`
-			Tag        string `json:"tag"`
+			MspID       string `json:"mspId"`
+			IDBytes     string `json:"idBytes"`
+			EnrolmentID string `json:"enrolmentId"`
+			Pseudonym   string `json:"pseudonym"`
+			Input       string `json:"input"`
+			Tag         string `json:"tag"`
 		} `json:"voterTags"`
+		EnrolmentIDs []struct {
+			Name        string `json:"name"`
+			IDBytes     string `json:"idBytes"`
+			EnrolmentID string `json:"enrolmentId"`
+		} `json:"enrolmentIds"`
 	}
 	load(t, "context.json", &v)
 	for _, c := range v.Elections {
@@ -148,15 +155,60 @@ func TestContextAndTags(t *testing.T) {
 		}
 	}
 	for _, c := range v.VoterTags {
-		var tag []byte
+		var tag, part []byte
 		if c.Kind == "x509" {
-			tag = VoterTagX509(c.Channel, c.ElectionID, c.MspID, hx(t, c.IDBytes))
+			id, err := EnrolmentID(hx(t, c.IDBytes))
+			if err != nil || id != c.EnrolmentID {
+				t.Errorf("enrolment ID in %s: got %q, %v, want %q", c.ElectionID, id, err, c.EnrolmentID)
+			}
+			tag, part = VoterTagX509(c.Channel, c.ElectionID, c.MspID, id), []byte(id)
 		} else {
-			tag = VoterTagIdemix(c.Channel, c.ElectionID, c.MspID, hx(t, c.Pseudonym))
+			part = hx(t, c.Pseudonym)
+			tag = VoterTagIdemix(c.Channel, c.ElectionID, c.MspID, part)
+		}
+		label := map[string]string{"x509": LabelVoterX509, "idemix": LabelVoterIdemix}[c.Kind]
+		if got := ToHex(Frame(label, c.Channel, c.ElectionID, c.MspID, part)); got != c.Input {
+			t.Errorf("voter tag input for %s in %s differs", c.MspID, c.ElectionID)
 		}
 		if ToHex(tag) != c.Tag {
 			t.Errorf("voter tag for %s in %s: got %s, want %s", c.MspID, c.ElectionID, ToHex(tag), c.Tag)
 		}
+	}
+	if len(v.EnrolmentIDs) < 10 {
+		t.Fatalf("context.json has %d enrolment ID cases", len(v.EnrolmentIDs))
+	}
+	for _, c := range v.EnrolmentIDs {
+		id, err := EnrolmentID(hx(t, c.IDBytes))
+		if err != nil || id != c.EnrolmentID {
+			t.Errorf("%s: got %q, %v, want %q", c.Name, id, err, c.EnrolmentID)
+		}
+	}
+}
+
+// TestOneTagPerEnrolmentID: every spelling of Fabric CA's certificate for
+// voter1, and the CA's other certificates for voter1, give one voter tag.
+func TestOneTagPerEnrolmentID(t *testing.T) {
+	var v struct {
+		EnrolmentIDs []struct {
+			Name    string `json:"name"`
+			IDBytes string `json:"idBytes"`
+		} `json:"enrolmentIds"`
+	}
+	load(t, "context.json", &v)
+	tags, raws := map[string]bool{}, map[string]bool{}
+	for _, c := range v.EnrolmentIDs {
+		if !strings.HasPrefix(c.Name, "Fabric CA") {
+			continue
+		}
+		id, err := EnrolmentID(hx(t, c.IDBytes))
+		if err != nil {
+			t.Fatalf("%s: %v", c.Name, err)
+		}
+		tags[ToHex(VoterTagX509("privatevote-budget-2027", "budget-2027", "Org1MSP", id))] = true
+		raws[c.IDBytes] = true
+	}
+	if len(tags) != 1 || len(raws) < 12 {
+		t.Errorf("%d spellings and certificates gave %d tags, want 1", len(raws), len(tags))
 	}
 }
 
@@ -396,6 +448,9 @@ type negativeVector struct {
 	Kind     string `json:"kind"`
 	Election string `json:"election"`
 	Error    string `json:"error"`
+	// voter
+	MspID   string `json:"mspId"`
+	IDBytes string `json:"idBytes"`
 	// ballot
 	VoterTag string `json:"voterTag"`
 	Voter    string `json:"voter"`
@@ -425,6 +480,8 @@ func TestNegative(t *testing.T) {
 		switch c.Kind {
 		case "ballot":
 			_, err = CheckBallot(p, hx(t, c.VoterTag), c.JSON, newLedger(c.Ledger.Ciphertexts, c.Ledger.Voted), c.Voter == "idemix")
+		case "voter":
+			_, err = EnrolmentID(hx(t, c.IDBytes))
 		case "round1":
 			_, err = CheckRound1(&p.Setup, c.Index, c.JSON)
 		case "round2":
@@ -449,7 +506,7 @@ func TestNegative(t *testing.T) {
 			t.Errorf("%s %q:\n got %q\nwant %q", c.Kind, c.Name, te.Msg, c.Error)
 		}
 	}
-	for _, k := range []string{"ballot", "round1", "round2", "confirm", "dshare", "tally"} {
+	for _, k := range []string{"voter", "ballot", "round1", "round2", "confirm", "dshare", "tally"} {
 		if kinds[k] == 0 {
 			t.Errorf("no negative vectors of kind %s", k)
 		}

@@ -67,6 +67,15 @@ func errRepeatedInBallot(i, j int) error {
 	return refuse("Ciphertexts %d and %d have the same randomness.", i, j)
 }
 func errIdentityVoted() error   { return refuse("This identity has already voted in this election.") }
+func errNotX509Voter() error {
+	return refuse("This identity can't vote in this election: it isn't an X.509 identity.")
+}
+func errCertificate() error {
+	return refuse("This identity can't vote in this election: its certificate doesn't parse.")
+}
+func errNoEnrolmentID() error {
+	return refuse("This identity can't vote in this election: its certificate has no enrolment ID.")
+}
 func errCredentialVoted() error { return refuse("This credential has already voted in this election.") }
 func errProofOfKnowledge(msp string) error {
 	return refuse("The proof of knowledge from %s doesn't verify.", msp)

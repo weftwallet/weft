@@ -187,7 +187,7 @@ const varint = (n: number) => {
  * The creator's SerializedIdentity.id_bytes in a proposal Weft is asked to
  * sign, unchanged: for an X.509 identity, the PEM certificate exactly as the
  * relay put it there, with or without a trailing newline. The contract makes
- * the voter tag from these bytes, so Weft does too.
+ * the voter tag from the enrolment ID in that certificate, so Weft does too.
  */
 export function creatorIdBytes(proposalBytes: Uint8Array): Uint8Array {
   // Proposal.header = 1 -> Header.signature_header = 2 -> SignatureHeader.creator = 1 -> SerializedIdentity.id_bytes = 2

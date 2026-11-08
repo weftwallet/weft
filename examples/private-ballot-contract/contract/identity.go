@@ -46,30 +46,33 @@ func (c *caller) x509() bool {
 	return block != nil && block.Type == "CERTIFICATE"
 }
 
-// idemixNym returns the Nym of an idemix creator: its id_bytes decode as a
-// SerializedIdemixIdentity whose nym_x and nym_y, 32 bytes each, are a
-// point of G1. The peer's idemix MSP has already checked the creator's
-// proof that the Nym belongs to a credential from the channel's issuer key.
-func (c *caller) idemixNym() (*math.G1, bool) {
+// idemixNym returns an idemix creator's SerializedIdemixIdentity and its
+// Nym: the id_bytes decode as a SerializedIdemixIdentity whose nym_x and
+// nym_y, 32 bytes each, are a point of G1. The peer's idemix MSP has
+// checked the creator's proof against the issuer key in the channel's
+// configuration, which the contract can't read, so the contract checks the
+// proof again against the election's pinned key (credentialProof).
+func (c *caller) idemixNym() (*msp.SerializedIdemixIdentity, *math.G1, bool) {
 	if c.x509() {
-		return nil, false
+		return nil, nil, false
 	}
 	sid := &msp.SerializedIdemixIdentity{}
 	if err := proto.Unmarshal(c.idBytes, sid); err != nil {
-		return nil, false
+		return nil, nil, false
 	}
 	if len(sid.GetNymX()) != 32 || len(sid.GetNymY()) != 32 {
-		return nil, false
+		return nil, nil, false
 	}
-	return pseudonym.DecodePoint(append(append([]byte{}, sid.GetNymX()...), sid.GetNymY()...))
+	nym, ok := pseudonym.DecodePoint(append(append([]byte{}, sid.GetNymX()...), sid.GetNymY()...))
+	return sid, nym, ok
 }
 
 // idemixAttributes returns an idemix creator's organisational unit and
 // role, as cid reads them from the SerializedIdemixIdentity's ou and role
-// fields: the role is "member" for MSPRole MEMBER. The peer's idemix MSP has
-// already checked that the credential behind the Nym carries both. cid
-// fails only if either field doesn't decode, which the peer would have
-// refused, and then the creator has neither.
+// fields: the role is "member" for MSPRole MEMBER. credentialProof then
+// checks that the credential behind the Nym carries both. cid fails only
+// if either field doesn't decode, which the peer would have refused, and
+// then the creator has neither.
 func (c *caller) idemixAttributes() (ou, role string) {
 	id, err := cid.New(c.stub)
 	if err != nil {
@@ -78,6 +81,18 @@ func (c *caller) idemixAttributes() (ou, role string) {
 	ou, _, _ = id.GetAttributeValue("ou")
 	role, _, _ = id.GetAttributeValue("role")
 	return ou, role
+}
+
+// credentialProof checks an idemix creator's proof against the election's
+// pinned issuer key, with the OU and role it states, as the peer's idemix
+// MSP checks it against the channel's key. A creator whose credential comes
+// from another key, including one that copies the pinned key's HSk and
+// HRand, fails here.
+func credentialProof(key *pseudonym.Key, sid *msp.SerializedIdemixIdentity, nym *math.G1, ou string) error {
+	if err := key.VerifyIdentity(sid.GetProof(), nym, ou, pseudonym.RoleMember); err != nil {
+		return errCredentialProof()
+	}
+	return nil
 }
 
 // trusteeIdentity reports whether the creator carries weft.trustee=true.

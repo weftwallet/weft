@@ -1,13 +1,14 @@
 package contract
 
 // Elections with voter credentials: CreateElection with an issuer key, and
-// CastAnonymousBallot with real idemix creators. Each creator is built as
+// CastAnonymousBallot with real idemix creators. Each credential is issued
+// with IBM idemix, as Fabric CA issues one, and each creator is built as
 // Fabric's idemix MSP serialises one: a SerializedIdentity whose id_bytes
-// are a SerializedIdemixIdentity with a new Nym, sk·HSk + rNym·HRand, for a
-// credential's secret key, and the ou and role messages the credential
-// discloses. Its proof field holds placeholder bytes: the peer checks that
-// proof before the contract runs, and the contract doesn't read it. The
-// native network run in phase c of ADR 0008's step signs with real
+// are a SerializedIdemixIdentity with a new Nym, sk·HSk + rNym·HRand, for
+// the credential's secret key, the ou and role messages the credential
+// discloses, and the proof, an idemix signature that the Nym belongs to
+// the credential, which the contract checks against the pinned issuer key.
+// The native network run in phase c of ADR 0008's step signs with real
 // credentials from Fabric CA.
 
 import (
@@ -23,6 +24,7 @@ import (
 
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
 	"github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl"
+	"github.com/IBM/idemix/bccsp/types"
 	math "github.com/IBM/mathlib"
 	r255 "github.com/gtank/ristretto255"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
@@ -34,11 +36,17 @@ import (
 
 const votersMSP = "ChairVoters2027MSP"
 
-var fp256bn = math.Curves[math.FP256BN_AMCL]
+var (
+	fp256bn = math.Curves[math.FP256BN_AMCL]
+	tr      = &amcl.Fp256bn{C: fp256bn}
+	ix      = &idemix.Idemix{Curve: fp256bn, Translator: tr}
+)
 
-// scratchIssuer is an idemix issuer key, as fabric-ca-server init makes one.
+// scratchIssuer is an idemix issuer key, as fabric-ca-server init makes one,
+// with its secret, to issue credentials.
 type scratchIssuer struct {
 	raw []byte
+	ik  *idemix.IssuerKey
 	ipk *idemix.IssuerPublicKey
 	key *pseudonym.Key
 }
@@ -49,18 +57,22 @@ func (is *scratchIssuer) hash() string {
 	return hex.EncodeToString(d[:])
 }
 
-func newIssuer(t *testing.T, names []string) *scratchIssuer {
-	tr := &amcl.Fp256bn{C: fp256bn}
-	ix := &idemix.Idemix{Curve: fp256bn, Translator: tr}
+func newIssuer(t testing.TB, names []string) *scratchIssuer {
 	k, err := ix.NewIssuerKey(names, rand.Reader, tr)
 	if err != nil {
 		t.Fatal(err)
 	}
+	return issuerFrom(t, k)
+}
+
+func issuerFrom(t testing.TB, k *idemix.IssuerKey) *scratchIssuer {
+	t.Helper()
+	names := k.Ipk.GetAttributeNames()
 	raw, err := proto.Marshal(k.Ipk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	is := &scratchIssuer{raw: raw, ipk: k.Ipk}
+	is := &scratchIssuer{raw: raw, ik: k, ipk: k.Ipk}
 	if names[len(names)-1] == "RevocationHandle" {
 		if is.key, err = pseudonym.LoadIssuerKey(raw); err != nil {
 			t.Fatal(err)
@@ -77,7 +89,7 @@ var (
 
 // issuers returns two issuer keys with Fabric's attribute names, and one
 // with other names.
-func issuers(t *testing.T) (a, b, other *scratchIssuer) {
+func issuers(t testing.TB) (a, b, other *scratchIssuer) {
 	issuersOnce.Do(func() {
 		issuerA = newIssuer(t, pseudonym.AttributeNames)
 		issuerB = newIssuer(t, pseudonym.AttributeNames)
@@ -86,18 +98,82 @@ func issuers(t *testing.T) (a, b, other *scratchIssuer) {
 	return issuerA, issuerB, issuerOtherAttribs
 }
 
-// credential is a voter credential's secret key and the attributes it
-// discloses, from an issuer.
+// forgedIssuer is the replacement key of review packet Q2: a new issuer
+// secret, with the pinned key's HSk and HRand copied in. IBM idemix's
+// check of an issuer key proves knowledge of the secret for W and BarG2
+// only, so the key passes it, and the channel's administrators could put it
+// in the voter MSP's configuration. Nyms, and so pseudonym proofs, under it
+// are the same as under the pinned key.
+func forgedIssuer(t *testing.T, pinned *scratchIssuer) *scratchIssuer {
+	t.Helper()
+	k, err := ix.NewIssuerKey(pseudonym.AttributeNames, rand.Reader, tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	k.Ipk.HSk, k.Ipk.HRand = pinned.ipk.HSk, pinned.ipk.HRand
+	if err := k.Ipk.SetHash(fp256bn); err != nil {
+		t.Fatal(err)
+	}
+	if err := k.Ipk.Check(fp256bn, tr); err != nil {
+		t.Fatalf("the forged key fails IBM idemix's check: %v", err)
+	}
+	return issuerFrom(t, k)
+}
+
+// credential is a voter credential's secret key, the credential an issuer
+// signed and the attributes it discloses.
 type credential struct {
 	is   *scratchIssuer
 	sk   *math.Zr
+	cred *idemix.Credential
 	ou   string
 	role msp.MSPRole_MSPRoleType
 	msp  string
 }
 
+// roleValue is a credential's Role attribute, as Fabric CA writes it.
+func roleValue(r msp.MSPRole_MSPRoleType) int64 {
+	if r == msp.MSPRole_ADMIN {
+		return pseudonym.RoleAdmin
+	}
+	return pseudonym.RoleMember
+}
+
+// newCredential issues a credential, as Fabric CA's idemix endpoint does:
+// a credential request for a new secret key, then the issuer's signature
+// on it with the OU, the role, an enrolment ID and a revocation handle.
 func newCredential(is *scratchIssuer, ou string, role msp.MSPRole_MSPRoleType) *credential {
-	return &credential{is: is, sk: fp256bn.NewRandomZr(rand.Reader), ou: ou, role: role, msp: votersMSP}
+	sk := fp256bn.NewRandomZr(rand.Reader)
+	req, err := ix.NewCredRequest(sk, fp256bn.NewRandomZr(rand.Reader).Bytes(), is.ipk, rand.Reader, tr)
+	if err != nil {
+		panic(err)
+	}
+	attrs := []*math.Zr{fp256bn.HashToZr([]byte(ou)), fp256bn.NewZrFromInt(roleValue(role)), fp256bn.HashToZr([]byte("voter")), fp256bn.NewRandomZr(rand.Reader)}
+	cred, err := ix.NewCredential(is.ik, req, attrs, rand.Reader, tr)
+	if err != nil {
+		panic(err)
+	}
+	return &credential{is: is, sk: sk, cred: cred, ou: ou, role: role, msp: votersMSP}
+}
+
+var (
+	criOnce sync.Once
+	cri     *idemix.CredentialRevocationInformation
+)
+
+// noRevocation is the credential revocation information Fabric CA gives
+// every credential, with ALG_NO_REVOCATION.
+func noRevocation(t testing.TB) *idemix.CredentialRevocationInformation {
+	criOnce.Do(func() {
+		key, err := ix.GenerateLongTermRevocationKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cri, err = ix.CreateCRI(key, nil, 0, idemix.ALG_NO_REVOCATION, rand.Reader, tr); err != nil {
+			t.Fatal(err)
+		}
+	})
+	return cri
 }
 
 // oneOff is a one-off identity of a credential: the creator, and the Nym
@@ -108,11 +184,21 @@ type oneOff struct {
 	rNym *math.Zr
 }
 
-func (c *credential) identity(t *testing.T) *oneOff {
+func (c *credential) identity(t testing.TB) *oneOff {
 	t.Helper()
 	rNym := fp256bn.NewRandomZr(rand.Reader)
 	nym := c.is.key.HSk.Mul2(c.sk, c.is.key.HRand, rNym)
 	xy := pseudonym.EncodePoint(nym)
+	// The proof Fabric's MSP makes for its identity: the OU and role
+	// disclosed, the enrolment ID and revocation handle hidden, no message.
+	sig, _, err := ix.NewSignature(c.cred, c.sk, nym, rNym, c.is.ipk, []byte{1, 1, 0, 0}, nil, 3, 2, noRevocation(t), rand.Reader, tr, types.Standard, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proof, err := proto.Marshal(sig)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ou, err := proto.Marshal(&msp.OrganizationUnit{MspIdentifier: c.msp, OrganizationalUnitIdentifier: c.ou, CertifiersIdentifier: c.is.ipk.Hash})
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +207,7 @@ func (c *credential) identity(t *testing.T) *oneOff {
 	if err != nil {
 		t.Fatal(err)
 	}
-	idBytes, err := proto.Marshal(&msp.SerializedIdemixIdentity{NymX: xy[:32], NymY: xy[32:], Ou: ou, Role: role, Proof: []byte("the proof the peer's idemix MSP checks")})
+	idBytes, err := proto.Marshal(&msp.SerializedIdemixIdentity{NymX: xy[:32], NymY: xy[32:], Ou: ou, Role: role, Proof: proof})
 	if err != nil {
 		t.Fatal(err)
 	}

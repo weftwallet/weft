@@ -116,10 +116,10 @@ export interface CastResult {
  * Casts the ballot: `call` is CastBallot with the ballot Weft made, or
  * CastAnonymousBallot with the ballot and the pseudonym proof. Before
  * signing, the proposal must carry exactly those arguments and the creator's
- * id_bytes must be exactly `idBytes`: for an X.509 voter the bytes the voter
- * tag was made from, since a ballot bound to another tag would be refused by
- * the contract; for a voter credential the one-off identity Weft made for
- * this transaction, which the pseudonym proof is bound to.
+ * id_bytes must be exactly `idBytes`: for an X.509 voter the certificate the
+ * relay put in the read's proposal, whose enrolment ID the voter tag was made
+ * from; for a voter credential the one-off identity Weft made for this
+ * transaction, which the pseudonym proof is bound to.
  */
 export async function castBallotCall(
   relay: BallotRelay,
@@ -132,7 +132,7 @@ export async function castBallotCall(
   progress.onStage?.("proposing");
   const { proposal, decoded } = await proposeChecked(relay, signer, call);
   if (!sameBytes(creatorIdBytes(decoded.signable), idBytes)) {
-    throw new VerificationError("signing certificate's bytes", "the bytes the voter tag was made from", "different bytes");
+    throw new VerificationError("signing certificate's bytes", "the certificate the voter tag was made from", "different bytes");
   }
   const signature = toBase64(await sign(decoded.signable));
 

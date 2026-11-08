@@ -9,8 +9,9 @@
 
 import { createHash } from "node:crypto";
 import type { common } from "@hyperledger/fabric-protos";
-import { electionContext, electionFingerprint, toHex, trackingCode, utf8, voterTagX509, type Ballot, type Election, type ElectionSetup } from "@weftwallet/tally";
+import { electionContext, electionFingerprint, toHex, trackingCode, voterTagX509, type Ballot, type Election, type ElectionSetup } from "@weftwallet/tally";
 import { encryptBallot } from "@weftwallet/tally/client";
+import { certificatePem, fabricSubject } from "@weftwallet/tally/testing";
 import { ceremonyRound1, ceremonyRound2, ceremonyRound3, decryptionShare, type KeyShare } from "@weftwallet/tally/trustee";
 import { addTotals, recoverTally } from "@weftwallet/tally/verify";
 import { chain, type TxSpec } from "./blocks.ts";
@@ -26,7 +27,8 @@ const scalarHex = (i: number) => {
 /** A trustee's identity: a certificate with weft.trustee=true would be the real one; this is its stand-in. */
 export const trusteeCert = (msp: string) => `-----BEGIN CERTIFICATE-----\ntrustee of ${msp}\n-----END CERTIFICATE-----\n`;
 /** A voter's id_bytes, a stand-in for the PEM certificate Fabric carries. */
-export const voterCert = (n: number) => `-----BEGIN CERTIFICATE-----\nvoter ${n}\n-----END CERTIFICATE-----\n`;
+/** A certificate in Fabric CA's shape for the enrolment ID voter<n>. */
+export const voterCert = (n: number) => certificatePem({ seed: `voter ${n}`, subject: fabricSubject(`voter${n}`) });
 
 export interface Options {
   channel?: string;
@@ -136,7 +138,7 @@ export async function privateElection(o: Options = {}): Promise<Fixture> {
   for (const [v, choice] of choices.entries()) {
     const msp = msps[v % msps.length]!;
     const cert = voterCert(v + 1);
-    const tag = voterTagX509(channel, id, msp, utf8(cert));
+    const tag = voterTagX509(channel, id, msp, `voter${v + 1}`);
     const made = encryptBallot(election, tag, choice);
     const ballot = JSON.parse(made.json) as Ballot;
     let tracking = made.tracking;

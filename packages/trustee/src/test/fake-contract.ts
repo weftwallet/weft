@@ -28,8 +28,8 @@ import { Refusal, ValidationFailure, type Ledger, type Submitted } from "../ledg
 export interface Caller {
   msp: string;
   trustee: boolean;
-  /** For the voter tag. */
-  idBytes?: Uint8Array;
+  /** For the voter tag: the enrolment ID the contract reads from an X.509 voter's certificate. */
+  enrolmentId?: string;
 }
 
 export interface Call {
@@ -279,7 +279,7 @@ export class FakeContract {
         const s = this.get(id!);
         if (s.rec.state === "decrypting" || s.rec.state === "counted") throw new Refusal("Voting has closed.");
         if (s.rec.state !== "open") throw new Refusal(`The election isn't open: it is in ${s.rec.state}.`);
-        const tag = voterTagX509(this.channel, id!, caller.msp, caller.idBytes!);
+        const tag = voterTagX509(this.channel, id!, caller.msp, caller.enrolmentId!);
         const checked = this.check(() =>
           checkBallot(this.election(s.rec), tag, args[1]!, { hasCiphertext: (a) => s.ciphertexts.has(a), hasVoted: (t) => s.voted.has(t) }),
         );

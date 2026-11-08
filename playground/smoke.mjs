@@ -295,7 +295,7 @@ await step("The Org1 user casts a private ballot through the relay", ["A new Org
   const signer = { mspId: invite.mspId, certificate: user.certificate };
   const sign = (m) => core.signForFabric(user.privateKey, m);
   const { record, setup } = await readElection(signer, sign, x509Election, x509Election.id);
-  const tag = tally.voterTagX509(setup.channel, x509Election.id, invite.mspId, Buffer.from(user.certificate.trim()));
+  const tag = tally.voterTagFromCertificate(setup.channel, x509Election.id, invite.mspId, Buffer.from(user.certificate.trim()));
   const ballot = tallyClient.encryptBallot(setup, tag, 0);
   try {
     const r = await core.submitCall(relay(), signer, { channel: setup.channel, chaincode: setup.chaincode, fn: "CastBallot", args: [x509Election.id, ballot.json] }, sign);

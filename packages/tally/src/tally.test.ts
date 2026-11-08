@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { encryptBallot } from "./client.ts";
 import { BadShareError, ceremonyRound1, ceremonyRound2, ceremonyRound3, decryptionShare } from "./trustee.ts";
 import { addTotals, checkBallot, checkConfirmation, checkDecryptionShare, checkRound1, checkRound2, recoverTally } from "./verify.ts";
-import { count, electionFingerprint, formatFingerprint, fromHex, messages, toHex, utf8, voterTagX509, type Election, type ElectionSetup, type Round2Post } from "./index.ts";
+import { count, electionFingerprint, formatFingerprint, fromHex, messages, toHex, voterTagX509, type Election, type ElectionSetup, type Round2Post } from "./index.ts";
 import { seededRandom } from "./testing.ts";
 
 async function ceremony(setup: ElectionSetup) {
@@ -64,7 +64,7 @@ describe("random elections, from cast to count", () => {
       for (let v = 0; v < voters; v++) {
         const choice = pick(L);
         expected[choice]!++;
-        const tag = voterTagX509(setup.channel, setup.electionId, "Org1MSP", utf8(`voter ${v}`));
+        const tag = voterTagX509(setup.channel, setup.electionId, "Org1MSP", `voter ${v}`);
         const { json, tracking } = encryptBallot(election, tag, choice);
         const checked = checkBallot(election, tag, json);
         expect(checked.tracking).toBe(tracking);
@@ -88,7 +88,7 @@ describe("random elections, from cast to count", () => {
 describe("the client", () => {
   it("returns no randomness", async () => {
     const { election } = await ceremony({ channel: "c", chaincode: "private-ballot", electionId: "e", options: ["A", "B"], threshold: 2, trustees: ["Org1MSP", "Org2MSP"] });
-    const tag = voterTagX509("c", "e", "Org1MSP", utf8("pem"));
+    const tag = voterTagX509("c", "e", "Org1MSP", "voter");
     const out = encryptBallot(election, tag, 1);
     expect(Object.keys(out).sort()).toEqual(["ballot", "json", "tracking"]);
     expect(Object.keys(JSON.parse(out.json))).toEqual(["v", "electionId", "ciphertexts", "bitProofs", "sumProof"]);

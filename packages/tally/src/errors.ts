@@ -37,6 +37,9 @@ export const messages = {
   repeated: () => "A ciphertext in this ballot is already on the ledger.",
   repeatedInBallot: (i: number, j: number) => `Ciphertexts ${i} and ${j} have the same randomness.`,
   identityVoted: () => "This identity has already voted in this election.",
+  notX509Voter: () => "This identity can't vote in this election: it isn't an X.509 identity.",
+  certificate: () => "This identity can't vote in this election: its certificate doesn't parse.",
+  noEnrolmentId: () => "This identity can't vote in this election: its certificate has no enrolment ID.",
   credentialVoted: () => "This credential has already voted in this election.",
 
   commitmentCount: (msp: string, n: number, k: number) =>

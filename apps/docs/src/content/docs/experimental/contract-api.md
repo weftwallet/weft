@@ -11,10 +11,10 @@ This page describes Weft Experimental, a separate build that is not part of the 
 
 ## Overview
 
-- It uses `fabric-chaincode-go`'s shim and `cid` package, v2.3.0, and not `fabric-contract-api-go`. `cid` reads the Fabric CA attributes of an X.509 creator and the OU and role of an idemix creator, so a call from either gets an answer. `fabric-contract-api-go` also builds its caller from `cid`, and ignores the error, so it would accept idemix creators too, unlike Node's `fabric-contract-api` ([ADR 0008](/reference/decisions/)). It isn't used because its latest release, v2.2.4, needs Go 1.26.7, newer than the Go in `hyperledger/fabric-ccenv:2.5`, and because it refuses some calls with messages of its own, outside the [error table](#errors). The contract reads the creator's `SerializedIdentity` itself for the voter tag.
+- It uses `fabric-chaincode-go`'s shim and `cid` package, v2.3.0, and not `fabric-contract-api-go`. `cid` reads the Fabric CA attributes of an X.509 creator and the OU and role of an idemix creator, so a call from either gets an answer. `fabric-contract-api-go` also builds its caller from `cid`, and ignores the error, so it would accept idemix creators too, unlike Node's `fabric-contract-api` ([ADR 0008](/reference/decisions/)). It isn't used because its latest release, v2.2.4, needs Go 1.26.7, newer than the Go in `hyperledger/fabric-ccenv:2.5`, and because it refuses some calls with messages of its own, outside the [error table](#errors). The contract reads the creator's `SerializedIdentity` itself for the voter tag, and parses an X.509 creator's certificate with Go's `crypto/x509` for its enrolment ID.
 - The [election context](/experimental/private-tally-spec/#the-election-context) binds the contract's own name, which the shim doesn't give. The contract reads it from the signed proposal, in the `ChaincodeHeaderExtension` of the channel header, which names the contract the client called and the peer ran. It computes the context when the third round of the ceremony is checked and when the election opens, and from then on uses the `context` in the record.
 - It is one Go module, `github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract`, with the tally's verifiers in `internal/tally`. They handle no secret: decoding, the proof checks, the tracking code, totals, the round 1 proof of knowledge, the key and verifying shares, and combining decryption shares.
-- It verifies ballot proofs with `github.com/gtank/ristretto255` on `filippo.io/edwards25519`. The module's README gives the reasons for the ristretto255 library. It verifies the [pseudonym proof](/experimental/private-tally-spec/#the-per-election-pseudonym) with its `pseudonym` package, on IBM mathlib, and decodes issuer keys with IBM idemix's dlog package. Weft's WebAssembly module compiles the same `pseudonym` package, so one Go source proves and verifies.
+- It verifies ballot proofs with `github.com/gtank/ristretto255` on `filippo.io/edwards25519`. The module's README gives the reasons for the ristretto255 library. It verifies the [pseudonym proof](/experimental/private-tally-spec/#the-per-election-pseudonym) with its `pseudonym` package, on IBM mathlib, and decodes issuer keys and verifies each anonymous creator's proof with IBM idemix's dlog package. Weft's WebAssembly module compiles the same `pseudonym` package, so one Go source proves and verifies.
 - It uses no private data collection and no transient data. Every argument is public.
 - Every function is deterministic, and none reads a clock. A transaction's timestamp is set by the client that sends it, and peers don't compare it with their own clocks. `CreateElection` is the one function that reads it, to refuse a `closesAt` that has already passed, and no other function reads it. Every endorser reads the same timestamp from the proposal, so they agree. A creator that writes a wrong time can only get past the check with a `closesAt` that has already passed, which makes its own election show as past its planned closing time, and the contract doesn't act on `closesAt`. `CastBallot`, `CloseElection` and every other function read no time, and an election stops accepting ballots when it is [closed](#closeelection) on the ledger.
 - Its endorsement and lifecycle policies name only X.509 organisations, since idemix organisations can't endorse. The playground uses `AND('Org1MSP.peer','Org2MSP.peer')`.
@@ -149,7 +149,7 @@ Once every trustee has confirmed, computes the election key, the verifying share
 
 ### CastBallot
 
-For an election with X.509 voters. After the election's state, the contract checks that the election has X.509 voters, that the creator's MSP ID is one of `voters.msps` and that the creator is an X.509 identity, then runs the checks in the [specification](/experimental/private-tally-spec/#what-the-contract-checks), with the voter tag from the creator's certificate. Returns `{ "electionId", "txId", "tracking" }`. Event `BallotCast` with the election ID and tracking code.
+For an election with X.509 voters. After the election's state, the contract checks that the election has X.509 voters, that the creator's MSP ID is one of `voters.msps`, that the creator is an X.509 identity and that its certificate parses and has an [enrolment ID](/experimental/private-tally-spec/#the-enrolment-id), the one common name in its subject, then runs the checks in the [specification](/experimental/private-tally-spec/#what-the-contract-checks), with the voter tag from the creator's MSP ID and enrolment ID. The same certificate in another PEM spelling, and another certificate the CA issued for the same enrolment ID, give the same tag, so the contract refuses a second ballot from either. Returns `{ "electionId", "txId", "tracking" }`. Event `BallotCast` with the election ID and tracking code.
 
 ### CastAnonymousBallot
 
@@ -159,12 +159,13 @@ For an election with voter credentials. `pseudonymJson` is the [pseudonym proof]
 2. The election has voter credentials. Otherwise: "This election has X.509 voters, so its ballots are cast with CastBallot."
 3. The creator's MSP ID is `voters.msp`.
 4. The creator is an idemix identity: its `id_bytes` decode as a `SerializedIdemixIdentity` whose `nym_x` and `nym_y`, 32 bytes each, are a point of G1.
-5. The creator's organisational unit, from its `ou` field, is `voters.affiliation`, and its role, from its `role` field, is member, as `cid` reads them. The peer's idemix MSP has already checked that the credential behind the Nym carries both. A credential with Fabric CA's role 2 passes the channel's `member` policies, and this check is what refuses it.
-6. The ballot parses and decodes.
-7. `pseudonymJson` parses and decodes.
-8. It makes the voter tag from the pseudonym and the tracking code from the ballot.
-9. The pseudonym proof verifies against the creator's Nym, the pinned issuer key and the tracking code.
-10. The ballot's proofs verify, its ciphertexts don't repeat, and the credential hasn't voted in this election.
+5. The creator's organisational unit, from its `ou` field, is `voters.affiliation`, and its role, from its `role` field, is member, as `cid` reads them. A credential with Fabric CA's role 2 passes the channel's `member` policies, and this check is what refuses it.
+6. The creator's proof verifies against the pinned issuer key, with that affiliation and the role member, as the peer's idemix MSP checks it against the issuer key in the channel's configuration ([The creator's proof](/experimental/private-tally-spec/#the-creators-proof)). This shows the credential behind the Nym carries both attributes and came from the pinned key, whatever key the channel's configuration holds.
+7. The ballot parses and decodes.
+8. `pseudonymJson` parses and decodes.
+9. It makes the voter tag from the pseudonym and the tracking code from the ballot.
+10. The pseudonym proof verifies against the creator's Nym, the pinned issuer key and the tracking code.
+11. The ballot's proofs verify, its ciphertexts don't repeat, and the credential hasn't voted in this election.
 
 The [specification](/experimental/private-tally-spec/#what-the-contract-checks) has each step. The contract stores the pseudonym proof with the ballot. Returns and emits the same as `CastBallot`.
 
@@ -275,11 +276,14 @@ Each error says what happened and, where the caller can do something about it, w
 | `Voting has already closed: the election is in <state>.` | `CloseElection` in `decrypting` or `counted`. |
 | `<MSP> has already asked to close voting.` | A second `CloseElection` from the same trustee while the election is `open`. It writes nothing and emits no event. |
 | `This identity can't vote in this election: <MSP> isn't one of its voter organisations.` | `CastBallot` from an MSP that isn't in `voters.msps`, or `CastAnonymousBallot` from one that isn't `voters.msp`. |
+| `This identity can't vote in this election: its certificate doesn't parse.` | `CastBallot` from an identity of a voter organisation whose `id_bytes` are a PEM certificate that Go's `x509.ParseCertificate` refuses. |
+| `This identity can't vote in this election: its certificate has no enrolment ID.` | `CastBallot` from an identity whose certificate's subject has no common name, more than one, an empty one, or one that is neither a UTF8String nor a PrintableString. |
 | `This election has voter credentials, so its ballots are cast with CastAnonymousBallot.` | `CastBallot` in an election with voter credentials, from any identity. |
 | `This election has X.509 voters, so its ballots are cast with CastBallot.` | `CastAnonymousBallot` in an election with X.509 voters, from any identity. |
 | `This identity can't vote in this election: it isn't a voter credential.` | `CastAnonymousBallot` from an identity of `voters.msp` whose `id_bytes` aren't an idemix identity. |
 | `This credential can't vote in this election: its affiliation isn't <affiliation>.` | `CastAnonymousBallot` from a credential with another organisational unit, such as the voters' CA's bootstrap admin, whose affiliation is the root. |
 | `This credential can't vote in this election: its role isn't member.` | `CastAnonymousBallot` from a credential with the admin role. |
+| `This credential can't vote in this election: its proof isn't valid for the election's issuer key.` | `CastAnonymousBallot` from an idemix creator whose proof doesn't verify against the pinned issuer key with the election's affiliation and the role member. This includes a credential from another key, even one that copies the pinned key's `HSk` and `HRand`, a proof missing or made for another Nym, and a creator whose `ou` or `role` field states other attributes than its credential has. |
 | `The ballot isn't for this election.` | Wrong `v` or `electionId`. |
 | `The ballot has <n> ciphertexts; this election has <L> options.` | Wrong length. |
 | `The ballot has <n> bit proofs; this election has <L> options.` | Wrong length. |

@@ -25,7 +25,8 @@ export {
   type ElectionKeys,
   type ElectionSetup,
 } from "./election.ts";
-export { voterTagX509, voterTagIdemix, pemIdBytes } from "./voter.ts";
+export { voterTagX509, voterTagFromCertificate, voterTagIdemix } from "./voter.ts";
+export { enrolmentId, decodePem } from "./x509.ts";
 export { trackingCode } from "./tracking.ts";
 export { TallyError, messages, count } from "./errors.ts";
 export * from "./types.ts";

@@ -1,0 +1,20 @@
+{
+  "description": "Certificates that Fabric CA v1.5.17 (fabric-ca-server and fabric-ca-client, its default SQLite registry) issued for one enrolment ID, voter1, registered with type client and affiliation org1.department1. They are the inputs of the enrolment ID vectors in context.json and aren't generated.",
+  "certificates": [
+    {
+      "name": "the first enrolment",
+      "how": "fabric-ca-client enroll -u http://voter1:voter1pw@localhost:17154",
+      "pem": "-----BEGIN CERTIFICATE-----\nMIICxTCCAmugAwIBAgIURTdSt04V6M1NUv7BSrR5DZwMSA0wCgYIKoZIzj0EAwIw\naDELMAkGA1UEBhMCVVMxFzAVBgNVBAgTDk5vcnRoIENhcm9saW5hMRQwEgYDVQQK\nEwtIeXBlcmxlZGdlcjEPMA0GA1UECxMGRmFicmljMRkwFwYDVQQDExBmYWJyaWMt\nY2Etc2VydmVyMB4XDTI2MTEwODIyMDEwMFoXDTI3MTEwODIyMDYwMFowfzELMAkG\nA1UEBhMCVVMxFzAVBgNVBAgTDk5vcnRoIENhcm9saW5hMRQwEgYDVQQKEwtIeXBl\ncmxlZGdlcjEwMAsGA1UECxMEb3JnMTANBgNVBAsTBmNsaWVudDASBgNVBAsTC2Rl\ncGFydG1lbnQxMQ8wDQYDVQQDEwZ2b3RlcjEwWTATBgcqhkjOPQIBBggqhkjOPQMB\nBwNCAATSIgKCWZ5hAX0hjUwBG76/dhGDXpYmU9h+tbZjomPORj3P/mmJX640uuYh\nTTH/IbEll/IhlBdvYMDDlZ+ajEHno4HbMIHYMA4GA1UdDwEB/wQEAwIHgDAMBgNV\nHRMBAf8EAjAAMB0GA1UdDgQWBBR5kc21rnqXmT6EApWUFXZ80ikmazAfBgNVHSME\nGDAWgBRUC2FuBtamO8/HUN6rPFjpituUQTANBgNVHREEBjAEggJ2bTBpBggqAwQF\nBgcIAQRdeyJhdHRycyI6eyJoZi5BZmZpbGlhdGlvbiI6Im9yZzEuZGVwYXJ0bWVu\ndDEiLCJoZi5FbnJvbGxtZW50SUQiOiJ2b3RlcjEiLCJoZi5UeXBlIjoiY2xpZW50\nIn19MAoGCCqGSM49BAMCA0gAMEUCIQC/aqv+KZONY1GZawD0AV0CTC8/tSKj4qVu\nSEfP1SnKaAIgVPzbWfycT7S1lnUByTLDqqVeVMmGV6l8LwVPN3yIYNI=\n-----END CERTIFICATE-----\n"
+    },
+    {
+      "name": "a second enrolment with other CSR names",
+      "how": "fabric-ca-client enroll -u http://voter1:voter1pw@localhost:17154 --csr.names C=GB,ST=London,O=Other Org,L=London",
+      "pem": "-----BEGIN CERTIFICATE-----\nMIICzTCCAnOgAwIBAgIUQQIN4HNX0qrwIdJupp/XhyZnmEIwCgYIKoZIzj0EAwIw\naDELMAkGA1UEBhMCVVMxFzAVBgNVBAgTDk5vcnRoIENhcm9saW5hMRQwEgYDVQQK\nEwtIeXBlcmxlZGdlcjEPMA0GA1UECxMGRmFicmljMRkwFwYDVQQDExBmYWJyaWMt\nY2Etc2VydmVyMB4XDTI2MTEwODIyMDEwMFoXDTI3MTEwODIyMDYwMFowgYYxCzAJ\nBgNVBAYTAkdCMQ8wDQYDVQQIEwZMb25kb24xDzANBgNVBAcTBkxvbmRvbjESMBAG\nA1UEChMJT3RoZXIgT3JnMTAwCwYDVQQLEwRvcmcxMA0GA1UECxMGY2xpZW50MBIG\nA1UECxMLZGVwYXJ0bWVudDExDzANBgNVBAMTBnZvdGVyMTBZMBMGByqGSM49AgEG\nCCqGSM49AwEHA0IABB0v7Rtf459FUxW2K5ihDLfIMdXknMy3T6V5POB/Q5v6gvSB\nDoMKwB30ZxL34xaRytJ8BR4obxDfas0B713Ti1WjgdswgdgwDgYDVR0PAQH/BAQD\nAgeAMAwGA1UdEwEB/wQCMAAwHQYDVR0OBBYEFGNsPSNiNIQcqJ/ml2/lZbf/yOeQ\nMB8GA1UdIwQYMBaAFFQLYW4G1qY7z8dQ3qs8WOmK25RBMA0GA1UdEQQGMASCAnZt\nMGkGCCoDBAUGBwgBBF17ImF0dHJzIjp7ImhmLkFmZmlsaWF0aW9uIjoib3JnMS5k\nZXBhcnRtZW50MSIsImhmLkVucm9sbG1lbnRJRCI6InZvdGVyMSIsImhmLlR5cGUi\nOiJjbGllbnQifX0wCgYIKoZIzj0EAwIDSAAwRQIhAIHHehRc+F06V7AhnigM5Bew\nQpCIyADCO5G74yr+s6IaAiAcC/BKdSc2zkXupuRB1/iwUzpjDchlmwi5FDrxp5/e\nAw==\n-----END CERTIFICATE-----\n"
+    },
+    {
+      "name": "a re-enrolment after the registrar changed the type and affiliation",
+      "how": "fabric-ca-client identity modify voter1 --affiliation org2 --type user, then fabric-ca-client reenroll with the first enrolment's certificate",
+      "pem": "-----BEGIN CERTIFICATE-----\nMIICoDCCAkegAwIBAgIUBxo6mAHeYH2EWTVBR4gTM/ZCVugwCgYIKoZIzj0EAwIw\naDELMAkGA1UEBhMCVVMxFzAVBgNVBAgTDk5vcnRoIENhcm9saW5hMRQwEgYDVQQK\nEwtIeXBlcmxlZGdlcjEPMA0GA1UECxMGRmFicmljMRkwFwYDVQQDExBmYWJyaWMt\nY2Etc2VydmVyMB4XDTI2MTEwODIyMDEwMFoXDTI3MTEwODIyMDYwMFowaTELMAkG\nA1UEBhMCVVMxFzAVBgNVBAgTDk5vcnRoIENhcm9saW5hMRQwEgYDVQQKEwtIeXBl\ncmxlZGdlcjEaMAsGA1UECxMEb3JnMjALBgNVBAsTBHVzZXIxDzANBgNVBAMTBnZv\ndGVyMTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJjx1NlutnT3LhKTuBPZd/5k\nGehTNPz3IP2g08CB1kP6DRrCAnJR229JyWgLhFfelAAz1/GyaptHECfU4PZJdhqj\ngc0wgcowDgYDVR0PAQH/BAQDAgeAMAwGA1UdEwEB/wQCMAAwHQYDVR0OBBYEFM+T\n/taBvH5AT7y06hHLlrJ+0kQqMB8GA1UdIwQYMBaAFFQLYW4G1qY7z8dQ3qs8WOmK\n25RBMA0GA1UdEQQGMASCAnZtMFsGCCoDBAUGBwgBBE97ImF0dHJzIjp7ImhmLkFm\nZmlsaWF0aW9uIjoib3JnMiIsImhmLkVucm9sbG1lbnRJRCI6InZvdGVyMSIsImhm\nLlR5cGUiOiJ1c2VyIn19MAoGCCqGSM49BAMCA0cAMEQCIDCqSla+25mQCL6fulLB\nAGhSmIl22VPRN5aSD6lCHR/MAiAYtVkOuBn9rc43L17U9FIg+AkevFIHfG/F/E58\n8Ki7kw==\n-----END CERTIFICATE-----\n"
+    }
+  ]
+}

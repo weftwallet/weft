@@ -13,7 +13,7 @@ const DST = "weft-ballot-v1-challenge"
 // The labels that start each hash input.
 const (
 	LabelContext     = "weft-ballot v1"
-	LabelVoterX509   = "weft-voter x509 v1"
+	LabelVoterX509   = "weft-voter x509 v2"
 	LabelVoterIdemix = "weft-voter idemix v1"
 	LabelBit         = "bit"
 	LabelSum         = "sum"

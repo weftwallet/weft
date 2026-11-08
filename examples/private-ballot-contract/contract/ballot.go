@@ -73,22 +73,23 @@ func votingState(r *Record) error {
 
 // x509Voter checks CastBallot's caller, after the election's state: the
 // election has X.509 voters, the creator's MSP ID is one of its voter
-// organisations, and the creator is an X.509 identity.
-func x509Voter(r *Record, c *caller) error {
+// organisations, the creator is an X.509 identity, and its certificate
+// parses and has an enrolment ID, which it returns.
+func x509Voter(r *Record, c *caller) (string, error) {
 	if r.Voters.Kind != votersX509 {
-		return errUseAnonymous()
+		return "", errUseAnonymous()
 	}
 	named := false
 	for _, m := range r.Voters.Msps {
 		named = named || m == c.msp
 	}
 	if !named {
-		return errNotVoter(c.msp)
+		return "", errNotVoter(c.msp)
 	}
 	if !c.x509() {
-		return errNotX509("vote in this election")
+		return "", errNotX509("vote in this election")
 	}
-	return nil
+	return tally.EnrolmentID(c.idBytes)
 }
 
 type castResult struct {
@@ -104,7 +105,11 @@ type castEvent struct {
 
 // CastBallot(electionId, ballotJson): an X.509 voter of one of the
 // election's voter organisations, while it is open, with the checks in the
-// specification's order and the voter tag from the creator.
+// specification's order and the voter tag from the creator's MSP ID and
+// enrolment ID. The tag doesn't depend on how the certificate's PEM is
+// written or on which of the CA's certificates for that ID signed, so a
+// voter who sends the certificate again in another spelling, or enrols
+// again, has voted already.
 func castBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	l := ledger{stub}
 	r, err := l.election(args[0])
@@ -118,7 +123,8 @@ func castBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	if err := x509Voter(r, c); err != nil {
+	enrolmentID, err := x509Voter(r, c)
+	if err != nil {
 		return nil, err
 	}
 	channel := stub.GetChannelID()
@@ -126,7 +132,7 @@ func castBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	tag := tally.VoterTagX509(channel, r.ID, c.msp, c.idBytes)
+	tag := tally.VoterTagX509(channel, r.ID, c.msp, enrolmentID)
 	look := &lookups{l: l, id: r.ID}
 	checked, err := tally.CheckBallot(p, tag, args[1], look, false)
 	if look.err != nil {
@@ -183,12 +189,15 @@ func storeBallot(stub shim.ChaincodeStubInterface, l ledger, r *Record, ballotJS
 //  4. the creator is an idemix identity whose Nym is a point of G1;
 //  5. its organisational unit is the election's affiliation, and its role
 //     is member;
-//  6. the ballot parses and decodes;
-//  7. the pseudonym proof parses and decodes;
-//  8. the voter tag from P, and the tracking code;
-//  9. the pseudonym proof, against the creator's Nym, the pinned issuer key
+//  6. its proof verifies against the pinned issuer key with that
+//     affiliation and role, as the peer's idemix MSP checks it against the
+//     channel's key;
+//  7. the ballot parses and decodes;
+//  8. the pseudonym proof parses and decodes;
+//  9. the voter tag from P, and the tracking code;
+//  10. the pseudonym proof, against the creator's Nym, the pinned issuer key
 //     and the tracking code;
-//  10. to 13. the bit proofs, the sum proof, repeated ciphertexts, and the
+//  11. to 14. the bit proofs, the sum proof, repeated ciphertexts, and the
 //     credential's earlier ballot, by the voter tag.
 func castAnonymousBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	l := ledger{stub}
@@ -209,7 +218,7 @@ func castAnonymousBallot(stub shim.ChaincodeStubInterface, args []string) ([]byt
 	if c.msp != r.Voters.Msp {
 		return nil, errNotVoter(c.msp)
 	}
-	nym, ok := c.idemixNym()
+	sid, nym, ok := c.idemixNym()
 	if !ok {
 		return nil, errNotCredential()
 	}
@@ -219,6 +228,13 @@ func castAnonymousBallot(stub shim.ChaincodeStubInterface, args []string) ([]byt
 	}
 	if role != roleMember {
 		return nil, errRole()
+	}
+	key, err := r.issuerKey()
+	if err != nil {
+		return nil, err
+	}
+	if err := credentialProof(key, sid, nym, ou); err != nil {
+		return nil, err
 	}
 	channel := stub.GetChannelID()
 	p, err := r.prepared(channel)
@@ -239,10 +255,6 @@ func castAnonymousBallot(stub shim.ChaincodeStubInterface, args []string) ([]byt
 	}
 	tag := tally.VoterTagIdemix(channel, r.ID, c.msp, proof.PBytes())
 	tracking, _ := tally.FromHex(tally.TrackingCode(p, tag, d), 32)
-	key, err := r.issuerKey()
-	if err != nil {
-		return nil, err
-	}
 	st := &pseudonym.Statement{Key: key, Channel: channel, ElectionID: r.ID, Tracking: tracking, Nym: nym}
 	if err := pseudonym.Verify(st, proof); err != nil {
 		return nil, err

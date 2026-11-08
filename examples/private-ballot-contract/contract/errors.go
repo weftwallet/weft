@@ -60,6 +60,9 @@ func errAffiliation(affiliation string) error {
 func errRole() error {
 	return refuse("This credential can't vote in this election: its role isn't member.")
 }
+func errCredentialProof() error {
+	return refuse("This credential can't vote in this election: its proof isn't valid for the election's issuer key.")
+}
 func errNotNamedTrustee(msp string) error {
 	return refuse("%s isn't one of the trustee organisations named in this election.", msp)
 }

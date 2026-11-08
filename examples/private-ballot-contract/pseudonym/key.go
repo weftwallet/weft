@@ -17,11 +17,13 @@ var AttributeNames = []string{"OU", "Role", "EnrollmentID", "RevocationHandle"}
 
 // Key is what the proof needs of an issuer public key: its points HSk and
 // HRand, and issuerKeyHash, SHA-256 of the key's bytes as Fabric CA writes
-// the IssuerPublicKey file and serves it from /cainfo.
+// the IssuerPublicKey file and serves it from /cainfo. PK is the whole key,
+// which VerifyIdentity needs.
 type Key struct {
 	HSk   *math.G1
 	HRand *math.G1
 	Hash  [32]byte
+	PK    *idemix.IssuerPublicKey
 }
 
 // LoadIssuerKey decodes an IssuerPublicKey file and checks it as IBM
@@ -61,7 +63,7 @@ func LoadIssuerKey(raw []byte) (key *Key, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("pseudonym: the issuer key's HRand: %w", err)
 	}
-	return &Key{HSk: hsk, HRand: hrand, Hash: sha256.Sum256(raw)}, nil
+	return &Key{HSk: hsk, HRand: hrand, Hash: sha256.Sum256(raw), PK: ipk}, nil
 }
 
 func point(e *amcl.ECP) (*math.G1, error) {

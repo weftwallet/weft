@@ -36,7 +36,7 @@
 
 import { createHash } from "node:crypto";
 import type { PseudonymProof } from "@weftwallet/idemix";
-import { electionContext, electionFingerprint, fromHex, messages, toHex, voterTagIdemix, voterTagX509, type Election, type ElectionSetup } from "@weftwallet/tally";
+import { TallyError, electionContext, electionFingerprint, fromHex, messages, toHex, voterTagFromCertificate, voterTagIdemix, type Election, type ElectionSetup } from "@weftwallet/tally";
 import { checkConfirmation, checkDecryptionShare, checkRound1, checkRound2, electionKeys, type Round1 } from "@weftwallet/tally/verify";
 import { taskKey, type BallotResult, type BallotTask } from "./ballot-checks.ts";
 import type { BallotChecker } from "./check-pool.ts";
@@ -405,10 +405,20 @@ function prepareBallot(where: Where, tx: DecodedTransaction, record: PrivateReco
   const { channel, contract } = where;
   const stored = storedBallot(writes);
   if (!stored) return null;
-  const own = tx.creator ? toHex(voterTagX509(channel, record.id, tx.creator.mspId, tx.creator.idBytes)) : null;
+  let own: string | null = null;
+  let unreadable: string | null = null;
+  if (tx.creator) {
+    try {
+      own = toHex(voterTagFromCertificate(channel, record.id, tx.creator.mspId, tx.creator.idBytes));
+    } catch (refusal) {
+      if (!(refusal instanceof TallyError)) throw refusal;
+      unreadable = refusal.message;
+    }
+  }
   const e = electionOf(record, channel, contract);
   let error: string | null = null;
   if (!e) error = "This explorer has no key for this election.";
+  else if (unreadable) error = `The contract accepted a ballot from a creator it should have refused: ${unreadable}`;
   else if (!own) error = "The transaction has no creator, so this explorer can't work out its voter tag.";
   else if (stored.written && stored.written !== own) error = "The voter tag the contract wrote isn't the one the submitter's certificate gives.";
   return {

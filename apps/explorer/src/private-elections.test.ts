@@ -313,7 +313,8 @@ describe("the private election pages", () => {
     const f = await counted();
     const shown = (await page(f, "", "show")).body;
     expect(shown).toContain("<th>Tracking code</th><th>Submitted by</th><th>Voter tag</th>");
-    expect(shown.match(/<td data-label="Submitted by"><span class="mono">Org1MSP<\/span><\/td>/g)?.length).toBeGreaterThan(0);
+    // The common name, which is the enrolment ID the voter tag is made from, and the MSP ID.
+    expect(shown.match(/<td data-label="Submitted by"><span>voter\d+<\/span> <span class="mono subtle">Org1MSP<\/span><\/td>/g)?.length).toBeGreaterThan(0);
     expect(shown).toContain("This explorer shows who submitted each ballot, from the certificate that signed it.");
     const hidden = (await page(f)).body;
     expect(hidden).not.toContain("Submitted by");

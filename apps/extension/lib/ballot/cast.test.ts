@@ -1,6 +1,6 @@
 import { VerificationError, signForFabric, CommitError, RelayError } from "@weftwallet/core";
 import { encryptBallot } from "@weftwallet/tally/client";
-import { voterTagX509, toHex } from "@weftwallet/tally";
+import { voterTagFromCertificate, voterTagX509, toHex } from "@weftwallet/tally";
 import { beforeAll, describe, expect, it } from "vitest";
 import { castBallotCall, readElection, returnedTracking } from "./cast";
 import { RecordError, creatorIdBytes } from "./read";
@@ -96,7 +96,7 @@ describe("casting", () => {
   async function prepared(r = relay()) {
     const v = voter();
     const read = await readElection(r, v.signer, params, v.sign, org1.chain);
-    const tag = voterTagX509(params.channel, params.electionId, "Org1MSP", read.idBytes);
+    const tag = voterTagFromCertificate(params.channel, params.electionId, "Org1MSP", read.idBytes);
     const ballot = encryptBallot(read.open!.election, tag, 1);
     const call = { ...params, fn: "CastBallot", args: [params.electionId, ballot.json] };
     return { r, v, read, ballot, call };
@@ -116,10 +116,10 @@ describe("casting", () => {
     expect(v.signed).toHaveLength(4);
   });
 
-  it("computes the voter tag from the bytes the contract reads", async () => {
+  it("computes the voter tag from the enrolment ID the contract reads", async () => {
     const { r, read } = await prepared();
     expect(creatorIdBytes).toBeTypeOf("function");
-    const tag = toHex(voterTagX509(params.channel, params.electionId, "Org1MSP", read.idBytes));
+    const tag = toHex(voterTagX509(params.channel, params.electionId, "Org1MSP", "alice"));
     const { v, call } = await prepared(r);
     await castBallotCall(r, v.signer, call, v.sign, read.idBytes);
     expect(r.ballots[0]!.tag).toBe(tag);
