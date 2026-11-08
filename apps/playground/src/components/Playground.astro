@@ -515,7 +515,10 @@ const { demoInvite = null } = Astro.props;
       explorerBase = typeof invite.explorerUrl === "string" ? invite.explorerUrl.replace(/\/+$/, "") : null;
       // The Private election section lists elections from this explorer (PrivateElection.astro).
       root.dataset.explorer = explorerBase ?? "";
-      root.dispatchEvent(new CustomEvent("pg:invite", { detail: { explorerUrl: explorerBase, network: invite.network } }));
+      // Elections with voter credentials have their voter invites at the relay (PrivateElection.astro).
+      const relayBase = typeof invite.relayUrl === "string" ? invite.relayUrl.replace(/\/+$/, "") : null;
+      root.dataset.relay = relayBase ?? "";
+      root.dispatchEvent(new CustomEvent("pg:invite", { detail: { explorerUrl: explorerBase, relayUrl: relayBase, network: invite.network } }));
       if (!quiet) announce(`Invite loaded: ${invite.network}.`);
       void loadExplorers();
     } catch (error: any) {

@@ -11,6 +11,12 @@
 // window, and this page never learns the choice. It shows the result, a
 // version 2 receipt with the tracking code, and the count once the trustees
 // publish it, as the explorer reports it.
+//
+// For an election with voter credentials (docs/adr/0008), the section also
+// offers the election's voter invite, from the relay, to copy into Weft
+// Experimental's Join from an invite: a site can't hand Weft a voter invite.
+// The voter enrols there, and the ballot is signed by an anonymous member of
+// the voter organisation, so this page learns neither the choice nor the voter.
 import { productHref } from "@weftwallet/ui/links";
 const docs = (path: string) => productHref("docs", path);
 ---
@@ -25,8 +31,9 @@ const docs = (path: string) => productHref("docs", path);
   </div>
   <p class="pg-hint">
     Uses the <a href={docs("/experimental/contract-api/")}>private-ballot contract</a>, which the local playground deploys on a channel of its own for each
-    election, with <code>budget-2027</code> open. Weft Experimental encrypts your choice in its own window under a key the election's trustee organisations share,
-    so this page never learns how you voted.
+    election, with <code>budget-2027</code> and <code>chair-2027</code> open. Weft Experimental encrypts your choice in its own window under a key the election's
+    trustee organisations share, so this page never learns how you voted. In <code>chair-2027</code> it also signs as an anonymous voter, so no one learns who
+    voted.
   </p>
   <p class="pg-receipt-line pg-receipt-line--unsaved">Experimental. No one outside the project has reviewed this cryptography.</p>
 
@@ -43,12 +50,23 @@ const docs = (path: string) => productHref("docs", path);
       <dt>Election</dt><dd id="pg-pe-title"></dd>
       <dt>Channel</dt><dd class="mono" id="pg-pe-channel"></dd>
       <dt>Voting</dt><dd id="pg-pe-voting"></dd>
+      <dt>Voters</dt><dd id="pg-pe-voters"></dd>
       <dt>Trustees</dt><dd id="pg-pe-trustees"></dd>
       <dt>Election fingerprint</dt><dd class="mono" id="pg-pe-fp"></dd>
       <dt>Options</dt><dd id="pg-pe-options"></dd>
       <dt>Ballots</dt><dd id="pg-pe-ballots"></dd>
       <dt>Result</dt><dd id="pg-pe-result"></dd>
     </dl>
+    <div class="pg-stack" id="pg-pe-invite" hidden>
+      <h3>Get a voter credential</h3>
+      <p class="pg-hint" id="pg-pe-invite-hint"></p>
+      <div class="pg-row pg-wrap pg-pe-invite-row">
+        <code class="mono" id="pg-pe-invite-url"></code>
+        <button type="button" id="pg-pe-invite-copy" class="btn">Copy voter invite</button>
+      </div>
+      <p class="field__status" id="pg-pe-invite-status" role="status"></p>
+    </div>
+    <p class="pg-hint" id="pg-pe-needs" hidden></p>
     <div class="pg-stack" id="pg-pe-vote-wrap">
       <p class="pg-hint">You choose in Weft's window, not on this page. This page sends Weft the channel, the contract and the election ID, and nothing else.</p>
       <div class="pg-row pg-wrap">
@@ -61,7 +79,7 @@ const docs = (path: string) => productHref("docs", path);
 
   <div id="pg-pe-receipt" class="pg-stack" hidden>
     <h3>Your receipt</h3>
-    <p class="pg-hint">It shows that your ballot is on the ledger and in the count. It holds nothing about your choice, so you can show it to anyone.</p>
+    <p class="pg-hint" id="pg-pe-receipt-hint">It shows that your ballot is on the ledger and in the count. It holds nothing about your choice, so you can show it to anyone.</p>
     <p class="pg-receipt-line" id="pg-pe-receipt-saved"></p>
     <pre id="pg-pe-receipt-json" class="pg-out" data-tone="ok"></pre>
     <div class="pg-row pg-wrap">
@@ -93,6 +111,8 @@ const docs = (path: string) => productHref("docs", path);
     phase: Phase;
     ballots: number;
     fingerprint: string | null;
+    /** Whether its voters vote anonymously, with voter credentials. */
+    anonymous?: boolean;
   }
   interface Step {
     txId: string;
@@ -116,6 +136,9 @@ const docs = (path: string) => productHref("docs", path);
     tally: { counts: number[]; total: number } | null;
     failed: (Step & { reportedBy: string; fromTrustee: string | null }) | null;
     ballots: { total: number; failed: number };
+    voters: { kind: string; msps?: string[]; msp?: string };
+    /** An election with voter credentials: its voter organisation. */
+    anonymous?: { msp: string; affiliation: string } | null;
   }
   type Listed = Summary & { channel: string };
 
@@ -145,6 +168,11 @@ const docs = (path: string) => productHref("docs", path);
   };
 
   let explorer: string | null = root.dataset.explorer || null;
+  let relay: string | null = root.dataset.relay || null;
+  /** Whether this Weft can hold voter credentials. */
+  const holdsCredentials = () => Array.isArray(w.weft?.features) && w.weft.features.includes("voterCredentials");
+  const anonymous = (e: { anonymous?: unknown }) => !!e.anonymous;
+  const inviteUrl = (id: string) => `${relay}/.well-known/weft-voter-invite/${encodeURIComponent(id)}.json`;
   let elections: Listed[] = [];
   let selected: string | null = null;
   let view: View | null = null;
@@ -269,7 +297,7 @@ const docs = (path: string) => productHref("docs", path);
       }
       label.querySelector<HTMLElement>(".pg-pe-item__title")!.textContent = e.title;
       label.querySelector<HTMLElement>(".pg-pe-item__where")!.textContent = `${e.id} on ${e.channel}`;
-      const [state, text] = pillFor(key, e.phase);
+      const [state, text] = pillFor(key, e.phase, anonymous(e));
       const pill = label.querySelector<HTMLElement>(".pg-pill")!;
       pill.dataset.state = state;
       pill.textContent = text;
@@ -282,9 +310,14 @@ const docs = (path: string) => productHref("docs", path);
     else conceal(box);
   }
 
-  /** Voted, once this page has cast a ballot in an election that is still open; otherwise its phase. */
-  function pillFor(key: string, phase: Phase): ["ok" | "pending", string] {
+  /**
+   * Voted, once this page has cast a ballot in an election that is still
+   * open; Needs voter credentials, for an open election with voter
+   * credentials and a Weft that can't hold them; otherwise its phase.
+   */
+  function pillFor(key: string, phase: Phase, anon = false): ["ok" | "pending", string] {
     if (canVote(phase) && (results.has(key) || votedBefore.has(key))) return ["ok", "Voted"];
+    if (canVote(phase) && anon && !holdsCredentials()) return ["pending", "Needs voter credentials"];
     return PILL[phase];
   }
 
@@ -312,17 +345,24 @@ const docs = (path: string) => productHref("docs", path);
     view = v;
     const n = v.trustees.length;
     const k = v.threshold;
-    setPill(...pillFor(key, v.phase));
+    setPill(...pillFor(key, v.phase, anonymous(v)));
     $("pg-pe-title").textContent = v.title;
     $("pg-pe-channel").textContent = v.channel;
     $("pg-pe-voting").textContent = votingText(v);
+    $("pg-pe-voters").replaceChildren(...votersText(v));
     $("pg-pe-trustees").textContent = `${list(v.trustees.map((t) => t.msp))}. Any ${k} of ${n} can decrypt.`;
     $("pg-pe-fp").textContent = v.fingerprint ? grouped(v.fingerprint) : "Not made yet";
     $("pg-pe-options").textContent = v.options.join(", ");
     $("pg-pe-ballots").textContent = KEYGEN.includes(v.phase) || v.phase === "failed" || v.phase === "cancelled" ? "None" : (v.recordBallots ?? v.ballots.total).toLocaleString("en-GB");
     showResult(v);
-    // Vote in Weft is offered while the contract takes ballots, once per election from this page.
-    const offer = canVote(v.phase) && !results.has(key) && !votedBefore.has(key);
+    // Vote in Weft is offered while the contract takes ballots, once per
+    // election from this page, and for voter credentials only to a Weft that holds them.
+    const able = !anonymous(v) || holdsCredentials();
+    const offer = canVote(v.phase) && !results.has(key) && !votedBefore.has(key) && able;
+    showInvite(v, offer);
+    const needs = $("pg-pe-needs");
+    needs.textContent = canVote(v.phase) && !able ? `This version of Weft Experimental can't hold voter credentials, so it can't vote in ${v.title}. A Weft Experimental that lists "voterCredentials" in its features can.` : "";
+    needs.hidden = !needs.textContent;
     const vote = $<HTMLButtonElement>("pg-pe-vote");
     const wrap = $("pg-pe-vote-wrap");
     if (!isBusy(vote)) {
@@ -339,6 +379,74 @@ const docs = (path: string) => productHref("docs", path);
       showResultFor(key);
     }
     reveal($("pg-pe"));
+  }
+
+  /** Who votes: X.509 identities of the voter organisations, or anonymous members of a voter organisation, with voter credentials. */
+  function votersText(v: View): Node[] {
+    const mono = (t: string) => Object.assign(document.createElement("span"), { className: "mono", textContent: t });
+    if (v.anonymous) return [document.createTextNode("Anonymous, with voter credentials from "), mono(v.anonymous.msp), document.createTextNode(". Each credential votes once.")];
+    return [document.createTextNode(`X.509 identities of ${list(v.voters?.msps ?? [])}. Each identity votes once.`)];
+  }
+
+  /**
+   * Get a voter credential: the election's voter invite at the relay, to copy
+   * into Weft Experimental's Join from an invite. Shown while the election
+   * takes ballots and this page can vote in it.
+   */
+  function showInvite(v: View, offer: boolean) {
+    const box = $("pg-pe-invite");
+    if (!v.anonymous || !offer || !relay) {
+      conceal(box);
+      return;
+    }
+    const url = inviteUrl(v.id);
+    const hint = $("pg-pe-invite-hint");
+    hint.replaceChildren();
+    const code = (t: string) => Object.assign(document.createElement("code"), { textContent: t });
+    hint.append(
+      `${v.id}'s voters vote anonymously, with a credential from its own voters' CA. Copy the voter invite and paste it into Weft Experimental's Join from an invite, then enrol as `,
+      code("voter1"),
+      " to ",
+      code("voter5"),
+      ", secrets ",
+      code("voter1pw"),
+      " to ",
+      code("voter5pw"),
+      ". Each enrolment ID works once.",
+    );
+    if ($("pg-pe-invite-url").textContent !== url) {
+      $("pg-pe-invite-url").textContent = url;
+      says("", "");
+    }
+    reveal(box);
+  }
+
+  function says(kind: "ok" | "error" | "", text: string) {
+    const line = $("pg-pe-invite-status");
+    line.textContent = text;
+    line.className = `field__status${kind === "ok" ? " field-ok" : kind === "error" ? " field-error" : ""}`;
+    if (text) announce(text);
+  }
+
+  /** Copies the voter invite's address, once the relay has answered for it, so a typo or a missing invite shows here and not in Weft. */
+  async function copyInvite() {
+    if (!view || !relay) return;
+    const url = inviteUrl(view.id);
+    const button = $<HTMLButtonElement>("pg-pe-invite-copy");
+    if (isBusy(button)) return;
+    setBusy(button, true);
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(6000) }).catch(() => null);
+      if (!response) return says("error", `The relay at ${new URL(relay).host} didn't answer, so there's no voter invite to copy. Check that the playground is running.`);
+      if (!response.ok) return says("error", `The relay at ${new URL(relay).host} serves no voter invite for ${view.id} (HTTP ${response.status}). Run pnpm playground:up --experimental again.`);
+      await navigator.clipboard.writeText(url);
+      says("ok", "Copied. Paste it into Weft Experimental's Join from an invite.");
+    } catch {
+      getSelection()?.selectAllChildren($("pg-pe-invite-url"));
+      says("error", "This browser didn't allow copying. The voter invite is selected: press Ctrl+C, or Cmd+C on a Mac.");
+    } finally {
+      setBusy(button, false);
+    }
   }
 
   function votingText(v: View): string {
@@ -486,10 +594,14 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
       case 4001:
         return "You rejected the vote in Weft. Nothing was signed, and you can vote again.";
       case 4300:
+        if (/another issuer key/.test(said)) return `Your voter credential for ${v.id} is from another issuer key than the one the election pinned, so no ballot was cast. Ask the organisers which is right.`;
+        if (/aren't voter credentials of/.test(said)) return `Your voter credential can't vote in ${v.id}, so no ballot was cast: its voters are ${v.anonymous ? v.anonymous.msp : list(v.voters?.msps ?? [])}.`;
+        // An election with voter credentials, and Weft holds none for it, whatever else it holds.
+        if (v.anonymous || /voter credential/.test(said)) {
+          return `Weft has no voter credential for ${v.id}, so no ballot was cast. Copy the voter invite above into Weft Experimental's Join from an invite, enrol as one of the demo voters, then vote again.`;
+        }
         if (Array.isArray(data.voterMsps)) {
-          return /voter credentials/.test(said)
-            ? `${v.title}'s voters vote with voter credentials, which this version of Weft Experimental can't hold yet. No ballot was cast.`
-            : `None of your identities in Weft can vote in ${v.title}: its voters are ${list(data.voterMsps)} identities. Make one of them active in Weft, then vote again.`;
+          return `None of your identities in Weft can vote in ${v.title}: its voters are ${list(data.voterMsps)} identities. Make one of them active in Weft, then vote again.`;
         }
         if (/channel/.test(said)) return `Your network in Weft doesn't list the channel ${v.channel}. Refresh its invite in Weft, then vote again.`;
         return "Weft has no identity yet. Use Join with Weft in step 2, then vote again.";
@@ -510,6 +622,7 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
             return `Weft didn't cast a ballot: it couldn't use ${v.id}'s record. Weft's window said why, and the reason is under Details.`;
         }
       case 5001:
+        if (/credential has already voted/.test(said)) return `Your ballot wasn't committed: this voter credential has already voted in ${v.id}.`;
         if (/already voted/.test(said)) return "Your ballot wasn't committed: this identity has already voted in this election.";
         if (data.status === "MVCC_READ_CONFLICT" || data.contract === "Voting has closed." || /^The election isn't open/.test(data.contract ?? "")) {
           return "Your ballot wasn't committed: the trustees closed voting before it arrived.";
@@ -540,7 +653,15 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
       conceal($("pg-pe-receipt"));
       return;
     }
-    message(`Your ballot is in block ${result.blockNumber}. This page doesn't know your choice: Weft encrypted it in its own window. Your receipt is below.`);
+    const v = view && keyOf(view) === key ? view : null;
+    message(
+      v?.anonymous
+        ? `Your ballot is in block ${result.blockNumber}. This page doesn't know your choice or which voter you are: Weft signed it as an anonymous member of ${v.anonymous.msp}. Your receipt is below.`
+        : `Your ballot is in block ${result.blockNumber}. This page doesn't know your choice: Weft encrypted it in its own window. Your receipt is below.`,
+    );
+    $("pg-pe-receipt-hint").textContent = v?.anonymous
+      ? "It shows that your ballot is on the ledger and in the count. It holds nothing about your choice or you, so you can show it to anyone."
+      : "It shows that your ballot is on the ledger and in the count. It holds nothing about your choice, so you can show it to anyone.";
     const r = result.receipt.receipt;
     const why = result.receipt.kept ? null : result.receipt.reason;
     const [tone, text] = result.receipt.kept
@@ -605,9 +726,12 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
   /* ---------------- wiring ---------------- */
 
   $("pg-pe-vote").addEventListener("click", () => void cast());
+  $("pg-pe-invite-copy").addEventListener("click", () => void copyInvite());
   $("pg-pe-refresh").addEventListener("click", () => void loadElections("pressed"));
   root.addEventListener("pg:invite", (e) => {
-    const next = (e as CustomEvent<{ explorerUrl: string | null }>).detail.explorerUrl;
+    const detail = (e as CustomEvent<{ explorerUrl: string | null; relayUrl?: string | null }>).detail;
+    relay = detail.relayUrl ?? null;
+    const next = detail.explorerUrl;
     if (next === explorer && elections.length) return;
     explorer = next;
     elections = [];
@@ -730,6 +854,14 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
     margin: 0;
   }
   #pg-pe-message:empty {
+    display: none;
+  }
+  /* The voter invite's address wraps anywhere on a phone, so the page never scrolls sideways. */
+  #pg-private .pg-pe-invite-row code {
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  #pg-private #pg-pe-invite-status:empty {
     display: none;
   }
 </style>

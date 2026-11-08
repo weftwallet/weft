@@ -656,6 +656,10 @@ async function startExplorer(stepNumber = 8, { experimental = false } = {}) {
   // code, as production does, and an old build would hide your changes.
   note("building the explorer");
   run("pnpm", ["--filter", "@weftwallet/explorer...", "build"], { cwd: repo });
+  // The experimental explorers check anonymous ballots with the idemix module
+  // (docs/adr/0008), built from Go source when packages/idemix has none with
+  // the pinned hash. --experimental already needs Go.
+  if (experimental) run(process.execPath, [join(repo, "packages", "idemix", "scripts", "build.mjs"), "--if-missing"], { cwd: repo });
   const orgs = [
     { name: "explorer", org: "org1", msp: "Org1MSP", peer: 7051, port: PORTS.explorer, other: PORTS.explorerOrg2, policy: "explorer.yaml" },
     { name: "explorer-org2", org: "org2", msp: "Org2MSP", peer: 9051, port: PORTS.explorerOrg2, other: PORTS.explorer, policy: "explorer-org2.yaml" },
