@@ -20,10 +20,114 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # The idemix module's tests build it and the Go test tool, so they run
+      # here instead of skipping. Go 1.26.10 is the module's pinned toolchain.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.10
+          cache-dependency-path: |
+            packages/idemix/go.sum
+            examples/private-ballot-contract/go.sum
       - run: pnpm install --frozen-lockfile
+      # Every package and app, the docs included.
       - run: pnpm build
+      # tsc for the packages and apps, wxt prepare and tsc for the extension, astro check for the playground.
       - run: pnpm typecheck
+      # Every package's unit tests and the playground's own, without the e2e suite (its jobs are below).
       - run: pnpm test
+
+  extension:
+    name: Weft and Weft Experimental (Chrome and Firefox)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # Weft Experimental bundles the idemix module, which its build makes from Go source when it's missing.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.10
+          cache-dependency-path: packages/idemix/go.sum
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r --filter "./packages/**" build
+      - name: Weft for Chrome
+        run: pnpm --filter @weftwallet/extension build
+      - name: Weft for Firefox
+        run: pnpm --filter @weftwallet/extension exec wxt build -b firefox
+      - name: The normal builds carry none of Weft Experimental's code
+        run: pnpm --filter @weftwallet/extension check:normal
+      - name: Weft Experimental for Chrome
+        run: pnpm --filter @weftwallet/extension build:experimental
+      - name: Weft Experimental for Firefox
+        run: pnpm --filter @weftwallet/extension exec wxt build -b firefox
+        env:
+          WEFT_EXPERIMENTAL: "1"
+      - name: Weft Experimental carries the pinned idemix module
+        run: |
+          for dir in apps/extension/.output-experimental/chrome-mv3 apps/extension/.output-experimental/firefox-mv3; do
+            test -f "$dir/manifest.json" || { echo "No build in $dir"; exit 1; }
+            node --input-type=module -e "
+              import { createHash } from 'node:crypto';
+              import { readFileSync } from 'node:fs';
+              const text = readFileSync('packages/idemix/src/pinned.ts', 'utf8');
+              const pinned = text.match(/wasmSha256:\s*\"([0-9a-f]{64})\"/)[1];
+              const got = createHash('sha256').update(readFileSync('$dir/idemix/weft-idemix.wasm')).digest('hex');
+              if (got !== pinned) { console.error('$dir/idemix/weft-idemix.wasm is ' + got + ', not the pinned ' + pinned); process.exit(1); }
+              console.log('$dir has the pinned module');
+            "
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-builds
+          path: |
+            apps/extension/.output/chrome-mv3
+            apps/extension/.output/firefox-mv3
+            apps/extension/.output-experimental/chrome-mv3
+            apps/extension/.output-experimental/firefox-mv3
+          retention-days: 7
+
+  idemix:
+    name: The idemix module builds reproducibly, with the pinned hash
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      # The pinned toolchain itself, so GOTOOLCHAIN doesn't download another.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.10
+          cache: false
+      # Two builds, each in a fresh folder with an empty build cache; both must give the SHA-256 in src/pinned.ts.
+      - run: node packages/idemix/scripts/check.mjs
+
+  go:
+    name: Go vet and tests (the contract and the idemix module)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.10
+          cache-dependency-path: |
+            packages/idemix/go.sum
+            examples/private-ballot-contract/go.sum
+      - name: The private-ballot contract
+        working-directory: examples/private-ballot-contract
+        run: |
+          go mod verify
+          go vet ./...
+          go test ./...
+      - name: The idemix module's Go code
+        working-directory: packages/idemix
+        run: |
+          go mod verify
+          go vet ./...
+          go test ./...
 
   e2e:
     name: Browser tests (Fabric CA, no peers)
@@ -35,9 +139,16 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # For Weft Experimental's test build and the idemix module's browser test.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.10
+          cache-dependency-path: packages/idemix/go.sum
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - run: pnpm --filter @weftwallet/idemix build:wasm
       - run: pnpm --filter @weftwallet/extension build:e2e
+      - run: pnpm --filter @weftwallet/extension build:e2e:experimental
       - name: Cache Fabric CA
         uses: actions/cache@v4
         with:
@@ -97,6 +208,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Relay
         run: docker build -f apps/relay/Dockerfile -t weft-relay .
+      # Builds the idemix module with Go 1.26.10 and fails unless it has the pinned SHA-256.
       - name: Explorer
         run: docker build -f apps/explorer/Dockerfile -t weft-explorer .
       - name: The explorer starts and explains what it needs
@@ -104,3 +216,18 @@ jobs:
           out=$(docker run --rm weft-explorer 2>&1 || true)
           echo "$out"
           echo "$out" | grep -q "WEFT_PEER_ENDPOINT is required"
+      - name: The explorer starts with private elections, from the image alone
+        run: |
+          mkdir -p ci-explorer
+          openssl ecparam -name prime256v1 -genkey -noout -out ci-explorer/key.pem
+          openssl req -new -x509 -key ci-explorer/key.pem -out ci-explorer/cert.pem -subj /CN=ci -days 2
+          printf 'channels:\n  privatevote-ci:\n    level: public\n    values: show\n    privateElections: private-ballot\n' > ci-explorer/policy.yaml
+          chmod -R a+r ci-explorer
+          docker run -d --name explorer -v "$PWD/ci-explorer:/ci:ro" \
+            -e WEFT_EXPERIMENTAL=1 -e WEFT_PEER_ENDPOINT=localhost:1 -e WEFT_EXPLORER_MSP_ID=Org1MSP \
+            -e WEFT_EXPLORER_CERT=/ci/cert.pem -e WEFT_EXPLORER_KEY=/ci/key.pem -e WEFT_EXPLORER_POLICY=/ci/policy.yaml \
+            weft-explorer
+          for i in $(seq 1 30); do docker logs explorer 2>&1 | grep -q "Checking private election ballots" && break; sleep 1; done
+          docker logs explorer
+          docker logs explorer 2>&1 | grep -q "Checking private election ballots"
+          docker rm -f explorer
