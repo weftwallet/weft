@@ -4,7 +4,7 @@ description: What the private tally and voter credential prototypes of 1 Novembe
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The results on this page come from the studies' prototypes, except [version 1's timings](#version-1-measured), which come from `@weftwallet/tally` and the contract's `internal/tally`, [the peers'](#on-a-fabric-peer-version-1) and [the explorer's](#the-explorer-version-1).
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The results on this page come from the studies' prototypes, except [version 1's timings](#version-1-measured), which come from `@weftwallet/tally` and the contract's `internal/tally`, [the peers'](#on-a-fabric-peer-version-1), [the explorer's](#the-explorer-version-1), and voter credentials' [module](#the-module-version-1), [in Weft Experimental](#in-weft-experimental) and [in the explorer](#in-the-explorer).
 :::
 
 The studies behind [ADR 0007](/reference/decisions/) and [ADR 0008](/reference/decisions/) each built a prototype on 1 November 2026. Where version 1 differs from a prototype, the [specification](/experimental/private-tally-spec/) says so.
@@ -120,7 +120,7 @@ The prototype used channel `anonvote` on a local Fabric 2.5.16 network: three Ra
 
 | Measure | Value |
 |---|---|
-| WebAssembly module, raw and gzipped | 13.0 MB and 3.0 MB |
+| WebAssembly module, raw and gzipped | 13.0 MB and 3.0 MB, for the prototype; version 1's is below |
 | Compile and start the module | 497 ms |
 | Load the issuer key | 105 ms |
 | Build the CA credential request | 17 ms |
@@ -130,6 +130,17 @@ The prototype used channel `anonvote` on a local Fabric 2.5.16 network: three Ra
 | Creator identity, signature, pseudonym proof | 1,019, 136 and 160 bytes |
 
 The timings above are from Node 22 on the build machine, and none of them were taken in a browser; Weft Experimental's are below. A vote makes one identity and three signatures (proposal, transaction, commit status), about 0.3 s of signing after the module has loaded.
+
+### The module, version 1
+
+The module Weft Experimental and the explorer run, `packages/idemix`, built with Go 1.26.10 and IBM mathlib's unused curves left out ([its README](https://github.com/ifeanyi-ugwu/weft/tree/main/packages/idemix#size) has every build measured), with `gzip -9`:
+
+| Build | Raw | Gzipped |
+|---|---|---|
+| With the per-election pseudonym, as Weft Experimental's enrolment and anonymous ballots were built and measured | 12.63 MB | 2.92 MB |
+| With the explorer's `verifyIdentity` and `verifyPseudonym` added, the module pinned now | 12.68 MB | 2.93 MB |
+
+The budget is 13.5 MB, or 3.2 MB gzipped. In Node 22.22.0 on a 2.1 GHz Intel Xeon with two cores, it starts in about 305 ms, makes a new identity in 168 ms and signs in 6 ms; a vote's signing, one identity and three signatures, takes about 141 ms, and the pseudonym proof 11 ms.
 
 ### In Weft Experimental
 
@@ -144,3 +155,17 @@ Weft Experimental's own timings, from the User Timing marks it records (`lib/vot
 | A vote, from Sign and vote to the committed block: a new identity, the pseudonym, the ballot and its proofs, the pseudonym proof, three signatures through the port, and the network's wait for the block | 2.8 to 3.1 s |
 
 The network's batch timeout is 2 seconds, so most of a vote is the wait for its block. The host access prompt was granted in advance, as the e2e build allows for `localhost`, so enrolment doesn't include the voter's press. Firefox wasn't available where these were measured.
+
+### In the explorer
+
+The explorer's checks of anonymous ballots, on 8 November 2026, on the same machine: Node 22.22.0 for the indexer, headless Chromium 141 for the full check, and `chair-2029`, a counted election with 5 anonymous ballots and three options, recorded from the native network (the explorer's test fixture).
+
+| Step | Time |
+|---|---|
+| Indexing an anonymous ballot, all of it | 149 ms per ballot |
+| Of which the creator's proof and the pseudonym proof, with the module | 118 ms per ballot, most of it the creator's proof |
+| The full check's Pseudonym proofs step, in Node | 106 ms per ballot |
+| The idemix module's start in the full check's worker in Chromium: fetch, hashes, compile and run | 0.4 to 0.7 s |
+| The whole full check of `chair-2029` in Chromium, in two workers | 1.3 to 1.7 s |
+
+An anonymous ballot costs the indexer about six times what an X.509 one does, so a backlog of 10,000 takes about 25 minutes to index. The Pseudonym proofs step runs in one worker, so 10,000 ballots add about 18 minutes to the full check. Checking the creators' proofs in more workers, each starting its own module, is left for later.

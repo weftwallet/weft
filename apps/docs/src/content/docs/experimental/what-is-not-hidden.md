@@ -4,7 +4,7 @@ description: What neither experimental feature hides, and the options that were 
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The private tally is built, and what the page says of it describes the code. Voter credentials aren't built yet, and what it says of them describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The private tally and voter credentials are built, and what the page says of them describes the code.
 :::
 
 The [private tally](/experimental/private-tally-spec/) hides the choice and [voter credentials](/experimental/voter-credentials/) hide who voted. Neither hides everything. Tell voters what applies to their election.
@@ -18,7 +18,7 @@ The [private tally](/experimental/private-tally-spec/) hides the choice and [vot
 - The final counts. In a small election, or a one-sided one, the counts can show how individuals voted: if every ballot chose the same option, everyone knows each voter's choice.
 - With X.509 voters, who voted and who didn't, since every ballot transaction carries the voter's certificate.
 - On an explorer, each ballot's voter tag, even where the explorer hides submitters. It names no one, but anyone with the voter's certificate can compute it for an election and see that the voter voted in it. The tag covers the channel and the election ID, so an X.509 voter's tags differ from one election to the next, and the published tags don't link one certificate's ballots across elections. See [What the explorer publishes](/experimental/cast-ballot/#what-the-explorer-publishes).
-- With voter credentials, the voter organisation, the shared affiliation and the role on every ballot, and the per-election pseudonym, which is the same for any second attempt by the same credential in that election.
+- With voter credentials, the voter organisation, the shared affiliation and the role on every ballot, the one-off identity that signed it with its Nym, and the per-election pseudonym, which is the same for any second attempt by the same credential in that election. Explorers publish all of these, even where they hide submitters, since none names anyone and the full check needs them. A pseudonym differs from one election to the next, so it doesn't link a credential's ballots across elections.
 
 ### To particular parties
 
@@ -83,7 +83,7 @@ These come from Fabric. Weft doesn't fix them for now, and upstream changes are 
 | zk-SNARK membership proofs | Hide which member voted. | They need the same anonymous submission as blind signatures, and the common JavaScript prover, snarkjs, is GPL-3.0, which doesn't fit Weft's Apache-2.0 licence. |
 | Pseudonymous X.509 certificates per election | Hide voters from the member organisations, with revocation and no WebAssembly. | The issuing CA can record which certificate went to whom. Idemix hides voters from the CA too. |
 | Blind-signed tokens under a shared identity | Hide voters behind one submitting identity. | A shared signing key at the relay undoes ADR 0001, and an anonymous Fabric identity is Idemix anyway. |
-| Idemix as a general Weft identity | Anonymous identities for any contract. | Most contracts need to know who is calling, sign-in needs a certificate chain, and the costs (13 MB of WebAssembly, no revocation) are worth paying only for ballots. |
+| Idemix as a general Weft identity | Anonymous identities for any contract. | Most contracts need to know who is calling, sign-in needs a certificate chain, and the costs (12.7 MB of WebAssembly, no revocation) are worth paying only for ballots. |
 | A check before casting (the Benaloh challenge) | Let a voter check that Weft encrypted what they chose. | Left for a later version. Weft is open source, and the voter already trusts it with their key. |
 | Re-voting | Let a voter replace a coerced ballot. | Not in version 1. A second ballot from an X.509 voter is visible to every member, so it protects little on Fabric. |
 | A Node contract | One language with Weft and the explorer. | About 40 ballots a second per core, and the Node contract library rejects idemix callers. |

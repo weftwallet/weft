@@ -1,8 +1,8 @@
 # 0008: Hide who voted with Idemix voter credentials, as an experiment
 
-Proposed on 1 November 2026 as an experiment, and revised on 8 November 2026. Decided by Ifeanyi Ugwu.
+Proposed on 1 November 2026 as an experiment, revised on 8 November 2026, and built on 8 November 2026. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`, which it shares with ADR 0007. ADR 0004 and ADR 0006 remain the main product's decisions. Nothing in this record is built yet.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`, which it shares with ADR 0007. ADR 0004 and ADR 0006 remain the main product's decisions. All of it is built, behind the experimental switches: the idemix module in `packages/idemix`, the per-election pseudonym in the contract's `pseudonym` package, `CastAnonymousBallot`, idemix signers and voter invites in the relay, enrolment and anonymous ballots in Weft Experimental, the explorer's reading of idemix organisations and anonymous ballots, and the playground's voters' CA, its `chair-2027` election and its Private election section for voter credentials. No one outside the project has reviewed the pseudonym proof.
 
 ## Context and problem
 
@@ -74,7 +74,7 @@ The contract is ADR 0007's Go contract, which verifies the pseudonym proof nativ
 
 Weft signs with a Go build of IBM's idemix library compiled to WebAssembly, with about 300 lines of Go around the library. All dependencies are Apache 2.0 or BSD, and the build is pinned, reproducible and tested against Fabric 2.5 and 3.x networks. The module is built from Go source in `packages/idemix` with a pinned Go toolchain, and only its SHA-256 is committed: a 13 MB binary in git would stay in its history permanently and can't be reviewed in a diff, and a fetched release would add a host to trust. The build refuses a module whose hash isn't the committed one, and building it twice must give the same hash. Weft makes a new Nym and proof for every transaction, and two ballots can't be linked through the creator field. Fabric's own MSP makes one Nym per process, which every transaction from it would share.
 
-The module is 13.0 MB, 3.0 MB gzipped, against 1.3 MB for Weft's normal Chrome build. Only the experimental build carries it, and it loads only when a voter credential is used. WebAssembly needs `'wasm-unsafe-eval'` in the extension pages' content security policy, and only the experimental build's manifest has it.
+The module is 12.7 MB, 2.9 MB gzipped, against 1.3 MB for Weft's normal Chrome build. Only the experimental build carries it, and it loads only when a voter credential is used. WebAssembly needs `'wasm-unsafe-eval'` in the extension pages' content security policy, and only the experimental build's manifest has it.
 
 The module runs in a dedicated worker that the page needing it starts, the popup to enrol and the approval window to vote, and terminates when it is done. Terminating it frees the whole Go heap, which is the only wipe Go can promise. The background worker keeps the relay calls and passes the bytes to sign: Chrome's extension service worker can't start a worker, can stop in the middle of the module's start, and would keep the module, and the secret key, in memory between votes.
 
@@ -94,7 +94,7 @@ The organisational unit is disclosed on every transaction, and a unique affiliat
 
 Weft doesn't fix Fabric's limits for now, and upstream changes are left for later. The Node contract library rejects idemix callers. Revocation is switched off, because Fabric CA builds every credential revocation information with `ALG_NO_REVOCATION`, and a new issuer key per election limits a credential to one election meanwhile. Weft says so on the credential's detail and in the voter invite's review, before the secret is typed, and explorers say so in the election's Voters row. The approval window doesn't, because by then it changes nothing the voter can do.
 
-Explorers publish an anonymous ballot's creator, the voter MSP ID, the affiliation, the role, the one-off Nym and its proof, even where they hide submitters. It names no one and links nothing, and without it the browser's full check couldn't check that each pseudonym belongs to the identity that signed. Fabric CA's idemix curves (default `FP256BN_AMCL`) are below the 128-bit level they were chosen for, which is accepted for ballots that close within days.
+Explorers publish an anonymous ballot's creator, the voter MSP ID, the affiliation, the role, the one-off Nym and its proof, even where they hide submitters. It names no one and links nothing, and without it the browser's full check couldn't check that each pseudonym belongs to the identity that signed. An explorer checks each anonymous ballot's creator against the election's pinned issuer key, as a peer's idemix MSP checks it, and its pseudonym proof against that creator's Nym, with the same WebAssembly module Weft signs with: in its own process as it indexes each block, and in the reader's browser in the full check. The module has two functions for this, which need no secret. The explorer also compares the pinned issuer key with the voter organisation's key in the channel's configuration, and says so on the election's page when they differ. Fabric CA's idemix curves (default `FP256BN_AMCL`) are below the 128-bit level they were chosen for, which is accepted for ballots that close within days.
 
 ## Consequences
 
@@ -103,7 +103,8 @@ Explorers publish an anonymous ballot's creator, the voter MSP ID, the affiliati
 - The voters' CA operator decides who is a voter and can register extra IDs, and nothing on the ledger shows that.
 - Each election costs a CA server, an issuer key and a channel.
 - A leaked credential can vote, and can't be cancelled within its election.
-- The experimental build carries 13 MB of compiled code that has to be pinned, rebuilt reproducibly and reviewed, and a content security policy that allows WebAssembly.
+- The experimental build carries 12.7 MB of compiled code that has to be pinned, rebuilt reproducibly and reviewed, and a content security policy that allows WebAssembly. An experimental explorer that shows private elections needs the same module, built with Go, and its pages allow WebAssembly too.
+- Checking an anonymous ballot costs an explorer about 120 ms in Node as it indexes the block, most of it the creator's proof, and the browser's full check about 100 ms per ballot in one worker after the module's start.
 - A raw secret key sits in WebAssembly memory in a page's worker while it signs. Go's garbage collector doesn't guarantee those bytes are wiped, so Weft terminates the worker when the page is done.
 - The voter invite is trusted for the issuer key, the relay's operator and the endorsers' CA chains. A forged invite could name another network, and the voter's check against it is the election fingerprint, which every explorer shows.
 - The relay for an election learns the voter's network address and timing, and voters depend on whoever operates it.

@@ -88,7 +88,7 @@ The relay that an election with voter credentials names in its voter invite acce
 |---|---|
 | `WEFT_EXPERIMENTAL` | `1` turns the experimental behaviour on. Any other value leaves it off. |
 | `WEFT_IDEMIX_MSP_IDS` | Comma-separated voter MSPs, one per election, for example `ChairVoters2027MSP`. The relay refuses to start with it and without `WEFT_EXPERIMENTAL=1`. |
-| `WEFT_VOTER_INVITES` | A folder of voter invites, one `<election>.json` each, served at `/.well-known/weft-voter-invite/<election>.json`. Each is checked at startup, and must name an MSP in `WEFT_IDEMIX_MSP_IDS`. The relay refuses to start with it and without `WEFT_EXPERIMENTAL=1`. |
+| `WEFT_VOTER_INVITES` | A folder of voter invites, one `<election>.json` each, served at `/.well-known/weft-voter-invite/<election>.json`. Each is checked at startup, and must name an MSP in `WEFT_IDEMIX_MSP_IDS`. One added to the folder later is read and checked the same way when it is first asked for; one that fails a check isn't served, and the relay logs why. The relay refuses to start with it and without `WEFT_EXPERIMENTAL=1`. |
 
 A signer is then either `{ "mspId", "certificate" }` or `{ "mspId", "idemixIdentity" }`, the serialized idemix identity in base64. For an idemix signer the relay:
 
