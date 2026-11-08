@@ -12,6 +12,10 @@ import { BUILDS, PASSWORD, expect, stack, test, type Wallet } from "../support/f
 const built = existsSync(join(BUILDS.experimental, "manifest.json"));
 const needsExperimental = "Build Weft Experimental's test build first (pnpm --filter @weftwallet/extension build:e2e:experimental).";
 
+/** What normal Weft says for a voter invite (D11 of step 5), its one sentence that names Weft Experimental. */
+const VOTER_INVITE_MESSAGE =
+  "This is a voter invite for an election, and only Weft Experimental can hold voter credentials. Nothing was sent to the CA. Open the invite in Weft Experimental.";
+
 /** Every text file in a build, with its path. */
 function files(dir: string): { path: string; text: string }[] {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
@@ -44,10 +48,15 @@ test.describe("Weft", () => {
   });
 
   test("contains none of Weft Experimental's code", () => {
-    // The names, the ballot window and handler, and @weftwallet/tally with noble's ristretto255.
-    const marks = /Weft Experimental|castBallot|voterCredentials|experimental@weft|ballotRead|Sign and vote|ballot-option|weft-ballot-v1|weft-election-fingerprint|ristretto255/;
-    const found = files(BUILDS.normal).filter((f) => marks.test(f.text));
+    // The names, the ballot window and handler, @weftwallet/tally with noble's
+    // ristretto255, and the voter credentials' module and its worker. The one
+    // sentence allowed is D11's, which tells a voter what a voter invite is.
+    const marks = /Weft Experimental|castBallot|voterCredentials|experimental@weft|ballotRead|Sign and vote|ballot-option|weft-ballot-v1|weft-election-fingerprint|ristretto255|weftIdemix|weft-idemix|wasm-unsafe-eval|Get a voter credential/;
+    const found = files(BUILDS.normal).filter((f) => marks.test(f.text.replaceAll(VOTER_INVITE_MESSAGE, "")));
     expect(found.map((f) => f.path)).toEqual([]);
+    expect(files(BUILDS.normal).filter((f) => f.text.includes(VOTER_INVITE_MESSAGE))).toHaveLength(1);
+    expect(readdirSync(BUILDS.normal, { recursive: true }).filter((f) => String(f).endsWith(".wasm"))).toEqual([]);
+    expect(JSON.parse(readFileSync(join(BUILDS.normal, "manifest.json"), "utf8")).content_security_policy).toBeUndefined();
   });
 
   test("answers weft_castBallot with 4200, without a window", async ({ wallet }) => {
@@ -68,8 +77,13 @@ test.describe("Weft Experimental", () => {
     expect(await wallet.worker.evaluate(() => (globalThis as any).chrome.runtime.getManifest().name)).toBe("Weft Experimental");
     const dapp = await wallet.dapp();
     // Each experimental feature adds its name here when it's built.
-    expect(await dapp.page.evaluate(() => (window as any).weft.features)).toEqual(["receipts", "castBallot"]);
+    expect(await dapp.page.evaluate(() => (window as any).weft.features)).toEqual(["receipts", "castBallot", "voterCredentials"]);
     expect(await dapp.page.evaluate(() => (window as any).weft.version)).toBe("0.1.0");
+    // Only Weft Experimental's pages may compile WebAssembly, for the idemix module it carries.
+    expect(await wallet.worker.evaluate(() => (globalThis as any).chrome.runtime.getManifest().content_security_policy)).toEqual({
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+    });
+    expect(existsSync(join(BUILDS.experimental, "idemix", "weft-idemix.wasm"))).toBe(true);
 
     const welcome = await wallet.popup();
     await expect(welcome).toHaveTitle("Weft Experimental");
