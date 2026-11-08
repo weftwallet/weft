@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { browser } from "wxt/browser";
 import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../components/popup/AddForms";
 import { Home, type HomeMemory } from "../../components/popup/Home";
@@ -7,10 +7,14 @@ import { NetworkSettings } from "../../components/popup/NetworkSettings";
 import { Security } from "../../components/popup/Security";
 import { CreatePassword, Unlock } from "../../components/lock";
 import { TxDetail } from "../../components/popup/TxDetail";
-import { usePendingApproval, useUiEvents, useWallet, type Route } from "../../components/popup/state";
+import { usePendingApproval, useUiEvents, useWallet, voterCredentialsOf, type Route } from "../../components/popup/state";
 import { FeedbackProvider, useFeedback } from "../../components/feedback";
 import { EXPERIMENTAL } from "../../lib/experimental";
 import { Button, ErrorDetails, ReplayMark, Spinner, Splash, StatusScreen, WeaveMark, clockTime, tokenMs, useFocusOnArrival } from "../../components/ui";
+
+/** Weft Experimental's voter credential detail (docs/adr/0008); the normal build never emits it. */
+const VoterCredentialDetail =
+  import.meta.env.WEFT_EXPERIMENTAL === true ? lazy(() => import("../../components/popup/VoterCredential").then((m) => ({ default: m.VoterCredentialDetail }))) : null;
 
 /** How deep each screen sits, so moving deeper slides one way and back the other. */
 const DEPTH: Record<Route["name"], number> = {
@@ -19,6 +23,7 @@ const DEPTH: Record<Route["name"], number> = {
   tx: 1,
   add: 2,
   network: 2,
+  "voter-credential": 2,
   security: 1,
   "complete-csr": 2,
   join: 3,
@@ -105,12 +110,14 @@ function Screens() {
   // the identity that brought it there has just arrived.
   const knownIds = useRef<Set<string> | null>(null);
   if (state) {
-    const ids = state.identities.map((i) => i.id);
+    // Voter credentials arrive the same way, in their own group (docs/adr/0008).
+    const ids = [...state.identities.map((i) => i.id), ...voterCredentialsOf(state).map((c) => c.id)];
     if (knownIds.current) {
       const added = ids.filter((id) => !knownIds.current!.has(id));
       if (added.length) {
         homeMemory.current.fresh = [...homeMemory.current.fresh, ...added];
-        homeMemory.current.tab = "identities";
+        // Home's identities tab lists identities only, never voter credentials.
+        if (added.some((id) => state.identities.some((i) => i.id === id))) homeMemory.current.tab = "identities";
         setTimeout(() => {
           homeMemory.current.fresh = homeMemory.current.fresh.filter((id) => !added.includes(id));
         }, tokenMs("--weft-rule-life", 4000) + 1000);
@@ -191,7 +198,7 @@ function Screens() {
       screen = <Security state={state} onState={setState} navigate={navigate} />;
       break;
     case "identities":
-      screen = <Identities state={state} onState={setState} navigate={navigate} />;
+      screen = <Identities state={state} onState={setState} navigate={navigate} fresh={homeMemory.current.fresh} />;
       break;
     case "add":
       screen = <AddIdentity state={state} navigate={navigate} />;
@@ -217,9 +224,17 @@ function Screens() {
     case "network":
       screen = <NetworkSettings state={state} onState={setState} networkId={route.networkId} navigate={navigate} />;
       break;
+    case "voter-credential":
+      screen = VoterCredentialDetail ? (
+        <Suspense fallback={null}>
+          <VoterCredentialDetail state={state} id={route.id} navigate={navigate} onState={setState} />
+        </Suspense>
+      ) : null;
+      break;
     case "home":
+      // With only voter credentials, Home says there's no identity for sites (docs/adr/0008).
       screen =
-        state.identities.length === 0 ? (
+        state.identities.length === 0 && voterCredentialsOf(state).length === 0 ? (
           <Welcome navigate={navigate} />
         ) : (
           <Home state={state} onState={setState} navigate={navigate} memory={homeMemory.current} />

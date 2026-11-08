@@ -7,8 +7,15 @@
  * background worker, then shows two screens: choose an option, then confirm
  * the vote with who holds the key, the election fingerprint and what the
  * network sees. A failure before the vote replaces both with what happened.
+ *
+ * For an election with voter credentials (docs/adr/0008), it first opens the
+ * credential, starts the idemix module in a dedicated worker of this window
+ * and connects it to the background worker, which signs the read and the
+ * vote through it (lib/voter/remote.ts). The worker is terminated when the
+ * window closes. Nothing on either screen names the voter.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { browser } from "wxt/browser";
 import "./cast-ballot.css";
 import { trackingUrl } from "../../components/popup/BallotReceipt";
 import { SaveReceipt } from "../../components/receipt";
@@ -28,6 +35,9 @@ import {
 } from "../../components/ui";
 import { ui, type ApprovalOutcome, type ApprovalView, type BallotElectionView, type BallotFailureView, type BallotReadView, type ReceiptOutcome } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
+import { measure, startVoterModule } from "../../lib/voter/module";
+import { PORT_PREFIX, serveSigner } from "../../lib/voter/remote";
+import { openCredential, voterKey } from "../../lib/voter/seal";
 
 interface Progress {
   phase: "review" | "working" | "done";
@@ -66,8 +76,36 @@ export function fromNow(iso: string, now = Date.now()): string {
   return ms >= 0 ? `in ${span}` : `${span} ago`;
 }
 
+/**
+ * Opens the voter credential in this window, starts the module in its own
+ * worker with the election's issuer key, and serves the background worker's
+ * calls over a port. Returns what ends them both.
+ */
+async function startAnonymous(view: ApprovalView): Promise<() => void> {
+  const record = await ui("voterCredential", { id: view.ballotCredential! });
+  if (!record) throw new Error("The voter credential is no longer in Weft.");
+  const credential = await openCredential(await voterKey(), record);
+  const idemix = await startVoterModule();
+  try {
+    const loaded = await idemix.loadIssuerKey(record.issuerPublicKey);
+    if (loaded.issuerKeyHash !== record.invite.issuerKeyHash) throw new Error(`The module read the issuer key's hash as ${loaded.issuerKeyHash}, not ${record.invite.issuerKeyHash}.`);
+  } catch (error) {
+    idemix.terminate();
+    throw error;
+  }
+  const port = browser.runtime.connect({ name: `${PORT_PREFIX}${view.id}` });
+  serveSigner(port, idemix, credential, record.invite.mspId);
+  return () => {
+    port.disconnect();
+    idemix.terminate();
+  };
+}
+
 export default function CastBallotRequest({ view, onDecide, deciding, progress }: Props) {
   const ballot = view.ballot!;
+  const anonymous = Boolean(view.ballotCredential);
+  // A voter credential's module starts before the election is read.
+  const [starting, setStarting] = useState(anonymous);
   const [read, setRead] = useState<BallotReadView | null>(null);
   const [workerError, setWorkerError] = useState<ErrorInfo | null>(null);
   const [busy, setBusy] = useState(false);
@@ -79,8 +117,44 @@ export default function CastBallotRequest({ view, onDecide, deciding, progress }
   const [keep, setKeep] = useState(false);
 
   useEffect(() => {
-    void ui("ballotRead", { id: view.id }).then(setRead, (e: unknown) => setWorkerError(toErrorInfo(e)));
+    let live = true;
+    let stop: (() => void) | null = null;
+    void (async () => {
+      if (anonymous) {
+        const started = performance.now();
+        try {
+          stop = await startAnonymous(view);
+          measure("weft-vote-module-ready", started);
+        } catch (e) {
+          if (!live) return;
+          const message = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+          setRead(await ui("ballotModuleFailed", { id: view.id, error: message }));
+          setStarting(false);
+          return;
+        }
+        if (!live) return stop();
+        setStarting(false);
+      }
+      const started = performance.now();
+      const next = await ui("ballotRead", { id: view.id });
+      measure("weft-vote-read", started);
+      if (live) setRead(next);
+    })().catch((e: unknown) => live && setWorkerError(toErrorInfo(e)));
+    return () => {
+      live = false;
+      stop?.();
+    };
   }, [view.id]);
+
+  // How long a vote takes, from Sign and vote to the outcome, for the docs.
+  const castStarted = useRef<number | null>(null);
+  useEffect(() => {
+    if (progress.phase === "working") castStarted.current = performance.now();
+    if (progress.phase === "done" && castStarted.current !== null) {
+      measure(anonymous ? "weft-vote-cast-anonymous" : "weft-vote-cast", castStarted.current);
+      castStarted.current = null;
+    }
+  }, [progress.phase]);
 
   /** Try again and Refresh from invite: the status screen stays, the pressed button shows the loader. */
   const again = async (refresh: boolean, inviteUrl?: string) => {
@@ -114,6 +188,7 @@ export default function CastBallotRequest({ view, onDecide, deciding, progress }
       </StatusScreen>
     );
   }
+  if (starting) return <Splash label="Starting Weft's voting module" />;
   if (!read || (read.status === "failed" && read.failure.kind === "locked")) {
     return <Splash label={`Reading ${ballot.electionId} from the ledger`} />;
   }
@@ -280,17 +355,29 @@ function ChooseScreen({
           <div className="notice notice--amber">
             <Icon name="alert" size={18} color="var(--weft-warn-text)" />
             <span>
-              Your Weft activity has a ballot from {election.voter.name} in this election
+              Your Weft activity has a ballot from {election.anonymous ? "your voter credential" : election.voter.name} in this election
               {election.alreadyVoted.blockNumber ? `, in block ${election.alreadyVoted.blockNumber}` : ""}. The contract refuses a second one.
             </span>
           </div>
         )}
-        <div className="notice notice--thread">
-          <span className="tag" style={{ background: "var(--weft-accent)" }}>
-            Private
-          </span>
-          <span>Weft encrypts your choice in this window. The site, the relay and each organisation on its own see only an encrypted ballot.</span>
-        </div>
+        {election.anonymous ? (
+          <div className="notice notice--thread">
+            <span className="tag" style={{ background: "var(--weft-accent)" }}>
+              Anonymous
+            </span>
+            <span>
+              Weft encrypts your choice in this window and signs it as an anonymous member of {election.anonymous.mspId}. The site, the relay and each organisation
+              see an encrypted ballot from a voter they can't name.
+            </span>
+          </div>
+        ) : (
+          <div className="notice notice--thread">
+            <span className="tag" style={{ background: "var(--weft-accent)" }}>
+              Private
+            </span>
+            <span>Weft encrypts your choice in this window. The site, the relay and each organisation on its own see only an encrypted ballot.</span>
+          </div>
+        )}
         <fieldset className="ballot-options">
           <legend className="eyebrow">Your choice</legend>
           {election.options.map((option, i) => (
@@ -304,7 +391,11 @@ function ChooseScreen({
           {choice === null ? "Choose one option to review your vote." : "Nothing is signed until you confirm your vote."}
         </p>
         <ElectionDetails election={election} />
-        <p className="subtle type-xs flat">Weft read this election from the ledger through {election.relayHost}. The site gave only its ID.</p>
+        <p className="subtle type-xs flat">
+          {election.anonymous
+            ? `Weft read this election from the ledger through ${election.relayHost}, signed by a one-off identity from your voter credential. The site gave only its ID.`
+            : `Weft read this election from the ledger through ${election.relayHost}. The site gave only its ID.`}
+        </p>
       </main>
       <footer className="footer">
         <Button aria-disabled={deciding || undefined} onClick={onReject}>
@@ -349,10 +440,13 @@ function ConfirmScreen({
   const locked = progress.phase !== "review" || deciding;
   const option = election.options[choice]!;
   const title = working ? "Encrypting, signing and submitting" : failed ? failed.title : approved ? `Voted in ${election.title}` : `Vote for ${option}?`;
+  const anon = election.anonymous;
   const subtitle = working
     ? progress.slow
       ? "Still waiting for the block. Weft stops waiting after a minute and tells you what happened."
-      : "Waiting for the network to answer."
+      : anon
+        ? "Weft made a new identity for this ballot. Waiting for the network to answer."
+        : "Waiting for the network to answer."
     : SUBTITLE;
 
   return (
@@ -360,7 +454,7 @@ function ConfirmScreen({
       <Header title={title} origin={view.origin} subtitle={subtitle} />
       <main className={`page step${working ? " page--dim" : ""}`} data-dir={dir} aria-busy={working || undefined}>
         {failed && <CastFailed outcome={failed} />}
-        {approved && <ReceiptProblem receipt={approved.receipt} tracking={approved.tracking ?? ""} />}
+        {approved && <ReceiptProblem receipt={approved.receipt} tracking={approved.tracking ?? ""} anonymous={Boolean(anon)} />}
         <section className="choice-card" aria-labelledby="choice-label">
           <div className="row-between">
             <span className="eyebrow" id="choice-label">
@@ -377,7 +471,8 @@ function ConfirmScreen({
         <div className="notice notice--thread">
           <Icon name="shield" size={18} color="var(--weft-accent-text)" />
           <span>
-            {listOf(election.trustees)} each hold part of this election's key. Any {election.threshold} of them together could read your ballot.
+            {listOf(election.trustees)} each hold part of this election's key. Any {election.threshold} of them together could read your ballot
+            {anon ? ", and not whose it is." : "."}
           </span>
         </div>
         <dl className="details">
@@ -390,24 +485,61 @@ function ConfirmScreen({
             </span>
             <span className="subtle type-xs block">Weft worked this out from the election's record. Every explorer shows the same.</span>
           </dd>
-          <dt>Voting as</dt>
-          <dd>
-            <span className="strong block">{election.voter.name}</span>
-            <span className="mono muted type-xs">{election.voter.mspId}</span>
-            <span className="subtle type-xs block">Every organisation can see that you voted.</span>
-          </dd>
-          <dt>Through</dt>
-          <dd>
-            <span className="mono">{election.relayHost}</span>
-            <span className="subtle type-xs block">
-              Weft read the election and sends your ballot through this relay. It sees your network address, not your choice.
-            </span>
-            <span className={`type-xs block ${election.peerChecked ? "subtle" : "warn-line"}`}>
-              {election.peerChecked
-                ? `Weft checked ${election.voter.mspId}'s peer signature on the election it read.`
-                : `Weft didn't check a peer's signature on the election: it has no CA chain for this identity. Compare the fingerprint with an explorer's.`}
-            </span>
-          </dd>
+          {anon ? (
+            <>
+              <dt>Voting as</dt>
+              <dd>
+                <span className="strong block">An anonymous member of {anon.mspId}</span>
+                <span className="subtle type-xs block">
+                  The network sees {anon.mspId}, the affiliation <span className="mono">{anon.affiliation}</span> and the role{" "}
+                  <span className="mono">{anon.role}</span>, which every voter shares. It doesn't see your enrolment ID, and this ballot can't be linked to anything
+                  else you sign.
+                </span>
+              </dd>
+              <dt>Pseudonym</dt>
+              <dd>
+                <span className="mono pseudonym" title={anon.pseudonym}>
+                  {shorten(anon.pseudonym)}
+                </span>
+                <span className="subtle type-xs block">
+                  The same for every attempt with this credential in {election.electionId}, so a second ballot is refused. It names no one, and it is different in
+                  every election. Explorers show it beside your ballot.
+                </span>
+              </dd>
+              <dt>Through</dt>
+              <dd>
+                <span className="mono">{election.relayHost}</span>
+                <span className="subtle type-xs block">
+                  Run by {anon.relayOperator}, as your voter invite says. Weft read the election and sends your ballot through this relay. It sees your network
+                  address and when you vote, not your choice or your name.
+                </span>
+                <span className="subtle type-xs block">
+                  Weft checked {listOf(anon.checked.map((m) => `${m}'s`))} peer signatures on the election, against the CA certificates in your voter invite.
+                </span>
+              </dd>
+            </>
+          ) : (
+            <>
+              <dt>Voting as</dt>
+              <dd>
+                <span className="strong block">{election.voter.name}</span>
+                <span className="mono muted type-xs">{election.voter.mspId}</span>
+                <span className="subtle type-xs block">Every organisation can see that you voted.</span>
+              </dd>
+              <dt>Through</dt>
+              <dd>
+                <span className="mono">{election.relayHost}</span>
+                <span className="subtle type-xs block">
+                  Weft read the election and sends your ballot through this relay. It sees your network address, not your choice.
+                </span>
+                <span className={`type-xs block ${election.peerChecked ? "subtle" : "warn-line"}`}>
+                  {election.peerChecked
+                    ? `Weft checked ${election.voter.mspId}'s peer signature on the election it read.`
+                    : `Weft didn't check a peer's signature on the election: it has no CA chain for this identity. Compare the fingerprint with an explorer's.`}
+                </span>
+              </dd>
+            </>
+          )}
         </dl>
         <section className={`keep${keep ? " keep--on" : ""}`} aria-labelledby="keep-title">
           <label className="keep__row">
@@ -420,11 +552,16 @@ function ConfirmScreen({
             <input type="checkbox" role="switch" className="switch" checked={keep} disabled={locked} aria-describedby="keep-detail" onChange={(e) => onKeep(e.target.checked)} />
           </label>
           <p className="keep__detail type-xs" id="keep-detail">
-            Weft keeps the tracking code with this transaction in your activity, and a note of your choice that only you can open in Weft. The receipt itself
-            holds nothing about your choice.
+            {anon
+              ? "Weft keeps the tracking code with this transaction in your activity, sealed with your vault key like your note of the choice, so this browser's files don't link your credential to the ballot. The receipt itself holds nothing about your choice or you."
+              : "Weft keeps the tracking code with this transaction in your activity, and a note of your choice that only you can open in Weft. The receipt itself holds nothing about your choice."}
           </p>
         </section>
-        <p className="subtle type-xs flat">Before signing, Weft checks that the relay's proposal carries exactly the ballot it made.</p>
+        <p className="subtle type-xs flat">
+          {anon
+            ? "Before signing, Weft checks that the relay's proposal carries exactly the ballot and the identity it made."
+            : "Before signing, Weft checks that the relay's proposal carries exactly the ballot it made."}
+        </p>
       </main>
       {failed ? (
         <footer className="footer footer--single">
@@ -470,7 +607,7 @@ function CastFailed({ outcome }: { outcome: Extract<ApprovalOutcome, { status: "
 const trouble = (receipt: ReceiptOutcome | undefined) => receipt?.kept === false && (receipt.reason === "storage" || receipt.reason === "mismatch");
 
 /** When Weft couldn't keep the receipt the voter asked for: the browser refused it, or the tracking codes differ. */
-function ReceiptProblem({ receipt, tracking }: { receipt: ReceiptOutcome | undefined; tracking: string }) {
+function ReceiptProblem({ receipt, tracking, anonymous }: { receipt: ReceiptOutcome | undefined; tracking: string; anonymous: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const shown = trouble(receipt);
   useEffect(() => {
@@ -499,7 +636,7 @@ function ReceiptProblem({ receipt, tracking }: { receipt: ReceiptOutcome | undef
             your ballot by Weft's code, so Weft kept nothing. Tell the contract's developer.
           </div>
           <ErrorDetails>
-            Weft worked out {shorten(tracking)} from the election context, your voter tag and the ballot.{" "}
+            Weft worked out {shorten(tracking)} from the election context, {anonymous ? "your pseudonym's voter tag" : "your voter tag"} and the ballot.{" "}
             {receipt.returned ? `The contract returned ${shorten(receipt.returned)}.` : "The contract returned no tracking code."}
           </ErrorDetails>
         </>

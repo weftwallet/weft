@@ -24,7 +24,7 @@ import {
 } from "@weftwallet/core";
 import type { CastBallotParams, ContractCall, RelaySigner } from "@weftwallet/protocol";
 import type { Election } from "@weftwallet/tally";
-import { RecordError, checkAnswer, creatorIdBytes, decodeEndorsedAnswer, electionFrom, parseElectionRecord, type ElectionRecord } from "./read";
+import { RecordError, checkAnswer, creatorIdBytes, decodeEndorsedAnswer, electionFrom, parseElectionRecord, type ElectionRecord, type Endorsers } from "./read";
 
 /** The relay calls the flows use, so tests can pass a recorded relay. */
 export type BallotRelay = Pick<RelayClient, "propose" | "endorse" | "submit" | "commitStatus">;
@@ -37,6 +37,8 @@ export interface ReadElection {
   idBytes: Uint8Array;
   /** A peer of the voter's organisation signed the answer, and Weft checked it. */
   peerChecked: boolean;
+  /** The organisations whose peer signatures Weft checked. */
+  checked: string[];
 }
 
 const sameBytes = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -69,14 +71,17 @@ async function proposeChecked(relay: BallotRelay, signer: RelaySigner, call: Con
 /**
  * Reads the election: endorses GetElection without submitting, checks the
  * peers' signed answer, and reads the record from inside the signed bytes.
- * `chain` is the CA chain kept for the voter's identity, or null.
+ * `trust` is what the answer's signatures are checked against: the CA chain
+ * kept for an X.509 voter's identity, or null for none; for a voter
+ * credential, the trustee organisations' CA chains from the voter invite
+ * (docs/adr/0008, D9), every endorsement checked.
  */
 export async function readElection(
   relay: BallotRelay,
   signer: RelaySigner,
   params: CastBallotParams,
   sign: Signer,
-  chain: string | null,
+  trust: string | null | { endorsers: Endorsers },
   now = new Date(),
 ): Promise<ReadElection> {
   const call: ContractCall = { channel: params.channel, chaincode: params.chaincode, fn: "GetElection", args: [params.electionId] };
@@ -91,10 +96,12 @@ export async function readElection(
     if (error instanceof RecordError) throw error;
     throw new RecordError("signature", `Weft couldn't decode the peers' answer: ${error instanceof Error ? error.message : String(error)}.`);
   }
-  const { text, peerChecked } = await checkAnswer(answer, { proposal: decoded.signable, chaincode: params.chaincode, mspId: signer.mspId, chain, now });
+  const chain = typeof trust === "string" ? trust : null;
+  const endorsers = trust !== null && typeof trust === "object" ? { endorsers: trust.endorsers } : {};
+  const { text, peerChecked, checked } = await checkAnswer(answer, { proposal: decoded.signable, chaincode: params.chaincode, mspId: signer.mspId, chain, ...endorsers, now });
   const record = parseElectionRecord(text, params.electionId);
   const open = record.state === "open" ? electionFrom(record, params.channel, params.chaincode) : null;
-  return { record, open, idBytes: creatorIdBytes(decoded.signable), peerChecked };
+  return { record, open, idBytes: creatorIdBytes(decoded.signable), peerChecked, checked };
 }
 
 export interface CastResult {
@@ -106,10 +113,13 @@ export interface CastResult {
 }
 
 /**
- * Casts the ballot: `call` is CastBallot with the ballot Weft made. Before
+ * Casts the ballot: `call` is CastBallot with the ballot Weft made, or
+ * CastAnonymousBallot with the ballot and the pseudonym proof. Before
  * signing, the proposal must carry exactly those arguments and the creator's
- * id_bytes must be exactly `idBytes`, the bytes the voter tag was made from:
- * a ballot bound to another tag would be refused by the contract.
+ * id_bytes must be exactly `idBytes`: for an X.509 voter the bytes the voter
+ * tag was made from, since a ballot bound to another tag would be refused by
+ * the contract; for a voter credential the one-off identity Weft made for
+ * this transaction, which the pseudonym proof is bound to.
  */
 export async function castBallotCall(
   relay: BallotRelay,

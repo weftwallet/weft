@@ -7,7 +7,7 @@ import { CopyButton, useCopy, useFeedback } from "../feedback";
 import { GroupedHex, SaveReceipt } from "../receipt";
 import { ActionError, BackHeader, Button, Empty, ErrorDetails, Icon, Splash, shorten, timeAgo, toErrorInfo, type ErrorInfo } from "../ui";
 import { BallotReceiptCard } from "./BallotReceipt";
-import type { Navigate } from "./state";
+import { voterCredentialsOf, type Navigate } from "./state";
 
 const HEADLINE = {
   committed: { color: "var(--weft-accent-text)", text: "Committed to the ledger" },
@@ -63,9 +63,12 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
   }
 
   const identity = state.identities.find((i) => i.id === item.identityId);
+  // Weft Experimental: an anonymous ballot names no one (docs/adr/0008).
+  const anonymous = import.meta.env.WEFT_EXPERIMENTAL === true ? item.anonymous : undefined;
+  const credential = anonymous ? voterCredentialsOf(state).find((c) => c.id === anonymous.credentialId) : undefined;
   const head = HEADLINE[item.status];
   // Only transactions that reached a block are in the explorer.
-  const explorer = state.networks.find((n) => n.id === identity?.networkId)?.explorerUrl;
+  const explorer = anonymous ? credential?.explorerUrl : state.networks.find((n) => n.id === identity?.networkId)?.explorerUrl;
   const explorerLink =
     explorer && item.transactionId && item.blockNumber
       ? `${explorer}/channels/${encodeURIComponent(item.call.channel)}/transactions/${encodeURIComponent(item.transactionId)}`
@@ -151,7 +154,14 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
           )}
           <dt>Signed by</dt>
           <dd>
-            {identity ? (
+            {anonymous ? (
+              <>
+                <span className="block">An anonymous member of {anonymous.mspId}</span>
+                <span className="mono muted type-xs">
+                  {anonymous.affiliation} · {anonymous.role} · a one-off identity
+                </span>
+              </>
+            ) : identity ? (
               <>
                 <span className="block">{identity.name}</span>
                 <span className="mono muted type-xs">{identity.mspId}</span>
@@ -160,6 +170,14 @@ export function TxDetail({ state, activityId, navigate }: { state: WalletState; 
               <span className="muted">A removed identity</span>
             )}
           </dd>
+          {anonymous?.pseudonym && (
+            <>
+              <dt>Pseudonym</dt>
+              <dd className="mono" title={anonymous.pseudonym}>
+                {shorten(anonymous.pseudonym)}
+              </dd>
+            </>
+          )}
           <dt>Block</dt>
           <dd className={item.blockNumber ? "mono" : "muted"}>{item.blockNumber ?? "None"}</dd>
           <dt>When</dt>

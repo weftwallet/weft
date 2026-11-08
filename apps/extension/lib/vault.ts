@@ -206,6 +206,26 @@ export async function openReceipt(id: string, sealed: Sealed): Promise<Uint8Arra
   return openBound(await receiptKey(), sealed, id);
 }
 
+/**
+ * A key derived from the vault key with HKDF-SHA-256 for `info`, for
+ * AES-GCM. It reads the vault key from session storage, which every
+ * extension page can read as the background worker can, so a page can seal
+ * and open with it without sending what it seals to the worker. Not cached:
+ * each call checks that Weft is still unlocked. Throws VaultLockedError.
+ */
+export async function derivedKey(info: string): Promise<CryptoKey> {
+  const raw = await sessionKey();
+  if (!raw) throw new VaultLockedError();
+  const material = await crypto.subtle.importKey("raw", raw as Uint8Array<ArrayBuffer>, "HKDF", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: new ArrayBuffer(0), info: new TextEncoder().encode(info) },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
 /** Fails unless Weft is unlocked. */
 export async function requireUnlocked(): Promise<void> {
   await requireVault();

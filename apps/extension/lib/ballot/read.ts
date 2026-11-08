@@ -31,7 +31,9 @@ export interface ElectionRecord {
   creatorMsp: string;
   trustees: { id: string; msp: string }[];
   threshold: number;
-  voters: { kind: "x509"; msps: string[] } | { kind: "idemix"; msp: string };
+  voters:
+    | { kind: "x509"; msps: string[] }
+    | { kind: "idemix"; msp: string; affiliation: string; role: string; issuerKeyHash: string; curve: string };
   state: ElectionState;
   publicKey?: string;
   verifyingShares?: string[];
@@ -99,8 +101,12 @@ export function parseElectionRecord(text: string, electionId: string): ElectionR
   const v = r.voters as { kind?: unknown; msps?: unknown; msp?: unknown } | null;
   let voters: ElectionRecord["voters"];
   if (v?.kind === "x509") voters = { kind: "x509", msps: strings("voters.msps", v.msps) };
-  else if (v?.kind === "idemix" && typeof v.msp === "string") voters = { kind: "idemix", msp: v.msp };
-  else return bad("The record's voters are neither X.509 organisations nor a voter credential organisation.");
+  else if (v?.kind === "idemix" && typeof v.msp === "string") {
+    const iv = v as { affiliation?: unknown; role?: unknown; issuerKeyHash?: unknown; curve?: unknown };
+    const field = (k: "affiliation" | "role" | "issuerKeyHash" | "curve") => (typeof iv[k] === "string" ? (iv[k] as string) : bad(`The record's voters.${k} isn't a string.`));
+    voters = { kind: "idemix", msp: v.msp, affiliation: field("affiliation"), role: field("role"), issuerKeyHash: field("issuerKeyHash"), curve: field("curve") };
+    if (!HEX(64).test(voters.issuerKeyHash)) bad("The record's voters.issuerKeyHash isn't 64 lowercase hex characters.");
+  } else return bad("The record's voters are neither X.509 organisations nor a voter credential organisation.");
   const record: ElectionRecord = { v: 1, id: electionId, title, options, closesAt, creatorMsp, trustees, threshold: threshold as number, voters, state };
   if (typeof r.reportedBy === "string") record.reportedBy = r.reportedBy;
   if (state === "keygen" || state === "failed" || state === "cancelled") return record;
@@ -289,16 +295,24 @@ async function peerSigned(e: Endorsement, cas: MemberCas, now: Date): Promise<st
   }
 }
 
+/** The trustee organisations' CA chains, from a voter invite (docs/adr/0008, D9). */
+export type Endorsers = { mspId: string; caChain: string }[];
+
 /**
  * Checks the answer: it is for the proposal Weft signed, from the contract
- * the site named, successful, and, when `chain` is given, signed by a peer of
- * the voter's own organisation whose certificate chains to that CA. Returns
- * the contract's answer as text. Throws RecordError("signature") otherwise.
+ * the site named, successful, and signed as `expect` says. With `chain`,
+ * by a peer of the voter's own organisation whose certificate chains to that
+ * CA. With `endorsers`, for a voter credential, whose organisation has no
+ * peers: there is at least one endorsement, and every endorsement is by a
+ * peer of an organisation the voter invite names, whose certificate chains to
+ * the CA chain the invite pins for it (D9). Returns the contract's answer as
+ * text, and the organisations whose signatures Weft checked. Throws
+ * RecordError("signature") otherwise.
  */
 export async function checkAnswer(
   answer: EndorsedAnswer,
-  expect: { proposal: Uint8Array; chaincode: string; mspId: string; chain: string | null; now?: Date },
-): Promise<{ text: string; peerChecked: boolean }> {
+  expect: { proposal: Uint8Array; chaincode: string; mspId: string; chain: string | null; endorsers?: Endorsers; now?: Date },
+): Promise<{ text: string; peerChecked: boolean; checked: string[] }> {
   if (!sameBytes(answer.proposalHash, await proposalHash(expect.proposal))) {
     throw new RecordError("signature", "The peers' answer isn't for the proposal Weft signed.");
   }
@@ -306,6 +320,23 @@ export async function checkAnswer(
     throw new RecordError("signature", `The answer is from the contract ${answer.chaincode}, not ${expect.chaincode}.`);
   }
   if (answer.status !== 200) throw new RecordError("signature", `The answer's status is ${answer.status}, not 200.`);
+  if (expect.endorsers) {
+    if (answer.endorsements.length === 0) throw new RecordError("signature", "No peer signed the answer.");
+    const checked: string[] = [];
+    for (const e of answer.endorsements) {
+      const pinned = expect.endorsers.find((p) => p.mspId === e.mspId);
+      if (!pinned) throw new RecordError("signature", `The endorsement from ${e.mspId} isn't from an organisation the voter invite names.`);
+      const cas = chainCas(e.mspId, pinned.caChain);
+      if (cas.rootCerts.length === 0) throw new RecordError("signature", `The voter invite's CA chain for ${e.mspId} has no root certificate.`);
+      const problem = await peerSigned(e, cas, expect.now ?? new Date());
+      if (problem) {
+        const said = problem === `its certificate wasn't issued by ${e.mspId}'s CA` ? "its certificate doesn't chain to the CA certificate in the voter invite" : problem;
+        throw new RecordError("signature", `The endorsement from ${e.mspId} doesn't check out: ${said}.`);
+      }
+      if (!checked.includes(e.mspId)) checked.push(e.mspId);
+    }
+    return { text: utf8Text(answer.payload), peerChecked: true, checked };
+  }
   if (expect.chain) {
     const cas = chainCas(expect.mspId, expect.chain);
     if (cas.rootCerts.length === 0) throw new RecordError("signature", `The CA chain Weft kept for ${expect.mspId} has no root certificate.`);
@@ -314,12 +345,12 @@ export async function checkAnswer(
     const problems: string[] = [];
     for (const e of own) {
       const problem = await peerSigned(e, cas, expect.now ?? new Date());
-      if (!problem) return { text: utf8Text(answer.payload), peerChecked: true };
+      if (!problem) return { text: utf8Text(answer.payload), peerChecked: true, checked: [expect.mspId] };
       problems.push(problem);
     }
     throw new RecordError("signature", `${expect.mspId}'s endorsement doesn't check out: ${problems.join("; ")}.`);
   }
-  return { text: utf8Text(answer.payload), peerChecked: false };
+  return { text: utf8Text(answer.payload), peerChecked: false, checked: [] };
 }
 
 function utf8Text(bytes: Uint8Array): string {

@@ -33,7 +33,7 @@ import {
   type ErrorInfo,
 } from "../../components/ui";
 import { EXPERIMENTAL } from "../../lib/experimental";
-import { ui, type ApprovalOutcome, type ApprovalView, type IdentityView, type ReceiptOutcome } from "../../lib/messages";
+import { UiError, ui, type ApprovalOutcome, type ApprovalView, type IdentityView, type ReceiptOutcome } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import * as check from "../../lib/validate";
 import type { VaultStatus } from "../../lib/vault";
@@ -919,6 +919,14 @@ function AddNetworkRequest({ view, onDecide, deciding, progress }: RequestProps)
   const review = useAction(async () => {
     await requestHostAccess([inviteUrl], "the server the invite comes from");
     const loaded = await ui("fetchInvite", { link: inviteUrl });
+    // Weft Experimental reads voter invites too (docs/adr/0008), but a site can't hand one over: the voter opens it in the popup.
+    if (import.meta.env.WEFT_EXPERIMENTAL === true && "weftVoterInvite" in loaded) {
+      throw new UiError(
+        "This is a voter invite for an election. A site can't add it for you: open Weft Experimental from the toolbar, choose Join from an invite and paste the link.",
+        `${inviteUrl} has "weftVoterInvite": 1.`,
+      );
+    }
+    if ("weftVoterInvite" in loaded) return;
     setInvite(loaded);
     setEnrollmentId(loaded.enrollmentId ?? "");
   });

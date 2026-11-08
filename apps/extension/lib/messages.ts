@@ -12,6 +12,7 @@ import type {
   ContractCall,
   IdentitySummary,
   OrgInvite,
+  VoterInvite,
   WeftErrorShape,
   WeftMethod,
 } from "@weftwallet/protocol";
@@ -20,6 +21,7 @@ import type { ActivityRecord, NetworkRecord, Settings, SiteRecord } from "./db";
 import type { ReceiptAsked } from "./receipt-request";
 import type { ReceiptView } from "./receipts";
 import type { VaultStatus } from "./vault";
+import type { VoterCredentialRecord, VoterCredentialView } from "./voter/types";
 
 export interface IdentityView extends IdentitySummary {
   networkId: string;
@@ -47,6 +49,8 @@ export interface WalletState {
   sites: SiteRecord[];
   settings: Settings;
   vault: VaultStatus;
+  /** Weft Experimental only (docs/adr/0008): its voter credentials, which are never identities. */
+  voterCredentials?: VoterCredentialView[];
 }
 
 export type NetworkInput = Omit<NetworkRecord, "id">;
@@ -69,6 +73,12 @@ export interface ApprovalView {
   receipt?: ReceiptAsked;
   /** Weft Experimental's weft_castBallot only: the election the site named (docs/adr/0007). */
   ballot?: CastBallotParams;
+  /**
+   * Weft Experimental's weft_castBallot only (docs/adr/0008): the voter
+   * credential Weft holds for that election, which the window opens in its
+   * own idemix worker before the election is read.
+   */
+  ballotCredential?: string;
 }
 
 /** What became of a ballot receipt, for the approval window's status line. */
@@ -136,6 +146,22 @@ export interface BallotElectionView {
   peerChecked: boolean;
   /** This identity's committed ballot in this election, from Weft's activity. */
   alreadyVoted: { blockNumber: string | null } | null;
+  /**
+   * Weft Experimental (docs/adr/0008): an election with voter credentials,
+   * read and signed with one-off identities of the voter's credential. The
+   * window then names no one, not even to the voter.
+   */
+  anonymous?: {
+    mspId: string;
+    affiliation: string;
+    role: string;
+    /** The ballot's voter tag, made from the per-election pseudonym, 64 lowercase hex characters. */
+    pseudonym: string;
+    /** Who runs the election's relay, from the voter invite. */
+    relayOperator: string;
+    /** The trustee organisations whose peer signatures Weft checked against the invite's CA certificates. */
+    checked: string[];
+  };
 }
 
 /**
@@ -164,7 +190,8 @@ export interface UiApi {
   activityItem: [{ id: string }, ActivityRecord | null];
   setActive: [{ identityId: string; channel?: string }, WalletState];
   setChannel: [{ channel: string }, WalletState];
-  fetchInvite: [{ link: string }, OrgInvite];
+  /** In Weft Experimental, a voter invite too (docs/adr/0008). */
+  fetchInvite: [{ link: string }, OrgInvite | VoterInvite];
   /** inviteUrl: where the invite came from, kept so the network can be refreshed from it later. */
   joinInvite: [{ invite: OrgInvite; enrollmentId: string; secret: string; inviteUrl?: string }, IdentityView];
   enroll: [{ network: NetworkInput; enrollmentId: string; secret: string }, IdentityView];
@@ -185,6 +212,13 @@ export interface UiApi {
   ballotRead: [{ id: string }, BallotReadView];
   /** Weft Experimental: refreshes the network from its invite, for a channel it doesn't list, then reads again. */
   ballotRefreshInvite: [{ id: string }, BallotReadView];
+  /** Weft Experimental (docs/adr/0008): the window's voting module didn't start, so the request fails with -32603. */
+  ballotModuleFailed: [{ id: string; error: string }, BallotReadView];
+  /** Weft Experimental (docs/adr/0008): saves a voter credential the popup sealed. */
+  voterCredentialAdd: [{ record: VoterCredentialRecord }, VoterCredentialView];
+  /** Weft Experimental: a voter credential's record, with its secrets still sealed, for the page that opens them. */
+  voterCredential: [{ id: string }, VoterCredentialRecord | null];
+  voterCredentialRemove: [{ id: string }, WalletState];
   /** A kept receipt with its choice and salt. Needs Weft unlocked. */
   receiptGet: [{ id: string }, ReceiptView | null];
   receiptRemove: [{ id: string }, null];

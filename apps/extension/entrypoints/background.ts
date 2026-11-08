@@ -21,21 +21,29 @@ import {
   sendTo,
   withActiveChange,
 } from "../lib/sites";
-import { ballotRead, ballotRefreshInvite } from "../lib/ballot/handler";
+import { attachVoterPort, ballotModuleFailed, ballotRead, ballotRefreshInvite } from "../lib/ballot/handler";
+import { anonymousActivity, anonymousItem, anonymousReceiptView, removeAnonymousReceipt } from "../lib/voter/activity";
+import { PORT_PREFIX } from "../lib/voter/remote";
+import { addVoterCredential, removeVoterCredential, voterCredential } from "../lib/voter/store";
 import { checkCertificates, registerCertificateWatch } from "../lib/certificate-watch";
 import * as receipts from "../lib/receipts";
 import * as vault from "../lib/vault";
 import * as wallet from "../lib/wallet";
 
-/** Requests only Weft Experimental's windows send (docs/adr/0007). */
-type ExperimentalUiMethod = "ballotRead" | "ballotRefreshInvite";
+/** Requests only Weft Experimental's pages send (docs/adr/0007, 0008). */
+type ExperimentalUiMethod = "ballotRead" | "ballotRefreshInvite" | "ballotModuleFailed" | "voterCredentialAdd" | "voterCredential" | "voterCredentialRemove";
 type Handler<M extends UiMethod> = (payload: UiApi[M][0]) => Promise<UiApi[M][1]>;
 type Handlers = { [M in Exclude<UiMethod, ExperimentalUiMethod>]: Handler<M> } & { [M in ExperimentalUiMethod]?: Handler<M> };
 
 const handlers: Handlers = {
   state: () => wallet.getState(),
-  activity: () => db.recentActivity(),
-  activityItem: async ({ id }) => (await db.get<ActivityRecord>("activity", id)) ?? null,
+  // Weft Experimental's anonymous ballots are sealed, and shown with the rest while Weft is unlocked (docs/adr/0008).
+  activity: async () =>
+    import.meta.env.WEFT_EXPERIMENTAL === true
+      ? [...(await db.recentActivity()), ...(await anonymousActivity())].sort((a, b) => b.at - a.at)
+      : db.recentActivity(),
+  activityItem: async ({ id }) =>
+    (await db.get<ActivityRecord>("activity", id)) ?? (import.meta.env.WEFT_EXPERIMENTAL === true ? await anonymousItem(id) : null) ?? null,
   setActive: async ({ identityId, channel }) => {
     await withActiveChange(() => db.saveSettings({ activeIdentityId: identityId, activeChannel: channel ?? null }));
     await checkCertificates();
@@ -93,10 +101,19 @@ const handlers: Handlers = {
     ? {
         ballotRead: ({ id }: { id: string }) => ballotRead(id),
         ballotRefreshInvite: ({ id }: { id: string }) => ballotRefreshInvite(id),
+        ballotModuleFailed: ({ id, error }: { id: string; error: string }) => ballotModuleFailed(id, error),
+        voterCredentialAdd: ({ record }: UiApi["voterCredentialAdd"][0]) => addVoterCredential(record),
+        voterCredential: ({ id }: { id: string }) => voterCredential(id),
+        voterCredentialRemove: async ({ id }: { id: string }) => (await removeVoterCredential(id), wallet.getState()),
       }
     : {}),
-  receiptGet: ({ id }) => receipts.receiptView(id),
-  receiptRemove: async ({ id }) => (await receipts.removeReceipt(id), null),
+  receiptGet: async ({ id }) =>
+    (await receipts.receiptView(id)) ?? (import.meta.env.WEFT_EXPERIMENTAL === true ? await anonymousReceiptView(id) : null),
+  receiptRemove: async ({ id }) => {
+    if (import.meta.env.WEFT_EXPERIMENTAL === true && (await removeAnonymousReceipt(id))) return null;
+    await receipts.removeReceipt(id);
+    return null;
+  },
   receiptsOf: ({ identityId }) => receipts.receiptsOf(identityId),
   approvalsPending: async () => pendingApprovals(),
   keepAlive: async () => null,
@@ -132,6 +149,16 @@ export default defineBackground(() => {
   void migrateSites();
   registerCertificateWatch();
   vault.registerAutoLock();
+
+  // Weft Experimental (docs/adr/0008): an approval window's idemix worker, which signs an anonymous ballot.
+  if (import.meta.env.WEFT_EXPERIMENTAL === true) {
+    browser.runtime.onConnect.addListener((port) => {
+      if (!port.name.startsWith(PORT_PREFIX)) return;
+      const fromExtensionPage = port.sender?.url ? new URL(port.sender.url).origin === extensionOrigin : false;
+      if (!fromExtensionPage || port.sender?.id !== browser.runtime.id) return port.disconnect();
+      if (!attachVoterPort(port.name.slice(PORT_PREFIX.length), port)) port.disconnect();
+    });
+  }
 
   browser.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id) return false;

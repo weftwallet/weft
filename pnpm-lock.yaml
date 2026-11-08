@@ -111,6 +111,9 @@ importers:
       '@weftwallet/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@weftwallet/idemix':
+        specifier: workspace:*
+        version: link:../../packages/idemix
       '@weftwallet/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol

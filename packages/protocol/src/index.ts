@@ -27,8 +27,9 @@ export type WeftFeature = (typeof PROVIDER_FEATURES)[number];
  * - `"voterCredentials"`: Idemix voter credentials, for anonymous ballots
  *   with `weft_castBallot` (docs/adr/0008).
  *
- * `castBallot` is built, with its method in ExperimentalMethods.
- * `voterCredentials` is a name only.
+ * Both are built. `castBallot` has its method in ExperimentalMethods;
+ * `voterCredentials` uses the same method, for elections whose voters hold
+ * voter credentials, and adds no method of its own.
  */
 export type ExperimentalFeature = "castBallot" | "voterCredentials";
 

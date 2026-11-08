@@ -1,6 +1,6 @@
 import { resolveInviteUrl } from "@weftwallet/core";
-import type { OrgInvite } from "@weftwallet/protocol";
-import { useRef, useState, type ClipboardEvent, type FormEvent } from "react";
+import type { OrgInvite, VoterInvite } from "@weftwallet/protocol";
+import { Suspense, lazy, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { ui, type IdentityView, type NetworkInput, type PendingCsrView, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import { scanActiveTab, scanPastedImage } from "../../lib/qr";
@@ -10,6 +10,12 @@ import { useCopy, useFeedback, useLeaveGuard } from "../feedback";
 import { useChecks, type FieldState } from "../form";
 import { ActionError, BackHeader, Button, Field, SecretInput, toErrorInfo, type ErrorInfo } from "../ui";
 import { useAction, type AddFrom, type Navigate } from "./state";
+
+/**
+ * Weft Experimental's review of a voter invite and its enrolment (docs/adr/0008).
+ * The test is on the build constant itself, so the normal build never emits it.
+ */
+const VoterJoin = import.meta.env.WEFT_EXPERIMENTAL === true ? lazy(() => import("./VoterCredential").then((m) => ({ default: m.VoterJoin }))) : null;
 
 interface FormProps {
   state: WalletState;
@@ -113,9 +119,9 @@ function Submit({ busy, label, error }: { busy: boolean; label: string; error: E
 
 /* Join from invite ------------------------------------------------- */
 
-export function JoinInvite({ navigate, onDone, from }: FormProps) {
+export function JoinInvite({ state, navigate, onDone, from }: FormProps) {
   const [link, setLink] = useState("");
-  const [invite, setInvite] = useState<OrgInvite | null>(null);
+  const [invite, setInvite] = useState<OrgInvite | VoterInvite | null>(null);
   const [enrollmentId, setEnrollmentId] = useState("");
   const [secret, setSecret] = useState("");
   // Which way the steps moved, for the slide.
@@ -134,7 +140,7 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
     const loaded = await ui("fetchInvite", { link: value });
     direction.current = "forward";
     setInvite(loaded);
-    setEnrollmentId(loaded.enrollmentId ?? "");
+    setEnrollmentId("weftVoterInvite" in loaded ? "" : (loaded.enrollmentId ?? ""));
   });
 
   // Scanning hands over a link but can't open the permission prompt itself:
@@ -160,7 +166,8 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
       .catch((error: unknown) => setPasteError(toErrorInfo(error)));
   };
 
-  const join = useAction(async (inv: OrgInvite) => {
+  const join = useAction(async (inv: OrgInvite | VoterInvite) => {
+    if ("weftVoterInvite" in inv) return;
     await requestHostAccess([inv.caUrl, inv.relayUrl]);
     const view = await ui("joinInvite", { invite: inv, enrollmentId: enrollmentId.trim(), secret, inviteUrl: resolveInviteUrl(link.trim()) });
     await onDone(`Added ${view.name}`);
@@ -203,6 +210,25 @@ export function JoinInvite({ navigate, onDone, from }: FormProps) {
           <Submit busy={load.busy} label="Review invite" error={load.error} />
         </form>
       </>
+    );
+  }
+
+  if ("weftVoterInvite" in invite) {
+    if (!VoterJoin) return null;
+    return (
+      <Suspense fallback={null}>
+        <VoterJoin
+          invite={invite}
+          inviteUrl={resolveInviteUrl(link.trim())}
+          state={state}
+          dir={direction.current}
+          onBack={() => {
+            direction.current = "back";
+            setInvite(null);
+          }}
+          onDone={onDone}
+        />
+      </Suspense>
     );
   }
 

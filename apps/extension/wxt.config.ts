@@ -1,6 +1,7 @@
-import { accessSync, constants, mkdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { defineConfig } from "wxt";
 import { source } from "../../vite.source.ts";
 
@@ -23,6 +24,23 @@ const outDir = [".output", e2e && "e2e", experimental && "experimental"].filter(
 /** Weft Experimental has its own icon, the main mark with a pinked edge. */
 const iconDir = experimental ? "icon-experimental" : "icon";
 const profileSuffix = experimental ? "-experimental" : "";
+
+// Weft Experimental's voter credentials (docs/adr/0008) run IBM's idemix
+// library as WebAssembly, built from Go source in packages/idemix and pinned
+// by hash there. Only Weft Experimental carries the module and its loader,
+// at /idemix/, and only its extension pages may compile WebAssembly, which
+// Manifest V3's default policy forbids.
+const idemixDist = resolve(import.meta.dirname, "../../packages/idemix/dist/wasm");
+const IDEMIX_FILES = ["weft-idemix.wasm", "wasm_exec.js"];
+function idemixModule(): string {
+  if (!IDEMIX_FILES.every((f) => existsSync(join(idemixDist, f)))) {
+    // Builds it from source when dist has none with the pinned hash (D1 of step 5). Needs Go.
+    const built = spawnSync(process.execPath, [resolve(idemixDist, "../../scripts/build.mjs"), "--if-missing"], { stdio: "inherit" });
+    if (built.status !== 0) throw new Error("Weft Experimental needs the idemix module, and packages/idemix/scripts/build.mjs couldn't build it. See packages/idemix/README.md.");
+  }
+  return idemixDist;
+}
+const EXPERIMENTAL_CSP = "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';";
 
 // Before reusing a Firefox profile, web-ext reads Firefox's own profiles.ini
 // to make sure it isn't your everyday profile. macOS can refuse a terminal
@@ -53,6 +71,8 @@ export default defineConfig({
   vite: () => ({
     ...source,
     define: { "import.meta.env.WEFT_EXPERIMENTAL": JSON.stringify(experimental) },
+    // The idemix module's worker (lib/voter/idemix.worker.ts) is a module worker: it imports wasm_exec.js at run time.
+    worker: { format: "es" as const },
     plugins: [
       {
         // The windows' titles ("Weft · Approve request") name the product.
@@ -78,6 +98,10 @@ export default defineConfig({
       const other = experimental ? "icon/" : "icon-experimental/";
       const keep = files.filter((file) => !file.relativeDest.startsWith(other));
       files.splice(0, files.length, ...keep);
+      if (experimental) {
+        const dir = idemixModule();
+        for (const name of IDEMIX_FILES) files.push({ absoluteSrc: join(dir, name), relativeDest: `idemix/${name}` });
+      }
     },
     ready: (wxt) => {
       if (wxt.config.command !== "serve" || wxt.config.browser !== "firefox") return;
@@ -102,6 +126,7 @@ export default defineConfig({
     optional_host_permissions: ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
     ...(e2e ? { host_permissions: ["http://localhost/*", "http://127.0.0.1/*"] } : {}),
     action: { default_title: experimental ? "Weft Experimental" : "Weft Wallet" },
+    ...(experimental ? { content_security_policy: { extension_pages: EXPERIMENTAL_CSP } } : {}),
     icons: Object.fromEntries([16, 32, 48, 128].map((size) => [size, `${iconDir}/${size}.png`])),
     // Firefox wants an add-on ID, and new add-ons must say what data they
     // collect: none, which needs Firefox 140. Weft Experimental has an ID of

@@ -7,7 +7,7 @@ import "reflect-metadata";
 import { BasicConstraintsExtension, KeyUsageFlags, KeyUsagesExtension, X509CertificateGenerator } from "@peculiar/x509";
 import { CommitError, Message, RelayError, fromBase64, generateKeyPair, signForFabric, toBase64, utf8 } from "@weftwallet/core";
 import type { ContractCall, RelayCommitStatusResponse, RelaySigner, X509Signer } from "@weftwallet/protocol";
-import { electionContext, electionFingerprint, toHex, trusteeId, voterTagX509, type Election } from "@weftwallet/tally";
+import { electionContext, electionFingerprint, fromHex, toHex, trusteeId, voterTagIdemix, voterTagX509, type Election } from "@weftwallet/tally";
 import { TallyError, checkBallot } from "@weftwallet/tally/verify";
 import type { BallotRelay } from "../cast";
 
@@ -159,6 +159,8 @@ export interface Lies {
   badSignature?: boolean;
   /** The contract's answer to CastBallot carries this tracking code. */
   tracking?: string;
+  /** CastAnonymousBallot's pseudonym proof is refused, as the contract refuses one that doesn't verify. */
+  badProof?: boolean;
 }
 
 interface Stored {
@@ -206,21 +208,28 @@ export class FakeRelay implements BallotRelay {
     if (this.down.has(path)) throw new RelayError(0, { kind: "unreachable", message: `http://localhost:8787${path}: TypeError: fetch failed` }, "http://localhost:8787", path);
   }
 
-  async propose(signer: X509Signer, call: ContractCall) {
+  /** The signers the relay was given, in order: what the relay learns about who signs. */
+  readonly signers: RelaySigner[] = [];
+
+  async propose(signer: RelaySigner, call: ContractCall) {
     this.calls.push(`propose ${call.fn}`);
+    this.signers.push(signer);
     this.unreachable("/v1/proposals");
     const txId = `tx${++this.tx}`.padEnd(64, "0");
     const args = this.lies.args ? this.lies.args(call.args ?? []) : (call.args ?? []);
-    // As the relay does: the certificate, trimmed, is the creator's id_bytes.
-    const pem = this.lies.creator ? this.lies.creator(signer.certificate) : signer.certificate.trim();
-    const creator = cat(f(1, signer.mspId), f(2, pem));
+    // As the relay does: the certificate, trimmed, or the idemix identity's bytes, are the creator's id_bytes.
+    const idemix = "idemixIdentity" in signer;
+    const given = idemix ? (signer as { idemixIdentity: string }).idemixIdentity : (signer as X509Signer).certificate;
+    const pem = this.lies.creator ? this.lies.creator(given) : idemix ? given : given.trim();
+    const idBytes = idemix ? fromBase64(pem) : utf8(pem);
+    const creator = cat(f(1, signer.mspId), f(2, idBytes));
     const channelHeader = cat(f(4, call.channel), f(5, txId));
     const signatureHeader = f(1, creator);
     const spec = cat(f(2, f(2, call.chaincode)), f(3, cat(...[call.fn, ...args].map((a) => f(1, a)))));
     // ChaincodeInvocationSpec { chaincode_spec = 1 }
     const input = f(1, spec);
     const proposal = cat(f(1, cat(f(1, channelHeader), f(2, signatureHeader))), f(2, f(1, input)));
-    this.stored.set(txId, { channelHeader, signatureHeader, input, txId, call: { ...call, args }, creator: { mspId: signer.mspId, idBytes: utf8(pem) }, result: null, error: null });
+    this.stored.set(txId, { channelHeader, signatureHeader, input, txId, call: { ...call, args }, creator: { mspId: signer.mspId, idBytes }, result: null, error: null });
     const proposed = cat(f(1, txId), f(2, f(1, proposal)));
     return { proposal: toBase64(proposed), transactionId: txId };
   }
@@ -235,6 +244,32 @@ export class FakeRelay implements BallotRelay {
       if (this.record.state !== "open") return { error: this.record.state === "decrypting" || this.record.state === "counted" ? "Voting has closed." : `The election isn't open: it is in ${String(this.record.state)}.` };
       const tag = voterTagX509(this.election.channel, this.election.electionId, s.creator.mspId, s.creator.idBytes);
       if (this.ballots.some((b) => b.tag === toHex(tag))) return { error: "This identity has already voted in this election." };
+      try {
+        const checked = checkBallot(this.election, tag, args[1] ?? "");
+        const tracking = this.lies.tracking ?? checked.tracking;
+        this.ballots.push({ txId: s.txId, tracking: checked.tracking, ballot: args[1]!, tag: toHex(tag) });
+        return { payload: utf8(JSON.stringify({ electionId: args[0], txId: s.txId, tracking })) };
+      } catch (error) {
+        if (error instanceof TallyError) return { error: error.message };
+        throw error;
+      }
+    }
+    if (fn === "CastAnonymousBallot") {
+      const voters = this.record.voters as { kind: string; msp?: string };
+      if (this.record.state !== "open") return { error: this.record.state === "decrypting" || this.record.state === "counted" ? "Voting has closed." : `The election isn't open: it is in ${String(this.record.state)}.` };
+      if (voters.kind !== "idemix") return { error: "This election has X.509 voters, so its ballots are cast with CastBallot." };
+      if (s.creator.mspId !== voters.msp) return { error: `This identity can't vote in this election: ${s.creator.mspId} isn't one of its voter organisations.` };
+      let proof: { pseudonym?: string };
+      try {
+        proof = JSON.parse(args[2] ?? "") as { pseudonym?: string };
+      } catch {
+        return { error: "The pseudonym proof isn't JSON." };
+      }
+      const P = fromHex(proof.pseudonym ?? "", 64);
+      if (!P) return { error: "The pseudonym proof's pseudonym isn't a canonical point." };
+      const tag = voterTagIdemix(this.election.channel, this.election.electionId, s.creator.mspId, P);
+      if (this.lies.badProof) return { error: "The pseudonym proof is not valid." };
+      if (this.ballots.some((b) => b.tag === toHex(tag))) return { error: "This credential has already voted in this election." };
       try {
         const checked = checkBallot(this.election, tag, args[1] ?? "");
         const tracking = this.lies.tracking ?? checked.tracking;

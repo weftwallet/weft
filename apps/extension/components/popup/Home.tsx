@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { ActivityRecord } from "../../lib/db";
 import { EXPERIMENTAL, PRODUCT_NAME } from "../../lib/experimental";
 import { ui, type IdentityView, type WalletState } from "../../lib/messages";
@@ -6,7 +6,12 @@ import { requestHostAccess } from "../../lib/permissions";
 import { CopyButton, useFeedback } from "../feedback";
 import { ActionError, Button, Empty, Icon, Logo, Select, compactHex, healthView, shorten, timeAgo, toErrorInfo, tokenMs, useFocusOnArrival, type ErrorInfo } from "../ui";
 import { FILTER_FROM, FilterInput, GroupHeading, focusTargetAfter, groupByNetwork, matches, namesSummary, useLeaving } from "./lists";
-import { useAction, useActivityEvents, type Navigate } from "./state";
+import { AddIdentityOptions } from "./Identities";
+import { useAction, useActivityEvents, voterCredentialsOf, type Navigate } from "./state";
+
+/** Weft Experimental's card for a Weft with only voter credentials (docs/adr/0008); the normal build never emits it. */
+const NoSiteIdentityCard =
+  import.meta.env.WEFT_EXPERIMENTAL === true ? lazy(() => import("./VoterCredential").then((m) => ({ default: m.NoSiteIdentityCard }))) : null;
 
 type Tab = "activity" | "identities" | "sites";
 const TABS = ["activity", "identities", "sites"] as const;
@@ -31,8 +36,11 @@ export function Home({
   memory: HomeMemory;
 }) {
   const { toast } = useFeedback();
-  const active = state.identities.find((i) => i.id === state.settings.activeIdentityId) ?? state.identities[0]!;
-  const channels = active.channels;
+  // Null only in Weft Experimental, when Weft holds nothing but voter credentials, which are never active.
+  const active = state.identities.find((i) => i.id === state.settings.activeIdentityId) ?? state.identities[0] ?? null;
+  const voter = active ? null : (voterCredentialsOf(state)[0] ?? null);
+  const shownMsp = active?.mspId ?? voter?.mspId ?? "";
+  const channels = active?.channels ?? (voter ? [voter.channel] : []);
   const saved =
     state.settings.activeChannel && channels.includes(state.settings.activeChannel) ? state.settings.activeChannel : channels[0];
   // Shown straight away when changed, and put back if saving it fails.
@@ -90,7 +98,7 @@ export function Home({
   // picker's content at its natural width.
   const pickerRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
-  const fitKey = `${active.mspId}|${channel ?? ""}|${channels.length > 1}`;
+  const fitKey = `${shownMsp}|${channel ?? ""}|${channels.length > 1}`;
   const [rowFor, setRowFor] = useState<string | null>(null);
   const ownRow = rowFor === fitKey;
   useLayoutEffect(() => {
@@ -127,13 +135,13 @@ export function Home({
           </span>
         )}
         <span ref={probeRef} className={`channel-picker channel-picker__probe ${channels.length > 1 ? "channel-picker--choice" : ""}`} aria-hidden="true">
-          <span className="channel-picker__msp mono">{active.mspId}</span>
+          <span className="channel-picker__msp mono">{shownMsp}</span>
           <span>·</span>
           <span className="channel-picker__channel">{channel}</span>
         </span>
         <div ref={pickerRef} className={`channel-picker ${channels.length > 1 ? "channel-picker--choice" : ""}`}>
-          <span className="channel-picker__msp mono" title={active.mspId}>
-            {active.mspId}
+          <span className="channel-picker__msp mono" title={shownMsp}>
+            {shownMsp}
           </span>
           <span className="subtle" aria-hidden="true">
             ·
@@ -169,13 +177,22 @@ export function Home({
       </header>
 
       <main ref={page} className="page">
-        <IdentityCard
-          key={active.id}
-          identity={active}
-          caUrl={state.networks.find((n) => n.id === active.networkId)?.caUrl ?? null}
-          onState={onState}
-          onAdd={() => navigate({ name: "add" })}
-        />
+        {active ? (
+          <IdentityCard
+            key={active.id}
+            identity={active}
+            caUrl={state.networks.find((n) => n.id === active.networkId)?.caUrl ?? null}
+            onState={onState}
+            onAdd={() => navigate({ name: "add" })}
+          />
+        ) : NoSiteIdentityCard ? (
+          <>
+            <Suspense fallback={null}>
+              <NoSiteIdentityCard credentials={voterCredentialsOf(state)} />
+            </Suspense>
+            <AddIdentityOptions navigate={navigate} from="home" />
+          </>
+        ) : null}
 
         {/* Sticky, so the sections stay in reach down a long list. */}
         <div ref={tabsBar} className="tabs-bar">
@@ -427,10 +444,12 @@ function groupByDay(items: ActivityRecord[]): { label: string; items: ActivityRe
 
 function ActivityRow({ item, isNew, navigate }: { item: ActivityRecord; isNew: boolean; navigate: Navigate }) {
   const s = STATUS_STYLE[item.status];
+  // Weft Experimental's anonymous ballots (docs/adr/0008) are listed by election, never by who signed.
+  const anonymous = import.meta.env.WEFT_EXPERIMENTAL === true && Boolean(item.anonymous);
   return (
     <button type="button" className={`list-item ${isNew ? "is-new" : ""}`} onClick={() => navigate({ name: "tx", activityId: item.id })}>
       <span className="list-item__icon" style={{ background: s.bg, color: s.fg }}>
-        <Icon name={s.icon} size={16} />
+        <Icon name={anonymous && item.status === "committed" ? "ballot" : s.icon} size={16} />
       </span>
       <span className="list-item__body">
         <span className="list-item__titlerow">
@@ -450,7 +469,7 @@ function ActivityRow({ item, isNew, navigate }: { item: ActivityRecord; isNew: b
           <span className="one-line type-xs danger-text">{item.title}</span>
         ) : (
           <span className="mono subtle one-line type-xs">
-            {item.call.chaincode}
+            {anonymous ? `${item.call.args?.[0] ?? item.call.chaincode} · anonymous` : item.call.chaincode}
             {item.blockNumber ? ` · block ${Number(item.blockNumber).toLocaleString()}` : item.kind === "evaluate" ? " · read" : ""}
           </span>
         )}
@@ -495,6 +514,11 @@ function IdentityList({
       toast(`Couldn't switch to ${identity.name}. ${toErrorInfo(error).message}`, "error");
     }
   });
+  if (state.identities.length === 0) {
+    return (
+      <Empty icon="users">No identity for sites yet. Join your organisation's network from its invite to add one. Your voter credentials are under Manage identities.</Empty>
+    );
+  }
   return (
     <div className="stack">
       {state.identities.length >= FILTER_FROM && <FilterInput value={query} onChange={setQuery} label="Filter identities" />}

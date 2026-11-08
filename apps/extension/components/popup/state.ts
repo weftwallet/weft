@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { browser } from "wxt/browser";
 import { ui, type UiApi, type UiEvent, type WalletState } from "../../lib/messages";
+import type { VoterCredentialView } from "../../lib/voter/types";
 import { fromWorker, toErrorInfo, type ErrorInfo } from "../ui";
 
 /** Where an add-identity form goes back to: the screen it was opened from. */
@@ -17,6 +18,8 @@ export type Route =
   | { name: "complete-csr"; pendingId: string }
   | { name: "tx"; activityId: string }
   | { name: "network"; networkId: string }
+  /** Weft Experimental only (docs/adr/0008). */
+  | { name: "voter-credential"; id: string }
   | { name: "security" };
 
 export type Navigate = (route: Route) => void;
@@ -111,3 +114,10 @@ export function usePendingApproval(method: UiApi["approvalsPending"][1][number])
   useUiEvents("approvals", load);
   return pending;
 }
+
+/**
+ * Weft Experimental's voter credentials (docs/adr/0008), or none. The test
+ * is on the build constant, so the normal build reads no such field.
+ */
+export const voterCredentialsOf = (state: WalletState): VoterCredentialView[] =>
+  import.meta.env.WEFT_EXPERIMENTAL === true ? (state.voterCredentials ?? []) : [];

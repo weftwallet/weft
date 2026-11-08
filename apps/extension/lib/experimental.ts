@@ -33,10 +33,10 @@ export const PRODUCT_NAME: string = EXPERIMENTAL ? "Weft Experimental" : "Weft";
 
 /**
  * The experimental features this build offers. Each feature adds its name
- * here when its code lands: "castBallot" (ADR 0007), and later
+ * here when its code lands: "castBallot" (ADR 0007), then
  * "voterCredentials" (ADR 0008). Nothing else lists them.
  */
-const EXPERIMENTAL_FEATURES: readonly ExperimentalFeature[] = ["castBallot"];
+const EXPERIMENTAL_FEATURES: readonly ExperimentalFeature[] = ["castBallot", "voterCredentials"];
 
 /** `window.weft.features`: ["receipts"] in Weft, plus EXPERIMENTAL_FEATURES in Weft Experimental. */
 export const FEATURES: readonly (WeftFeature | ExperimentalFeature)[] = EXPERIMENTAL

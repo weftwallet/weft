@@ -1,19 +1,26 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { ui, type WalletState } from "../../lib/messages";
 import { useFeedback } from "../feedback";
 import { BackHeader, Empty, Icon, toErrorInfo } from "../ui";
 import { FILTER_FROM, FilterInput, GroupHeading, focusTargetAfter, groupByNetwork, matches, useLeaving } from "./lists";
 import { IdentityOption } from "./Home";
-import { useAction, type AddFrom, type Navigate } from "./state";
+import { useAction, voterCredentialsOf, type AddFrom, type Navigate } from "./state";
+
+/** Weft Experimental's voter credentials, in their own group (docs/adr/0008); the normal build never emits it. */
+const VoterCredentialGroup =
+  import.meta.env.WEFT_EXPERIMENTAL === true ? lazy(() => import("./VoterCredential").then((m) => ({ default: m.VoterCredentialGroup }))) : null;
 
 export function Identities({
   state,
   onState,
   navigate,
+  fresh = [],
 }: {
   state: WalletState;
   onState: (s: WalletState) => void;
   navigate: Navigate;
+  /** Identities and voter credentials that arrived since the popup opened. */
+  fresh?: string[];
 }) {
   const { confirm, toast } = useFeedback();
   const leaving = useLeaving();
@@ -167,7 +174,13 @@ export function Identities({
           </div>
         )}
 
-        {state.identities.length === 0 && <AddIdentityOptions navigate={navigate} from="identities" />}
+        {VoterCredentialGroup && voterCredentialsOf(state).length > 0 && !query && (
+          <Suspense fallback={null}>
+            <VoterCredentialGroup credentials={voterCredentialsOf(state)} fresh={fresh} navigate={navigate} />
+          </Suspense>
+        )}
+
+        {state.identities.length === 0 && voterCredentialsOf(state).length === 0 && <AddIdentityOptions navigate={navigate} from="identities" />}
 
         <div className="row type-xs muted push-down">
           <Icon name="shield" size={18} />

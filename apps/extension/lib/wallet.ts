@@ -7,7 +7,7 @@ import {
   FabricCaClient,
   certificateMatchesKey,
   createCsr,
-  fetchInvite as fetchInviteDocument,
+  fetchInvite as fetchOrgInvite,
   generateKeyPair,
   importPrivateKeyPem,
   keyMatchesCertificate,
@@ -15,12 +15,14 @@ import {
   signForFabric,
   summarizeIdentity,
 } from "@weftwallet/core";
-import type { IdentitySummary, OrgInvite } from "@weftwallet/protocol";
+import type { IdentitySummary, OrgInvite, VoterInvite } from "@weftwallet/protocol";
 import { EXPERIMENTAL } from "./experimental";
 import { removeReceiptsOf } from "./receipts";
 import * as vault from "./vault";
 import { db, newId, type IdentityRecord, type NetworkRecord, type PendingCsrRecord, type SiteRecord } from "./db";
 import type { IdentityView, NetworkInput, PendingCsrView, WalletState } from "./messages";
+import { fetchAnyInvite } from "./voter/invite";
+import { voterCredentialViews } from "./voter/store";
 
 /* ------------------------------------------------------------------ */
 /* Views                                                               */
@@ -67,7 +69,10 @@ export async function getState(): Promise<WalletState> {
     csr: p.csr,
     createdAt: p.createdAt,
   }));
-  return { identities: views, networks, pendingCsrs: pendingViews, sites, settings, vault: await vault.status() };
+  const state: WalletState = { identities: views, networks, pendingCsrs: pendingViews, sites, settings, vault: await vault.status() };
+  // Weft Experimental's voter credentials (docs/adr/0008), never identities.
+  if (import.meta.env.WEFT_EXPERIMENTAL === true) state.voterCredentials = await voterCredentialViews();
+  return state;
 }
 
 export async function activeIdentity(): Promise<{ record: IdentityRecord; network: NetworkRecord; channel: string } | null> {
@@ -134,8 +139,9 @@ async function saveIdentity(input: Omit<IdentityRecord, "id" | "createdAt">): Pr
   return toView(record, await networkMap());
 }
 
-export async function fetchInvite(link: string): Promise<OrgInvite> {
-  return fetchInviteDocument(link);
+/** An organisation's invite; in Weft Experimental, also a voter invite (docs/adr/0008). */
+export async function fetchInvite(link: string): Promise<OrgInvite | VoterInvite> {
+  return import.meta.env.WEFT_EXPERIMENTAL === true ? fetchAnyInvite(link) : fetchOrgInvite(link);
 }
 
 /** A key pair whose private half can be encrypted once, then forgotten. */
@@ -316,7 +322,7 @@ export async function refreshInvite(networkId: string): Promise<OrgInvite> {
   const network = await db.get<NetworkRecord>("networks", networkId);
   if (!network) throw new Error("That network no longer exists.");
   if (!network.inviteUrl) throw new Error("This network wasn't added from an invite, so there's nothing to refresh from.");
-  return fetchInviteDocument(network.inviteUrl);
+  return fetchOrgInvite(network.inviteUrl);
 }
 
 /**
@@ -326,6 +332,12 @@ export async function refreshInvite(networkId: string): Promise<OrgInvite> {
 export async function resetWallet(): Promise<string[]> {
   for (const store of ["identities", "pendingCsrs", "activity", "receipts"] as const) {
     for (const row of await db.all<{ id: string }>(store)) await db.delete(store, row.id);
+  }
+  // Weft Experimental's voter credentials and anonymous activity are sealed under the vault key that goes now.
+  if (import.meta.env.WEFT_EXPERIMENTAL === true) {
+    for (const store of ["voterCredentials", "anonymousActivity"] as const) {
+      for (const row of await db.all<{ id: string }>(store)) await db.delete(store, row.id);
+    }
   }
   const origins = (await db.all<SiteRecord>("sites")).map((s) => s.origin);
   await db.saveSettings({ activeIdentityId: null, activeChannel: null });

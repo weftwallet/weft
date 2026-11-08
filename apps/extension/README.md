@@ -40,7 +40,7 @@ pnpm --filter @weftwallet/extension build:e2e:experimental      # .output-e2e-ex
 
 It is named Weft Experimental, in the manifest, the popup and the windows' titles, and its welcome says it is a separate build. It has its own output folder, so Chrome gives the unpacked extension its own ID, and its own Firefox add-on ID, `experimental@weft.ifeanyiugwu.dev`. Its storage is therefore its own, and it shares no identities, keys, receipts or settings with Weft. Load it in a browser profile without Weft, since the first of the two to load on a page provides `window.weft`.
 
-`lib/experimental.ts` holds the one constant that gates experimental code, `EXPERIMENTAL`, which `wxt.config.ts` sets at build time from `import.meta.env.WEFT_EXPERIMENTAL`. Experimental code runs only inside `if (EXPERIMENTAL)`, so the normal build leaves it out; the e2e tests check that the normal build contains none of it. A branch that imports a whole experimental module tests `import.meta.env.WEFT_EXPERIMENTAL` itself, in the importing file, because the bundler folds a constant from another module only after it has chosen the modules; the file explains this. The same file lists the experimental features that `window.weft.features` adds: Weft Experimental reports `["receipts", "castBallot"]`, and Weft `["receipts"]`. `voterCredentials` is added there when it is built.
+`lib/experimental.ts` holds the one constant that gates experimental code, `EXPERIMENTAL`, which `wxt.config.ts` sets at build time from `import.meta.env.WEFT_EXPERIMENTAL`. Experimental code runs only inside `if (EXPERIMENTAL)`, so the normal build leaves it out; the e2e tests check that the normal build contains none of it. A branch that imports a whole experimental module tests `import.meta.env.WEFT_EXPERIMENTAL` itself, in the importing file, because the bundler folds a constant from another module only after it has chosen the modules; the file explains this. The same file lists the experimental features that `window.weft.features` adds: Weft Experimental reports `["receipts", "castBallot", "voterCredentials"]`, and Weft `["receipts"]`.
 
 Weft Experimental draws its own mark, the main mark with its bottom edge pinked (`logo/products/experimental.svg` and `experimental-small.svg`), in its popup and windows.
 
@@ -60,7 +60,24 @@ Weft Experimental offers `weft_castBallot` ([Casting a ballot](../docs/src/conte
 
 When Weft Experimental enrols or re-enrols an identity, it keeps the CA chain the CA returns (`caChain` on the identity), to check a peer's signature on an election it reads. Weft keeps nothing new: in its build, the enrolment code adds no field.
 
-`lib/ballot/test/fabric.ts` is a relay for the tests, which builds real Fabric Gateway messages around a fake private-ballot contract and can lie in each way the checks catch.
+`lib/ballot/test/fabric.ts` is a relay for the tests, which builds real Fabric Gateway messages around a fake private-ballot contract, with `CastAnonymousBallot` for idemix signers, and can lie in each way the checks catch.
+
+### Voter credentials
+
+Weft Experimental holds Idemix voter credentials and casts anonymous ballots with them ([Voter credentials](../docs/src/content/docs/experimental/voter-credentials.md), ADR 0008). It carries IBM's idemix library as WebAssembly from `packages/idemix`: `wxt.config.ts` copies `weft-idemix.wasm` and `wasm_exec.js` into its build at `/idemix/`, building them first when `packages/idemix/dist/wasm` has none with the pinned hash (that needs Go), and gives its extension pages `script-src 'self' 'wasm-unsafe-eval'; object-src 'self';`. Normal Weft has neither, and says only, for a voter invite, that it needs Weft Experimental.
+
+| Path | What it does |
+|---|---|
+| `lib/voter/invite.ts` | Join from an invite reads a voter invite as well as an organisation's, with `@weftwallet/core`'s `parseVoterInvite`. |
+| `lib/voter/enrol.ts` | Getting a voter credential, in the popup, in the order that sends nothing secret before a check that can fail, and what the voter is told for each failure. |
+| `lib/voter/module.ts`, `lib/voter/idemix.worker.ts` | Starts the module in a dedicated worker of the page that needs it, the popup or the approval window, and measures it with the User Timing API. The background worker never runs it. |
+| `lib/voter/seal.ts` | The voter credentials' key, HKDF of the vault key, and sealing the credential's secrets. The page that needs them seals or opens them itself. |
+| `lib/voter/store.ts` | The credentials in the background worker: one per election, never an identity. |
+| `lib/voter/activity.ts` | An anonymous ballot's activity and receipt, sealed whole. |
+| `lib/voter/remote.ts` | The port between the approval window's module and the background worker, which carries five calls: a new identity, a signature, the pseudonym, the pseudonym proof and disposing of an identity. |
+| `components/popup/VoterCredential.tsx` | The voter invite's review and Get a voter credential, the credentials' group in Identities, a credential's detail with Remove credential, and Home with only voter credentials. Loaded only by Weft Experimental. |
+
+The ballot handler (`lib/ballot/handler.ts`) picks the credential for the election the site names, reads the election through the invite's relay with a one-off identity, checks every endorsement against the invite's CA chains, and casts `CastAnonymousBallot` with the voter tag from the pseudonym and the pseudonym proof, signing through the window's port. The approval window (`entrypoints/approve/cast-ballot.tsx`) starts the module before the read, and names no one on either screen.
 
 ## How it fits together
 
@@ -84,7 +101,7 @@ web page ──window.weft──▶ inpage.content.ts   (main world, no privileg
 | `entrypoints/background.ts` | Routes popup and provider messages. The site origin comes from the browser, never the message. |
 | `lib/provider.ts` | Connect checks, approval windows, evaluate/submit through the relay, activity records. |
 | `lib/wallet.ts` | Identities and networks: enrol, import, CSR, re-enrol, signing. |
-| `lib/db.ts` | IndexedDB. Private keys are non-extractable `CryptoKey`s. |
+| `lib/db.ts` | IndexedDB. Private keys are non-extractable `CryptoKey`s. Weft Experimental adds two stores, for voter credentials and sealed anonymous activity. |
 | `lib/experimental.ts` | The build switch for Weft Experimental: `EXPERIMENTAL`, the product's name, and `window.weft.features`. |
 | `lib/receipts.ts` | Ballot receipts kept at the user's request, their choice and salt sealed with a key derived from the vault key (ADR 0006). In Weft Experimental, also version 2 receipts, with the voter's note of the choice sealed the same way (ADR 0007). |
 | `entrypoints/popup/` | Home, identities, add-identity flows, transaction detail. |

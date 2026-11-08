@@ -79,6 +79,13 @@ describe("the election record", () => {
     expect(read(recordOf(e, { state: "failed", reportedBy: "Org2MSP" })).reportedBy).toBe("Org2MSP");
   });
 
+  it("reads voter credentials with the affiliation, role and issuer key they pin", () => {
+    const voters = { kind: "idemix", msp: "ChairVoters2027MSP", affiliation: "voters", role: "member", issuerKeyHash: "f".repeat(64), curve: "FP256BN_AMCL", issuerPublicKey: "AAAA" };
+    expect(read(recordOf(e, { voters })).voters).toEqual({ kind: "idemix", msp: "ChairVoters2027MSP", affiliation: "voters", role: "member", issuerKeyHash: "f".repeat(64), curve: "FP256BN_AMCL" });
+    expect(() => read(recordOf(e, { voters: { ...voters, affiliation: undefined } }))).toThrow(/voters.affiliation/);
+    expect(() => read(recordOf(e, { voters: { ...voters, issuerKeyHash: "F".repeat(64) } }))).toThrow(/voters.issuerKeyHash/);
+  });
+
   it("refuses anything that isn't a version 1 record of this election", () => {
     const bad: [unknown, RegExp][] = [
       ["not json", /isn't JSON/],

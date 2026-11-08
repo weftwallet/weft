@@ -1,7 +1,7 @@
 import { CommitError, RelayError, VaultLockedError, VerificationError } from "@weftwallet/core";
 import { ErrorCode } from "@weftwallet/protocol";
 import { describe, expect, it } from "vitest";
-import { castFailure, contractMessage, identityFailures, listOf, mayHaveCommitted, readFailure, stateFailure } from "./failures";
+import { castFailure, contractMessage, identityFailures, listOf, mayHaveCommitted, moduleFailure, readFailure, stateFailure } from "./failures";
 import { RecordError, parseElectionRecord } from "./read";
 import { recordOf, testElection } from "./test/fabric";
 
@@ -77,7 +77,45 @@ describe("failures before the vote", () => {
     expect(waiting.error?.code).toBe(4300);
     expect(said(identityFailures.channel(ctx, "Weft playground", true)).view.detail).toMatch(/^The latest invite for Weft playground still doesn't list/);
     expect(said(identityFailures.notVoter({ ...ctx, title: "Budget 2027" }, ["Org1MSP", "Org2MSP"], "carol", "Org3MSP")).error).toMatchObject({ code: 4300, data: { voterMsps: ["Org1MSP", "Org2MSP"] } });
-    expect(said(identityFailures.credentials(ctx, "ChairVoters2027MSP")).error).toMatchObject({ code: 4300, data: { voterMsps: ["ChairVoters2027MSP"] } });
+    expect(said(identityFailures.noCredential(ctx, "ChairVoters2027MSP")).error).toMatchObject({ code: 4300, data: { voterMsps: ["ChairVoters2027MSP"] } });
+  });
+});
+
+describe("failures for voter credentials", () => {
+  it("say what the credential lacks, with 4300 and the voter MSP", () => {
+    const none = said(identityFailures.noCredential({ ...ctx, title: "Chair 2027" }, "ChairVoters2027MSP"));
+    expect(none.view).toMatchObject({ title: "This election needs a voter credential", technical: "4300 NoIdentity. data.voterMsps: ChairVoters2027MSP." });
+    expect(none.view.detail).toBe("Chair 2027's voters vote with credentials from ChairVoters2027MSP, and Weft holds none for it. Join from the voter invite the organisers sent you, then vote again from localhost:4323. No ballot was cast.");
+    const key = said(identityFailures.wrongKey(ctx, "ChairVoters2027MSP", "0c55e7a9".padEnd(56, "0") + "31f4d206", "f1642101".padEnd(56, "0") + "b0b87480"));
+    expect(key.view.title).toBe("Your voter credential is for another issuer key");
+    expect(key.view.technical).toBe("4300 NoIdentity. Your credential's issuer key: 0c55e7a9…31f4d206. budget-2027 pinned f1642101…b0b87480.");
+    expect(key.error).toMatchObject({ code: 4300, data: { voterMsps: ["ChairVoters2027MSP"] } });
+    expect(said(identityFailures.onlyCredentials(ctx)).error?.code).toBe(4300);
+    expect(said(identityFailures.notCredentialElection(ctx, ["Org1MSP"], "ChairVoters2027MSP")).error).toMatchObject({ code: 4300, data: { voterMsps: ["Org1MSP"] } });
+  });
+
+  it("say the module failed with -32603", () => {
+    const f = said(moduleFailure(ctx, "RuntimeError: memory access out of bounds"));
+    expect(f.view).toMatchObject({ kind: "final", title: "Weft couldn't start its voting module", technical: "-32603 Internal. RuntimeError: memory access out of bounds" });
+    expect(f.error?.code).toBe(-32603);
+  });
+
+  it("name the invite's organisations when a signature doesn't check out", () => {
+    const f = said(readFailure(new RecordError("signature", "The endorsement from Org1MSP doesn't check out."), { ...ctx, endorsers: ["Org1MSP", "Org2MSP"] }));
+    expect(f.view.detail).toMatch(/a peer of Org1MSP or Org2MSP, the organisations your voter invite names, so it may have been changed on the way\. No ballot was cast\. Tell the organisers\.$/);
+    expect(f.error?.code).toBe(4400);
+  });
+
+  it("pass on the credential rows of the contract's errors", () => {
+    const cast = { ...ctx, title: "Chair 2027", voterName: "your voter credential", tracking: "5e0c19a2".padEnd(56, "0") + "b80d7f31", anonymous: true };
+    const voted = said(castFailure(refused("This credential has already voted in this election."), "endorsing", cast));
+    expect(voted.outcome).toMatchObject({ title: "You've already voted in Chair 2027", next: "Nothing was written to the ledger. Your first ballot stands." });
+    expect(voted.error).toMatchObject({ code: 5001, message: "This credential has already voted in this election." });
+    const proof = said(castFailure(refused("The pseudonym proof is not valid."), "endorsing", cast));
+    expect(proof.outcome.title).toBe("The contract refused your ballot's pseudonym proof");
+    expect(proof.outcome.detail).toBe("The endorsing peers didn't accept the proof that ties your pseudonym to this ballot's one-off identity. That points to a fault in Weft, not in your credential.");
+    const lost = said(castFailure(new RelayError(0, { kind: "unreachable", message: "fetch failed" }, "http://localhost:8787", "/v1/commits/status"), "committing", cast));
+    expect(lost.outcome.next).toMatch(/the contract refuses a second one from this credential, so voting again is safe\.$/);
   });
 });
 

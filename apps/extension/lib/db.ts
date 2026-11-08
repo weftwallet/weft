@@ -93,6 +93,20 @@ export interface ActivityRecord {
   raw?: string;
   /** True while a ballot receipt is kept for this transaction (the receipts store). */
   receipt?: true;
+  /**
+   * Weft Experimental only (docs/adr/0008): an anonymous ballot, signed by a
+   * one-off identity of a voter credential. Such a record is never in the
+   * activity store: it is sealed in anonymousActivity (lib/voter/activity.ts)
+   * and opened only while Weft is unlocked.
+   */
+  anonymous?: {
+    credentialId: string;
+    mspId: string;
+    affiliation: string;
+    role: string;
+    /** The ballot's voter tag, made from the per-election pseudonym, in lowercase hex. */
+    pseudonym: string | null;
+  };
 }
 
 /**
@@ -145,10 +159,17 @@ export interface Settings {
 }
 
 const DB_NAME = "weft";
-// 2: the receipts store.
-const DB_VERSION = 2;
-const STORES = ["networks", "identities", "pendingCsrs", "sites", "activity", "settings", "receipts"] as const;
-type StoreName = (typeof STORES)[number];
+/**
+ * 2: the receipts store. 3, in Weft Experimental only (docs/adr/0008): its
+ * voter credentials and its sealed anonymous activity. The test is on the
+ * build constant itself, so the normal build has neither store.
+ */
+const DB_VERSION = import.meta.env.WEFT_EXPERIMENTAL === true ? 3 : 2;
+const BASE_STORES = ["networks", "identities", "pendingCsrs", "sites", "activity", "settings", "receipts"] as const;
+type ExperimentalStore = "voterCredentials" | "anonymousActivity";
+const STORES: readonly ((typeof BASE_STORES)[number] | ExperimentalStore)[] =
+  import.meta.env.WEFT_EXPERIMENTAL === true ? [...BASE_STORES, "voterCredentials", "anonymousActivity"] : BASE_STORES;
+type StoreName = (typeof BASE_STORES)[number] | ExperimentalStore;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 

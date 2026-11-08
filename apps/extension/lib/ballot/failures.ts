@@ -24,9 +24,17 @@ export interface FailureContext {
   relayHost: string;
   /** The election's title, once read. */
   title?: string;
+  /**
+   * Weft Experimental (docs/adr/0008): the read is for a voter credential,
+   * checked against these trustee organisations' CA chains from the voter
+   * invite.
+   */
+  endorsers?: string[];
 }
 
 const NO_BALLOT = "No ballot was cast.";
+
+const shortHex = (v: string) => (v.length <= 17 ? v : `${v.slice(0, 8)}…${v.slice(-8)}`);
 
 /** "Org1MSP", "Org1MSP and Org2MSP", "Org1MSP, Org2MSP and Org3MSP". */
 export function listOf(items: readonly string[]): string {
@@ -111,6 +119,16 @@ export function readFailure(error: unknown, ctx: FailureContext): ReadFailure {
           ? `The election's record doesn't match its own fields. Weft worked out the fingerprint ${group(error.extra.computed!)}, and the record gives ${group(error.extra.recorded!)}. ${NO_BALLOT} Tell your administrator.`
           : `The election's record doesn't match its own fields: Weft worked out its context from them, and the record gives another. ${NO_BALLOT} Tell your administrator.`;
       return unreadable(ctx, "Weft won't cast a ballot in this election", detail, error.message, `${electionId}'s record has a ${error.extra.field} that isn't the one Weft computed.`);
+    }
+    if (error.reason === "signature" && ctx.endorsers) {
+      const orgs = ctx.endorsers.length <= 1 ? (ctx.endorsers[0] ?? "") : `${ctx.endorsers.slice(0, -1).join(", ")} or ${ctx.endorsers[ctx.endorsers.length - 1]}`;
+      return unreadable(
+        ctx,
+        "Weft won't trust what it read",
+        `What the relay at ${ctx.relayHost} returned for ${electionId} doesn't carry a valid signature from a peer of ${orgs}, the organisations your voter invite names, so it may have been changed on the way. ${NO_BALLOT} Tell the organisers.`,
+        error.message,
+        `The answer to GetElection for ${electionId} doesn't verify against the voter invite's CA certificates: ${error.message}`,
+      );
     }
     if (error.reason === "signature") {
       return unreadable(
@@ -210,18 +228,59 @@ export const identityFailures = {
       },
       { voterMsps },
     ),
-  credentials: (ctx: FailureContext, msp: string): ReadFailure =>
+  /** Weft Experimental (docs/adr/0008): an election with voter credentials, and Weft holds none for it. */
+  noCredential: (ctx: FailureContext, msp: string): ReadFailure =>
     final(
       ErrorCode.NoIdentity,
-      `${ctx.params.electionId}'s voters use voter credentials, which this Weft can't hold yet.`,
+      `${ctx.params.electionId}'s voters vote with voter credentials from ${msp}, and Weft holds none for it.`,
       {
         title: "This election needs a voter credential",
-        detail: `${ctx.title ?? ctx.params.electionId}'s voters vote with credentials from ${msp}, which this version of Weft Experimental can't hold yet. ${NO_BALLOT}`,
+        detail: `${ctx.title ?? ctx.params.electionId}'s voters vote with credentials from ${msp}, and Weft holds none for it. Join from the voter invite the organisers sent you, then vote again from ${ctx.siteHost}. ${NO_BALLOT}`,
         technical: `4300 NoIdentity. data.voterMsps: ${msp}.`,
       },
       { voterMsps: [msp] },
     ),
+  /** Weft holds voter credentials, none for this election, and no identity to read it with. */
+  onlyCredentials: (ctx: FailureContext): ReadFailure =>
+    final(ErrorCode.NoIdentity, `Weft holds no voter credential for ${ctx.params.electionId}, and no identity of an organisation to read it with.`, {
+      title: "Weft holds no voter credential for this election",
+      detail: `Weft's voter credentials are for other elections, and it has no identity of an organisation to read ${ctx.params.electionId} with. If the organisers sent you a voter invite for it, join from that invite, then vote again from ${ctx.siteHost}. ${NO_BALLOT}`,
+      technical: "4300 NoIdentity.",
+    }),
+  /** The credential is of the election's voter MSP, but from another issuer key than the one the election pinned. */
+  wrongKey: (ctx: FailureContext, msp: string, held: string, pinned: string): ReadFailure =>
+    final(
+      ErrorCode.NoIdentity,
+      `Weft's voter credential for ${ctx.params.electionId} is from another issuer key than the one the election pinned.`,
+      {
+        title: "Your voter credential is for another issuer key",
+        detail: `Weft holds a credential from ${msp}, but its issuer key isn't the one ${ctx.params.electionId} pinned when it was created, so the contract would refuse its ballot. Ask the organisers which is right. ${NO_BALLOT}`,
+        technical: `4300 NoIdentity. Your credential's issuer key: ${shortHex(held)}. ${ctx.params.electionId} pinned ${shortHex(pinned)}.`,
+      },
+      { voterMsps: [msp] },
+    ),
+  /** Weft holds a voter credential for an election whose record says its voters are X.509 organisations, or another voter MSP. */
+  notCredentialElection: (ctx: FailureContext, voterMsps: string[], heldMsp: string): ReadFailure =>
+    final(
+      ErrorCode.NoIdentity,
+      `${ctx.params.electionId}'s voters aren't voter credentials of ${heldMsp}.`,
+      {
+        title: "Your voter credential can't vote here",
+        detail: `Weft holds a voter credential from ${heldMsp} for ${ctx.params.electionId}, but the election's voters are ${listOf(voterMsps)}. Ask the organisers which is right. ${NO_BALLOT}`,
+        technical: `4300 NoIdentity. data.voterMsps: ${listOf(voterMsps)}.`,
+      },
+      { voterMsps },
+    ),
 };
+
+/** Weft Experimental (docs/adr/0008): the window's voting module didn't start or failed, so nothing was signed. */
+export function moduleFailure(ctx: FailureContext, message: string): ReadFailure {
+  return final(ErrorCode.Internal, `Weft Experimental's voting module failed: ${message}`, {
+    title: "Weft couldn't start its voting module",
+    detail: `Weft Experimental signs with your voter credential in a module that didn't start, so it couldn't read ${ctx.params.electionId}. ${NO_BALLOT} Reload Weft Experimental from the browser's extensions page and vote again from ${ctx.siteHost}.`,
+    technical: `-32603 Internal. ${message}`,
+  });
+}
 
 export type CastStage = "proposing" | "endorsing" | "submitting" | "committing" | "done" | null;
 
@@ -238,13 +297,11 @@ export interface CastFailure {
   error: WeftError;
 }
 
-const shortHex = (v: string) => (v.length <= 17 ? v : `${v.slice(0, 8)}…${v.slice(-8)}`);
-
 /** A failure once the voter pressed Sign and vote. `tracking` is set once the ballot is made. */
 export function castFailure(
   error: unknown,
   stage: CastStage,
-  ctx: FailureContext & { title: string; voterName: string; tracking: string | null },
+  ctx: FailureContext & { title: string; voterName: string; tracking: string | null; anonymous?: boolean },
 ): CastFailure {
   const nothing = "Nothing was written to the ledger.";
   const out = (
@@ -290,7 +347,7 @@ export function castFailure(
           title: "Weft couldn't tell if your ballot was committed",
           detail: `The relay at ${ctx.relayHost} stopped answering after Weft sent your signed ballot.`,
           next: ctx.tracking
-            ? `Check tracking code ${shortHex(ctx.tracking)} in the explorer before you vote again. If the ballot was committed, the contract refuses a second one, so voting again is safe.`
+            ? `Check tracking code ${shortHex(ctx.tracking)} in the explorer before you vote again. If the ballot was committed, the contract refuses a second one${ctx.anonymous ? " from this credential" : ""}, so voting again is safe.`
             : "Check the explorer before you vote again.",
           code: error.explanation.code,
           raw: error.detail,
@@ -319,6 +376,30 @@ export function castFailure(
     if (said === "This identity has already voted in this election.") {
       return out(
         { title: `You've already voted in ${ctx.title}`, detail: `The contract refused a second ballot from ${ctx.voterName}.`, next: `${nothing} Your first ballot stands.`, code: "ENDORSE_FAILED", raw: said },
+        new WeftError(ErrorCode.TransactionFailed, said, data),
+      );
+    }
+    if (said === "This credential has already voted in this election.") {
+      return out(
+        {
+          title: `You've already voted in ${ctx.title}`,
+          detail: `The contract refused a second ballot from your voter credential: it has the same pseudonym in ${ctx.params.electionId} as your first ballot.`,
+          next: `${nothing} Your first ballot stands.`,
+          code: "ENDORSE_FAILED",
+          raw: said,
+        },
+        new WeftError(ErrorCode.TransactionFailed, said, data),
+      );
+    }
+    if (said === "The pseudonym proof is not valid.") {
+      return out(
+        {
+          title: "The contract refused your ballot's pseudonym proof",
+          detail: "The endorsing peers didn't accept the proof that ties your pseudonym to this ballot's one-off identity. That points to a fault in Weft, not in your credential.",
+          next: `${nothing} Try again from ${ctx.siteHost}, and if it happens again, report it with the details.`,
+          code: "ENDORSE_FAILED",
+          raw: said,
+        },
         new WeftError(ErrorCode.TransactionFailed, said, data),
       );
     }
