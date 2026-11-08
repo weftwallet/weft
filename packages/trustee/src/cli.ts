@@ -4,6 +4,7 @@
  * Weft Experimental (docs/adr/0007, key-ceremony.md). Experimental, and no
  * one outside the project has reviewed its cryptography.
  */
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import * as commands from "./commands.ts";
 import { connectionOptions, flagsFrom, resolveConnection } from "./connection.ts";
@@ -53,6 +54,11 @@ Options
   --trustee <msp>          create: a trustee organisation; repeat, in order
   --threshold <k>          create: how many trustees decrypt, a majority by default
   --voter <msp>            create: an organisation whose X.509 identities vote; the trustees by default
+  --voter-credentials <msp>
+                           create: voter credentials of this idemix organisation vote, instead
+                           of X.509 identities; needs --issuer-key
+  --issuer-key <file>      create: the IssuerPublicKey file of the voters' CA, which the election pins
+  --affiliation <name>     create: the affiliation whose voter credentials vote, voters by default
   --early                  close: close before the planned closing time
   --force                  destroy: delete before the tally is published
   --yes                    destroy: don't ask for the election ID
@@ -84,6 +90,9 @@ async function main(argv: string[]): Promise<number> {
         trustee: { type: "string", multiple: true },
         threshold: { type: "string" },
         voter: { type: "string", multiple: true },
+        "voter-credentials": { type: "string" },
+        "issuer-key": { type: "string" },
+        affiliation: { type: "string" },
         early: { type: "boolean" },
         force: { type: "boolean" },
         yes: { type: "boolean" },
@@ -137,6 +146,21 @@ function run(command: Command, env: commands.Env, election: string, v: Record<st
         threshold = Number(v.threshold);
         if (!Number.isInteger(threshold)) throw new Failure(`--threshold ${v.threshold} isn't a whole number.`);
       }
+      const vcMsp = v["voter-credentials"];
+      const keyFile = v["issuer-key"];
+      if ((typeof vcMsp === "string") !== (typeof keyFile === "string")) {
+        throw new Failure("--voter-credentials and --issuer-key go together.", "Give the voter MSP with --voter-credentials and its IssuerPublicKey file with --issuer-key.");
+      }
+      let voterCredentials: commands.CreateOptions["voterCredentials"];
+      if (typeof vcMsp === "string" && typeof keyFile === "string") {
+        let issuerPublicKey: Uint8Array;
+        try {
+          issuerPublicKey = new Uint8Array(readFileSync(keyFile));
+        } catch (err) {
+          throw new Failure(`Weft couldn't read the issuer key ${keyFile}: ${(err as NodeJS.ErrnoException).code ?? String(err)}.`, "Give the IssuerPublicKey file the voters' CA wrote, in its msp folder.");
+        }
+        voterCredentials = { msp: vcMsp, affiliation: typeof v.affiliation === "string" ? v.affiliation : "voters", issuerPublicKey };
+      }
       return commands.create(env, {
         election,
         title,
@@ -145,6 +169,7 @@ function run(command: Command, env: commands.Env, election: string, v: Record<st
         trustees,
         ...(threshold !== undefined ? { threshold } : {}),
         ...(v.voter ? { voters: v.voter as string[] } : {}),
+        ...(voterCredentials ? { voterCredentials } : {}),
       });
     }
     case "commit":

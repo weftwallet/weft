@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { encryptBallot } from "@weftwallet/tally/client";
@@ -343,6 +344,57 @@ describe("the failure messages in the step 4 model", () => {
 });
 
 describe("the other paths", () => {
+  it("creates an election with voter credentials, pinning the issuer key by its SHA-256", async () => {
+    const issuerPublicKey = new Uint8Array(Buffer.from("an IssuerPublicKey file's bytes"));
+    const out = await run(t1, (env) =>
+      cmd.create(env, {
+        election: ID,
+        title: "Chair 2027",
+        options: ["Ada Obi", "Ben Carter"],
+        closesAt: "2027-03-09T17:00:00.000Z",
+        trustees: ["Org1MSP", "Org2MSP"],
+        voterCredentials: { msp: "ChairVoters2027MSP", affiliation: "voters", issuerPublicKey },
+      }),
+    );
+    const hash = createHash("sha256").update(issuerPublicKey).digest("hex");
+    expect(out.lines.slice(1)).toEqual([
+      "",
+      "Trustees   Org1MSP (1) and Org2MSP (2). Any 2 of 2 can decrypt.",
+      "Voters     Voter credentials from ChairVoters2027MSP, affiliation voters, role member",
+      `Issuer key SHA-256 ${hash.slice(0, 8)}…${hash.slice(-8)}, curve FP256BN_AMCL, pinned`,
+      "Closing    17:00 UTC on 9 March 2027, planned. Voting stays open until 2 trustees close it.",
+      "",
+      "Each trustee now runs weft-trustee commit --election budget-2027 to post round 1.",
+    ]);
+    const sent = JSON.parse(contract.calls.find((c) => c.fn === "CreateElection")!.args[0]!) as { voters: unknown };
+    expect(sent.voters).toEqual({
+      kind: "idemix",
+      msp: "ChairVoters2027MSP",
+      affiliation: "voters",
+      role: "member",
+      issuerPublicKey: Buffer.from(issuerPublicKey).toString("base64"),
+      issuerKeyHash: hash,
+      curve: "FP256BN_AMCL",
+    });
+    expect(Object.keys(sent.voters as object)).toEqual(["kind", "msp", "affiliation", "role", "issuerPublicKey", "issuerKeyHash", "curve"]);
+  });
+
+  it("refuses --voter with voter credentials", async () => {
+    const out = await run(t1, (env) =>
+      cmd.create(env, {
+        election: ID,
+        title: "Chair 2027",
+        options: ["Ada Obi", "Ben Carter"],
+        closesAt: "2027-03-09T17:00:00.000Z",
+        trustees: ["Org1MSP", "Org2MSP"],
+        voters: ["Org1MSP"],
+        voterCredentials: { msp: "ChairVoters2027MSP", affiliation: "voters", issuerPublicKey: new Uint8Array([1]) },
+      }),
+    );
+    expect(out.lines).toEqual(["✗ create takes --voter or --voter-credentials, not both.", "  Nothing was posted."]);
+    expect(contract.submitted()).toEqual([]);
+  });
+
   it("keeps the state folder private", async () => {
     await create();
     t1.answers.push(PASS1, PASS1);

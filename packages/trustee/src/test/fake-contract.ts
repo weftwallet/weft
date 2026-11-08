@@ -195,8 +195,9 @@ export class FakeContract {
         if (new Date(e.closesAt) <= this.now) throw new Refusal(`closesAt isn't later than this transaction's timestamp, ${this.now.toISOString()}.`);
         if (e.trustees.length < 2) throw new Refusal("An election has at least two trustee organisations, all different.");
         if (e.threshold < 2 || e.threshold > e.trustees.length) throw new Refusal("The threshold must be from 2 to the number of trustees.");
-        const msps = e.voters.msps ?? [];
-        if (msps.length < 1 || new Set(msps).size !== msps.length) throw new Refusal("An election has at least one voter organisation, all different.");
+        if (e.voters.kind === "x509" && (e.voters.msps.length < 1 || new Set(e.voters.msps).size !== e.voters.msps.length)) {
+          throw new Refusal("An election has at least one voter organisation, all different.");
+        }
         const rec: ElectionRecord = {
           v: 1,
           id: e.id,

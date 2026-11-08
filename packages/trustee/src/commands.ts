@@ -8,6 +8,7 @@
  * OpenElection, and the decrypt that brings the shares to k calls
  * PublishTally (D9 of the step 4 plan).
  */
+import { createHash } from "node:crypto";
 import {
   BadShareError,
   ceremonyRound1,
@@ -45,7 +46,9 @@ export interface ElectionRecord {
   creatorMsp: string;
   trustees: { id: string; msp: string }[];
   threshold: number;
-  voters: { kind: string; msps?: string[]; msp?: string };
+  voters:
+    | { kind: "x509"; msps: string[] }
+    | { kind: "idemix"; msp: string; affiliation: string; role: "member"; issuerPublicKey: string; issuerKeyHash: string; curve: "FP256BN_AMCL" };
   state: "keygen" | "open" | "decrypting" | "counted" | "failed" | "cancelled";
   publicKey?: string;
   verifyingShares?: string[];
@@ -346,6 +349,12 @@ export interface CreateOptions {
   trustees: string[];
   threshold?: number;
   voters?: string[];
+  /**
+   * Voter credentials instead of X.509 voters (docs/adr/0008): the voter
+   * MSP, the affiliation that votes, and the IssuerPublicKey file's bytes,
+   * which the election pins with their SHA-256.
+   */
+  voterCredentials?: { msp: string; affiliation: string; issuerPublicKey: Uint8Array };
 }
 
 /** A time as the contract wants it, 2027-01-31T17:00:00.000Z, or null. */
@@ -363,6 +372,8 @@ export async function create(env: Env, o: CreateOptions): Promise<number> {
   const n = o.trustees.length;
   const threshold = o.threshold ?? Math.floor(n / 2) + 1;
   const voters = o.voters?.length ? o.voters : o.trustees;
+  const vc = o.voterCredentials;
+  if (vc && o.voters?.length) throw new Failure("create takes --voter or --voter-credentials, not both.", "Nothing was posted.");
   const electionJson = JSON.stringify({
     id: o.election,
     title: o.title,
@@ -370,14 +381,29 @@ export async function create(env: Env, o: CreateOptions): Promise<number> {
     closesAt,
     trustees: o.trustees,
     threshold,
-    voters: { kind: "x509", msps: voters },
+    voters: vc
+      ? {
+          kind: "idemix",
+          msp: vc.msp,
+          affiliation: vc.affiliation,
+          role: "member",
+          issuerPublicKey: Buffer.from(vc.issuerPublicKey).toString("base64"),
+          issuerKeyHash: createHash("sha256").update(vc.issuerPublicKey).digest("hex"),
+          curve: "FP256BN_AMCL",
+        }
+      : { kind: "x509", msps: voters },
   });
   const r = await post(env, "CreateElection", [electionJson]);
   const rec = JSON.parse(r.result) as ElectionRecord;
   env.out.done(`Created ${rec.id} in block ${r.block}. It stays in keygen until the key ceremony ends. Transaction ${shortTx(r.txId)}.`);
   env.out.line();
   env.out.line(row("Trustees", trusteesLine(rec)));
-  env.out.line(row("Voters", `X.509 identities of ${list(voters)}`));
+  if (rec.voters.kind === "idemix") {
+    env.out.line(row("Voters", `Voter credentials from ${rec.voters.msp}, affiliation ${rec.voters.affiliation}, role ${rec.voters.role}`));
+    env.out.line(row("Issuer key", `SHA-256 ${shortTx(rec.voters.issuerKeyHash)}, curve ${rec.voters.curve}, pinned`));
+  } else {
+    env.out.line(row("Voters", `X.509 identities of ${list(voters)}`));
+  }
   env.out.line(row("Closing", `${when(rec.closesAt)}, planned. Voting stays open until ${rec.threshold} trustees close it.`));
   env.out.line();
   env.out.line(`Each trustee now runs ${CMD} commit --election ${rec.id} to post round 1.`);
