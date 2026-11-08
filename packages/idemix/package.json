@@ -1,0 +1,46 @@
+{
+  "name": "@weftwallet/idemix",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "IBM's idemix library built to WebAssembly from Go source, for Weft Experimental's voter credentials (ADR 0008). Unreviewed.",
+  "type": "module",
+  "sideEffects": [
+    "./src/worker.ts",
+    "./dist/worker.js"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "weft-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./worker": {
+      "weft-source": "./src/worker.ts",
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js"
+    },
+    "./node": {
+      "weft-source": "./src/node.ts",
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:wasm": "node scripts/build.mjs",
+    "check:wasm": "node scripts/check.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.check.json --noEmit",
+    "test": "vitest run",
+    "test:go": "go test ./..."
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "vitest": "^5.0.5"
+  }
+}
