@@ -6,6 +6,12 @@ import { defineConfig } from "@playwright/test";
  * experimental.setup.ts creates for the run (support/experimental.ts).
  */
 const EXPERIMENTAL_STACK = /(cast-ballot|playground-private|private-explorer)\.spec\.ts$/;
+/**
+ * The tests of voter credentials (docs/adr/0008), on the same stack: two
+ * voters enrol and vote in an election with voter credentials that
+ * voter-credentials.setup.ts creates for the run.
+ */
+const VOTER_CREDENTIALS = /voter-credentials\.spec\.ts$/;
 
 // One worker: the tests share one CA, relay and set of demo users.
 export default defineConfig({
@@ -22,9 +28,11 @@ export default defineConfig({
   grepInvert: process.env.WEFT_E2E_GREP ? undefined : process.env.WEFT_E2E_STACK === "playground" ? /@headed/ : /@headed|@fabric/,
   use: { trace: "retain-on-failure" },
   projects: [
-    { name: "weft", testIgnore: EXPERIMENTAL_STACK },
+    { name: "weft", testIgnore: [EXPERIMENTAL_STACK, VOTER_CREDENTIALS] },
     { name: "experimental-setup", testMatch: /experimental\.setup\.ts$/ },
     // In file order: cast-ballot votes, playground-private votes from the playground and counts, private-explorer checks the count.
     { name: "experimental-stack", testMatch: EXPERIMENTAL_STACK, dependencies: ["experimental-setup"] },
+    { name: "voter-credentials-setup", testMatch: /voter-credentials\.setup\.ts$/ },
+    { name: "voter-credentials", testMatch: VOTER_CREDENTIALS, dependencies: ["voter-credentials-setup"] },
   ],
 });

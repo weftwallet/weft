@@ -14,7 +14,7 @@ import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { countRunElection, runElection, type RunElection } from "../support/experimental.ts";
-import { BUILDS, expect, stack, test, type Wallet } from "../support/fixtures.ts";
+import { BUILDS, clickToClose, expect, stack, test, type Wallet } from "../support/fixtures.ts";
 
 const EXPLORERS = (process.env.WEFT_E2E_PRIVATE_EXPLORERS ?? "http://localhost:8790,http://localhost:8791").split(",").map((u) => u.trim().replace(/\/+$/, ""));
 const api = (base: string, e: RunElection, path = "") => `${base}/api/v1/channels/${e.channel}/private-elections/${e.electionId}${path}`;
@@ -97,7 +97,7 @@ test.describe("the playground's Private election section", () => {
         await win.getByRole("button", { name: "Review your vote" }).click();
         await win.getByRole("button", { name: "Sign and vote" }).click();
         await expect(win.getByRole("heading", { name: /^You've already voted in / })).toBeVisible({ timeout: 40_000 });
-        await win.getByRole("button", { name: "Close" }).click();
+        await clickToClose(win, win.getByRole("button", { name: "Close" }));
       },
     );
     await expect(again.locator("#pg-pe-error")).toContainText("Your ballot wasn't committed: this identity has already voted in this election.");

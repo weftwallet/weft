@@ -12,7 +12,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { CONTRACT, runElection } from "../support/experimental.ts";
-import { BUILDS, expect, stack, test } from "../support/fixtures.ts";
+import { BUILDS, clickToClose, expect, stack, test } from "../support/fixtures.ts";
 
 test.describe("Weft Experimental casts a ballot", () => {
   test.skip(!existsSync(join(BUILDS.experimental, "manifest.json")), "Build Weft Experimental's test build first (pnpm --filter @weftwallet/extension build:e2e:experimental).");
@@ -82,7 +82,7 @@ test.describe("Weft Experimental casts a ballot", () => {
         await win.getByRole("button", { name: "Review your vote" }).click();
         await win.getByRole("button", { name: "Sign and vote" }).click();
         await expect(win.getByRole("heading", { name: /^You've already voted in / })).toBeVisible({ timeout: 40_000 });
-        await win.getByRole("button", { name: "Close" }).click();
+        await clickToClose(win, win.getByRole("button", { name: "Close" }));
       },
     );
     expect(again).toMatchObject({ code: 5001, message: "This identity has already voted in this election." });

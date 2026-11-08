@@ -3,7 +3,7 @@
  * app ("site") to call it from, and helpers for the approval windows.
  */
 
-import { test as base, chromium, expect, type BrowserContext, type Page, type Worker } from "@playwright/test";
+import { test as base, chromium, expect, type BrowserContext, type Locator, type Page, type Worker } from "@playwright/test";
 import { createServer, type Server } from "node:http";
 import { EXTENSION, EXTENSION_EXPERIMENTAL, PORTS, type StackInfo } from "./stack.ts";
 
@@ -16,6 +16,24 @@ export function stack(): StackInfo {
   const raw = process.env.WEFT_E2E_INFO;
   if (!raw) throw new Error("WEFT_E2E_INFO is missing: run the tests through Playwright (global setup starts the stack).");
   return JSON.parse(raw) as StackInfo;
+}
+
+/**
+ * Clicks a button that closes its own window, such as Close in an approval
+ * window, and waits for the window to close. The window can close while
+ * Playwright is still finishing the click (the mouse-up's answer never comes
+ * back from a target that is gone), which makes locator.click throw "Target
+ * page, context or browser has been closed" although the click did what it
+ * should. So the click doesn't wait after the action, an error from a window
+ * that did close is the click's success, and the window's close is what the
+ * test waits for.
+ */
+export async function clickToClose(win: Page, button: Locator): Promise<void> {
+  const closed = win.isClosed() ? Promise.resolve() : win.waitForEvent("close", { timeout: 15_000 }).then(() => undefined);
+  await button.click({ noWaitAfter: true }).catch((error: unknown) => {
+    if (!win.isClosed() && !/has been closed/.test(String(error))) throw error;
+  });
+  await closed;
 }
 
 /** A blank web app on localhost, plus JSON documents tests can change (for example an invite). */
@@ -214,22 +232,32 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
   build: ["normal", { option: true }],
 
   wallet: async ({ site, walletPassword, build }, use, testInfo) => {
-    const headed = testInfo.tags.includes("@headed");
-    const extension = BUILDS[build];
-    const context = await chromium.launchPersistentContext(testInfo.outputPath("profile"), {
-      channel: "chromium",
-      headless: !headed,
-      args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
-    });
-    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
-    const id = new URL(worker.url()).host;
-    const wallet = new Wallet(context, id, worker, site);
-    if (walletPassword) {
-      await wallet.ui("vaultSetup", { password: walletPassword });
-      // ui() opened a popup tab to talk to the worker; tests expect a clean slate.
-      for (const page of context.pages()) if (page.url().startsWith(wallet.url(""))) await page.close();
-    }
+    const wallet = await launchWallet(site, build, testInfo.outputPath("profile"), { password: walletPassword, headed: testInfo.tags.includes("@headed") });
     await use(wallet);
-    await context.close();
+    await wallet.context.close();
   },
 });
+
+/**
+ * A browser profile with a test build of Weft loaded and, unless `password`
+ * is null, its vault set up. The wallet fixture is one; a test that needs a
+ * second person, such as a second voter, opens another with this and closes
+ * its context when done.
+ */
+export async function launchWallet(site: Site, build: Build, profile: string, { password = PASSWORD as string | null, headed = false } = {}): Promise<Wallet> {
+  const extension = BUILDS[build];
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: "chromium",
+    headless: !headed,
+    args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  });
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
+  const id = new URL(worker.url()).host;
+  const wallet = new Wallet(context, id, worker, site);
+  if (password) {
+    await wallet.ui("vaultSetup", { password });
+    // ui() opened a popup tab to talk to the worker; tests expect a clean slate.
+    for (const page of context.pages()) if (page.url().startsWith(wallet.url(""))) await page.close();
+  }
+  return wallet;
+}
