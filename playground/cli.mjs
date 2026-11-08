@@ -11,10 +11,16 @@
  *                           experimental.mjs); needs Go. Combines with --https
  *   pnpm playground:explorer
  *                           start (or restart) only the explorer, on a running stack
- *   pnpm playground:count <election> [--channel <channel>]
+ *   pnpm playground:count <election> [--channel <channel>] [--accept-extra-credentials]
  *                           with --experimental: closes the election early with both
  *                           trustees, decrypts it and prints the counts. --channel
- *                           counts one that isn't in experimental.mjs's list
+ *                           counts one that isn't in experimental.mjs's list. For an
+ *                           election with voter credentials, it refuses while a voter
+ *                           ID holds more than one credential, unless given
+ *                           --accept-extra-credentials
+ *   pnpm playground:credentials <election>
+ *                           with --experimental: the credentials an election's voters'
+ *                           CA has issued, per enrolment ID (D14 of the step 5 plan)
  *   pnpm playground:status  what's running
  *   pnpm playground:down    stop everything and remove the network
  *
@@ -40,17 +46,21 @@
  *
  * With --experimental, after step 5 (experimental.mjs): a voters' CA for
  * each election with voter credentials, in Docker like test-network's CAs
- * (compose-voters-ca.yaml), a channel for each election,
+ * (compose-voters-ca.yaml), with a proxy for the browser in front of it
+ * (ca-proxy.mjs --voters-only), a channel for each election,
  * privatevote-<election id>, with the election's idemix organisation if it
  * has one (privatevote-budget-2027 has none; privatevote-chair-2027 has
- * ChairVoters2027MSP), the private-ballot contract on each channel,
- * deployed with deployCC -ccl go, a trustee identity at each organisation's
- * CA, and budget-2027 created, its key ceremony run and opened with
- * weft-trustee. The relay and the explorers then start with
- * WEFT_EXPERIMENTAL=1, and the invite and explorers include every election's channel.
+ * ChairVoters2027MSP), and the private-ballot contract on each channel,
+ * deployed with deployCC -ccl go. The relay and the explorers then start
+ * with WEFT_EXPERIMENTAL=1, the relay accepting idemix signers from each
+ * voter MSP and serving each election's voter invite, and the invite and
+ * explorers include every election's channel. After step 8, a trustee
+ * identity at each organisation's CA, and budget-2027 and chair-2027
+ * created, their key ceremonies run and opened with weft-trustee, and the
+ * count of chair-2027's credentials.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -196,11 +206,11 @@ function ensureStillRunning(name) {
   fail(`${name} exited right after starting.`, `${tail}\n  Is something else already using its port?`);
 }
 
-function stopBackground(name) {
+function stopBackground(name, { quiet = false } = {}) {
   const pid = runningPid(name);
   if (pid) {
     process.kill(pid);
-    console.log(`  stopped ${name} (pid ${pid})`);
+    if (!quiet) console.log(`  stopped ${name} (pid ${pid})`);
   }
   rmSync(pidFile(name), { force: true });
 }
@@ -227,7 +237,7 @@ function checkPrerequisites({ https, experimental }) {
   }
   note(https ? "docker, git, curl and mkcert found" : "docker, git and curl found");
   if (experimental) {
-    note(`Go found (${experimentalNetwork.checkGo({ fail })}), for --experimental`);
+    note(experimentalNetwork.checkGo({ fail }));
     experimentalNetwork.checkElections({ fail });
   }
 }
@@ -351,8 +361,14 @@ function registerUsers() {
   }
 }
 
-/** A localhost certificate signed by mkcert's root, which `mkcert -install` adds to the system's trust store. */
+let mkcertMade = null;
+/**
+ * A localhost certificate signed by mkcert's root, which `mkcert -install`
+ * adds to the system's trust store. Made once per run, for Org1's CA proxy
+ * and the voters' CA proxies.
+ */
 function mkcertCertificate() {
+  if (mkcertMade) return mkcertMade;
   const cert = join(state, "ca-proxy.pem");
   const key = join(state, "ca-proxy-key.pem");
   note("making sure mkcert's root is trusted (may ask for your password the first time)");
@@ -360,7 +376,8 @@ function mkcertCertificate() {
   if (!existsSync(cert) || !existsSync(key)) {
     run("mkcert", ["-cert-file", cert, "-key-file", key, "localhost", "127.0.0.1", "::1"]);
   }
-  return { cert, key };
+  mkcertMade = { cert, key };
+  return mkcertMade;
 }
 
 function startCaProxy({ https }) {
@@ -384,7 +401,7 @@ function startCaProxy({ https }) {
   return { port: PORTS.caProxy, url: `http://localhost:${PORTS.caProxy}` };
 }
 
-async function startRelay(caUrl, { experimental }) {
+async function startRelay(caUrl, { experimental, https, restartReason }) {
   step(7, "Weft relay for Org1");
   // Built every time, with the packages it uses: the stack runs the built
   // code, as production does, and an old build would hide your changes.
@@ -402,6 +419,17 @@ async function startRelay(caUrl, { experimental }) {
     channels: [CHANNEL, MEMBERS_CHANNEL, ...(experimental ? experimentalNetwork.privateChannels() : [])],
   };
   writeFileSync(join(state, "invite.json"), `${JSON.stringify(invite, null, 2)}\n`);
+  // Experimental: each election's voter invite, served by this relay (docs/adr/0008).
+  const relayUrl = `http://localhost:${PORTS.relay}`;
+  const voterInvites = experimental
+    ? experimentalNetwork.writeVoterInvites(testNetworkLayout(), state, { relayUrl, explorerUrl: `http://localhost:${PORTS.explorer}`, https })
+    : [];
+  if (restartReason) note(restartReason);
+  else if (voterInvites.length && runningPid("relay")) {
+    note(`the voter invite${voterInvites.length === 1 ? "" : "s"} for ${voterInvites.join(", ")} changed, so the relay restarts to serve ${voterInvites.length === 1 ? "it" : "them"}`);
+    stopBackground("relay");
+    await new Promise((r) => setTimeout(r, 500));
+  }
   startBackground("relay", join(repo, "apps", "relay", "dist", "main.js"), [], {
     PORT: String(PORTS.relay),
     WEFT_PEER_ENDPOINT: "localhost:7051",
@@ -410,13 +438,26 @@ async function startRelay(caUrl, { experimental }) {
     WEFT_INVITE_FILE: join(state, "invite.json"),
     WEFT_PUBLIC_URL: `http://localhost:${PORTS.relay}`,
     WEFT_JOIN_PAGE: local("site", "/join/"),
-    // Experimental: only the relay of the experimental stack may later accept
-    // idemix signers, from each election's voter MSP (docs/adr/0008).
-    ...(experimental ? { WEFT_EXPERIMENTAL: "1", WEFT_IDEMIX_MSP_IDS: experimentalNetwork.voterMspIds() } : {}),
+    // Experimental: only the relay of the experimental stack accepts idemix
+    // signers, from each election's voter MSP, and keeps no request logs for
+    // them (docs/adr/0008).
+    ...(experimental
+      ? {
+          WEFT_EXPERIMENTAL: "1",
+          WEFT_IDEMIX_MSP_IDS: experimentalNetwork.voterMspIds(),
+          ...(experimentalNetwork.voterElections().length ? { WEFT_VOTER_INVITES: experimentalNetwork.paths(state).voterInvites } : {}),
+        }
+      : {}),
   });
   await waitFor(`http://localhost:${PORTS.relay}/v1/health`, "The relay");
   ensureStillRunning("relay");
+  if (experimental) {
+    for (const e of experimentalNetwork.voterElections()) note(`voter invite for ${e.id}: ${voterInviteUrl(e)}`);
+  }
 }
+
+/** Where the relay serves an election's voter invite. */
+const voterInviteUrl = (e) => `http://localhost:${PORTS.relay}/.well-known/weft-voter-invite/${e.id}.json`;
 
 /**
  * An explorer's policy file. For the experimental stack, a copy in .state
@@ -556,8 +597,54 @@ function deployContract({ channel, name, path, language, version, sequence, poli
   );
 }
 
+/** Whether something other than the named background process answers on a local port. */
+async function portTaken(port) {
+  return new Promise((done) => {
+    const socket = connect(port, "localhost")
+      .once("connect", () => (socket.end(), done(true)))
+      .once("error", () => done(false));
+  });
+}
+
+/** The mkcert certificate the CA proxies serve with --https, set by up. */
+let proxyTls = null;
+
+/**
+ * An election's voters' CA proxy (ca-proxy.mjs --voters-only), as a
+ * background process like Org1's CA proxy, on the port in its ELECTIONS
+ * entry. Returns whether it started now, and its URL.
+ */
+async function startVotersCaProxy(election) {
+  const name = experimentalNetwork.caProxyName(election);
+  const url = experimentalNetwork.caProxyUrl(election, { https: Boolean(proxyTls) });
+  if (runningPid(name)) return { started: false, url };
+  const { port } = { port: election.voterOrg.ca.proxy };
+  if (await portTaken(port)) {
+    fail(
+      `The proxy for ${election.voterOrg.ca.name} couldn't listen on ${port}: the port is in use.`,
+      `Stop what uses it, or give ${election.id} another ca.proxy port in ELECTIONS in playground/experimental.mjs.`,
+    );
+  }
+  const log = openSync(join(state, `${name}.log`), "a");
+  const child = spawn(process.execPath, [join(here, "ca-proxy.mjs"), ...experimentalNetwork.caProxyArgs(state, election, proxyTls)], {
+    detached: true,
+    stdio: ["ignore", log, log],
+  });
+  child.unref();
+  writeFileSync(pidFile(name), String(child.pid));
+  await waitForPort(port, `The proxy for ${election.voterOrg.ca.name}`);
+  ensureStillRunning(name);
+  return { started: true, url };
+}
+
+/** Stops every voters' CA proxy, including those of elections no longer listed. */
+function stopVotersCaProxies() {
+  if (!existsSync(state)) return;
+  for (const file of readdirSync(state).filter((f) => /^ca-proxy-.+\.pid$/.test(f))) stopBackground(file.replace(/\.pid$/, ""));
+}
+
 /** What experimental.mjs uses from this file. */
-const tools = { step, note, fail, startCaServer: startVotersCaContainer, deployContract };
+const tools = { step, note, fail, startCaServer: startVotersCaContainer, startCaProxy: startVotersCaProxy, deployContract };
 
 /**
  * Two explorers, one per organisation, each reading from its own peer and
@@ -601,7 +688,7 @@ async function startExplorer(stepNumber = 8, { experimental = false } = {}) {
   }
 }
 
-function summary(caUrl, { experimental }) {
+function summary(caUrl, { experimental, states, https }) {
   const inviteUrl = `http://localhost:${PORTS.relay}/.well-known/weft-invite.json`;
   const playground = local("playground", `/?invite=${encodeURIComponent(inviteUrl)}`);
   console.log(`
@@ -614,7 +701,7 @@ ${bold("Weft playground is running.")}
   Channels    ${CHANNEL} (public), contracts ${bold("basic")} and ${bold("ballot")}
               ${MEMBERS_CHANNEL} (members only), contract ${bold("basic")}
   Elections   team-lunch (counted), board-2026 (open)
-${experimental ? experimentalSummary() : ""}
+${experimental ? experimentalSummary(states, { https }) : ""}
   Demo users (Org1):
 ${DEMO_USERS.map((u) => `    ${u.id.padEnd(8)} secret ${u.secret.padEnd(10)} ${dim(u.attrs.replace(":ecert", ""))}`).join("\n")}
 
@@ -630,21 +717,37 @@ Stop with ${bold("pnpm playground:down")}.
 `);
 }
 
-function experimentalSummary() {
+function experimentalSummary(states = new Map(), { https = false } = {}) {
   const x = experimentalNetwork;
-  return `
-  ${bold("Experimental")} (Weft Experimental only, not part of Weft)
-${x.ELECTIONS.map((e) => `  Channel     ${x.electionChannel(e)}: Org1MSP and Org2MSP endorse, ${e.voterOrg ? `with ${e.voterOrg.mspId}, for ${e.id} with voter credentials` : `for ${e.id} with X.509 voters`}`).join("\n")}
-${x.voterElections().map((e) => `  Voters' CA  ${e.id}: https://localhost:${e.voterOrg.ca.port}, CA ${e.voterOrg.ca.name}, MSP ${e.voterOrg.mspId}`).join("\n")}
-  Voters      ${x.DEMO_VOTERS[0].id} to ${x.DEMO_VOTERS.at(-1).id} (secret <id>pw), affiliation ${x.VOTER_AFFILIATION}, one enrolment each
-  Contract    ${x.PRIVATE_CONTRACT} on every election's channel, endorsed by ${bold("Org1 and Org2")}
-  Trustees    trustee1 (Org1MSP) and trustee2 (Org2MSP), weft.trustee=true, 2 of 2;
-              weft-trustee connection files in .state/trustees/<org>/<channel>.yaml
-  Elections   ${x.ELECTIONS.map((e) => (e.seed && !e.voterOrg ? `${e.id} (open)` : `${e.id} (not seeded)`)).join(", ")}
-  Count       ${bold(`pnpm playground:count ${x.ELECTIONS.find((e) => e.seed && !e.voterOrg)?.id ?? "<election>"}`)} closes it early and prints the counts
-  Wallet      ${bold("pnpm --filter @weftwallet/extension build:experimental")}, then load
-              apps/extension/.output-experimental/chrome-mv3 in a browser profile without Weft
-`;
+  const voterElections = x.voterElections();
+  const label = (e) => {
+    const st = states.get(e.id);
+    return `${e.id} (${st ?? "not seeded"}${e.voterOrg && st ? ", anonymous voters" : ""})`;
+  };
+  // The election to suggest counting: an open one, with voter credentials if there is one.
+  const open = x.ELECTIONS.filter((e) => states.get(e.id) === "open");
+  const toCount = open.find((e) => e.voterOrg) ?? open[0] ?? x.ELECTIONS[0];
+  const lines = [
+    "",
+    `  ${bold("Experimental")} (Weft Experimental only, not part of Weft)`,
+    ...x.ELECTIONS.map((e) => `  Channel     ${x.electionChannel(e)}: Org1MSP and Org2MSP endorse, ${e.voterOrg ? `with ${e.voterOrg.mspId}, for ${e.id} with voter credentials` : `for ${e.id} with X.509 voters`}`),
+    ...voterElections.flatMap((e) => [
+      `  Voters' CA  ${e.id}: https://localhost:${e.voterOrg.ca.port}, CA ${e.voterOrg.ca.name}, MSP ${e.voterOrg.mspId}`,
+      `              for the browser: ${x.caProxyUrl(e, { https })}`,
+    ]),
+    ...voterElections.map((e) => `  Invite      ${e.id}: ${voterInviteUrl(e)}`),
+    ...(voterElections.length ? [`  Voters      ${x.DEMO_VOTERS[0].id} to ${x.DEMO_VOTERS.at(-1).id} (secret <id>pw), affiliation ${x.VOTER_AFFILIATION}, one enrolment each`] : []),
+    `  Contract    ${x.PRIVATE_CONTRACT} on every election's channel, endorsed by ${bold("Org1 and Org2")}`,
+    "  Trustees    trustee1 (Org1MSP) and trustee2 (Org2MSP), weft.trustee=true, 2 of 2;",
+    "              weft-trustee connection files in .state/trustees/<org>/<channel>.yaml",
+    `  Elections   ${x.ELECTIONS.map(label).join(", ")}`,
+    `  Count       ${bold(`pnpm playground:count ${toCount.id}`)} closes it early and prints the counts`,
+    ...voterElections.map((e) => `  Credentials ${bold(`pnpm playground:credentials ${e.id}`)} counts what ${e.voterOrg.ca.name} has issued`),
+    `  Wallet      ${bold("pnpm --filter @weftwallet/extension build:experimental")}, then load`,
+    "              apps/extension/.output-experimental/chrome-mv3 in a browser profile without Weft",
+    "",
+  ];
+  return lines.join("\n");
 }
 
 /* ------------------------------------------------------------------ */
@@ -661,9 +764,11 @@ async function up(flags) {
   deployBallot();
   createMembersChannel();
   registerUsers();
-  setExperimental(experimental);
+  const restartReason = setExperimental(experimental);
+  const net = testNetworkLayout();
   if (experimental) {
-    const net = testNetworkLayout();
+    // The voters' CA proxies serve HTTPS with the same certificate as Org1's.
+    if (https) proxyTls = mkcertCertificate();
     await experimentalNetwork.startVotersCas(net, state, tools);
     await experimentalNetwork.createElectionChannels(net, state, tools);
     experimentalNetwork.deployPrivateBallot(net, state, tools);
@@ -671,10 +776,11 @@ async function up(flags) {
   const proxy = startCaProxy({ https });
   await waitForPort(proxy.port, "The CA proxy");
   ensureStillRunning("ca-proxy");
-  await startRelay(proxy.url, { experimental });
+  await startRelay(proxy.url, { experimental, https, restartReason });
   await startExplorer(8, { experimental });
   seedElections();
-  summary(proxy.url, { experimental });
+  const states = experimental ? experimentalNetwork.seedElections(net, state, tools) : new Map();
+  summary(proxy.url, { experimental, states, https });
 }
 
 /**
@@ -688,12 +794,20 @@ function setExperimental(experimental) {
   // them too, with WEFT_IDEMIX_MSP_IDS, the invite and the policies updated.
   const before = existsSync(marker) ? readFileSync(marker, "utf8") : null;
   const after = experimental ? `${experimentalNetwork.voterMspIds()}\n${experimentalNetwork.privateChannels().join(",")}\n` : null;
+  let reason = null;
   if (before !== after) {
-    for (const name of ["relay", "explorer", "explorer-org2"]) stopBackground(name);
-    if (!experimental) stopVotersCaContainers();
+    if (experimental && before !== null && runningPid("relay")) {
+      reason = `the elections changed, so the relay restarts with WEFT_IDEMIX_MSP_IDS=${experimentalNetwork.voterMspIds()}`;
+    }
+    for (const name of ["relay", "explorer", "explorer-org2"]) stopBackground(name, { quiet: true });
+    if (!experimental) {
+      stopVotersCaProxies();
+      stopVotersCaContainers();
+    }
   }
   if (experimental) writeFileSync(marker, after);
   else rmSync(marker, { force: true });
+  return reason;
 }
 
 /** The explorer alone, for a stack started before it existed or after a rebuild. */
@@ -713,6 +827,7 @@ function down() {
   stopBackground("explorer-org2");
   stopBackground("relay");
   stopBackground("ca-proxy");
+  stopVotersCaProxies();
   stopVotersCaContainers();
   if (existsSync(testNetwork)) {
     const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
@@ -748,6 +863,9 @@ async function status() {
     for (const election of experimentalNetwork.voterElections()) {
       const container = votersCaContainer(election);
       line("Voters CA", containerRunning(container), `${container} container, https://localhost:${election.voterOrg.ca.port} (experimental, ${election.id})`);
+      const proxyPid = runningPid(experimentalNetwork.caProxyName(election));
+      line("CA proxy", Boolean(proxyPid), proxyPid ? `pid ${proxyPid}, port ${election.voterOrg.ca.proxy}, voters only (experimental, ${election.id})` : `not running (experimental, ${election.id})`);
+      line("Invite", await ok(voterInviteUrl(election)), `voter invite for ${election.id}, served by the relay`);
     }
   }
 }
@@ -765,17 +883,36 @@ async function count([id, ...rest]) {
   const at = rest.indexOf("--channel");
   const channel = at >= 0 ? rest[at + 1] : undefined;
   if (at >= 0 && (!channel || channel.startsWith("--"))) fail("Say which channel the election is on.", `For example: pnpm playground:count ${id} --channel privatevote-budget-2027`);
-  experimentalNetwork.countElection(testNetworkLayout(), state, id, tools, { channel });
+  const acceptExtraCredentials = rest.includes("--accept-extra-credentials");
+  experimentalNetwork.countElection(testNetworkLayout(), state, id, tools, { channel, acceptExtraCredentials });
+}
+
+/**
+ * Experimental: the credentials an election's voters' CA has issued, per
+ * enrolment ID (experimental.mjs, printCredentials). Exits with status 1 when
+ * a voter ID holds more than one.
+ */
+async function credentials([id]) {
+  if (!existsSync(experimentalNetwork.paths(state).marker)) {
+    fail("The playground isn't running its experimental channels.", "Run pnpm playground:up --experimental first.");
+  }
+  const first = experimentalNetwork.voterElections()[0];
+  if (!id || id.startsWith("--")) fail("Say which election's credentials to count.", `For example: pnpm playground:credentials ${first?.id ?? "<election>"}`);
+  experimentalNetwork.printCredentials(state, id, { fail });
 }
 
 const [command, ...flags] = process.argv.slice(2).filter((a) => a !== "--");
-const commands = { up, down, status, explorer, count };
+const commands = { up, down, status, explorer, count, credentials };
 const unknown =
   command === "count"
-    ? flags.slice(1).filter((f, i, all) => !(f === "--channel" || all[i - 1] === "--channel"))
-    : flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
+    ? flags.slice(1).filter((f, i, all) => !(f === "--channel" || all[i - 1] === "--channel" || f === "--accept-extra-credentials"))
+    : command === "credentials"
+      ? flags.slice(1)
+      : flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
 if (!commands[command] || unknown.length) {
-  console.log("Usage: node playground/cli.mjs <up [--https] [--experimental]|count <election> [--channel <channel>]|explorer|down|status>");
+  console.log(
+    "Usage: node playground/cli.mjs <up [--https] [--experimental]|count <election> [--channel <channel>] [--accept-extra-credentials]|credentials <election>|explorer|down|status>",
+  );
   if (unknown.length) console.log(`Unknown option: ${unknown.join(" ")}`);
   process.exit(command ? 1 : 0);
 }

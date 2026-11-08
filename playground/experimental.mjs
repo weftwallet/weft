@@ -8,7 +8,9 @@
  *   1. For an election with voter credentials, a voters' Fabric CA with its
  *      own idemix issuer key (docs/adr/0008), and demo voters voter1 to voter5
  *      (affiliation `voters`, one enrolment each): for chair-2027, the CA
- *      ca-chair-2027, whose key backs ChairVoters2027MSP.
+ *      ca-chair-2027, whose key backs ChairVoters2027MSP. In front of it, a
+ *      proxy for the browser (ca-proxy.mjs --voters-only) that passes only
+ *      cainfo and idemix enrolment with basic authorisation.
  *   2. A channel, privatevote-<election id>, created from its own genesis
  *      block: Org1MSP and Org2MSP as endorsers, and the election's idemix
  *      organisation if it has one. privatevote-budget-2027 has none, and
@@ -19,10 +21,19 @@
  *      trustee2 for Org2, registered at its CA with weft.trustee=true, and a
  *      connection file for weft-trustee (packages/trustee) on each
  *      election's channel, in .state/trustees/<org>.
- *   5. Each election that has a `seed` and X.509 voters, created with
- *      weft-trustee, with the key ceremony run for Org1 and Org2, 2 of 2,
- *      and opened. budget-2027 is open for 30 days. An election that already
- *      exists is left as it is.
+ *   5. Each election that has a `seed`, created with weft-trustee, with the
+ *      key ceremony run for Org1 and Org2, 2 of 2, and opened. budget-2027
+ *      and chair-2027 are open for 30 days; chair-2027 pins its CA's issuer
+ *      key and the affiliation `voters`. An election that already exists is
+ *      left as it is. For each election with voter credentials, the count of
+ *      credentials its CA has issued per enrolment ID (credentialCount).
+ *
+ * writeVoterInvites writes each voter election's invite to
+ * .state/voter-invites, which the relay serves (WEFT_VOTER_INVITES).
+ * credentialCount, for `pnpm playground:credentials <election>`, `up` and
+ * `count`, reads the voters' CA's own database: Fabric CA has no limit on
+ * idemix credentials issued through token authorisation, so the count is
+ * what finds a voter ID with more than one (D14 of the step 5 plan).
  *
  * countElection, for `pnpm playground:count <election>`, closes an election
  * early with both trustees, posts both decryption shares and publishes the
@@ -32,11 +43,15 @@
  *
  * cli.mjs passes in the network's layout (paths and addresses, for Fabric's
  * test-network), its output helpers, startCaServer, which runs a voters'
- * CA in Docker (compose-voters-ca.yaml), and deployContract, which deploys a
- * contract with test-network's deployCC. This file knows nothing about Docker.
+ * CA in Docker (compose-voters-ca.yaml), startCaProxy, which starts a
+ * voters' CA proxy as a background process, and deployContract, which
+ * deploys a contract with test-network's deployCC. This file knows nothing
+ * about Docker.
  */
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,24 +66,27 @@ export const PRIVATE_CONTRACT = "private-ballot";
  * election's voters can't read another's ballots, and closing one changes no
  * other, and each channel gets the private-ballot contract.
  *
- * An election with X.509 voters (the private tally only) has its ID, and a
- * `seed` if playground:up should create and open it: its title, options and
- * how many days it stays open. Org1 and Org2 are its trustees, 2 of 2, and
- * their X.509 identities vote. An election with voter credentials also has
- * `voterOrg`: its idemix MSP,
- * named after it, and its voters' CA, run in its own container on its own
- * ports with its own issuer key (docs/adr/0008). Fabric recommends one idemix
- * MSP per channel, which the channel per election gives. Ports stay clear of
- * test-network's and the e2e tests'.
+ * Each election has its ID, and a `seed` if playground:up should create and
+ * open it: its title, options and how many days it stays open. Org1 and
+ * Org2 are its trustees, 2 of 2. Without `voterOrg`, their X.509 identities
+ * vote (the private tally only). With `voterOrg`, voter credentials vote
+ * (docs/adr/0008): its idemix MSP, named after the election, and its voters'
+ * CA, run in its own container on its own ports with its own issuer key, with
+ * `ca.proxy` the port of the proxy the browser reaches it through. Fabric
+ * recommends one idemix MSP per channel, which the channel per election
+ * gives. Ports stay clear of test-network's and the e2e tests'.
  *
- * An election added here gets its channel and the contract, and with
- * voterOrg its CA and MSP folder, on the next `playground:up --experimental`.
+ * An election added here gets its channel and the contract, with voterOrg
+ * its CA, proxy, MSP folder and voter invite, and with seed its creation and
+ * key ceremony, on the next `playground:up --experimental`.
  */
 export const ELECTIONS = [
   { id: "budget-2027", seed: { title: "Budget 2027", options: ["Plan A", "Plan B", "Plan C"], openForDays: 30 } },
-  // Voting with voter credentials comes with docs/adr/0008's step, so chair-2027
-  // gets its channel and the contract, and isn't seeded yet.
-  { id: "chair-2027", voterOrg: { mspId: "ChairVoters2027MSP", ca: { name: "ca-chair-2027", port: 7058, operations: 17058 } } },
+  {
+    id: "chair-2027",
+    seed: { title: "Chair 2027", options: ["Ada Obi", "Ben Carter", "Chioma Ude"], openForDays: 30 },
+    voterOrg: { mspId: "ChairVoters2027MSP", ca: { name: "ca-chair-2027", port: 7058, operations: 17058, proxy: 7081 } },
+  },
 ];
 /** The elections with voter credentials, each with a voters' CA and an idemix organisation. */
 export const voterElections = () => ELECTIONS.filter((e) => e.voterOrg);
@@ -88,6 +106,10 @@ export const VOTER_AFFILIATION = "voters";
 export const DEMO_VOTERS = [1, 2, 3, 4, 5].map((n) => ({ id: `voter${n}`, secret: `voter${n}pw` }));
 /** The CA's bootstrap admin, as test-network's CAs have it. */
 const CA_ADMIN = { id: "admin", secret: "adminpw" };
+/** Who the voter invites name as the election relay's operator: the playground's relay is Org1's, which a real election rules out. */
+export const RELAY_OPERATOR = "Weft Playground";
+/** Fabric's idemix curve, the one every voter invite and election names. */
+const CURVE = "FP256BN_AMCL";
 
 /** What each explorer publishes of every election's channel, added to its policy file. */
 const PRIVATE_POLICY_SUBMITTER = { explorer: "show", "explorer-org2": "hide" };
@@ -138,27 +160,96 @@ export function paths(state) {
       home: join(votersCa, e.id, "server"),
       admin: join(votersCa, e.id, "admin"),
       msp: join(votersMsp, e.voterOrg.mspId),
+      /** The CA's own database, where it records each credential it issues. */
+      db: join(votersCa, e.id, "server", "fabric-ca-server.db"),
     }),
+    /** Each election's voter invite, <election>.json, which the relay serves. */
+    voterInvites: join(state, "voter-invites"),
   };
 }
+
+/** The background process name, and so the log, of an election's voters' CA proxy. */
+export const caProxyName = (e) => `ca-proxy-${e.id}`;
+/** Where the browser reaches an election's voters' CA. */
+export const caProxyUrl = (e, { https = false } = {}) => `${https ? "https" : "http"}://localhost:${e.voterOrg.ca.proxy}`;
+/**
+ * The arguments for ca-proxy.mjs in front of an election's voters' CA, in
+ * voters-only mode, with a mkcert certificate when `tls` is given.
+ */
+export const caProxyArgs = (state, e, tls = null) => [
+  "--listen", String(e.voterOrg.ca.proxy),
+  "--target", `https://localhost:${e.voterOrg.ca.port}`,
+  "--upstream-ca", join(paths(state).election(e).home, "ca-cert.pem"),
+  "--voters-only",
+  ...(tls ? ["--cert", tls.cert, "--key", tls.key] : []),
+];
+
+/** "f1642101…b0b87480", as weft-trustee shortens hashes. */
+const shortHash = (hex) => `${hex.slice(0, 8)}…${hex.slice(-8)}`;
+/** SHA-256 of a file, in lowercase hex. */
+const fileHash = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
 
 /** The voter MSP IDs, for the relay's WEFT_IDEMIX_MSP_IDS. */
 export const voterMspIds = () => voterElections().map((e) => e.voterOrg.mspId).join(",");
 
+/** The Go versions the contract's go.mod names: its minimum (the go line) and its toolchain line. */
+export function contractGo(dir = contractSource) {
+  const mod = readFileSync(join(dir, "go.mod"), "utf8");
+  return { minimum: mod.match(/^go (\S+)$/m)?.[1] ?? null, toolchain: mod.match(/^toolchain (\S+)$/m)?.[1] ?? null };
+}
+
+/** Compares Go versions such as 1.24.7 and 1.26.3, without the "go" prefix. */
+function compareGo(a, b) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
 /**
  * The contract is written in Go (docs/adr/0007), and Fabric's deployment
- * vendors its modules with the local Go. Called before anything starts.
+ * vendors its modules with the local Go. Its go.mod needs Go 1.26.3 or later
+ * and names the toolchain go1.26.10, for IBM idemix (docs/adr/0008). An older
+ * Go, from 1.21, downloads that toolchain when it vendors the contract,
+ * unless GOTOOLCHAIN stops it. Called before anything starts. Returns the
+ * line cli.mjs prints.
  */
 export function checkGo({ fail }) {
-  const result = spawnSync("go", ["version"], { encoding: "utf8" });
-  if (result.error || result.status !== 0) {
+  // Outside any module, so a go.mod's toolchain line doesn't make this Go switch before it answers.
+  const env = (name) => spawnSync("go", ["env", name], { encoding: "utf8", cwd: tmpdir() });
+  const found = env("GOVERSION");
+  if (found.error || found.status !== 0) {
     fail(
       "--experimental needs Go, which isn't installed or isn't on your PATH.",
       "The private-ballot contract is written in Go. Install it (macOS: brew install go; others: https://go.dev/dl/), " +
         "then run this again, or run pnpm playground:up without --experimental.",
     );
   }
-  return result.stdout.trim().replace(/^go version /, "");
+  const version = found.stdout.trim();
+  const { minimum, toolchain } = contractGo();
+  const plain = version.replace(/^go/, "").replace(/[^0-9.].*$/, "");
+  if (!minimum || compareGo(plain, minimum) >= 0) return `Go found (${version}), for --experimental`;
+  const wanted = toolchain ?? `go${minimum}`;
+  if (compareGo(plain, "1.21") < 0) {
+    fail(
+      `${version} can't vendor the private-ballot contract: its go.mod needs Go ${minimum} or later, and Go before 1.21 can't download a newer toolchain.`,
+      `Install Go ${minimum} or later (https://go.dev/dl/), then run this again.`,
+    );
+  }
+  const mode = env("GOTOOLCHAIN").stdout?.trim() || "auto";
+  // auto and <name>+auto download a newer toolchain; a named toolchain new enough is used as it is.
+  const named = mode.match(/^go(\d[\d.]*)$/)?.[1];
+  const downloads = mode === "auto" || mode.endsWith("+auto") || (named !== undefined && compareGo(named, minimum) >= 0);
+  if (!downloads) {
+    fail(
+      `${version} can't vendor the private-ballot contract: its go.mod needs Go ${minimum} or later, and GOTOOLCHAIN=${mode} stops Go from downloading ${wanted}.`,
+      `Unset GOTOOLCHAIN, or set it to auto, so Go downloads ${wanted} when it vendors the contract. Or install Go ${minimum} or later.`,
+    );
+  }
+  return `Go found (${version}), for --experimental. The contract's go.mod names ${named ? `go${named}` : wanted}, which Go downloads when it vendors the contract`;
 }
 
 /**
@@ -171,6 +262,13 @@ export function checkElections({ fail }) {
     fail(
       `The election ID ${bad.id} can't name a channel: ${electionChannel(bad)} isn't a valid Fabric channel name.`,
       "Use lower-case letters, digits, dots and hyphens, starting with a letter, in ELECTIONS in playground/experimental.mjs.",
+    );
+  }
+  const noProxy = voterElections().find((e) => !Number.isInteger(e.voterOrg.ca?.proxy));
+  if (noProxy) {
+    fail(
+      `${noProxy.id} has voter credentials, but its entry in ELECTIONS has no ca.proxy, the port the browser reaches ${noProxy.voterOrg.ca?.name ?? "its voters' CA"} on.`,
+      "Give it a free port in ELECTIONS in playground/experimental.mjs, for example 7081 for chair-2027 and 7181 for chair-2028.",
     );
   }
 }
@@ -198,7 +296,7 @@ export async function startVotersCas(net, state, tools) {
   for (const election of elections) await startVotersCa(election, net, state, tools);
 }
 
-async function startVotersCa(election, net, state, { note, fail, startCaServer }) {
+async function startVotersCa(election, net, state, { note, fail, startCaServer, startCaProxy }) {
   const files = paths(state).election(election);
   const { name, port } = election.voterOrg.ca;
   const url = `https://localhost:${port}`;
@@ -207,6 +305,7 @@ async function startVotersCa(election, net, state, { note, fail, startCaServer }
   const caClient = (args) => capture(client, [...args, "--caname", name, "--tls.certfiles", tls], { FABRIC_CA_CLIENT_HOME: files.admin });
 
   const newKey = !existsSync(join(files.home, "IssuerPublicKey"));
+  if (newKey) newIssuerKeys.add(election.id);
   mkdirSync(files.home, { recursive: true });
   mkdirSync(files.admin, { recursive: true });
   const { logs } = startCaServer(election, files.home);
@@ -222,7 +321,8 @@ async function startVotersCa(election, net, state, { note, fail, startCaServer }
   for (const key of ["IssuerPublicKey", "IssuerRevocationPublicKey"]) {
     if (!existsSync(join(files.home, key))) fail(`The voters' CA ${name} has no ${key} in ${files.home}.`, `See ${logs}.`);
   }
-  note(newKey ? `${name} is up on ${url}, with a new issuer key` : `${name} is up on ${url}`);
+  const keyHash = shortHash(fileHash(join(files.home, "IssuerPublicKey")));
+  note(newKey ? `${name} is up on ${url}, with a new issuer key, SHA-256 ${keyHash}` : `${name} is up on ${url}, issuer key SHA-256 ${keyHash}`);
 
   // The election's MSP folder, as Fabric's idemix MSP reads it:
   // msp/IssuerPublicKey and msp/RevocationPublicKey.
@@ -251,6 +351,14 @@ async function startVotersCa(election, net, state, { note, fail, startCaServer }
   }
   const range = `${DEMO_VOTERS[0].id} to ${DEMO_VOTERS.at(-1).id}`;
   note(registered.length ? `registered ${registered.join(", ")} for ${election.id}` : `${range} already registered for ${election.id}`);
+
+  // The browser's way in: voters reach the CA only through this proxy (D4 of the step 5 plan).
+  const proxy = await startCaProxy(election);
+  note(
+    proxy.started
+      ? `proxy for ${name} started on ${proxy.url}, for the browser (log: .state/${caProxyName(election)}.log)`
+      : `proxy for ${name} already running on ${proxy.url}`,
+  );
 }
 
 /**
@@ -363,6 +471,13 @@ export function peerEnv(net, org, peer) {
  * from the first organisation's peer, or null if that fails.
  */
 export function channelVoterMsps(net, dir, channel) {
+  const groups = applicationGroups(net, dir, channel);
+  // MSP type 1 is idemix; X.509 is 0.
+  return groups ? Object.keys(groups).filter((id) => groups[id].values?.MSP?.value?.type === 1) : null;
+}
+
+/** The Application organisations in a channel's latest configuration, decoded, or null. */
+function applicationGroups(net, dir, channel) {
   const org = net.orgs[0];
   const block = join(dir, "config.pb");
   const fetched = capture(join(net.bin, "peer"), ["channel", "fetch", "config", block, "-c", channel], peerEnv(net, org, org.peers[0]));
@@ -370,13 +485,25 @@ export function channelVoterMsps(net, dir, channel) {
   const json = join(dir, "config.json");
   if (!capture(join(net.bin, "configtxlator"), ["proto_decode", "--input", block, "--type", "common.Block", "--output", json]).ok) return null;
   try {
-    const groups = JSON.parse(readFileSync(json, "utf8")).data.data[0].payload.data.config.channel_group.groups.Application.groups;
-    // MSP type 1 is idemix; X.509 is 0.
-    return Object.keys(groups).filter((id) => groups[id].values?.MSP?.value?.type === 1);
+    return JSON.parse(readFileSync(json, "utf8")).data.data[0].payload.data.config.channel_group.groups.Application.groups;
   } catch {
     return null;
   }
 }
+
+/** The issuer public key an idemix organisation has in the configuration that applicationGroups last decoded, or null. */
+function channelIssuerKey(dir, mspId) {
+  try {
+    const groups = JSON.parse(readFileSync(join(dir, "config.json"), "utf8")).data.data[0].payload.data.config.channel_group.groups.Application.groups;
+    const ipk = groups[mspId]?.values?.MSP?.value?.config?.ipk;
+    return typeof ipk === "string" ? Buffer.from(ipk, "base64") : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The voters' CAs that made a new issuer key in this run, for the channel guard. */
+const newIssuerKeys = new Set();
 
 /**
  * A channel for each election in ELECTIONS, privatevote-<election id>, each
@@ -395,6 +522,24 @@ export async function createElectionChannels(net, state, tools) {
   for (const election of ELECTIONS) await createElectionChannel(election, net, state, tools);
 }
 
+/**
+ * The voters' CA's issuer key must be the one its MSP has in the channel:
+ * credentials under any other key are refused by every peer. The two differ
+ * when the CA's home in .state was deleted while the network kept the channel.
+ */
+function checkIssuerKey(election, state, dir, channel, fail) {
+  const { mspId, ca } = election.voterOrg;
+  const inChannel = channelIssuerKey(dir, mspId);
+  const atCa = readFileSync(join(paths(state).election(election).home, "IssuerPublicKey"));
+  if (!inChannel || inChannel.equals(atCa)) return;
+  fail(
+    newIssuerKeys.has(election.id)
+      ? `${ca.name} has a new issuer key, but ${channel} already has ${mspId} with another.`
+      : `${ca.name}'s issuer key isn't the one ${mspId} has in ${channel}.`,
+    "The CA's home was deleted while the channel stayed. Run pnpm playground:down, then pnpm playground:up --experimental.",
+  );
+}
+
 async function createElectionChannel(election, net, state, { note, fail }) {
   const channel = electionChannel(election);
   const { dir, marker } = paths(state).channel(election);
@@ -403,8 +548,10 @@ async function createElectionChannel(election, net, state, { note, fail }) {
   if (existsSync(marker)) {
     const inChannel = channelVoterMsps(net, dir, channel);
     if (!inChannel) note(`${channel} already exists; couldn't read its configuration from ${net.orgs[0].peers[0].address} to check its idemix organisation`);
-    else if (inChannel.join(",") === expected.join(",")) note(`${channel} already exists, with ${describe(expected)}`);
-    else {
+    else if (inChannel.join(",") === expected.join(",")) {
+      if (election.voterOrg) checkIssuerKey(election, state, dir, channel, fail);
+      note(`${channel} already exists, with ${describe(expected)}`);
+    } else {
       note(
         `${channel} already exists with ${describe(inChannel)}, not ${describe(expected)}; ` +
           "run pnpm playground:down and up again to recreate it",
@@ -422,26 +569,39 @@ async function createElectionChannel(election, net, state, { note, fail }) {
   if (!made.ok) fail(`Couldn't make ${channel}'s genesis block.`, made.output.split("\n").slice(-3).join("\n  "));
   note(`${channel}: genesis block in .state/private-channels/${channel}/${channel}.block, with ${describe(expected)}`);
 
+  let existed = false;
   for (const admin of net.orderer.admins) {
     const tls = admin.tls ? ["--ca-file", net.orderer.tlsCa, "--client-cert", admin.tls.cert, "--client-key", admin.tls.key] : [];
     const joined = capture(join(net.bin, "osnadmin"), ["channel", "join", "--channelID", channel, "--config-block", block, "-o", admin.address, ...tls]);
     if (!joined.ok && !/already exists/i.test(joined.output)) fail(`The orderer at ${admin.address} couldn't join ${channel}.`, lastLine(joined.output));
+    // osnadmin exits with 0 when the orderer answers 405 because it already has the channel.
+    if (/already exists/i.test(joined.output)) existed = true;
   }
-  note(`${channel}: orderers joined`);
+  note(existed ? `${channel}: the orderers already have it, from before .state had a record of it` : `${channel}: orderers joined`);
 
   for (const org of net.orgs) {
     for (const peer of org.peers) {
       const env = peerEnv(net, org, peer);
       // The orderers elect a leader for the new channel first; until then a peer can't fetch its blocks.
       let joined = { ok: false, output: "" };
+      let had = false;
       for (let attempt = 0; attempt < 10 && !joined.ok; attempt++) {
         joined = capture(join(net.bin, "peer"), ["channel", "join", "-b", block], env);
-        if (/already exists/i.test(joined.output)) joined.ok = true;
+        if (/already exists/i.test(joined.output)) {
+          joined.ok = true;
+          existed = had = true;
+        }
         if (!joined.ok) await new Promise((r) => setTimeout(r, 2000));
       }
       if (!joined.ok) fail(`${peer.address} couldn't join ${channel}.`, lastLine(joined.output));
-      note(`${channel}: ${org.msp}'s peer at ${peer.address} joined`);
+      note(`${channel}: ${org.msp}'s peer at ${peer.address} ${had ? "already had it" : "joined"}`);
     }
+  }
+  // A channel the network already had keeps its own configuration, not the
+  // genesis block just made, so its voter organisation's key is checked too.
+  if (existed && election.voterOrg) {
+    applicationGroups(net, dir, channel);
+    checkIssuerKey(election, state, dir, channel, fail);
   }
   writeFileSync(marker, new Date().toISOString());
 }
@@ -487,7 +647,8 @@ export const endorsementPolicy = (net) => `AND(${net.orgs.map((o) => `'${o.msp}.
  *
  * Then each organisation's peer answers GetElection for the election, which
  * starts the contract on it: before an election is seeded, the answer is
- * "There's no election <id>." seedElections follows.
+ * "There's no election <id>." cli.mjs runs seedElections once the relay
+ * and the explorers are up.
  */
 export function deployPrivateBallot(net, state, tools) {
   const { step, note, fail, deployContract } = tools;
@@ -514,7 +675,6 @@ export function deployPrivateBallot(net, state, tools) {
       note(`${channel}: ${org.msp}'s peer answers GetElection: ${answer.output}`);
     }
   }
-  seedElections(net, state, tools);
 }
 
 /**
@@ -633,57 +793,63 @@ export function closingTime(days, now = new Date()) {
 
 /**
  * Builds weft-trustee, sets up the trustees, and creates and opens each
- * election in ELECTIONS that has a seed and X.509 voters: CreateElection as
- * Org1's trustee, then commit, share and confirm for Org1 and Org2 in turn,
- * the last confirm opening it. An election that already exists, in any
- * state, is left as it is, except one still in its key ceremony, whose
- * remaining rounds are run. Then each organisation's trustee reads every
- * election through its own peer's gateway.
+ * election in ELECTIONS that has a seed: CreateElection as Org1's trustee,
+ * then commit, share and confirm for Org1 and Org2 in turn, the last confirm
+ * opening it. An election with voter credentials pins its CA's issuer key and
+ * the affiliation `voters`. An election that already exists, in any state, is
+ * left as it is, except one still in its key ceremony, whose remaining rounds
+ * are run. For an election with voter credentials, the credential count
+ * follows (D14). Then each organisation's trustee reads every election
+ * through its own peer's gateway. Returns each election's state, or null.
  */
 export function seedElections(net, state, tools) {
   const { step, note } = tools;
   step("E4", "Experimental: trustee identities, the key ceremony and the seeded elections");
+  const states = new Map(ELECTIONS.map((e) => [e.id, null]));
   // Built every time, with the packages it uses, as the relay and the explorers are.
   const built = spawnSync("pnpm", ["--filter", "@weftwallet/trustee...", "build"], { cwd: repoRoot, encoding: "utf8" });
   if (built.status !== 0) {
     note(`couldn't build weft-trustee, so nothing is seeded: ${lastLine(`${built.stdout ?? ""}${built.stderr ?? ""}`.trim())}`);
-    return;
+    return states;
   }
   setUpTrustees(net, state, tools);
   const [creator] = net.orgs;
   for (const election of ELECTIONS) {
-    if (election.voterOrg) {
-      note(`${election.id}: not seeded. Its voters use voter credentials, which come with docs/adr/0008's step`);
-      continue;
-    }
-    if (!election.seed) {
-      note(`${election.id}: not seeded, since it has no seed in ELECTIONS`);
-      continue;
-    }
-    const outcome = seedElection(net, state, election, creator);
-    note(`${election.id}: ${outcome}`);
+    if (!election.seed) note(`${election.id}: not seeded, since it has no seed in ELECTIONS`);
+    else for (const line of seedElection(net, state, election, creator).split("\n")) note(`${election.id}: ${line}`);
+    if (election.voterOrg) note(`${election.id}: ${credentialSummary(credentialCount(state, election), election)}`);
   }
   // The smoke check: every election's channel answers through each organisation's gateway.
   for (const election of ELECTIONS) {
     for (const org of net.orgs) {
       const read = trusteeStatus(net, state, org, election);
+      if (read.report) states.set(election.id, read.report.election.state);
       const what = read.report ? `${election.id} is ${read.report.election.state}` : read.missing ? `There's no election ${election.id}.` : null;
       note(what ? `${electionChannel(election)}: ${org.msp}'s gateway answers GetElection as ${trusteeUser(net, org).id}: ${what}` : `${electionChannel(election)}: ${org.msp}'s gateway didn't answer: ${failedLines(read.error)}`);
     }
   }
+  return states;
 }
+
+/** The block a weft-trustee line names, such as "Opened chair-2027 in block 12.", or null. */
+const blockIn = (output, verb, id) => output.match(new RegExp(`${verb} ${id} in block (\\d+)`))?.[1] ?? null;
 
 /**
  * Creates one election with weft-trustee as `creator`'s trustee, runs the key
  * ceremony for every organisation in net.orgs and opens it, or finishes the
- * ceremony of one already created. Says what happened in one line. Used for
- * each seeded election, and by the e2e tests for an election of their own on
- * an existing channel ({ id, channel, seed }).
+ * ceremony of one already created. Says what happened: in one line for an
+ * election with X.509 voters, and in a line for each step, joined with
+ * newlines, for one with voter credentials. Used for each seeded election,
+ * and by the e2e tests for an election of their own on an existing channel
+ * ({ id, channel, seed }).
  */
 export function seedElection(net, state, election, creator) {
   const first = trusteeStatus(net, state, creator, election);
   if (first.error) return `couldn't read it through ${creator.msp}'s peer, so it isn't seeded: ${failedLines(first.error)}`;
   if (first.report && first.report.election.state !== "keygen") return `already exists, in ${first.report.election.state}; left as it is`;
+  const lines = [];
+  const vo = election.voterOrg;
+  let opened = null;
   if (first.missing) {
     const { title, options, openForDays } = election.seed;
     const created = runTrustee(net, state, creator, election, "create", [
@@ -692,30 +858,199 @@ export function seedElection(net, state, election, creator) {
       "--closes-at", closingTime(openForDays),
       ...net.orgs.flatMap((o) => ["--trustee", o.msp]),
       "--threshold", String(net.orgs.length),
+      ...(vo
+        ? ["--voter-credentials", vo.mspId, "--issuer-key", join(paths(state).election(election).msp, "msp", "IssuerPublicKey"), "--affiliation", VOTER_AFFILIATION]
+        : []),
     ]);
     if (!created.ok) return `couldn't create it: ${failedLines(created.output)}`;
+    if (vo) lines.push(`created in block ${blockIn(created.output, "Created", election.id) ?? "?"}, with voter credentials from ${vo.mspId} and its issuer key pinned`);
   }
   // The rounds each trustee hasn't posted yet, in order.
   for (const [round, command] of [["round1", "commit"], ["round2", "share"], ["confirmation", "confirm"]]) {
     for (const [i, org] of net.orgs.entries()) {
       const now = trusteeStatus(net, state, org, election);
-      if (!now.report) return `stopped in the key ceremony: ${failedLines(now.error ?? "")}`;
+      if (!now.report) return [...lines, `stopped in the key ceremony: ${failedLines(now.error ?? "")}`].join("\n");
       if (now.report.election.state !== "keygen") break;
       if (now.report.ceremony.trustees[i][round]) continue;
       const r = runTrustee(net, state, org, election, command);
-      if (!r.ok) return `stopped in the key ceremony, at ${command} for ${org.msp}: ${failedLines(r.output)}. Run pnpm playground:down and up again`;
+      if (!r.ok) return [...lines, `stopped in the key ceremony, at ${command} for ${org.msp}: ${failedLines(r.output)}. Run pnpm playground:down and up again`].join("\n");
+      opened ??= blockIn(r.output, "Opened", election.id);
     }
   }
   const after = trusteeStatus(net, state, creator, election);
-  if (!after.report) return `couldn't read it after the key ceremony: ${failedLines(after.error ?? "")}`;
+  if (!after.report) return [...lines, `couldn't read it after the key ceremony: ${failedLines(after.error ?? "")}`].join("\n");
   const rec = after.report.election;
   if (rec.state === "keygen") {
-    const opened = runTrustee(net, state, creator, election, "open");
-    if (!opened.ok) return `the key ceremony finished and it didn't open: ${failedLines(opened.output)}`;
+    const r = runTrustee(net, state, creator, election, "open");
+    if (!r.ok) return [...lines, `the key ceremony finished and it didn't open: ${failedLines(r.output)}`].join("\n");
+    opened ??= blockIn(r.output, "Opened", election.id);
   }
   const open = trusteeStatus(net, state, creator, election).report?.election;
-  if (open?.state !== "open") return `the key ceremony finished and it is in ${open?.state ?? "an unknown state"}`;
-  return `created, key ceremony run for ${list(net.orgs.map((o) => o.msp))}, ${open.threshold} of ${open.trustees.length}, and open until ${when(open.closesAt)}; fingerprint ${open.fingerprint.match(/.{4}/g).join(" ")}`;
+  if (open?.state !== "open") return [...lines, `the key ceremony finished and it is in ${open?.state ?? "an unknown state"}`].join("\n");
+  const fingerprint = open.fingerprint.match(/.{4}/g).join(" ");
+  const orgs = list(net.orgs.map((o) => o.msp));
+  if (!vo) return `created, key ceremony run for ${orgs}, ${open.threshold} of ${open.trustees.length}, and open until ${when(open.closesAt)}; fingerprint ${fingerprint}`;
+  lines.push(`key ceremony run for ${orgs}, ${open.threshold} of ${open.trustees.length}, and opened${opened ? ` in block ${opened}` : ""}`);
+  lines.push(`election fingerprint ${fingerprint}`);
+  return lines.join("\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* The credential count (D14 of the step 5 plan)                       */
+/* ------------------------------------------------------------------ */
+
+const require = createRequire(import.meta.url);
+
+/**
+ * The credentials an election's voters' CA has issued, per enrolment ID,
+ * from the CA's own database, read-only: its `credentials` table, one row per
+ * idemix credential, and its `users` table for the IDs registered in the
+ * voters' affiliation (Fabric CA 1.5.17's schema). Fabric CA counts basic
+ * enrolments against maxenrollments, but not credentials issued through
+ * token authorisation, so this is what finds a voter ID with more than one.
+ *
+ * Returns { db, voters: [{ id, credentials }], others, extra, issued } or
+ * { error } when the database can't be read.
+ */
+export function credentialCount(state, election) {
+  const { db } = paths(state).election(election);
+  if (!existsSync(db)) return { db, error: `${election.voterOrg.ca.name} has no database at ${relative(state, db)} yet` };
+  let sqlite;
+  try {
+    // Lazily, so a stack without voter credentials never loads node:sqlite.
+    sqlite = new (require("node:sqlite").DatabaseSync)(db, { readOnly: true });
+  } catch (error) {
+    return { db, error: `couldn't open ${relative(state, db)}: ${error.message}` };
+  }
+  try {
+    const issued = new Map(sqlite.prepare("SELECT id, COUNT(*) AS n FROM credentials GROUP BY id").all().map((r) => [r.id, Number(r.n)]));
+    const registered = sqlite.prepare("SELECT id FROM users WHERE affiliation = ? ORDER BY rowid").all(VOTER_AFFILIATION).map((r) => r.id);
+    const voters = registered.map((id) => ({ id, credentials: issued.get(id) ?? 0 }));
+    const others = [...issued].filter(([id]) => !registered.includes(id)).map(([id, credentials]) => ({ id, credentials }));
+    return {
+      db,
+      voters,
+      others,
+      extra: voters.filter((v) => v.credentials > 1),
+      issued: voters.reduce((n, v) => n + v.credentials, 0),
+    };
+  } catch (error) {
+    return { db, error: `couldn't read the credentials in ${relative(state, db)}: ${error.message}` };
+  } finally {
+    sqlite.close();
+  }
+}
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** One line for up and count: how many credentials the voters' CA has issued, and whether any ID has more than one. */
+export function credentialSummary(count, election = null, { names = true } = {}) {
+  const ca = election?.voterOrg.ca.name;
+  if (count.error) return `the credentials weren't counted: ${count.error}`;
+  const name = ca ?? "the voters' CA";
+  if (count.extra.length) {
+    return `${name} has issued more than one credential to ${list(count.extra.map((v) => v.id))}, so ${election ? election.id : "the election"} may have more votes than voters`;
+  }
+  if (count.issued === 0) return `${name} has issued 0 credentials, so no enrolment ID has more than one`;
+  const holders = count.voters.filter((v) => v.credentials > 0).map((v) => v.id);
+  return `${name} has issued ${plural(count.issued, "credential")}${names ? `, to ${list(holders)},` : ","} and none to the same ID twice`;
+}
+
+/**
+ * pnpm playground:credentials <election>: the table of credentials per
+ * enrolment ID. Exits with status 1 when an ID in the voters' affiliation has
+ * more than one, or the database can't be read.
+ */
+export function printCredentials(state, id, { fail }) {
+  const election = ELECTIONS.find((e) => e.id === id);
+  if (!election?.voterOrg) {
+    const withCredentials = voterElections().map((e) => e.id);
+    fail(
+      election ? `${id} has X.509 voters, so it has no voters' CA to count.` : `There's no election ${id} in the playground's list.`,
+      withCredentials.length ? `The elections with voter credentials are ${list(withCredentials)}.` : "No election in ELECTIONS in playground/experimental.mjs has voter credentials.",
+    );
+  }
+  const count = credentialCount(state, election);
+  const { ca, mspId } = { ca: election.voterOrg.ca.name, mspId: election.voterOrg.mspId };
+  if (count.error) fail(`${ca}'s credentials weren't counted: ${count.error}.`, "Run pnpm playground:up --experimental first.");
+  console.log(`${ca}, for ${id} (${mspId}), from .state/${relative(state, count.db)}\n`);
+  const width = Math.max("Enrolment ID".length, ...count.voters.map((v) => v.id.length)) + 3;
+  console.log(`  ${"Enrolment ID".padEnd(width)}Credentials`);
+  for (const v of count.voters) console.log(`  ${v.id.padEnd(width)}${v.credentials}`);
+  if (count.others.length) {
+    console.log(`\n  Outside the ${VOTER_AFFILIATION} affiliation, whose credentials the contract refuses: ${count.others.map((o) => `${o.id} ${o.credentials}`).join(", ")}`);
+  }
+  if (count.extra.length) {
+    const lines = count.extra.map((v) => `${v.id} has ${v.credentials} credentials, so one person can vote ${v.credentials} times in ${id}.`);
+    fail(
+      lines.join("\n  "),
+      "The CA issued them through token authorisation, which maxenrollments doesn't count. Credentials can't be revoked: cancel the election if it is still in keygen, or tell the voters and run a new election under a new issuer key.",
+    );
+  }
+  const holders = count.voters.filter((v) => v.credentials > 0).length;
+  console.log(`\n✓ No enrolment ID has more than one credential. ${holders} of ${count.voters.length} voters hold one.`);
+  return count;
+}
+
+/* ------------------------------------------------------------------ */
+/* Voter invites (D8 of the step 5 plan)                               */
+/* ------------------------------------------------------------------ */
+
+/** Every PEM certificate in an MSP folder's cacerts and intermediatecerts, as one chain. */
+function caChain(mspDir) {
+  const pems = [];
+  for (const sub of ["cacerts", "intermediatecerts"]) {
+    const dir = join(mspDir, sub);
+    if (!existsSync(dir)) continue;
+    for (const file of readdirSync(dir).sort()) pems.push(readFileSync(join(dir, file), "utf8").trim());
+  }
+  return `${pems.join("\n")}\n`;
+}
+
+/**
+ * Writes the voter invite of each election with voter credentials to
+ * .state/voter-invites/<election>.json, for the relay to serve. Its CA URL is
+ * the election's CA proxy, its relay is Org1's, named as run by Weft
+ * Playground, its issuer key hash is SHA-256 of the CA's IssuerPublicKey, and
+ * its endorsers are the trustee organisations with their CA chains. Returns
+ * the elections whose invite changed, so the relay can be restarted to serve them.
+ */
+export function writeVoterInvites(net, state, { relayUrl, explorerUrl, https = false, network = "Weft playground" }) {
+  const dir = paths(state).voterInvites;
+  mkdirSync(dir, { recursive: true });
+  const changed = [];
+  // An election no longer in ELECTIONS has its invite removed.
+  const listed = new Set(voterElections().map((e) => `${e.id}.json`));
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json") && !listed.has(f))) {
+    rmSync(join(dir, file));
+    changed.push(file.replace(/\.json$/, ""));
+  }
+  for (const election of voterElections()) {
+    const { mspId, ca } = election.voterOrg;
+    const invite = {
+      weftVoterInvite: 1,
+      network,
+      organization: `${election.seed?.title ?? election.id} voters`,
+      mspId,
+      affiliation: VOTER_AFFILIATION,
+      caUrl: caProxyUrl(election, { https }),
+      caName: ca.name,
+      relayUrl,
+      relayOperator: RELAY_OPERATOR,
+      channel: electionChannel(election),
+      chaincode: PRIVATE_CONTRACT,
+      electionId: election.id,
+      issuerKeyHash: fileHash(join(paths(state).election(election).home, "IssuerPublicKey")),
+      curve: CURVE,
+      endorsers: net.orgs.map((o) => ({ mspId: o.msp, caChain: caChain(o.mspDir) })),
+      ...(explorerUrl ? { explorerUrl } : {}),
+    };
+    const file = join(dir, `${election.id}.json`);
+    const text = `${JSON.stringify(invite, null, 2)}\n`;
+    if (!existsSync(file) || readFileSync(file, "utf8") !== text) changed.push(election.id);
+    writeFileSync(file, text);
+  }
+  return changed;
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -733,7 +1068,7 @@ const list = (items) => (items.length <= 1 ? items.join("") : `${items.slice(0, 
  * share, publishes the tally and prints the counts. Each step that has
  * already happened is skipped, so it can run again.
  */
-export function countElection(net, state, id, { step, note, fail }, { channel } = {}) {
+export function countElection(net, state, id, { step, note, fail }, { channel, acceptExtraCredentials = false } = {}) {
   const listed = ELECTIONS.find((e) => e.id === id);
   // An election that isn't in the list, such as one the e2e tests create, is counted on the channel given.
   const election = listed && (!channel || channel === electionChannel(listed)) ? listed : channel ? { id, channel } : null;
@@ -756,13 +1091,27 @@ export function countElection(net, state, id, { step, note, fail }, { channel } 
   };
   const read = (org) => {
     const r = trusteeStatus(net, state, org, election);
-    if (r.missing) fail(`There's no election ${id} on ${electionChannel(election)}.`, election.voterOrg ? "It isn't seeded until voter credentials are built (docs/adr/0008)." : listed ? "Run pnpm playground:up --experimental to seed it." : "Check the election's ID and its channel.");
+    if (r.missing) fail(`There's no election ${id} on ${electionChannel(election)}.`, listed ? "Run pnpm playground:up --experimental to seed it." : "Check the election's ID and its channel.");
     if (r.error) fail(`Couldn't read ${id} through ${org.msp}'s peer.`, failedLines(r.error));
     return r.report;
   };
   let report = read(net.orgs[0]);
   if (report.election.state === "keygen" || report.election.state === "failed" || report.election.state === "cancelled") {
     fail(`${id} can't be counted: it is in ${report.election.state}.`);
+  }
+  // D14: before voting closes, no voter ID may hold more than one credential.
+  if (report.election.state === "open" && election.voterOrg) {
+    const count = credentialCount(state, election);
+    const ca = election.voterOrg.ca.name;
+    if (count.error || count.extra.length) {
+      const problem = count.error
+        ? `${ca}'s credentials weren't counted: ${count.error}, so ${id} may have more votes than voters.`
+        : `${credentialSummary(count, election)}.`;
+      if (!acceptExtraCredentials) {
+        fail(problem, `Nothing was closed. Run pnpm playground:credentials ${id} to see them, or count anyway with --accept-extra-credentials.`);
+      }
+      note(`${problem.replace(/\.$/, "")}; counting anyway, as --accept-extra-credentials asks`);
+    } else note(credentialSummary(count, election, { names: false }));
   }
   if (report.election.state === "open") {
     for (const [i, org] of net.orgs.entries()) {
@@ -809,5 +1158,5 @@ export function countElection(net, state, id, { step, note, fail }, { channel } 
 export function clean(state) {
   const p = paths(state);
   const policies = explorerNames.map((name) => join(state, `${name}-experimental.yaml`));
-  for (const path of [p.marker, p.channels, ...p.legacy, p.votersMsp, p.trustees, ...policies, p.votersCa]) rmSync(path, { recursive: true, force: true });
+  for (const path of [p.marker, p.channels, ...p.legacy, p.votersMsp, p.trustees, p.voterInvites, ...policies, p.votersCa]) rmSync(path, { recursive: true, force: true });
 }
