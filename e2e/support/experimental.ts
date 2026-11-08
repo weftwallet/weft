@@ -170,7 +170,7 @@ export async function createCredentialsElection(): Promise<CredentialsElection> 
 
   const dir = p.paths(PLAYGROUND_STATE).voterInvites;
   const invite = JSON.parse(readFileSync(join(dir, `${CREDENTIALS_TEMPLATE}.json`), "utf8")) as { relayUrl: string; organization: string };
-  writeFileSync(join(dir, `${electionId}.json`), `${JSON.stringify({ ...invite, electionId, organization: `${title} voters` }, null, 2)}\n`);
+  writeFileSync(join(dir, `${electionId}.json`), `${JSON.stringify({ ...invite, electionId, title, organization: `${title} voters` }, null, 2)}\n`);
   const election: CredentialsElection = {
     channel,
     electionId,

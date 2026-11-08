@@ -1,4 +1,4 @@
-import { expect, stack, test } from "../support/fixtures.ts";
+import { clickToClose, expect, stack, test } from "../support/fixtures.ts";
 
 test("the approval window keeps Reject and Sign on screen with many arguments", async ({ wallet }) => {
   const dapp = await wallet.dapp();
@@ -19,7 +19,7 @@ test("the approval window keeps Reject and Sign on screen with many arguments", 
   await expect(win.locator(".args__row")).toHaveCount(8);
   // The channel isn't in the invite, so the user is warned.
   await expect(win.getByText("doesn't list the channel")).toBeVisible();
-  await win.getByRole("button", { name: "Reject" }).click();
+  await clickToClose(win, win.getByRole("button", { name: "Reject" }));
 });
 
 test("opening a confirmation doesn't scroll the popup", async ({ wallet }) => {

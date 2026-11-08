@@ -6,7 +6,7 @@
  * the real explorer, are in elections.spec.ts (@fabric).
  */
 import type { Page } from "@playwright/test";
-import { expect, stack, test, type Wallet } from "../support/fixtures.ts";
+import { clickToClose, expect, stack, test, type Wallet } from "../support/fixtures.ts";
 
 const SALT = "7c1e94a0b3d25f86e0a4c9172bd35e6f";
 const TX = "e41b22d89f3a1c07b25e6d0c4a7f38e19b5c2d74a6e0f18c3b9d5a2e7f04c61d";
@@ -71,7 +71,7 @@ test("the approval window offers to keep the receipt, off until the user turns i
   expect(JSON.parse((await win.locator("#raw-request").textContent())!).receipt).toMatchObject({ option: "hidden", salt: "hidden" });
   await shoot(win, "approve-keep");
 
-  await win.getByRole("button", { name: "Reject" }).click();
+  await clickToClose(win, win.getByRole("button", { name: "Reject" }));
   expect((await result).code).toBe(4001);
 });
 

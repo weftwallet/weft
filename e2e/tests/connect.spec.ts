@@ -1,4 +1,4 @@
-import { expect, stack, test } from "../support/fixtures.ts";
+import { clickToClose, expect, stack, test } from "../support/fixtures.ts";
 
 test("a site joins a network from an invite and connects", async ({ wallet }) => {
   const dapp = await wallet.dapp();
@@ -27,7 +27,8 @@ test("a site can't stack approval windows (-32002)", async ({ wallet }) => {
   const approvalWindows = wallet.context.pages().filter((p) => p.url().includes("approve.html"));
   expect(approvalWindows).toHaveLength(1);
 
-  await win.getByRole("button", { name: "Reject" }).click();
+  // Reject closes the window, which can end before Playwright's click returns.
+  await clickToClose(win, win.getByRole("button", { name: "Reject" }));
   expect((await first).code).toBe(4001);
 });
 

@@ -46,6 +46,10 @@ async function copyInvite(page: Page, e: CredentialsElection): Promise<string> {
   const section = page.locator("#pg-private");
   await expect(section.getByRole("heading", { name: "Get a voter credential" })).toBeVisible();
   await expect(section.locator("#pg-pe-invite-url")).toHaveText(e.inviteUrl);
+  // The run's election has its own voters, so the hint doesn't offer the playground's demo voters for it.
+  const hint = section.locator("#pg-pe-invite-hint");
+  await expect(hint).toContainText(`enrol with the enrolment ID and secret registered for you on ${e.electionId}'s voters' CA.`);
+  await expect(hint).toContainText("The playground registers its demo voters, voter1 to voter5, for chair-2027.");
   await section.getByRole("button", { name: "Copy voter invite" }).click();
   await expect(section.locator("#pg-pe-invite-status")).toHaveText("Copied. Paste it into Weft Experimental's Join from an invite.");
   return page.evaluate(() => navigator.clipboard.readText());
@@ -58,10 +62,16 @@ async function enrol(wallet: Wallet, invite: string, voter: { id: string; secret
   await p.getByLabel("Invite link").fill(invite);
   await p.getByRole("button", { name: "Review invite" }).click();
   await expect(p.getByText(e.voterMsp).first()).toBeVisible({ timeout: 20_000 });
+  // The invite's title names the election on the review, with its ID under it.
+  const review = p.getByRole("region", { name: "Voter invite" });
+  await expect(review.locator(".card__title")).toHaveText(e.title);
+  await expect(review).toContainText(e.electionId);
   await p.getByLabel("Enrolment ID").fill(voter.id);
   await p.getByLabel("Enrolment secret", { exact: true }).fill(voter.secret);
   await p.getByRole("button", { name: "Get a voter credential" }).click();
   await expect(p.getByRole("heading", { name: "Identities" })).toBeVisible({ timeout: 60_000 });
+  // Before Weft has read the election, the row is named by the invite's title.
+  await expect(p.getByRole("region", { name: "Voter credentials" })).toContainText(e.title);
   await expect(p.getByRole("region", { name: "Voter credentials" })).toContainText(e.electionId);
   await p.close();
 }
