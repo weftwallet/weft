@@ -43,6 +43,8 @@ export interface RelayConfig {
    * /.well-known/weft-voter-invite/<election>.json. Empty unless set.
    */
   voterInvites: Map<string, VoterInvite>;
+  /** WEFT_VOTER_INVITES, where an invite added after startup is read from when first asked for. */
+  voterInviteDir?: string;
 }
 
 function list(value: string | undefined): string[] | undefined {
@@ -83,5 +85,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
     experimental,
     idemixMspIds,
     voterInvites,
+    ...(env.WEFT_VOTER_INVITES ? { voterInviteDir: env.WEFT_VOTER_INVITES } : {}),
   };
 }

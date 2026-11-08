@@ -241,6 +241,22 @@ describe("voter invites", () => {
     expect(missing.json().error.message).toBe("This relay publishes no voter invite for chair-2028.");
   });
 
+  it("are read when first asked for when added after startup, with the same checks", async () => {
+    const dir = folder({ "chair-2027.json": invite });
+    const config = loadConfig({ ...env, WEFT_EXPERIMENTAL: "1", WEFT_IDEMIX_MSP_IDS: VOTERS, WEFT_VOTER_INVITES: dir });
+    const { app, lines } = relay(config);
+    writeFileSync(join(dir, "chair-2028.json"), JSON.stringify({ ...invite, electionId: "chair-2028" }));
+    writeFileSync(join(dir, "chair-2029.json"), JSON.stringify({ ...invite, electionId: "chair-2027" }));
+    const late = await app.inject({ method: "GET", url: VOTER_INVITE_PATH("chair-2028") });
+    expect(late.statusCode).toBe(200);
+    expect(late.json().electionId).toBe("chair-2028");
+    expect(config.voterInvites.has("chair-2028")).toBe(true);
+    const misnamed = await app.inject({ method: "GET", url: VOTER_INVITE_PATH("chair-2029") });
+    expect(misnamed.statusCode).toBe(404);
+    expect(lines.some((l) => String(l.msg).includes("so its file must be named chair-2027.json"))).toBe(true);
+    expect((await app.inject({ method: "GET", url: VOTER_INVITE_PATH("..%2Fsecret") })).statusCode).toBe(404);
+  });
+
   it("are refused without WEFT_EXPERIMENTAL=1", () => {
     expect(() => loadConfig({ ...env, WEFT_VOTER_INVITES: folder({}) })).toThrow(
       "WEFT_VOTER_INVITES is set, but the relay serves voter invites only when it's started with WEFT_EXPERIMENTAL=1.",

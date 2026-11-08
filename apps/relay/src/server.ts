@@ -20,7 +20,7 @@ import Fastify, { LogController, type FastifyInstance, type FastifyReply, type F
 import type { RelayConfig } from "./config.ts";
 import type { GatewayPool, Lease } from "./gateways.ts";
 import { INVITE_PATH } from "./invite.ts";
-import { VOTER_INVITE_ROUTE } from "./voter-invites.ts";
+import { VOTER_INVITE_ROUTE, lateVoterInvite } from "./voter-invites.ts";
 
 const STATUS_NAMES = new Map<number, string>(Object.entries(StatusCode).map(([name, code]) => [code as number, name]));
 
@@ -203,7 +203,15 @@ export function buildServer(config: RelayConfig, pool: GatewayPool, options: Ser
   // Experimental (docs/adr/0008): the voter invites, one per election with voter credentials.
   app.get<{ Params: { file: string } }>(VOTER_INVITE_ROUTE, async (request, reply) => {
     const id = request.params.file.replace(/\.json$/, "");
-    const invite = request.params.file.endsWith(".json") ? config.voterInvites.get(id) : undefined;
+    let invite = request.params.file.endsWith(".json") ? config.voterInvites.get(id) : undefined;
+    if (!invite && request.params.file.endsWith(".json") && config.experimental) {
+      try {
+        invite = lateVoterInvite(config.voterInviteDir, id, config.voterInvites, config.idemixMspIds) ?? undefined;
+        if (invite) request.log.info(`Voter invite for ${id}: read from WEFT_VOTER_INVITES, added after the relay started.`);
+      } catch (error) {
+        request.log.warn(`The voter invite for ${id} in WEFT_VOTER_INVITES fails its check, so the relay doesn't serve it: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
     if (!invite) {
       return reply.status(404).send({ error: { kind: "not_found", message: `This relay publishes no voter invite for ${id}.` } });
     }
