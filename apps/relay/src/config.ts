@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
-import type { OrgInvite } from "@weftwallet/protocol";
+import type { OrgInvite, VoterInvite } from "@weftwallet/protocol";
 import { loadInvite } from "./invite.ts";
+import { loadVoterInvites } from "./voter-invites.ts";
 
 export interface RelayConfig {
   /** Port the HTTP server listens on. */
@@ -32,10 +33,16 @@ export interface RelayConfig {
   /**
    * Experimental (docs/adr/0008): WEFT_IDEMIX_MSP_IDS, the voter MSPs whose
    * idemix signers the relay may accept, one per election, for example
-   * ChairVoters2027MSP. Empty unless experimental. Parsed only: the relay
-   * doesn't accept idemix signers yet.
+   * ChairVoters2027MSP. Empty unless experimental. The relay keeps no
+   * request logs for requests from these signers (server.ts, QuietLog).
    */
   idemixMspIds: string[];
+  /**
+   * Experimental (docs/adr/0008): the voter invites in the folder
+   * WEFT_VOTER_INVITES, by election ID, served at
+   * /.well-known/weft-voter-invite/<election>.json. Empty unless set.
+   */
+  voterInvites: Map<string, VoterInvite>;
 }
 
 function list(value: string | undefined): string[] | undefined {
@@ -60,6 +67,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
       "WEFT_IDEMIX_MSP_IDS is set, but the relay accepts idemix signers only when it's started with WEFT_EXPERIMENTAL=1. Set WEFT_EXPERIMENTAL=1, or remove WEFT_IDEMIX_MSP_IDS.",
     );
   }
+  const voterInvites = loadVoterInvites(env.WEFT_VOTER_INVITES, { experimental, idemixMspIds });
   return {
     port: Number(env.PORT ?? env.WEFT_PORT ?? 8787),
     host: env.WEFT_HOST ?? "0.0.0.0",
@@ -74,5 +82,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RelayConfig {
     joinPage: env.WEFT_JOIN_PAGE || undefined,
     experimental,
     idemixMspIds,
+    voterInvites,
   };
 }

@@ -559,16 +559,68 @@ export interface OrgInvite {
   explorerUrl?: string;
 }
 
+/**
+ * Experimental (docs/adr/0008): what an election's organisers publish so a
+ * voter can get a voter credential in Weft Experimental. The election's
+ * relay serves it at `/.well-known/weft-voter-invite/<election>.json`. It has
+ * no `weft` field, so normal Weft never takes it for an organisation's invite.
+ */
+export interface VoterInvite {
+  /** Schema version. */
+  weftVoterInvite: 1;
+  network: string;
+  /** Display name for the voters, for example "Chair 2027 voters". */
+  organization: string;
+  /** The election's idemix MSP. */
+  mspId: string;
+  /** The affiliation every voter's credential carries, which the election pins. */
+  affiliation: string;
+  /** The voters' CA, reached through a proxy that passes only cainfo and idemix enrolment. */
+  caUrl: string;
+  caName?: string;
+  /** The election's relay. */
+  relayUrl: string;
+  /** Who runs the election's relay, shown in the invite's review and the approval window. */
+  relayOperator: string;
+  channel: string;
+  chaincode: string;
+  electionId: string;
+  /** SHA-256 of the IssuerPublicKey bytes the CA serves, in lowercase hex, the value the election pins. */
+  issuerKeyHash: string;
+  curve: "FP256BN_AMCL";
+  /** Each trustee organisation's MSP ID and CA chain in PEM, which Weft checks the peers' signatures on the election against. */
+  endorsers: { mspId: string; caChain: string }[];
+  explorerUrl?: string;
+}
+
+/** Path the election's relay serves a voter invite on. */
+export const VOTER_INVITE_PATH = (electionId: string) => `/.well-known/weft-voter-invite/${electionId}.json`;
+
 /* ------------------------------------------------------------------ */
 /* Relay HTTP API (wallet <-> relay). See docs/adr/0001.               */
 /* All byte fields are base64.                                         */
 /* ------------------------------------------------------------------ */
 
-export interface RelaySigner {
+/** An X.509 identity, the signer of every request in normal Weft. */
+export interface X509Signer {
   mspId: string;
   /** PEM certificate of the identity that will sign. */
   certificate: string;
 }
+
+/**
+ * Experimental (docs/adr/0008): a one-off identity made from a voter
+ * credential, for one transaction. The relay accepts it only when started
+ * with WEFT_EXPERIMENTAL=1, from the MSP IDs in WEFT_IDEMIX_MSP_IDS.
+ */
+export interface IdemixSigner {
+  /** The election's voter MSP, for example "ChairVoters2027MSP". */
+  mspId: string;
+  /** The serialized idemix identity, in base64: the creator's id_bytes, exactly as the peer gets them. */
+  idemixIdentity: string;
+}
+
+export type RelaySigner = X509Signer | IdemixSigner;
 
 export interface RelayProposalRequest {
   signer: RelaySigner;
@@ -584,7 +636,7 @@ export interface RelayProposalResponse {
 export interface RelaySignedProposal {
   signer: RelaySigner;
   proposal: string;
-  /** DER-encoded ECDSA signature over the inner proposal bytes. */
+  /** Over the inner proposal bytes: DER-encoded ECDSA for an X.509 signer, an idemix signature for an idemix signer. */
   signature: string;
 }
 

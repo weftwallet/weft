@@ -6,7 +6,7 @@
 import "reflect-metadata";
 import { BasicConstraintsExtension, KeyUsageFlags, KeyUsagesExtension, X509CertificateGenerator } from "@peculiar/x509";
 import { CommitError, Message, RelayError, fromBase64, generateKeyPair, signForFabric, toBase64, utf8 } from "@weftwallet/core";
-import type { ContractCall, RelayCommitStatusResponse, RelaySigner } from "@weftwallet/protocol";
+import type { ContractCall, RelayCommitStatusResponse, RelaySigner, X509Signer } from "@weftwallet/protocol";
 import { electionContext, electionFingerprint, toHex, trusteeId, voterTagX509, type Election } from "@weftwallet/tally";
 import { TallyError, checkBallot } from "@weftwallet/tally/verify";
 import type { BallotRelay } from "../cast";
@@ -206,7 +206,7 @@ export class FakeRelay implements BallotRelay {
     if (this.down.has(path)) throw new RelayError(0, { kind: "unreachable", message: `http://localhost:8787${path}: TypeError: fetch failed` }, "http://localhost:8787", path);
   }
 
-  async propose(signer: RelaySigner, call: ContractCall) {
+  async propose(signer: X509Signer, call: ContractCall) {
     this.calls.push(`propose ${call.fn}`);
     this.unreachable("/v1/proposals");
     const txId = `tx${++this.tx}`.padEnd(64, "0");

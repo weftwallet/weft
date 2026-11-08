@@ -4,10 +4,26 @@ import { connect, type Gateway } from "@hyperledger/fabric-gateway";
 import type { RelaySigner } from "@weftwallet/protocol";
 import type { RelayConfig } from "./config.ts";
 
+/** A Gateway for one request, and what to call when the request is done with it. */
+export interface Lease {
+  gateway: Gateway;
+  release(): void;
+}
+
+/** The signer's identity as fabric-gateway takes it: the creator's id_bytes. */
+function credentialsOf(signer: RelaySigner): Uint8Array {
+  return "idemixIdentity" in signer ? new Uint8Array(Buffer.from(signer.idemixIdentity, "base64")) : Buffer.from(signer.certificate.trim());
+}
+
 /**
  * One gRPC channel to the peer, shared by every request, and one Gateway per
  * signing identity. Gateways are connected WITHOUT a signer: that puts
  * fabric-gateway in offline-signing mode, so this process never holds keys.
+ *
+ * Experimental (docs/adr/0008): an idemix signer is a one-off identity, used
+ * for one transaction and never again, so its Gateway isn't cached: each
+ * request gets a new one, closed when the request is done. A cache would only
+ * hold every voter's identities.
  */
 export class GatewayPool {
   private readonly client: grpc.Client;
@@ -25,7 +41,33 @@ export class GatewayPool {
     this.max = config.maxGateways;
   }
 
+  /** How many gateways are cached, for tests. */
+  get cached(): number {
+    return this.gateways.size;
+  }
+
+  private connect(signer: RelaySigner): Gateway {
+    return connect({
+      client: this.client,
+      identity: { mspId: signer.mspId, credentials: credentialsOf(signer) },
+      evaluateOptions: () => ({ deadline: Date.now() + 5_000 }),
+      endorseOptions: () => ({ deadline: Date.now() + 15_000 }),
+      submitOptions: () => ({ deadline: Date.now() + 5_000 }),
+      commitStatusOptions: () => ({ deadline: Date.now() + 60_000 }),
+    });
+  }
+
+  /** A Gateway for this request: the cached one for an X.509 signer, a new one for an idemix signer. */
+  acquire(signer: RelaySigner): Lease {
+    if ("idemixIdentity" in signer) {
+      const gateway = this.connect(signer);
+      return { gateway, release: () => gateway.close() };
+    }
+    return { gateway: this.get(signer), release: () => {} };
+  }
+
   get(signer: RelaySigner): Gateway {
+    if ("idemixIdentity" in signer) throw new Error("An idemix signer's gateway isn't cached: use acquire.");
     const key = `${signer.mspId}:${createHash("sha256").update(signer.certificate.trim()).digest("hex")}`;
     const existing = this.gateways.get(key);
     if (existing) {
@@ -34,14 +76,7 @@ export class GatewayPool {
       this.gateways.set(key, existing);
       return existing;
     }
-    const gateway = connect({
-      client: this.client,
-      identity: { mspId: signer.mspId, credentials: Buffer.from(signer.certificate.trim()) },
-      evaluateOptions: () => ({ deadline: Date.now() + 5_000 }),
-      endorseOptions: () => ({ deadline: Date.now() + 15_000 }),
-      submitOptions: () => ({ deadline: Date.now() + 5_000 }),
-      commitStatusOptions: () => ({ deadline: Date.now() + 60_000 }),
-    });
+    const gateway = this.connect(signer);
     this.gateways.set(key, gateway);
     if (this.gateways.size > this.max) {
       const oldest = this.gateways.keys().next().value as string;

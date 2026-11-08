@@ -29,6 +29,7 @@
     "@hyperledger/fabric-protos": "^0.2.2",
     "@peculiar/x509": "^2.2.0",
     "@types/node": "^26.6.5",
+    "@weftwallet/idemix": "workspace:*",
     "vitest": "^5.0.5"
   }
 }

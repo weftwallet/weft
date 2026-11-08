@@ -39,6 +39,7 @@ const base: RelayConfig = {
   joinPage: undefined,
   experimental: false,
   idemixMspIds: [],
+  voterInvites: new Map(),
 };
 const pool = new GatewayPool(base);
 afterAll(() => pool.close());

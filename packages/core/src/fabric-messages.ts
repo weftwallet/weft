@@ -25,6 +25,8 @@ export interface DecodedProposal {
   creatorMspId: string;
   /** PEM certificate of the creator, exactly as embedded. */
   creatorCertificate: string;
+  /** The creator's id_bytes, exactly as embedded: the certificate's PEM, or a serialized idemix identity. */
+  creatorIdBytes: Uint8Array;
   endorsingOrganizations: string[];
   /** The bytes whose SHA-256 digest is signed (SignedProposal.proposal_bytes). */
   signable: Uint8Array;
@@ -35,6 +37,7 @@ interface HeaderParts {
   txId: string;
   creatorMspId: string;
   creatorCertificate: string;
+  creatorIdBytes: Uint8Array;
 }
 
 const decoder = new TextDecoder();
@@ -45,13 +48,15 @@ function decodeHeader(header: Message): HeaderParts {
   const signatureHeader = header.message(2);
   // SignatureHeader: creator = 1 (SerializedIdentity)
   const creator = signatureHeader.message(1);
+  const idBytes = creator.bytes(2);
   return {
     // ChannelHeader: channel_id = 4, tx_id = 5
     channel: channelHeader.string(4),
     txId: channelHeader.string(5),
     // SerializedIdentity: mspid = 1, id_bytes = 2
     creatorMspId: creator.string(1),
-    creatorCertificate: creator.string(2),
+    creatorCertificate: decoder.decode(idBytes),
+    creatorIdBytes: idBytes,
   };
 }
 
@@ -90,6 +95,7 @@ export function decodeProposedTransaction(bytes: Uint8Array): DecodedProposal {
     transient,
     creatorMspId: header.creatorMspId,
     creatorCertificate: header.creatorCertificate,
+    creatorIdBytes: header.creatorIdBytes,
     endorsingOrganizations: proposed.repeatedString(3),
     signable,
   };
@@ -101,6 +107,7 @@ export interface DecodedTransaction {
   channel: string;
   creatorMspId: string;
   creatorCertificate: string;
+  creatorIdBytes: Uint8Array;
   /** Envelope.payload: the bytes whose digest is signed. */
   signable: Uint8Array;
 }
@@ -119,6 +126,7 @@ export function decodePreparedTransaction(bytes: Uint8Array): DecodedTransaction
     channel: header.channel,
     creatorMspId: header.creatorMspId,
     creatorCertificate: header.creatorCertificate,
+    creatorIdBytes: header.creatorIdBytes,
     signable,
   };
 }

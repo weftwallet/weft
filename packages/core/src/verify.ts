@@ -3,7 +3,8 @@
  * what the relay returned with what the user approved (docs/adr/0001).
  */
 
-import type { ContractCall, RelaySigner } from "@weftwallet/protocol";
+import type { ContractCall, IdemixSigner, RelaySigner } from "@weftwallet/protocol";
+import { fromBase64 } from "./bytes.ts";
 import type { DecodedCommitRequest, DecodedProposal, DecodedTransaction } from "./fabric-messages.ts";
 
 export class VerificationError extends Error {
@@ -24,6 +25,34 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
 
 function normalizePem(pem: string): string {
   return pem.replace(/\r/g, "").trim();
+}
+
+/** Experimental (docs/adr/0008): whether the signer is a one-off identity made from a voter credential. */
+export function isIdemixSigner(signer: RelaySigner): signer is IdemixSigner {
+  return "idemixIdentity" in signer;
+}
+
+/**
+ * The creator must be the signer: for an X.509 signer, the same certificate;
+ * for an idemix signer, the identity Weft made for this transaction, byte for
+ * byte, since its Nym and proof are new for every transaction and nothing
+ * else ties the signature to it.
+ */
+function checkCreator(signer: RelaySigner, decoded: Pick<DecodedProposal, "creatorMspId" | "creatorCertificate" | "creatorIdBytes">): void {
+  if (decoded.creatorMspId !== signer.mspId) throw new VerificationError("signing organisation", signer.mspId, decoded.creatorMspId);
+  if (isIdemixSigner(signer)) {
+    let made: Uint8Array;
+    try {
+      made = fromBase64(signer.idemixIdentity);
+    } catch {
+      throw new VerificationError("signing identity", "the identity Weft made, in base64", "something that isn't base64");
+    }
+    if (!sameBytes(made, decoded.creatorIdBytes)) {
+      throw new VerificationError("signing identity", "the identity Weft made for this transaction, byte for byte", "different bytes");
+    }
+  } else if (normalizePem(decoded.creatorCertificate) !== normalizePem(signer.certificate)) {
+    throw new VerificationError("signing certificate", "your certificate", "a different certificate");
+  }
 }
 
 /** The function name Fabric sees: "contract:fn" when a contract is named. */
@@ -47,8 +76,7 @@ export function verifyProposal(call: ContractCall, signer: RelaySigner, decoded:
       throw new VerificationError(`private input "${key}"`, "the value you approved", "a different value");
     }
   }
-  check("signing organisation", signer.mspId, decoded.creatorMspId);
-  check("signing certificate", normalizePem(signer.certificate), normalizePem(decoded.creatorCertificate));
+  checkCreator(signer, decoded);
   check("transaction ID", decoded.transactionId, decoded.headerTransactionId);
   if (call.endorsingOrganizations?.length) {
     check("endorsing organisations", [...call.endorsingOrganizations].sort(), [...decoded.endorsingOrganizations].sort());
@@ -67,12 +95,7 @@ export function verifyTransaction(
     throw new VerificationError("transaction header ID", proposal.transactionId, decoded.headerTransactionId);
   }
   if (decoded.channel !== proposal.channel) throw new VerificationError("channel", proposal.channel, decoded.channel);
-  if (decoded.creatorMspId !== signer.mspId) {
-    throw new VerificationError("signing organisation", signer.mspId, decoded.creatorMspId);
-  }
-  if (normalizePem(decoded.creatorCertificate) !== normalizePem(signer.certificate)) {
-    throw new VerificationError("signing certificate", "your certificate", "a different certificate");
-  }
+  checkCreator(signer, decoded);
 }
 
 export function verifyCommitRequest(
