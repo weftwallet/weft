@@ -11,7 +11,11 @@ The module does what a wallet needs to hold a voter credential and sign with it:
 - `sign`: sign a Fabric message as that identity: the proposal, the transaction or the commit status request, never fabric-gateway's wrapper bytes;
 - `pseudonym`: the credential's [per-election pseudonym](../../apps/docs/src/content/docs/experimental/private-tally-spec.md#the-per-election-pseudonym) P, the same for every identity of the credential in one election, from which Weft makes the voter tag before it makes the ballot;
 - `pseudonymProof`: the proof that P and the identity's Nym hold the same secret key, for the ballot's tracking code, which is `CastAnonymousBallot`'s `pseudonymJson`;
+- `verifyIdentity`: check a transaction's idemix creator against the loaded issuer key, as a peer's idemix MSP validates it, and return what it discloses: the Nym, the organisational unit and the role;
+- `verifyPseudonym`: check a ballot's pseudonym proof against the creator's Nym, the issuer key and the ballot's tracking code, with the contract's own verifier and messages;
 - `dispose` and `wipe`: zero and drop an identity's secrets, or every identity's and the issuer key.
+
+The two `verify` functions need no secret. The explorer runs them to check anonymous ballots, in its own process as it indexes each block and in the browser's full check, so the explorer checks with the code the contract and Weft run, and there is no TypeScript verifier.
 
 The pseudonym and its proof come from the contract's `pseudonym` package, in `examples/private-ballot-contract/pseudonym`, which `go.mod` requires with a replace directive. The contract verifies with the same Go source.
 
@@ -60,12 +64,15 @@ The budget is 13.5 MB, or 3.2 MB gzipped. Measured with `gzip -9`, on 8 November
 | This module with mathlib's unused curves left out, the build above | 12.57 MB | 2.88 MB |
 | The same without inlining (`-gcflags=all=-l`) | 12.35 MB | 2.45 MB |
 | This module with the per-election pseudonym, from the contract's `pseudonym` package | 12.63 MB | 2.92 MB |
+| The same with `verifyIdentity` and `verifyPseudonym`, for the explorer: the module pinned now | 12.68 MB | 2.93 MB |
 
 Go 1.26 makes the same code 40% larger than Go 1.25 for WebAssembly, and IBM idemix v0.3.1 needs Go 1.26.3, so an older toolchain isn't an option. Leaving out the BBS+ scheme saves little, because IBM mathlib's `Curves` table links gnark-crypto's BN254, BLS12-377 and BLS12-381 in every program that imports it. `_overlay/mathlib-v0.3.2/math.go` sets those entries to nil, which mathlib's own decoder already checks for, and nothing in the dlog scheme reads them. The no-inlining build signs about half as fast (an identity and three signatures in about 290 ms in Node, against 155 ms), so the build keeps inlining. TinyGo wasn't tried: its release couldn't be downloaded where this was built.
 
 A new mathlib version needs a new overlay, in a folder named for it: copy its `math.go`, set the entries that use the `gurvy` drivers to nil, remove the two `gurvy` imports, and update `MATHLIB_MATH_GO_SHA256` in `scripts/build.mjs`.
 
 ## Running it
+
+The module's functions answer synchronously in the scope that started it. `startModule` and `startIdemixNode` return `sync`, the same functions answering at once, for a caller in that scope such as the explorer's indexer, besides the promise-based `api`.
 
 In Weft Experimental, the page that needs the module starts it in a dedicated worker and terminates the worker when it is done, which frees every copy of the secret key the module made:
 
@@ -91,7 +98,7 @@ The page's content security policy needs `'wasm-unsafe-eval'` in `script-src`. I
 
 ## Tests
 
-- `go test ./...`: the signer against a scratch issuer, with IBM idemix's MSP accepting every signature over its message and refusing it over another, a new Nym for every identity, every changed credential refused, and `Dispose` zeroing the secret key's and the Nym randomness's words.
+- `go test ./...`: the signer against a scratch issuer, with IBM idemix's MSP accepting every signature over its message and refusing it over another, a new Nym for every identity, every changed credential refused, and `Dispose` zeroing the secret key's and the Nym randomness's words. `VerifyIdentity` accepts the module's own identities and refuses a changed proof, another identity's Nym, another organisational unit, the role admin in place of member and another issuer's key; `VerifyPseudonym` refuses a proof for another Nym, election, channel or tracking code.
 - `pnpm test`: the module in Node, against the same scratch issuer and MSP through `internal/cmd/testtool`, and a module with another hash refused. Its pseudonym proofs verify with the contract's verifier, for their own Nym and ballot only, and one credential has one pseudonym per election. A test build with `pseudonymVector` reproduces every positive vector in `examples/private-ballot-contract/pseudonym/testdata/v1/pseudonym.json` byte for byte, and the contract's verifier refuses each negative vector past parsing with its message. Vitest's setup builds the module if `dist/wasm` has none with the pinned hash, the test build and the test tool, with Go; without Go, these tests skip.
 - With `WEFT_FABRIC_CA_BIN` set to a folder with `fabric-ca-server` and `fabric-ca-client` (for example `e2e/.bin` after `e2e/scripts/fabric-ca.sh`), `pnpm test` also enrols with a real Fabric CA through HTTP, checks that `/cainfo` serves the bytes of the `IssuerPublicKey` file, that a second enrolment is refused, and that IBM's MSP accepts the signatures under the CA's own key files.
 
@@ -109,6 +116,7 @@ On 8 November 2026, on a 2.1 GHz Intel Xeon with two cores, for the module above
 | Signature | 6 ms | 4 to 14 ms |
 | A vote's signing: one identity and three signatures | 141 ms | 135 to 158 ms |
 | The pseudonym proof, measured later the same day | 11 ms | not measured |
+| An anonymous ballot's checks, `verifyIdentity` and `verifyPseudonym`, in the explorer, measured later the same day | 106 to 118 ms | not measured on its own: the explorer's whole check of 5 ballots took 1.3 to 1.7 s in two workers, with the module's start 0.4 to 0.7 s |
 
 Firefox wasn't available where these were measured.
 

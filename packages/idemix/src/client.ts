@@ -63,6 +63,8 @@ export function startIdemixWorker({ worker, wasmUrl, wasmExecUrl }: StartOptions
           sign: (handle, message) => call("sign", handle, message),
           pseudonym: (handle, channel, electionId) => call("pseudonym", handle, channel, electionId),
           pseudonymProof: (handle, channel, electionId, tracking) => call("pseudonymProof", handle, channel, electionId, tracking),
+          verifyIdentity: (idBytes) => call("verifyIdentity", idBytes),
+          verifyPseudonym: (nym, channel, electionId, tracking, proof) => call("verifyPseudonym", nym, channel, electionId, tracking, proof),
           dispose: (handle) => call("dispose", handle),
           wipe: () => call("wipe"),
         });

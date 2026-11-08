@@ -20,8 +20,9 @@ import (
 
 // API is the version of the functions below. A change to a function's
 // arguments or result changes it. 2: pseudonym and pseudonymProof make the
-// per-election pseudonym and its proof.
-const API = 2
+// per-election pseudonym and its proof. 3: verifyIdentity and
+// verifyPseudonym check an anonymous ballot, for the explorer.
+const API = 3
 
 // extras are functions a test build adds (vectors.go, with the build tag
 // weftvectors). The module Weft runs has none.
@@ -306,6 +307,65 @@ func main() {
 			return nil, errors.New("tracking must be 64 lowercase hex characters")
 		}
 		return id.PseudonymProof(channel, electionID, tracking)
+	}))
+
+	// verifyIdentity(idBytes) → { nym, ou, role }: checks a transaction's
+	// idemix creator, the SerializedIdemixIdentity in base64, against the
+	// loaded issuer key as a peer's idemix MSP validates it, and returns what
+	// it discloses: the Nym's 64 bytes in lowercase hex, the organisational
+	// unit and the role, "member" or "admin". An explorer checks anonymous
+	// ballots with it; it needs no secret.
+	api.Set("verifyIdentity", wrap(func(a []js.Value) (any, error) {
+		if err := loaded(); err != nil {
+			return nil, err
+		}
+		idBytes, err := b64(a, 0, "idBytes")
+		if err != nil {
+			return nil, err
+		}
+		v, err := key.VerifyIdentity(idBytes)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"nym": hex.EncodeToString(v.Nym), "ou": v.OU, "role": v.Role}, nil
+	}))
+
+	// verifyPseudonym(nym, channel, electionId, tracking, pseudonymJson) →
+	// "valid": checks a ballot's pseudonym proof against the creator's Nym
+	// (64 bytes in lowercase hex), the loaded issuer key and the ballot's
+	// tracking code, with the contract's pseudonym package and its messages.
+	api.Set("verifyPseudonym", wrap(func(a []js.Value) (any, error) {
+		if err := loaded(); err != nil {
+			return nil, err
+		}
+		n, err := str(a, 0, "nym")
+		if err != nil {
+			return nil, err
+		}
+		nym, err := hex.DecodeString(n)
+		if err != nil || len(nym) != 64 {
+			return nil, errors.New("nym must be 128 lowercase hex characters")
+		}
+		channel, electionID, err := election(a)
+		if err != nil {
+			return nil, err
+		}
+		t, err := str(a, 3, "tracking")
+		if err != nil {
+			return nil, err
+		}
+		tracking, err := hex.DecodeString(t)
+		if err != nil || len(tracking) != 32 || hex.EncodeToString(tracking) != t {
+			return nil, errors.New("tracking must be 64 lowercase hex characters")
+		}
+		proof, err := str(a, 4, "pseudonymJson")
+		if err != nil {
+			return nil, err
+		}
+		if err := key.VerifyPseudonym(nym, channel, electionID, tracking, proof); err != nil {
+			return nil, err
+		}
+		return "valid", nil
 	}))
 
 	// dispose(handle) → "disposed": zeroes and drops the identity's secrets.

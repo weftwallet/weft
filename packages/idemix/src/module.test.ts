@@ -58,7 +58,7 @@ describe.skipIf(skip)("the idemix module in Node", () => {
 
   it("reports its build", async () => {
     const info = await api.info();
-    expect(info).toEqual({ api: 2, curve: "FP256BN_AMCL", go: PINNED.go, idemix: PINNED.idemix, mathlib: PINNED.mathlib });
+    expect(info).toEqual({ api: 3, curve: "FP256BN_AMCL", go: PINNED.go, idemix: PINNED.idemix, mathlib: PINNED.mathlib });
   });
 
   it("loads an issuer key and gives issuerKeyHash as SHA-256 of its bytes", async () => {
@@ -162,6 +162,35 @@ describe.skipIf(skip)("the idemix module in Node", () => {
     await api.dispose(id.handle);
     timings["identity, pseudonym and 3 signatures"] = ms(performance.now() - t);
     console.log("Timings in Node:", timings);
+  });
+
+  it("checks an anonymous ballot as an explorer does, with verifyIdentity and verifyPseudonym", async () => {
+    const tracking = createHash("sha256").update("a ballot").digest("hex");
+    const a = await api.newIdentity(credential, mspId);
+    const b = await api.newIdentity(credential, mspId);
+    const proof = await api.pseudonymProof(a.handle, "privatevote-chair-2027", "chair-2027", tracking);
+    const t = performance.now();
+    const seen = await api.verifyIdentity(a.idBytes);
+    await api.verifyPseudonym(seen.nym, "privatevote-chair-2027", "chair-2027", tracking, proof);
+    timings["an anonymous ballot's identity and pseudonym proof, checked"] = ms(performance.now() - t);
+    expect(seen).toEqual({ nym: a.nym, ou: "voters", role: "member" });
+    await expect(api.verifyPseudonym(b.nym, "privatevote-chair-2027", "chair-2027", tracking, proof)).rejects.toThrow("The pseudonym proof is not valid.");
+    await expect(api.verifyPseudonym(a.nym, "privatevote-chair-2027", "chair-2028", tracking, proof)).rejects.toThrow("The pseudonym proof is not valid.");
+    await expect(api.verifyPseudonym(a.nym, "privatevote-chair-2027", "chair-2027", tracking, { ...proof, ssk: "f".repeat(64) })).rejects.toThrow(
+      "The pseudonym proof's ssk isn't a canonical scalar.",
+    );
+    // A creator whose proof was changed, or that isn't an idemix identity at all.
+    const raw = unb64(a.idBytes);
+    raw[Math.floor(raw.length / 2)]! ^= 1;
+    await expect(api.verifyIdentity(b64(raw))).rejects.toThrow(/isn't valid for the election's issuer key|doesn't decode|isn't an idemix identity/);
+    await expect(api.verifyIdentity(b64(new TextEncoder().encode("-----BEGIN CERTIFICATE-----")))).rejects.toThrow(IdemixError);
+    // Under another issuer's key, the same identity doesn't check out.
+    const other = newIssuer();
+    await api.loadIssuerKey(other.issuerPublicKey);
+    await expect(api.verifyIdentity(a.idBytes)).rejects.toThrow("The one-off identity's proof isn't valid for the election's issuer key.");
+    await api.loadIssuerKey(issuer.issuerPublicKey);
+    await api.dispose(a.handle);
+    await api.dispose(b.handle);
   });
 
   it("refuses to start a module that isn't the pinned one", async () => {

@@ -56,6 +56,17 @@ export interface PseudonymProof {
   sr: string;
 }
 
+/**
+ * What an anonymous ballot's creator discloses once its proof checks out
+ * against the issuer key: its Nym's 64 bytes in lowercase hex, its
+ * organisational unit, and its role as Fabric's MSPRole names it.
+ */
+export interface VerifiedIdentity {
+  nym: string;
+  ou: string;
+  role: "member" | "admin";
+}
+
 /** The functions, as the worker and the Node loader both offer them. */
 export interface IdemixApi {
   info(): Promise<IdemixInfo>;
@@ -77,11 +88,27 @@ export interface IdemixApi {
    * ballot, and before signing the proposal that carries it.
    */
   pseudonymProof(handle: number, channel: string, electionId: string, tracking: string): Promise<PseudonymProof>;
+  /**
+   * Checks a transaction's idemix creator (its SerializedIdemixIdentity, in
+   * base64) against the loaded issuer key, as a peer's idemix MSP validates
+   * it, and returns what it discloses. It needs no secret: an explorer checks
+   * anonymous ballots with it.
+   */
+  verifyIdentity(idBytes: string): Promise<VerifiedIdentity>;
+  /**
+   * Checks a ballot's pseudonym proof against the creator's Nym, the loaded
+   * issuer key and the ballot's tracking code, with the contract's pseudonym
+   * package. A refusal carries the contract's message.
+   */
+  verifyPseudonym(nym: string, channel: string, electionId: string, tracking: string, proof: PseudonymProof): Promise<"valid">;
   dispose(handle: number): Promise<"disposed">;
   wipe(): Promise<"wiped">;
 }
 
-export const METHODS = ["info", "loadIssuerKey", "credentialRequest", "checkCredential", "newIdentity", "sign", "pseudonym", "pseudonymProof", "dispose", "wipe"] as const;
+/** The same functions, answering at once: for a caller in the module's own thread, such as the explorer's indexer. */
+export type IdemixSync = { [K in keyof IdemixApi]: (...args: Parameters<IdemixApi[K]>) => Awaited<ReturnType<IdemixApi[K]>> };
+
+export const METHODS = ["info", "loadIssuerKey", "credentialRequest", "checkCredential", "newIdentity", "sign", "pseudonym", "pseudonymProof", "verifyIdentity", "verifyPseudonym", "dispose", "wipe"] as const;
 export type Method = (typeof METHODS)[number];
 
 /** A refusal from the module, or a module that couldn't start. */
@@ -119,7 +146,7 @@ export interface StartTimings {
 export async function startModule(
   bytes: Uint8Array<ArrayBuffer>,
   expectSha256: string = PINNED.wasmSha256,
-): Promise<{ api: IdemixApi; timings: StartTimings }> {
+): Promise<{ api: IdemixApi; sync: IdemixSync; timings: StartTimings }> {
   const Go = (globalThis as { Go?: GoConstructor }).Go;
   if (!Go) throw new IdemixError("Go's wasm_exec.js isn't loaded, so the idemix module can't start.");
   let t = performance.now();
@@ -137,7 +164,8 @@ export async function startModule(
   const raw = (globalThis as { weftIdemix?: RawApi }).weftIdemix;
   if (!raw) throw new IdemixError("The idemix module started without its functions.");
   const runMs = performance.now() - t;
-  return { api: wrap(raw), timings: { hash: hashMs, compile: compileMs, run: runMs } };
+  const sync = wrapSync(raw);
+  return { api: wrap(sync), sync, timings: { hash: hashMs, compile: compileMs, run: runMs } };
 }
 
 function call<T>(raw: RawApi, method: Method, args: (string | number)[]): T {
@@ -147,8 +175,8 @@ function call<T>(raw: RawApi, method: Method, args: (string | number)[]): T {
   return out.ok as T;
 }
 
-function wrap(raw: RawApi): IdemixApi {
-  const c = <T>(method: Method, ...args: (string | number)[]) => Promise.resolve().then(() => call<T>(raw, method, args));
+function wrapSync(raw: RawApi): IdemixSync {
+  const c = <T>(method: Method, ...args: (string | number)[]) => call<T>(raw, method, args);
   return {
     info: () => c("info"),
     loadIssuerKey: (ipk) => c("loadIssuerKey", ipk),
@@ -158,7 +186,17 @@ function wrap(raw: RawApi): IdemixApi {
     sign: (handle, message) => c("sign", handle, message),
     pseudonym: (handle, channel, electionId) => c("pseudonym", handle, channel, electionId),
     pseudonymProof: (handle, channel, electionId, tracking) => c("pseudonymProof", handle, channel, electionId, tracking),
+    verifyIdentity: (idBytes) => c("verifyIdentity", idBytes),
+    verifyPseudonym: (nym, channel, electionId, tracking, proof) =>
+      c("verifyPseudonym", nym, channel, electionId, tracking, JSON.stringify({ pseudonym: proof.pseudonym, c: proof.c, ssk: proof.ssk, sr: proof.sr })),
     dispose: (handle) => c("dispose", handle),
     wipe: () => c("wipe"),
   };
+}
+
+/** The asynchronous API over the synchronous one: each call answers on a later microtask, as the worker's do. */
+function wrap(sync: IdemixSync): IdemixApi {
+  const api = {} as Record<string, (...args: unknown[]) => Promise<unknown>>;
+  for (const m of METHODS) api[m] = (...args: unknown[]) => Promise.resolve().then(() => (sync[m] as (...a: unknown[]) => unknown)(...args));
+  return api as unknown as IdemixApi;
 }
