@@ -160,6 +160,8 @@ type BallotReceiptResultV2 =
 | `"storage"` | The browser refused to store it. The window stays open with Download receipt and Copy receipt. |
 | `"mismatch"` | The contract's tracking code isn't the one Weft computed. The vote stands, the receipt carries Weft's tracking code, and Weft keeps nothing. Tell the contract's developer. |
 
+Once the ballot is committed, a write the browser refuses never turns the vote into a failure: the web app still gets the result above. If the browser also refuses the vote's record in Weft's activity, whether or not the voter asked to keep the receipt, the window stays open, says "Weft couldn't save this vote" (or, with the receipt, that the receipt, the note of the choice and the vote weren't stored), and offers Download receipt and Copy receipt, since Weft has the receipt only while the window is open. The browser's error is under Details.
+
 The web app learns the transaction, the block, the tracking code and whether Weft kept the receipt. It never learns the choice. For an election with X.509 voters, a web app that can read the ledger can see who submitted the transaction, as anyone with ledger access can.
 
 ## Receipt version 2

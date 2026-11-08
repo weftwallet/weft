@@ -5,6 +5,7 @@ import starlight from "@astrojs/starlight";
 import { productUrl } from "@weftwallet/brand/products";
 import { defineConfig } from "astro/config";
 import { source } from "../../vite.source.ts";
+import tableCode from "./src/table-code.mjs";
 
 const require = createRequire(import.meta.url);
 // Before the first paint: the stored theme (under Starlight's key) and the
@@ -42,7 +43,8 @@ export default defineConfig({
   server: { port: Number(new URL(productUrl("docs", { dev: true }) ?? "").port) },
   // Reads the workspace packages from their source, so a stale build is never used.
   vite: source,
-  markdown: { remarkPlugins: [() => productLinks] },
+  // Inline code in a table cell breaks at sensible points (src/table-code.mjs).
+  markdown: { remarkPlugins: [() => productLinks], rehypePlugins: [tableCode] },
   // The tools that used to live here moved to their own products.
   redirects: {
     "/playground/": product("playground"),

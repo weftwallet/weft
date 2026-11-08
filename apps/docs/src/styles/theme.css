@@ -116,10 +116,13 @@ mobile-starlight-toc nav {
 }
 /* On a phone a long identifier in a table (ENDORSEMENT_POLICY_FAILURE) may
    wrap, so the column beside it keeps room to be read rather than being
-   squeezed to a word a line. */
+   squeezed to a word a line. It wraps only at the <wbr>s src/table-code.mjs
+   puts after _ . / - : and between camelCase words, never mid-word. A table
+   whose columns still don't fit a phone scrolls sideways inside itself, as
+   Starlight's tables do; the page never does. */
 @media (max-width: 49.99rem) {
   .sl-markdown-content :is(td, th) code {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 }
 

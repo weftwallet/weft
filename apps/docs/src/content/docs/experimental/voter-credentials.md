@@ -82,6 +82,7 @@ A voter invite is a JSON document, served over HTTPS and shared as a link, like 
   "channel": "privatevote-chair-2027",
   "chaincode": "private-ballot",
   "electionId": "chair-2027",
+  "title": "Chair 2027",
   "issuerKeyHash": "<64 hex characters>",
   "curve": "FP256BN_AMCL",
   "endorsers": [
@@ -96,16 +97,17 @@ A voter invite is a JSON document, served over HTTPS and shared as a link, like 
 - `affiliation` is the affiliation every voter's credential carries, which the election pins too.
 - `relayUrl` is the election's relay, which may differ from the organisations' own (see [The relay](#the-relay)), and `relayOperator` is the name of whoever runs it, which the invite's review and Weft's approval window show.
 - `endorsers` lists each trustee organisation's MSP ID and CA chain, in PEM, which Weft checks the election's peer signatures against (see [Reading the election](#reading-the-election)).
+- `title` is optional: the election's title as the organisers give it, 1 to 200 characters. Weft Experimental shows it on the invite's review and on the credential's row until it has read the election, and from then on shows the title in the election's own record, which the endorsing peers signed. Without it, Weft shows the election's ID until that first read.
 
 A voter invite has no `weft` field. Normal Weft recognises `weftVoterInvite` before any other check, and says "This is a voter invite for an election, and only Weft Experimental can hold voter credentials. Nothing was sent to the CA. Open the invite in Weft Experimental." It never enrols from it, so a voter can't spend their one enrolment on an X.509 certificate by accident, and isn't sent to ask the organisers for a new invite that would fail the same way.
 
-The relay checks each voter invite when it starts, and Weft Experimental checks the one a voter opens, with the same rules (`parseVoterInvite` in `@weftwallet/core`): every field above, `curve` `FP256BN_AMCL`, at least one endorser with a PEM chain, a file named for its election, and an MSP in `WEFT_IDEMIX_MSP_IDS`, since an invite for another MSP would send voters to a relay that refuses their ballots; the relay alone checks the last two. Weft Experimental says "This voter invite has mistakes in it, so Weft Experimental can't use it. Ask the election's organisers for a new one." for one that fails, with the problem under Details. A site can't hand Weft a voter invite with `weft_addNetwork`: the window says to open it from Join from an invite. The playground writes `chair-2027`'s invite to `playground/.state/voter-invites/chair-2027.json`, with the CA proxy's URL, Org1's relay, `relayOperator` "Weft Playground", SHA-256 of the CA's `IssuerPublicKey`, and Org1MSP's and Org2MSP's CA certificates as the endorsers, and the relay serves it at `http://localhost:8787/.well-known/weft-voter-invite/chair-2027.json`.
+The relay checks each voter invite when it starts, and Weft Experimental checks the one a voter opens, with the same rules (`parseVoterInvite` in `@weftwallet/core`): every field above, `curve` `FP256BN_AMCL`, at least one endorser with a PEM chain, a file named for its election, and an MSP in `WEFT_IDEMIX_MSP_IDS`, since an invite for another MSP would send voters to a relay that refuses their ballots; the relay alone checks the last two. Weft Experimental says "This voter invite has mistakes in it, so Weft Experimental can't use it. Ask the election's organisers for a new one." for one that fails, with the problem under Details. A site can't hand Weft a voter invite with `weft_addNetwork`: the window says to open it from Join from an invite. The playground writes `chair-2027`'s invite to `playground/.state/voter-invites/chair-2027.json`, with the CA proxy's URL, Org1's relay, `relayOperator` "Weft Playground", the seed's title "Chair 2027", SHA-256 of the CA's `IssuerPublicKey`, and Org1MSP's and Org2MSP's CA certificates as the endorsers, and the relay serves it at `http://localhost:8787/.well-known/weft-voter-invite/chair-2027.json`.
 
 Weft trusts the voter invite for the issuer key, the relay, its operator and the endorsers' CA chains, as it trusts an organisation's invite for its CA and relay. A forged invite could name another network entirely, and the voter's check against it is the [election fingerprint](/experimental/private-tally-spec/#the-election-fingerprint), which every explorer shows.
 
 ## Enrolment
 
-When the voter opens a voter invite from Join from an invite, Weft Experimental shows what they are joining: the election, the network, the voter organisation, the channel, the voters' CA, the relay and who runs it, the issuer key, and that the credential can't be revoked. It asks for the enrolment ID and secret, and when the voter presses Get a voter credential (`lib/voter/enrol.ts`), the line above the button says which step is running, and Weft:
+When the voter opens a voter invite from Join from an invite, Weft Experimental shows what they are joining: the election, by the invite's title when it has one and its ID, the network, the voter organisation, the channel, the voters' CA, the relay and who runs it, the issuer key, and that the credential can't be revoked. It asks for the enrolment ID and secret, and when the voter presses Get a voter credential (`lib/voter/enrol.ts`), the line above the button says which step is running, and Weft:
 
 1. Checks that it holds no voter credential for this election. If it does, it stops: "Weft already holds a voter credential for chair-2027. It keeps one per election, and nothing was sent to the voters' CA."
 2. Asks for host access to the voters' CA and the election's relay, once, as for any CA.
@@ -119,7 +121,7 @@ Each failure says what happened in the window, with the CA's or the module's own
 
 Weft never asks the CA for an X.509 certificate for that ID, and never uses token authorisation. A second enrolment with the same secret fails at the CA ("Authentication failure"), as `maxenrollments 1` requires.
 
-The new credential arrives in Identities, in a group of its own under the networks, named by the election. The voter invite has no title, so the row and the detail show the election's ID until Weft has read the election once, and its title after. The detail says what Weft keeps, what each ballot shows, the enrolment ID (opened in the popup, while Weft is unlocked, only to show it), the issuer key and curve, that sites never see it, and "None. Fabric can't revoke this credential and it has no expiry date." under Revocation.
+The new credential arrives in Identities, in a group of its own under the networks, named by the election. Until Weft has read the election once, the row and the detail show the invite's `title`, or the election's ID when the invite has none; after that they show the title in the election's record. The detail says what Weft keeps, what each ballot shows, the enrolment ID (opened in the popup, while Weft is unlocked, only to show it), the issuer key and curve, that sites never see it, and "None. Fabric can't revoke this credential and it has no expiry date." under Revocation.
 
 ## What Weft stores
 
