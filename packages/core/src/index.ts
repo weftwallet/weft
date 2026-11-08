@@ -6,6 +6,7 @@ export * from "./fabric-messages.ts";
 export * from "./verify.ts";
 export * from "./status.ts";
 export * from "./invite.ts";
+export * from "./voter-invite.ts";
 export * from "./relay-client.ts";
 export { Message, ProtobufError, readFields } from "./protobuf.ts";
 export * from "./connection-profile.ts";

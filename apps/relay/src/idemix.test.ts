@@ -8,13 +8,13 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { decodeProposedTransaction, fromBase64, verifyProposal, VerificationError } from "@weftwallet/core";
+import { decodeProposedTransaction, fromBase64, parseVoterInvite, verifyProposal, VerificationError } from "@weftwallet/core";
 import { RELAY_PATHS, VOTER_INVITE_PATH, type ContractCall, type RelaySigner, type VoterInvite } from "@weftwallet/protocol";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { loadConfig, type RelayConfig } from "./config.ts";
 import { GatewayPool, type Lease } from "./gateways.ts";
 import { buildServer } from "./server.ts";
-import { loadVoterInvites, parseVoterInvite } from "./voter-invites.ts";
+import { loadVoterInvites } from "./voter-invites.ts";
 
 const VOTERS = "ChairVoters2027MSP";
 const PEM = "-----BEGIN CERTIFICATE-----\nMIIBdummy\n-----END CERTIFICATE-----\n";

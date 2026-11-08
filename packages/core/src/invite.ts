@@ -12,6 +12,22 @@ export class InviteError extends Error {
 }
 
 /**
+ * The document is a voter invite for an election (docs/adr/0008), which only
+ * Weft Experimental can use. Normal Weft says so rather than calling it
+ * mistaken, so a voter doesn't ask the organisers for a new invite that
+ * would be refused the same way.
+ */
+export class VoterInviteError extends InviteError {
+  constructor() {
+    super(
+      "This is a voter invite for an election, and only Weft Experimental can hold voter credentials. Nothing was sent to the CA. Open the invite in Weft Experimental.",
+      'The document has "weftVoterInvite": 1. Weft reads invites with "weft": 1.',
+    );
+    this.name = "VoterInviteError";
+  }
+}
+
+/**
  * Turns whatever the user pasted or scanned into the HTTPS URL of an invite.
  * Accepts `weft://invite?u=<url>`, `https://…/?weft-invite=<url>`, or a bare
  * HTTPS URL.
@@ -62,6 +78,8 @@ function isUrl(value: unknown): value is string {
 export function parseInvite(json: unknown): OrgInvite {
   if (typeof json !== "object" || json === null) throw new InviteError("The invite is not a JSON object.");
   const o = json as Record<string, unknown>;
+  // Before any other check, so a voter invite is named for what it is.
+  if ("weftVoterInvite" in o) throw new VoterInviteError();
   const problems: string[] = [];
   if (o.weft !== 1) problems.push('"weft" must be 1');
   for (const key of ["network", "organization", "mspId"] as const) {
@@ -92,7 +110,12 @@ export function parseInvite(json: unknown): OrgInvite {
   };
 }
 
-export async function fetchInvite(input: string, fetchImpl: typeof fetch = fetch): Promise<OrgInvite> {
+/**
+ * Fetches the document an invite link leads to, as JSON, without checking
+ * what kind of invite it is. Throws InviteError when it can't be fetched or
+ * isn't JSON.
+ */
+export async function fetchInviteDocument(input: string, fetchImpl: typeof fetch = fetch): Promise<{ url: string; json: unknown }> {
   const url = resolveInviteUrl(input);
   const host = new URL(url).host;
   let response: Response;
@@ -124,10 +147,16 @@ export async function fetchInvite(input: string, fetchImpl: typeof fetch = fetch
   } catch {
     throw new InviteError("This link doesn't lead to a Weft invite. Check you copied the whole link.", `${url} didn't return JSON.`);
   }
+  return { url, json };
+}
+
+/** Fetches and checks an organisation's invite. A voter invite gets VoterInviteError. */
+export async function fetchInvite(input: string, fetchImpl: typeof fetch = fetch): Promise<OrgInvite> {
+  const { json } = await fetchInviteDocument(input, fetchImpl);
   try {
     return parseInvite(json);
   } catch (error) {
-    if (!(error instanceof InviteError)) throw error;
+    if (!(error instanceof InviteError) || error instanceof VoterInviteError) throw error;
     throw new InviteError("This invite has mistakes in it, so Weft can't use it. Ask your administrator for a new one.", error.message);
   }
 }
