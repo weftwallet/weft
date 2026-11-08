@@ -29,6 +29,7 @@
     "playground:credentials": "node --disable-warning=ExperimentalWarning playground/cli.mjs credentials",
     "playground:smoke": "node --disable-warning=ExperimentalWarning playground/smoke.mjs",
     "check:mac": "node --disable-warning=ExperimentalWarning scripts/mac-check.mjs",
+    "check:sideways": "pnpm --filter @weftwallet/e2e sideways",
     "test:e2e": "WEFT_PRODUCTS=dev pnpm --filter @weftwallet/relay... --filter @weftwallet/site --filter @weftwallet/docs --filter @weftwallet/playground --filter @weftwallet/network build && pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/extension build:e2e:experimental && pnpm --filter @weftwallet/e2e test"
   },
   "devDependencies": {

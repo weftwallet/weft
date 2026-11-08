@@ -34,6 +34,8 @@ To test against real peers, start the playground (`pnpm playground:up`), then ru
 
 `pnpm playground:smoke` checks a running experimental playground without a browser, and prints PASS or FAIL for each step: it reads the relay's invite and the voter invite, checks the voters' CA proxy's issuer key against the invite, registers a new voter and enrols it through the proxy with the idemix module, registers a new Org1 user and enrols it through Org1's CA proxy, casts a private ballot as that user and an anonymous ballot as the voter through the relay, and finds both ballots, checked, in both explorers. It registers new IDs each run, so it can run again on the same stack.
 
+`pnpm check:sideways` (`e2e/scripts/no-sideways-scroll.mjs`) checks that nothing in any product scrolls sideways (`packages/brand/SYSTEM.md`, Overflow). It needs no Fabric CA: run `pnpm build` and `pnpm --filter @weftwallet/extension build` first, and it serves the built sites, runs the explorer on its sample blocks and opens the wallet's popup and windows with the background worker faked. It loads every page at 320, 360 and 1440 wide in both themes and lists each element that scrolls, with the page, the state and the widths. `--only docs,explorer`, `--widths 320`, `--themes dark`, `--pages /operators/` and `--shots <folder>` narrow it or save a screenshot of each state.
+
 CI (`.github/workflows/ci.yml`) runs all three: unit tests and typecheck, the browser tests, and the browser tests against the playground.
 
 ## Checks on a Mac with Docker

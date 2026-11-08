@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "sideways": "node scripts/no-sideways-scroll.mjs",
     "test:headed": "WEFT_E2E_GREP=1 xvfb-run -a playwright test --grep @headed",
     "typecheck": "tsc --noEmit"
   },
