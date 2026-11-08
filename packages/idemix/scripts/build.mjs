@@ -12,11 +12,12 @@
  * The build is pinned: the Go toolchain (GOTOOLCHAIN, which Go downloads if
  * the go on PATH is another version), the modules in go.sum, the flags
  * below and the environment, which is cleared of everything else that
- * changes Go's output. It builds a copy of the module in a temporary folder
- * with its dependencies vendored, puts _overlay/mathlib-v0.3.2/math.go in place of
- * IBM mathlib's math.go after checking that file's SHA-256, and builds with
- * -trimpath, so neither the repository's path nor the module cache's shows
- * in the module.
+ * changes Go's output. It builds a copy of the module in a temporary folder,
+ * beside a copy of the contract module's pseudonym package at the same
+ * relative path as in the repository, with its dependencies vendored, puts
+ * _overlay/mathlib-v0.3.2/math.go in place of IBM mathlib's math.go after
+ * checking that file's SHA-256, and builds with -trimpath, so neither the
+ * repository's path nor the module cache's shows in the module.
  */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -84,16 +85,36 @@ function go(args, options) {
   }
 }
 
-/** Copies the module's sources, without tests, into dir. */
-function copySources(dir) {
-  cpSync(join(root, "go.mod"), join(dir, "go.mod"));
-  cpSync(join(root, "go.sum"), join(dir, "go.sum"));
-  for (const pkg of ["signer", "cmd/wasm"]) {
-    mkdirSync(join(dir, pkg), { recursive: true });
-    for (const file of readdirSync(join(root, pkg))) {
-      if (file.endsWith(".go") && !file.endsWith("_test.go")) cpSync(join(root, pkg, file), join(dir, pkg, file));
+/**
+ * The contract's module, which go.mod requires with a replace directive for
+ * its pseudonym package, the one Go source the contract verifies with.
+ */
+const contractRoot = join(root, "..", "..", "examples", "private-ballot-contract");
+
+/** Copies a module's go.mod, go.sum and these packages' sources, without tests, from one folder into another. */
+function copyModule(from, to, packages) {
+  mkdirSync(to, { recursive: true });
+  cpSync(join(from, "go.mod"), join(to, "go.mod"));
+  cpSync(join(from, "go.sum"), join(to, "go.sum"));
+  for (const pkg of packages) {
+    mkdirSync(join(to, pkg), { recursive: true });
+    for (const file of readdirSync(join(from, pkg))) {
+      if (file.endsWith(".go") && !file.endsWith("_test.go")) cpSync(join(from, pkg, file), join(to, pkg, file));
     }
   }
+}
+
+/**
+ * Copies the module's sources, and the contract module's pseudonym
+ * package, into dir with the repository's layout, so that the replace
+ * directive's relative path is the same in every build. Returns the
+ * module's folder in the copy.
+ */
+function copySources(dir) {
+  const module = join(dir, "packages", "idemix");
+  copyModule(root, module, ["signer", "cmd/wasm"]);
+  copyModule(contractRoot, join(dir, "examples", "private-ballot-contract"), ["pseudonym"]);
+  return module;
 }
 
 /** Builds the module into outDir and returns its files' hashes and sizes. */
@@ -103,17 +124,17 @@ export function build(outDir, { gocache } = {}) {
     const env = goEnv(gocache ? { GOCACHE: gocache } : {});
     const version = go(["env", "GOVERSION"], { cwd: root, env: { ...env, GOFLAGS: "-mod=mod" } }).trim();
     if (version !== GO_TOOLCHAIN) fail(`Go reports ${version}, not the pinned ${GO_TOOLCHAIN}.`, "Go couldn't switch to the pinned toolchain. Check that go on your PATH is Go 1.21 or later and can reach its module proxy.");
-    copySources(work);
-    go(["mod", "vendor"], { cwd: work, env: { ...env, GOFLAGS: "-modcacherw" } });
-    const mathGo = join(work, "vendor", "github.com", "IBM", "mathlib", "math.go");
+    const module = copySources(work);
+    go(["mod", "vendor"], { cwd: module, env: { ...env, GOFLAGS: "-modcacherw" } });
+    const mathGo = join(module, "vendor", "github.com", "IBM", "mathlib", "math.go");
     if (sha256(readFileSync(mathGo)) !== MATHLIB_MATH_GO_SHA256) {
       fail("IBM mathlib's math.go isn't the file _overlay/mathlib-v0.3.2/math.go was made from.", "A new mathlib version needs a new overlay: see packages/idemix/README.md.");
     }
     cpSync(join(root, "_overlay", "mathlib-v0.3.2", "math.go"), mathGo);
     mkdirSync(outDir, { recursive: true });
     const wasmPath = join(outDir, "weft-idemix.wasm");
-    go(["build", ...BUILD_FLAGS, "-o", wasmPath, "./cmd/wasm"], { cwd: work, env });
-    const goroot = go(["env", "GOROOT"], { cwd: work, env }).trim();
+    go(["build", ...BUILD_FLAGS, "-o", wasmPath, "./cmd/wasm"], { cwd: module, env });
+    const goroot = go(["env", "GOROOT"], { cwd: module, env }).trim();
     cpSync(join(goroot, "lib", "wasm", "wasm_exec.js"), join(outDir, "wasm_exec.js"));
     const wasm = readFileSync(wasmPath);
     const wasmExec = readFileSync(join(outDir, "wasm_exec.js"));

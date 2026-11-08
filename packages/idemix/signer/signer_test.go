@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
 	"github.com/ifeanyi-ugwu/weft/packages/idemix/internal/testtool"
 	"github.com/ifeanyi-ugwu/weft/packages/idemix/signer"
 )
@@ -230,5 +231,75 @@ func TestDisposeWipes(t *testing.T) {
 	cred.Wipe()
 	if !allZeroBytes(cred.SecretKey) || !allZeroBytes(cred.Credential) {
 		t.Fatal("Wipe left bytes")
+	}
+}
+
+// The identity's pseudonym verifies with the contract's verifier against
+// its own Nym, is the same for every identity of one credential in one
+// election, and is unrelated across elections.
+func TestPseudonym(t *testing.T) {
+	is, key, _ := setup(t)
+	cred := enrol(t, is, key, "voters", signer.RoleMember, "voter1")
+	pk, err := pseudonym.LoadIssuerKey(is.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracking := bytes.Repeat([]byte{7}, 32)
+	verify := func(id *signer.Identity, j pseudonym.JSON, channel, election string) error {
+		nym, ok := pseudonym.DecodePoint(id.Nym)
+		if !ok {
+			t.Fatal("the identity's Nym isn't a point")
+		}
+		proof, err := pseudonym.Decode(j)
+		if err != nil {
+			return err
+		}
+		return pseudonym.Verify(&pseudonym.Statement{Key: pk, Channel: channel, ElectionID: election, Tracking: tracking, Nym: nym}, proof)
+	}
+	a, err := key.NewIdentity(cred, mspID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := key.NewIdentity(cred, mspID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pa, err := a.PseudonymProof("privatevote-chair-2027", "chair-2027", tracking)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pb, err := b.PseudonymProof("privatevote-chair-2027", "chair-2027", tracking)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pc, err := a.PseudonymProof("privatevote-chair-2028", "chair-2028", tracking)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verify(a, pa, "privatevote-chair-2027", "chair-2027"); err != nil {
+		t.Fatalf("a's own proof: %v", err)
+	}
+	if err := verify(a, pc, "privatevote-chair-2028", "chair-2028"); err != nil {
+		t.Fatalf("a's proof in chair-2028: %v", err)
+	}
+	if pa.Pseudonym != pb.Pseudonym || pa.Pseudonym == pc.Pseudonym {
+		t.Fatal("one credential should have one pseudonym per election")
+	}
+	p, err := b.Pseudonym("privatevote-chair-2027", "chair-2027")
+	if err != nil || hex.EncodeToString(p) != pa.Pseudonym {
+		t.Fatalf("Pseudonym gave %x, %v; the proof has %s", p, err, pa.Pseudonym)
+	}
+	if err := verify(b, pa, "privatevote-chair-2027", "chair-2027"); err != pseudonym.ErrNotValid {
+		t.Fatalf("a's proof with b's Nym: %v", err)
+	}
+	if _, err := a.PseudonymProof("c", "e", tracking[:31]); err == nil {
+		t.Fatal("a 31-byte tracking code was accepted")
+	}
+	a.Dispose()
+	if _, err := a.PseudonymProof("c", "e", tracking); err == nil {
+		t.Fatal("a disposed identity made a proof")
+	}
+	if _, err := a.Pseudonym("c", "e"); err == nil {
+		t.Fatal("a disposed identity made a pseudonym")
 	}
 }

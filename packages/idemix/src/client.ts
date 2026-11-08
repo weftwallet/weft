@@ -61,6 +61,8 @@ export function startIdemixWorker({ worker, wasmUrl, wasmExecUrl }: StartOptions
           checkCredential: (cred) => call("checkCredential", cred),
           newIdentity: (cred, mspId) => call("newIdentity", cred, mspId),
           sign: (handle, message) => call("sign", handle, message),
+          pseudonym: (handle, channel, electionId) => call("pseudonym", handle, channel, electionId),
+          pseudonymProof: (handle, channel, electionId, tracking) => call("pseudonymProof", handle, channel, electionId, tracking),
           dispose: (handle) => call("dispose", handle),
           wipe: () => call("wipe"),
         });

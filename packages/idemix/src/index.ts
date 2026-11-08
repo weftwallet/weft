@@ -5,7 +5,7 @@
  */
 export { PINNED } from "./pinned.ts";
 export { IdemixError, METHODS, sha256Hex, startModule } from "./module.ts";
-export type { CredentialRequestResult, IdemixApi, IdemixInfo, IdentityResult, Method, StartTimings, VoterCredentialSecret } from "./module.ts";
+export type { CredentialRequestResult, IdemixApi, IdemixInfo, IdentityResult, Method, PseudonymProof, StartTimings, VoterCredentialSecret } from "./module.ts";
 export { startIdemixWorker } from "./client.ts";
 export type { IdemixWorker, StartOptions } from "./client.ts";
 export type { FromWorker, ToWorker } from "./messages.ts";

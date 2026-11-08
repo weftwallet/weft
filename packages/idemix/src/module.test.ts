@@ -11,7 +11,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { IdemixError, startModule, type IdemixApi, type VoterCredentialSecret } from "./module.ts";
 import { DIST_WASM, startIdemixNode } from "./node.ts";
 import { PINNED } from "./pinned.ts";
-import { issue, newIssuer, verify, type ScratchIssuer } from "./test/tool.ts";
+import { issue, newIssuer, verify, verifyPseudonym, type ScratchIssuer } from "./test/tool.ts";
 
 const skip = process.env.WEFT_IDEMIX_SKIP;
 const mspId = "ChairVoters2027MSP";
@@ -58,7 +58,7 @@ describe.skipIf(skip)("the idemix module in Node", () => {
 
   it("reports its build", async () => {
     const info = await api.info();
-    expect(info).toEqual({ api: 1, curve: "FP256BN_AMCL", go: PINNED.go, idemix: PINNED.idemix, mathlib: PINNED.mathlib });
+    expect(info).toEqual({ api: 2, curve: "FP256BN_AMCL", go: PINNED.go, idemix: PINNED.idemix, mathlib: PINNED.mathlib });
   });
 
   it("loads an issuer key and gives issuerKeyHash as SHA-256 of its bytes", async () => {
@@ -112,17 +112,55 @@ describe.skipIf(skip)("the idemix module in Node", () => {
     await api.loadIssuerKey(issuer.issuerPublicKey);
   });
 
-  it("has no per-election pseudonym yet", async () => {
-    const raw = (globalThis as unknown as { weftIdemix: { pseudonym: () => string } }).weftIdemix;
-    expect(JSON.parse(raw.pseudonym())).toEqual({ error: "this version of the module has no per-election pseudonym" });
+  it("makes a per-election pseudonym that the contract's verifier accepts, for its own Nym and ballot only", async () => {
+    const tracking = createHash("sha256").update("a ballot").digest("hex");
+    const other = createHash("sha256").update("another ballot").digest("hex");
+    const a = await api.newIdentity(credential, mspId);
+    const b = await api.newIdentity(credential, mspId);
+    const proofA = await timed("pseudonym", () => api.pseudonymProof(a.handle, "privatevote-chair-2027", "chair-2027", tracking));
+    const proofB = await api.pseudonymProof(b.handle, "privatevote-chair-2027", "chair-2027", tracking);
+    const proofC = await api.pseudonymProof(a.handle, "privatevote-chair-2028", "chair-2028", tracking);
+    for (const p of [proofA, proofB, proofC]) {
+      expect(p.pseudonym).toMatch(/^[0-9a-f]{128}$/);
+      for (const s of [p.c, p.ssk, p.sr]) expect(s).toMatch(/^[0-9a-f]{64}$/);
+      expect(JSON.stringify(p)).toHaveLength(360);
+    }
+    // One credential has one pseudonym per election, under every Nym, and
+    // pseudonym gives it before the ballot is made.
+    expect(proofB.pseudonym).toBe(proofA.pseudonym);
+    expect(await api.pseudonym(b.handle, "privatevote-chair-2027", "chair-2027")).toBe(proofA.pseudonym);
+    expect(await api.pseudonym(a.handle, "privatevote-chair-2028", "chair-2028")).toBe(proofC.pseudonym);
+    expect(proofC.pseudonym).not.toBe(proofA.pseudonym);
+    expect(proofB.c).not.toBe(proofA.c);
+
+    const check = (idBytes: string, proof: object, over: Partial<{ channel: string; electionId: string; tracking: string }> = {}) =>
+      verifyPseudonym({ issuerPublicKey: issuer.issuerPublicKey, idBytes, channel: "privatevote-chair-2027", electionId: "chair-2027", tracking, pseudonymJson: JSON.stringify(proof), ...over });
+    expect(check(a.idBytes, proofA)).toEqual({ ok: { pseudonym: proofA.pseudonym } });
+    expect(check(b.idBytes, proofB)).toEqual({ ok: { pseudonym: proofA.pseudonym } });
+    expect(check(a.idBytes, proofC, { channel: "privatevote-chair-2028", electionId: "chair-2028" }).ok).toBeDefined();
+    const notValid = { error: "The pseudonym proof is not valid." };
+    expect(check(b.idBytes, proofA)).toEqual(notValid); // replayed with another Nym
+    expect(check(a.idBytes, proofA, { tracking: other })).toEqual(notValid);
+    expect(check(a.idBytes, proofA, { electionId: "chair-2028" })).toEqual(notValid);
+    expect(check(a.idBytes, proofA, { channel: "privatevote-other" })).toEqual(notValid);
+    expect(check(a.idBytes, { ...proofA, sr: proofB.sr })).toEqual(notValid);
+    expect(check(a.idBytes, { ...proofA, c: "F".repeat(64) })).toEqual({ error: "The pseudonym proof's c isn't a canonical scalar." });
+
+    await expect(api.pseudonymProof(a.handle, "privatevote-chair-2027", "chair-2027", tracking.toUpperCase())).rejects.toThrow("tracking must be 64 lowercase hex characters");
+    await expect(api.pseudonymProof(a.handle, "privatevote-chair-2027", "chair-2027", tracking.slice(2))).rejects.toThrow("tracking must be 64 lowercase hex characters");
+    await api.dispose(a.handle);
+    await expect(api.pseudonymProof(a.handle, "privatevote-chair-2027", "chair-2027", tracking)).rejects.toThrow(`there's no identity ${a.handle}`);
+    await api.dispose(b.handle);
   });
 
-  it("times a vote's signing: one identity and three signatures", async () => {
+  it("times a vote's signing: one identity, its pseudonym and three signatures", async () => {
     const t = performance.now();
     const id = await api.newIdentity(credential, mspId);
+    await api.pseudonym(id.handle, "privatevote-chair-2027", "chair-2027");
+    await api.pseudonymProof(id.handle, "privatevote-chair-2027", "chair-2027", "00".repeat(32));
     for (const part of ["proposal", "transaction", "commit status"]) await api.sign(id.handle, b64(new TextEncoder().encode(part)));
     await api.dispose(id.handle);
-    timings["identity and 3 signatures"] = ms(performance.now() - t);
+    timings["identity, pseudonym and 3 signatures"] = ms(performance.now() - t);
     console.log("Timings in Node:", timings);
   });
 

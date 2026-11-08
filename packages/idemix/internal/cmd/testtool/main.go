@@ -6,6 +6,11 @@
 //	testtool issuer <dir>  makes an issuer in dir: { issuerPublicKey, revocationPublicKey, nonce }
 //	testtool issue <dir>   { nonce, request, ou, role, enrollmentId } → { credential, cri, revocationHandle }
 //	testtool verify        { mspId, issuerPublicKey, revocationPublicKey, creator, message, signature } → { mspId, ou, role }
+//	testtool pseudonym     { issuerPublicKey, idBytes, channel, electionId, tracking, pseudonymJson } → { pseudonym }
+//
+// pseudonym is the contract's verifier: the pseudonym proof checked against
+// the Nym in idBytes (a SerializedIdemixIdentity), with the contract's
+// message when it fails. tracking is lowercase hex.
 //
 // Bytes are base64; request is the JSON the module's credentialRequest gives,
 // which Fabric CA reads with encoding/json, as here.
@@ -18,9 +23,14 @@ import (
 	"io"
 	"os"
 
+	"encoding/hex"
+
 	idemix "github.com/IBM/idemix/bccsp/schemes/dlog/crypto"
-	"github.com/ifeanyi-ugwu/weft/packages/idemix/internal/testtool"
+	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
+	"github.com/ifeanyi-ugwu/weft/packages/idemix/internal/testtool"
 )
 
 func main() {
@@ -52,7 +62,7 @@ var enc = base64.StdEncoding.EncodeToString
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: testtool issuer|issue|verify")
+		return fmt.Errorf("usage: testtool issuer|issue|verify|pseudonym")
 	}
 	switch args[0] {
 	case "issuer":
@@ -113,6 +123,47 @@ func run(args []string) error {
 			return err
 		}
 		return output(map[string]string{"mspId": got.MspID, "ou": got.OU, "role": got.Role})
+	case "pseudonym":
+		var in struct {
+			IssuerPublicKey string `json:"issuerPublicKey"`
+			IDBytes         string `json:"idBytes"`
+			Channel         string `json:"channel"`
+			ElectionID      string `json:"electionId"`
+			Tracking        string `json:"tracking"`
+			PseudonymJSON   string `json:"pseudonymJson"`
+		}
+		if err := input(&in); err != nil {
+			return err
+		}
+		key, err := pseudonym.LoadIssuerKey(b64(in.IssuerPublicKey))
+		if err != nil {
+			return err
+		}
+		sid := &msp.SerializedIdemixIdentity{}
+		if err := proto.Unmarshal(b64(in.IDBytes), sid); err != nil {
+			return err
+		}
+		nym, ok := pseudonym.DecodePoint(append(append([]byte{}, sid.NymX...), sid.NymY...))
+		if !ok {
+			return fmt.Errorf("the identity's Nym isn't a point of G1")
+		}
+		tracking, err := hex.DecodeString(in.Tracking)
+		if err != nil {
+			return err
+		}
+		var j pseudonym.JSON
+		if err := json.Unmarshal([]byte(in.PseudonymJSON), &j); err != nil {
+			return fmt.Errorf("%s isn't JSON.", pseudonym.Thing)
+		}
+		proof, err := pseudonym.Decode(j)
+		if err != nil {
+			return err
+		}
+		st := &pseudonym.Statement{Key: key, Channel: in.Channel, ElectionID: in.ElectionID, Tracking: tracking, Nym: nym}
+		if err := pseudonym.Verify(st, proof); err != nil {
+			return err
+		}
+		return output(map[string]string{"pseudonym": hex.EncodeToString(proof.PBytes())})
 	}
 	return fmt.Errorf("no subcommand %s", args[0])
 }

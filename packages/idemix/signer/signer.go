@@ -29,6 +29,8 @@ import (
 	math "github.com/IBM/mathlib"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
 )
 
 // Curve is the one curve Weft supports, Fabric CA's default.
@@ -56,6 +58,8 @@ type IssuerKey struct {
 	tr    *amcl.Fp256bn
 	pk    *bridge.IssuerPublicKey
 	raw   []byte
+	// scope is what the per-election pseudonym's proof needs of the key.
+	scope *pseudonym.Key
 }
 
 func scheme() (*math.Curve, *amcl.Fp256bn, *idemix.Idemix) {
@@ -78,7 +82,19 @@ func LoadIssuerKey(raw []byte) (*IssuerKey, error) {
 	if !ok {
 		return nil, errors.New("the issuer key has an unexpected type")
 	}
-	return &IssuerKey{curve: c, tr: tr, pk: ipk, raw: bytes.Clone(raw)}, nil
+	hsk, err := tr.G1FromProto(ipk.PK.GetHSk())
+	if err != nil {
+		return nil, fmt.Errorf("the issuer key's HSk: %w", err)
+	}
+	hrand, err := tr.G1FromProto(ipk.PK.GetHRand())
+	if err != nil {
+		return nil, fmt.Errorf("the issuer key's HRand: %w", err)
+	}
+	if hsk.IsInfinity() || hrand.IsInfinity() {
+		return nil, errors.New("the issuer key's HSk or HRand is the identity")
+	}
+	scope := &pseudonym.Key{HSk: hsk, HRand: hrand, Hash: sha256.Sum256(raw)}
+	return &IssuerKey{curve: c, tr: tr, pk: ipk, raw: bytes.Clone(raw), scope: scope}, nil
 }
 
 // Hash is issuerKeyHash: SHA-256 of the key's bytes as Fabric CA serves
@@ -268,6 +284,38 @@ func (id *Identity) Sign(message []byte) (sig []byte, err error) {
 	}
 	ns := &bridge.NymSignatureScheme{Translator: id.key.tr, Idemix: id.key.idemix()}
 	return ns.Sign(id.sk, id.nym, id.rNym, id.key.pk, message)
+}
+
+// Pseudonym returns the credential's per-election pseudonym P = sk·B for
+// the election's B, as its 64 bytes (private-tally-spec.md, The
+// per-election pseudonym). It is the same for every identity of the
+// credential. Weft makes the voter tag from it before it makes the ballot.
+func (id *Identity) Pseudonym(channel, electionID string) (p []byte, err error) {
+	defer recovered(&err)
+	if id.sk == nil {
+		return nil, errors.New("the identity has been disposed of")
+	}
+	return pseudonym.EncodePoint(pseudonym.Pseudonym(id.sk, channel, electionID)), nil
+}
+
+// PseudonymProof makes the proof that the election's pseudonym and this
+// identity's Nym hold the same sk, bound to the issuer key's hash, the
+// channel, the election and the ballot's 32-byte tracking code. It returns
+// pseudonymJson's fields.
+func (id *Identity) PseudonymProof(channel, electionID string, tracking []byte) (out pseudonym.JSON, err error) {
+	defer recovered(&err)
+	if id.sk == nil {
+		return pseudonym.JSON{}, errors.New("the identity has been disposed of")
+	}
+	if len(tracking) != 32 {
+		return pseudonym.JSON{}, fmt.Errorf("the tracking code is %d bytes, not 32", len(tracking))
+	}
+	st := &pseudonym.Statement{Key: id.key.scope, Channel: channel, ElectionID: electionID, Tracking: tracking, Nym: id.nym}
+	proof, err := pseudonym.Prove(st, id.sk, id.rNym, mustRand(id.key.curve))
+	if err != nil {
+		return pseudonym.JSON{}, err
+	}
+	return proof.JSON(), nil
 }
 
 // Dispose zeroes the identity's copies of the secret key and the Nym's

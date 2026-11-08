@@ -19,8 +19,13 @@ import (
 )
 
 // API is the version of the functions below. A change to a function's
-// arguments or result changes it.
-const API = 1
+// arguments or result changes it. 2: pseudonym and pseudonymProof make the
+// per-election pseudonym and its proof.
+const API = 2
+
+// extras are functions a test build adds (vectors.go, with the build tag
+// weftvectors). The module Weft runs has none.
+var extras []func(api js.Value)
 
 var (
 	key        *signer.IssuerKey
@@ -110,6 +115,14 @@ func credential(args []js.Value, i int) (*signer.Credential, error) {
 		*f.out = b
 	}
 	return out, nil
+}
+
+func election(args []js.Value) (channel, electionID string, err error) {
+	if channel, err = str(args, 1, "channel"); err != nil {
+		return "", "", err
+	}
+	electionID, err = str(args, 2, "electionId")
+	return channel, electionID, err
 }
 
 func identity(args []js.Value) (*signer.Identity, int, error) {
@@ -249,10 +262,50 @@ func main() {
 		return base64.StdEncoding.EncodeToString(sig), nil
 	}))
 
-	// pseudonym(handle, ...): the per-election pseudonym and its proof
-	// come with the specification's Go code (phase b of ADR 0008's step).
+	// pseudonym(handle, channel, electionId) → P: the credential's
+	// per-election pseudonym, its 64 bytes in lowercase hex, the same for
+	// every identity of the credential. Weft makes the voter tag from it
+	// before it makes the ballot.
 	api.Set("pseudonym", wrap(func(a []js.Value) (any, error) {
-		return nil, errors.New("this version of the module has no per-election pseudonym")
+		id, _, err := identity(a)
+		if err != nil {
+			return nil, err
+		}
+		channel, electionID, err := election(a)
+		if err != nil {
+			return nil, err
+		}
+		p, err := id.Pseudonym(channel, electionID)
+		if err != nil {
+			return nil, err
+		}
+		return hex.EncodeToString(p), nil
+	}))
+
+	// pseudonymProof(handle, channel, electionId, tracking) → { pseudonym,
+	// c, ssk, sr }: the proof that P and the identity's Nym hold the same
+	// secret key, for the ballot whose tracking code is tracking (64
+	// lowercase hex characters), as CastAnonymousBallot's pseudonymJson. It
+	// comes from the contract's pseudonym package, which the contract
+	// verifies with.
+	api.Set("pseudonymProof", wrap(func(a []js.Value) (any, error) {
+		id, _, err := identity(a)
+		if err != nil {
+			return nil, err
+		}
+		channel, electionID, err := election(a)
+		if err != nil {
+			return nil, err
+		}
+		t, err := str(a, 3, "tracking")
+		if err != nil {
+			return nil, err
+		}
+		tracking, err := hex.DecodeString(t)
+		if err != nil || len(tracking) != 32 || hex.EncodeToString(tracking) != t {
+			return nil, errors.New("tracking must be 64 lowercase hex characters")
+		}
+		return id.PseudonymProof(channel, electionID, tracking)
 	}))
 
 	// dispose(handle) → "disposed": zeroes and drops the identity's secrets.
@@ -276,6 +329,9 @@ func main() {
 		return "wiped", nil
 	}))
 
+	for _, add := range extras {
+		add(api)
+	}
 	js.Global().Set("weftIdemix", api)
 	select {}
 }

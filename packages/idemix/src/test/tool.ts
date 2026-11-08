@@ -39,3 +39,16 @@ export function verify(input: { mspId: string; issuerPublicKey: string; revocati
     return { error: String((error as { stderr?: string }).stderr ?? error).trim() };
   }
 }
+
+/**
+ * The contract's pseudonym verifier, from the contract's own Go package:
+ * the proof checked against the Nym in idBytes. Gives P, or the contract's
+ * message.
+ */
+export function verifyPseudonym(input: { issuerPublicKey: string; idBytes: string; channel: string; electionId: string; tracking: string; pseudonymJson: string }) {
+  try {
+    return { ok: run<{ pseudonym: string }>(["pseudonym"], input) };
+  } catch (error) {
+    return { error: String((error as { stderr?: string }).stderr ?? error).trim() };
+  }
+}

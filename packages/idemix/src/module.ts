@@ -44,6 +44,18 @@ export interface IdentityResult {
   nym: string;
 }
 
+/**
+ * A per-election pseudonym and its proof, CastAnonymousBallot's
+ * pseudonymJson: P's 64 bytes and the scalars c, ssk and sr, in lowercase
+ * hex (private-tally-spec.md, The per-election pseudonym).
+ */
+export interface PseudonymProof {
+  pseudonym: string;
+  c: string;
+  ssk: string;
+  sr: string;
+}
+
 /** The functions, as the worker and the Node loader both offer them. */
 export interface IdemixApi {
   info(): Promise<IdemixInfo>;
@@ -52,11 +64,24 @@ export interface IdemixApi {
   checkCredential(credential: VoterCredentialSecret): Promise<"valid">;
   newIdentity(credential: VoterCredentialSecret, mspId: string): Promise<IdentityResult>;
   sign(handle: number, message: string): Promise<string>;
+  /**
+   * The credential's pseudonym P in the election, 64 bytes in lowercase hex,
+   * the same for every identity of the credential. The voter tag is made
+   * from it, before the ballot.
+   */
+  pseudonym(handle: number, channel: string, electionId: string): Promise<string>;
+  /**
+   * The proof that P and the identity's Nym hold the same secret key, for
+   * the ballot whose tracking code is tracking (64 lowercase hex
+   * characters): CastAnonymousBallot's pseudonymJson. Make it after the
+   * ballot, and before signing the proposal that carries it.
+   */
+  pseudonymProof(handle: number, channel: string, electionId: string, tracking: string): Promise<PseudonymProof>;
   dispose(handle: number): Promise<"disposed">;
   wipe(): Promise<"wiped">;
 }
 
-export const METHODS = ["info", "loadIssuerKey", "credentialRequest", "checkCredential", "newIdentity", "sign", "dispose", "wipe"] as const;
+export const METHODS = ["info", "loadIssuerKey", "credentialRequest", "checkCredential", "newIdentity", "sign", "pseudonym", "pseudonymProof", "dispose", "wipe"] as const;
 export type Method = (typeof METHODS)[number];
 
 /** A refusal from the module, or a module that couldn't start. */
@@ -131,6 +156,8 @@ function wrap(raw: RawApi): IdemixApi {
     checkCredential: (cred) => c("checkCredential", JSON.stringify(cred)),
     newIdentity: (cred, mspId) => c("newIdentity", JSON.stringify(cred), mspId),
     sign: (handle, message) => c("sign", handle, message),
+    pseudonym: (handle, channel, electionId) => c("pseudonym", handle, channel, electionId),
+    pseudonymProof: (handle, channel, electionId, tracking) => c("pseudonymProof", handle, channel, electionId, tracking),
     dispose: (handle) => c("dispose", handle),
     wipe: () => c("wipe"),
   };
