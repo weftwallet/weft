@@ -195,7 +195,7 @@ const code = [
       </div>
     </div>
     <div class="build__stage">
-      <pre class="code" tabindex="0" aria-label="Nine lines of JavaScript calling window.weft.request"><code>{code.join("\n")}</code></pre>
+      <pre class="code" aria-label="Nine lines of JavaScript calling window.weft.request"><code>{code.map((line, i) => <><span class="code__line" style={`--indent: ${line.length - line.trimStart().length}ch`}>{line}</span>{i < code.length - 1 && "\n"}</>)}</code></pre>
       <div class="approve approve--compact" aria-label="The window the code opens: Sign this transaction? Function TransferAsset with arguments asset7 and Org2MSP">
         <div class="approve__head">
           <span class="approve__brand"><Fragment set:html={markSmall} />weft</span>
@@ -984,11 +984,22 @@ const code = [
     background: var(--weft-bg-sunken);
     color: var(--weft-text);
     font: var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
-    overflow-x: auto;
     tab-size: 2;
   }
   .code code {
     font: inherit;
+  }
+  /* No code block scrolls sideways (SYSTEM.md, Overflow): a long line wraps,
+     and its continuation starts two characters further in than the line's
+     own indentation, so it never reads as a line of its own. */
+  .code__line {
+    display: inline-block;
+    max-width: 100%;
+    padding-inline-start: calc(var(--indent) + 2ch);
+    text-indent: calc(-1 * (var(--indent) + 2ch));
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    vertical-align: top;
   }
 
   /* For organisations: four rows, each a link. */

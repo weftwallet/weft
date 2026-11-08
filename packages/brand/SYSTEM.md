@@ -82,6 +82,15 @@ Identifiers:
 - Shortened, they're cut in the middle and keep 8 characters at each end (`9f3a1c07…e41b22d8`), because people check the ends.
 - Copying always copies the full value, without the spaces.
 
+## Overflow
+
+Nothing scrolls sideways: not the page, and not a table, code block, value, row of pills or row of tabs inside it, at any width from 320px. Each kind has a way to fit the width it has, below, and every product uses the same one. A box that caps its height (a long log entry, a private input) may scroll down, never across. `pnpm check:sideways` (`e2e/scripts/no-sideways-scroll.mjs`) loads every page of every product, the wallet's popup and windows among them, at 320, 360 and 1440 wide in both themes, and fails if the page or any element in it scrolls horizontally.
+
+- Tables. Where a table has less than 640px, each row becomes a block between lines: the first cell is its title, and every other cell is labelled with its column's heading (`data-label`). The explorer's lists, whose values are short, put the label before the value on the same line. The docs, whose cells are sentences, put it above the value, styled as a table heading. The docs do this for every markdown table, under 40rem of column (`src/table-code.mjs` labels the cells and gives the table its roles, `theme.css` stacks the rows), so no table is changed by hand. A table of values of any length (a transaction's changes) keeps its columns and wraps its values instead (`.table--plain`). With room, a table is a table.
+- Code blocks and terminal transcripts. A long line wraps. Its continuation starts two characters further in than the line's own indentation, so it never reads as a line of its own; where the column is under 40rem, indentation over 8 characters is shown as 8. Copy copies the lines as written, without the wraps. A wrap adds no character, so it never changes what runs: a command that wraps on screen is one line when copied. The docs wrap through Expressive Code (`astro.config.mjs`), the Weft site's sample line by line (`.code__line`), and the playground's and the wallet's outputs with `pre-wrap`.
+- Long identifiers. Shown in full, a hash or an ID is grouped in fours and wraps between groups (Type, Identifiers); a value with no groups (base64, a URL, an argument, a key) wraps anywhere, with `overflow-wrap: anywhere`. Shortened, it keeps 8 characters at each end and has a copy control beside it. Neither is ever in a box that scrolls.
+- Rows of pills, tabs, filters and presets. They wrap onto more lines (`flex-wrap`). A set of choices too long to wrap tidily is a native select in `.select` (States), as the wallet's and the playground's channel are. The header's links follow `header.js` (Navigation).
+
 ## Space and shape
 
 Space is on a 4px grid (`space-1` is 4px). Radii: `radius-sm` for chips and tags, `radius-lg` for inputs, buttons and rows, `radius-xl` for cards, `radius-2xl` for sheets and large panels, `radius-pill` for toggles and pill buttons.

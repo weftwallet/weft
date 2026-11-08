@@ -117,12 +117,92 @@ mobile-starlight-toc nav {
 /* On a phone a long identifier in a table (ENDORSEMENT_POLICY_FAILURE) may
    wrap, so the column beside it keeps room to be read rather than being
    squeezed to a word a line. It wraps only at the <wbr>s src/table-code.mjs
-   puts after _ . / - : and between camelCase words, never mid-word. A table
-   whose columns still don't fit a phone scrolls sideways inside itself, as
-   Starlight's tables do; the page never does. */
+   puts after _ . / - : and between camelCase words, never mid-word. */
 @media (max-width: 49.99rem) {
   .sl-markdown-content :is(td, th) code {
     overflow-wrap: break-word;
+  }
+}
+
+/* A long line in a code block wraps (astro.config.mjs) and its continuation
+   starts two characters further in than the line's own indentation. Where
+   the page's column is under 40rem, a line indented further than 8
+   characters (an argument list aligned under its bracket) starts and
+   continues 8 in, so its words still have room to read. Copy copies the
+   indentation as written. */
+@container (max-width: 39.99rem) {
+  .expressive-code .ec-line .code {
+    padding-inline-start: calc(min(var(--ecIndent, 0ch), 8ch) + var(--ec-codePadInl) - var(--ecGtrBrdWd));
+    text-indent: calc(min(var(--ecIndent, 0ch), 8ch) * -1);
+  }
+  .expressive-code .ec-line .code span.indent {
+    display: inline-block;
+    max-width: 8ch;
+    overflow: hidden;
+    vertical-align: top;
+  }
+}
+
+/* No table scrolls sideways (SYSTEM.md, Overflow). Starlight makes a table
+   a block that scrolls inside itself; here it never does. Where the page's
+   column is under 40rem, each row stacks as a block between lines: the
+   first cell is its title, and every other cell has its column's heading
+   above it, styled as a table heading (src/table-code.mjs gives each cell
+   its data-label). The heading row stays for assistive technology, out of
+   sight. Wider, a table is as Starlight draws it. */
+.sl-markdown-content {
+  container-type: inline-size;
+}
+.sl-markdown-content table:not(:where(.not-content *)) {
+  overflow: visible;
+}
+@container (max-width: 39.99rem) {
+  .sl-markdown-content table:not(:where(.not-content *)),
+  .sl-markdown-content :is(tbody, tr):not(:where(.not-content *)) {
+    display: block;
+  }
+  .sl-markdown-content table:not(:where(.not-content *)) {
+    border-top: 1px solid var(--sl-color-gray-5);
+  }
+  .sl-markdown-content thead:not(:where(.not-content *)) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .sl-markdown-content tr:not(:where(.not-content *)) {
+    padding: var(--weft-space-3) 0;
+    border-bottom: 1px solid var(--sl-color-gray-5);
+  }
+  /* Starlight spaces blocks in an article apart; rows are spaced by their padding. */
+  .sl-markdown-content :is(tr + tr, thead + tbody):not(:where(.not-content *)) {
+    margin-top: 0;
+  }
+  .sl-markdown-content td:not(:where(.not-content *)) {
+    display: block;
+    padding: 0;
+    border: 0;
+    text-align: start !important;
+  }
+  .sl-markdown-content td:empty:not(:where(.not-content *)) {
+    display: none;
+  }
+  .sl-markdown-content td:first-child:not(:where(.not-content *)) {
+    color: var(--sl-color-white);
+    font-weight: 600;
+  }
+  .sl-markdown-content td + td:not(:where(.not-content *)) {
+    margin-top: var(--weft-space-2);
+  }
+  .sl-markdown-content td + td[data-label]:not(:where(.not-content *))::before {
+    content: attr(data-label) / "";
+    display: block;
+    color: var(--weft-text-subtle);
+    font: 500 var(--weft-type-xs) / var(--weft-leading-xs) var(--weft-font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 }
 

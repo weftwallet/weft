@@ -71,6 +71,10 @@ export default defineConfig({
         MobileMenuFooter: "./src/components/MobileMenuFooter.astro",
       },
       editLink: { baseUrl: "https://github.com/ifeanyi-ugwu/weft/edit/main/apps/docs/" },
+      // No code block scrolls sideways (SYSTEM.md, Overflow): a long line
+      // wraps, keeps its indentation, and its continuation is indented two
+      // more characters. Copy copies the lines as written, unwrapped.
+      expressiveCode: { defaultProps: { wrap: true, preserveIndent: true, hangingIndent: 2 } },
       customCss: [
         "@fontsource/atkinson-hyperlegible-next/latin-400.css",
         "@fontsource/atkinson-hyperlegible-next/latin-500.css",
