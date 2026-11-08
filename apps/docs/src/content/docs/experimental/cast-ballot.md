@@ -71,8 +71,8 @@ Before any window opens, Weft checks the params. A missing or malformed field fa
 
 1. If Weft is locked, the window asks for the password or a passkey first ([ADR 0005](/reference/decisions/)).
 2. Weft finds a network of the voter's with that channel. With none, it fails with `4300`. When the network was added from an invite, the invite may list the channel now, since each election gets a channel of its own: the window offers Refresh from invite, and the request waits. If the refreshed invite lists the channel, Weft adds it to the network and goes on. Otherwise, or if the voter presses Reject or closes the window, the request fails with `4300`.
-3. It reads the election with `GetElection`, by endorsing without submitting. The relay builds the proposal, Weft checks it (ADR 0001's check) and signs it with the identity it holds for the channel: its voter credential for that channel if it has one, otherwise the active identity. The relay returns the endorsing peers' signed responses, and Weft sends nothing to the orderer.
-4. It checks that a peer of its identity's own organisation signed the response, with a certificate that chains to that organisation's CA, so the relay can't change the record. If the signature doesn't verify, it fails with `4400`. See [Reading the election](#reading-the-election) below.
+3. It reads the election with `GetElection`, by endorsing without submitting. The relay builds the proposal, Weft checks it (ADR 0001's check) and signs it with the identity it holds for the channel: a one-off identity made from its voter credential for that channel if it has one, in the approval window's worker, otherwise the active identity. The relay returns the endorsing peers' signed responses, and Weft sends nothing to the orderer.
+4. It checks the peers' signatures on the response, so the relay can't change the record: for an X.509 identity, that a peer of the identity's own organisation signed it, with a certificate that chains to that organisation's CA; for a voter credential, that every endorsement verifies against a CA chain the voter invite pins. If a signature doesn't verify, it fails with `4400`. See [Reading the election](#reading-the-election) below.
 5. It checks the record: a private-ballot record of version 1, in `open`. It computes the election context and the [election fingerprint](/experimental/private-tally-spec/#the-election-fingerprint) itself from the record's fields, and refuses a record whose `context` or `fingerprint` differs. Any other record fails with `4400`.
 6. It picks the identity that votes. For X.509 voters, the active identity, if its MSP is one of the election's voter organisations. For voter credentials, the credential Weft holds for the election's voter MSP whose issuer key is the one the election pinned. With neither, it fails with `4300`. Weft Experimental can't hold voter credentials yet, so an election with voter credentials fails with `4300` too.
 
@@ -86,7 +86,7 @@ Any failure in these steps shows in the window. The site gets `4300` or `4400` a
 
 The election key comes from the ledger, never from the web app. A key the web app chose could be one whose secret it holds, and a finished ballot from the web app couldn't be checked to hold the option the voter saw.
 
-The peer's signature check needs the organisation's CA chain, which Fabric CA returns at enrolment. Weft Experimental keeps it with each identity it enrols or re-enrols through a CA. Weft, as you install it, keeps nothing new. An identity added with Import PEM or a certificate request has no chain, and nor has one enrolled before Weft Experimental kept it: re-enrolling it in Weft Experimental keeps one. For those, Weft reads the election without the check and the confirm screen says so. For a voter credential, whose organisation has no peers, the check is defined with [voter credentials](/experimental/voter-credentials/). Without the check, the election fingerprint in the window, which every explorer shows too, is how the voter can check the record.
+The peer's signature check needs the organisation's CA chain, which Fabric CA returns at enrolment. Weft Experimental keeps it with each identity it enrols or re-enrols through a CA. Weft, as you install it, keeps nothing new. An identity added with Import PEM or a certificate request has no chain, and nor has one enrolled before Weft Experimental kept it: re-enrolling it in Weft Experimental keeps one. For those, Weft reads the election without the check and the confirm screen says so. A voter credential's organisation has no peers, so for a voter credential Weft checks the trustee organisations' peers instead, against the CA chains the voter invite pins, and requires every endorsement to verify ([Reading the election](/experimental/voter-credentials/#reading-the-election) in Voter credentials). Without the check, the election fingerprint in the window, which every explorer shows too, is how the voter can check the record.
 
 With the chain, Weft accepts the answer only when:
 
@@ -96,17 +96,17 @@ With the chain, Weft accepts the answer only when:
 
 Weft reads the record from inside the signed bytes, never from the relay's copy of the result. Without the chain, it still checks the proposal hash, the contract and the status.
 
-The read is signed by the voter's identity, so the relay and the endorsing peers see that this identity read the election, as they do for any evaluation. The window says that Weft read the election through the relay.
+The read is signed by the voter's identity, so the relay and the endorsing peers see that this identity read the election, as they do for any evaluation. With a voter credential, they see an anonymous member of the voter organisation, with a Nym used for nothing else. The window says that Weft read the election through the relay.
 
 ### Casting
 
 When the voter presses Sign and vote, Weft's background worker:
 
-1. encrypts the choice under the election key and makes the proofs, bound to the election and to the voter tag, about 20 ms for three options;
-2. for a voter credential, makes a new idemix identity for the transaction and the per-election pseudonym proof, bound to the ballot's tracking code;
+1. encrypts the choice under the election key and makes the proofs, bound to the election and to the voter tag, about 20 ms for three options. For a voter credential, the approval window's worker first makes a new idemix identity for the transaction and P, from which the voter tag is made;
+2. for a voter credential, has the window's worker make the [per-election pseudonym proof](/experimental/private-tally-spec/#the-per-election-pseudonym), bound to the transaction's Nym and the ballot's tracking code;
 3. discards the encryption randomness;
-4. asks the relay to build the proposal for `CastBallot` or `CastAnonymousBallot`, and checks the proposal's arguments are exactly the ballot it made, byte for byte (ADR 0001's check). The creator's `id_bytes` must be exactly the bytes the voter tag was made from, which are the ones the relay put in the read's proposal, with or without the PEM's trailing newline: a ballot bound to another tag would be refused. For a voter credential, the creator is compared byte for byte too;
-5. signs, endorses, submits and waits for the commit, as `weft_submit` does;
+4. asks the relay to build the proposal for `CastBallot` or `CastAnonymousBallot`, and checks the proposal's arguments are exactly the ballot it made, and the pseudonym proof, byte for byte (ADR 0001's check). The creator's `id_bytes` must be exactly the bytes the voter tag was made from, which are the ones the relay put in the read's proposal, with or without the PEM's trailing newline: a ballot bound to another tag would be refused. For a voter credential, the creator must be byte for byte the one-off identity the window's worker made for this transaction;
+5. signs, endorses, submits and waits for the commit, as `weft_submit` does. For a voter credential, the window's worker signs each of the three messages, and disposes of the identity after the commit status;
 6. computes the tracking code itself and compares it with the one the contract returned.
 
 A ballot that commits after the trustees closed the election fails validation, and a ballot endorsed after it is refused with "Voting has closed." Either way the voter hasn't voted, and the site gets `5001`.
@@ -125,8 +125,9 @@ The second is for confirming, titled with the choice ("Vote for Plan B?"), with 
 
 - who holds the key: "Org1MSP and Org2MSP each hold part of this election's key. Any 2 of them together could read your ballot.";
 - the election fingerprint, labelled "Election fingerprint", in five groups of four, with "Weft worked this out from the election's record. Every explorer shows the same.";
-- who signs, and what the network sees, under "Voting as". For an X.509 voter: the identity's name and MSP, and "Every organisation can see that you voted." For a voter credential: "An anonymous member of ChairVoters2027MSP", what the network sees (the voter organisation, the shared affiliation, the role), that a second vote from the credential will be refused, and that the vote can't be linked to the voter's other ballots;
-- that Weft read the election, and sends the ballot, through the relay at the relay's host, which sees the voter's network address but not the choice, and whether Weft checked the peer's signature on the election;
+- who signs, and what the network sees, under "Voting as". For an X.509 voter: the identity's name and MSP, and "Every organisation can see that you voted." For a voter credential: "An anonymous member of ChairVoters2027MSP", what the network sees (the voter organisation, the shared affiliation, the role), that a second vote from the credential will be refused, and that the vote can't be linked to the voter's other ballots. The voter's name appears nowhere, not even to the voter;
+- for a voter credential, the ballot's Pseudonym: its voter tag, shortened to its first and last 8 hex characters, which explorers show beside the ballot;
+- that Weft read the election, and sends the ballot, through the relay at the relay's host, which sees the voter's network address but not the choice, and whether Weft checked the peers' signatures on the election. For a voter credential, it names who runs the relay, from the voter invite, and which organisations' signatures Weft checked;
 - Keep the receipt in Weft, off;
 - Sign and vote.
 
@@ -195,9 +196,9 @@ Every ballot proof is bound to the [voter tag](/experimental/private-tally-spec/
 
 - the transaction ID, block, time and function, and its arguments: ballots, ceremony posts and decryption shares, which are public by design;
 - for a ballot, its tracking code and its voter tag, as 64 lowercase hex characters, even when the policy has `submitter: hide`;
-- for a ballot with a voter credential, the per-election pseudonym and its proof, which are arguments too.
+- for a ballot with a voter credential, the per-election pseudonym and its proof, which are arguments too, and the anonymous creator: the voter MSP ID, the affiliation, the role, the one-off Nym and its proof. These name no one, and the browser's full check needs the Nym to check each pseudonym proof.
 
-With `submitter: hide`, it still hides the submitter: the certificate, the name and enrolment ID in it, and the MSP ID. With `submitter: show`, it shows the certificate too, and the browser computes each tag from it. Where submitters are hidden, the browser checks every proof against the published tag and that no tag repeats, and relies on the explorer's server for the step from the transaction's creator to the tag, which the server checks as it indexes each block. Another organisation's explorer that shows submitters checks that step in the browser.
+With `submitter: hide`, it still hides an X.509 submitter: the certificate, the name and enrolment ID in it, and the MSP ID. With `submitter: show`, it shows the certificate too, and the browser computes each tag from it. Where submitters are hidden, the browser checks every proof against the published tag and that no tag repeats, and relies on the explorer's server for the step from the transaction's creator to the tag, which the server checks as it indexes each block. Another organisation's explorer that shows submitters checks that step in the browser.
 
 A voter tag names no one. Anyone who holds the voter's certificate can compute its tag for an election, which includes every member organisation, the voter's CA and any site the voter connected the identity to, and see that the voter voted in it. The tag covers the channel and the election ID, so an X.509 voter has a different tag in every election, and the tags an explorer publishes don't link one certificate's ballots across elections. A voter credential's tag comes from its per-election pseudonym and links nothing either.
 

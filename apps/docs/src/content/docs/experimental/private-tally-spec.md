@@ -4,7 +4,7 @@ description: The private tally's cryptography as a specification, with its encod
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The cryptography on this page is built, in `@weftwallet/tally` and the contract's `internal/tally`. The contract, Weft Experimental, `weft-trustee` and the explorer use it.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The cryptography on this page is built, in `@weftwallet/tally` and the contract's `internal/tally`, except [the per-election pseudonym](#the-per-election-pseudonym) for voter credentials, which is specified and not built yet. The contract, Weft Experimental, `weft-trustee` and the explorer use it.
 :::
 
 This is the scheme from [ADR 0007](/reference/decisions/), written so that the Go contract and the TypeScript code in Weft, the trustee tool and the explorer can be built from it and checked against each other. It follows the prototype from the private tally study, except where a section says version 1 differs.
@@ -13,7 +13,9 @@ This is the scheme from [ADR 0007](/reference/decisions/), written so that the G
 
 Weft Experimental, the trustee tool (`weft-trustee`) and the explorer share one TypeScript implementation, `@weftwallet/tally` in `packages/tally`, on `@noble/curves` and `@noble/hashes`. It is a private package: it isn't published, and Weft's normal build doesn't depend on it. The contract implements only what it runs, the verifying half, in Go, in `internal/tally` of its own module. Both run the same [test vectors](#test-vectors).
 
-Randomness is drawn only in Weft (encryption and ballot proofs) and in the trustee tool (key ceremony and decryption shares). Every step the contract runs is deterministic. It draws no randomness and reads no clock, so every endorser computes the same result. The one time it reads is the transaction's timestamp, which the client sets and every endorser reads the same from the proposal, and only `CreateElection` reads it, to refuse a `closesAt` that has already passed. Nothing in this specification, from casting a ballot to publishing the tally, reads a time.
+The [per-election pseudonym](#the-per-election-pseudonym), which voter credentials add to a ballot, is specified on this page to the same standard. It works in another group, and its prover and verifier are one Go package, `pseudonym` in the contract's module, which the contract and Weft's idemix WebAssembly module both compile.
+
+Randomness is drawn only in Weft (encryption, ballot proofs and the pseudonym proof) and in the trustee tool (key ceremony and decryption shares). Every step the contract runs is deterministic. It draws no randomness and reads no clock, so every endorser computes the same result. The one time it reads is the transaction's timestamp, which the client sets and every endorser reads the same from the proposal, and only `CreateElection` reads it, to refuse a `closesAt` that has already passed. Nothing in this specification, from casting a ballot to publishing the tally, reads a time.
 
 ## Notation
 
@@ -39,6 +41,8 @@ The group is ristretto255 (RFC 9496), a prime-order group of order l built on Cu
 | In JSON | Lowercase hex of the bytes above | Refuse uppercase, odd lengths and other lengths. |
 
 A ciphertext's first component must not be the identity point: a ballot with one has no randomness and is refused.
+
+The per-election pseudonym uses another group, G1 of the FP256BN curve, with its own encodings: see [Group and encoding for the pseudonym](#group-and-encoding-for-the-pseudonym).
 
 Implementations use constant-time multiplication for secret scalars (encryption randomness, proof nonces, trustee shares, one-time keys) and may use variable-time multiplication for public values only, as when verifying.
 
@@ -77,6 +81,8 @@ Other digests are SHA-256 of a framed list. Every hash starts with a label of it
 | `weft-ballot-hash v1` | The tracking code |
 | `weft-election-fingerprint v1` | The election fingerprint |
 | `weft-ballot-v1 share` | Key-share encryption in the ceremony |
+| `weft-scope v1` | The per-election base point B of a voter credential's pseudonym, under HashToG1 |
+| `weft-scope-proof v1` | The pseudonym proof's challenge, under Hz |
 | `FROST-RISTRETTO255-SHA512-v1dkg` | Noble's round 1 proof of knowledge, as a prefix to plain SHA-512 |
 
 The key ceremony's round 1 proofs use the hash of noble's FROST module, as described under [Key ceremony](#key-ceremony).
@@ -111,7 +117,7 @@ The parts, in this order:
 | `electionId` | The UTF-8 bytes of the election ID. |
 | `mspId` | The UTF-8 bytes of the `mspid` field of the transaction creator's `SerializedIdentity`. |
 | `idBytes` | The `id_bytes` field of the creator's `SerializedIdentity`, unchanged. For an X.509 identity it is the PEM certificate as Fabric carries it, and Weft has it because it signs with that certificate. |
-| `P` | The 64-byte per-election pseudonym from [Voter credentials](/experimental/voter-credentials/#the-per-election-pseudonym). |
+| `P` | The 64-byte encoding of the [per-election pseudonym](#the-per-election-pseudonym), its x then its y. |
 
 Each part is framed as in [Framing](#framing), and `v` is the 32-byte SHA-256 digest. A ballot copied into another voter's transaction fails its proofs. Because the channel and the election ID are in the tag, one X.509 certificate has a different tag in every election, and the tags an explorer publishes can't be matched across elections. Within one election, anyone who holds the certificate can still compute its tag.
 
@@ -224,15 +230,180 @@ As 64 lowercase hex characters, it is the voter's receipt and the key the explor
 
 ### What the contract checks
 
-In this order, stopping at the first failure:
+`CastBallot` checks, in this order, stopping at the first failure:
 
 1. The election is `open`. No time is compared with `closesAt`: the election stops accepting ballots when the transaction that [closes it](/experimental/contract-api/#closeelection) commits.
-2. The ballot parses, its `v` is 1, its `electionId` is the election's, and it has L ciphertexts and L bit proofs.
-3. Every point and scalar decodes canonically, and no `a_j` is the identity.
-4. Every bit proof verifies.
-5. The sum proof verifies.
-6. No two ciphertexts of the ballot have the same `a_j`, which two identical ciphertexts also do, and no `a_j` is already on the ledger for this election. The points are canonical, so the contract compares their hex. A repeat within the ballot is refused with the first pair, i before j.
-7. The voter hasn't voted in this election, by `v`. For a voter credential, this runs after the pseudonym proof verifies.
+2. The election has X.509 voters, and the creator is an X.509 identity of one of its voter organisations.
+3. The ballot parses, its `v` is 1, its `electionId` is the election's, and it has L ciphertexts and L bit proofs.
+4. Every point and scalar decodes canonically, and no `a_j` is the identity.
+5. Every bit proof verifies, with `v` from the creator's certificate.
+6. The sum proof verifies.
+7. No two ciphertexts of the ballot have the same `a_j`, which two identical ciphertexts also do, and no `a_j` is already on the ledger for this election. The points are canonical, so the contract compares their hex. A repeat within the ballot is refused with the first pair, i before j.
+8. The voter hasn't voted in this election, by `v`.
+
+`CastAnonymousBallot` checks, in this order, stopping at the first failure:
+
+1. The election is `open`, as for `CastBallot`.
+2. The election has voter credentials.
+3. The creator's MSP ID is the election's voter MSP.
+4. The creator is an idemix identity: its `id_bytes` decode as a `SerializedIdemixIdentity` whose `nym_x` and `nym_y` are a point of G1.
+5. The creator's organisational unit is the election's affiliation, and its role is member.
+6. The ballot parses and decodes, as steps 3 and 4 of `CastBallot` check it.
+7. The pseudonym proof parses, and its pseudonym and scalars decode.
+8. The contract makes `v` from P, and the tracking code from the ballot, `ctx` and `v`. Neither can fail.
+9. The pseudonym proof verifies against the creator's Nym, the pinned issuer key and the tracking code.
+10. Every bit proof verifies, with `v` from P.
+11. The sum proof verifies.
+12. The ciphertexts don't repeat, as step 7 of `CastBallot` checks them.
+13. The credential hasn't voted in this election, by `v`.
+
+The pseudonym proof is checked before the ballot proofs because its challenge covers the tracking code, which needs only the ballot's bytes and `v`, and because a ballot copied with its pseudonym from another voter's transaction fails there, with the pseudonym proof's message, whatever else is wrong with it. Steps 2 to 5 come before any argument is parsed, so a caller of the wrong kind is told so whatever it sent.
+
+## The per-election pseudonym
+
+A voter credential's transaction carries a Nym that is new for every transaction, so on its own it can't stop a second vote ([ADR 0008](/reference/decisions/)). Weft adds a pseudonym P that is the same for one credential within one election on one channel and unrelated across elections, with a proof that P comes from the secret key inside the transaction's Nym. The contract makes the [voter tag](#the-voter-tag) from P and marks it as voted.
+
+This section is the specification for version 1. The study's prototype differs from it in ways listed in [Where the prototype differs](#where-the-prototype-differs), and its proofs don't verify under version 1.
+
+### Notation for the pseudonym
+
+```text
+p            the modulus of FP256BN's base field
+r            the order of G1
+G1           the points (x, y) with y^2 = x^3 + 3 over GF(p), and the identity; G1 has prime order r
+x·Q          scalar multiplication in G1
+Q + R        the group operation; Q - R adds the inverse of R
+HSk, HRand   the issuer public key's points of those names
+sk           the credential's secret key, a scalar from 1 to r - 1
+rNym         the randomness of the transaction's Nym, a scalar
+Nym          sk·HSk + rNym·HRand, the Nym in the transaction's creator
+```
+
+```text
+p = 0xfffffffffffcf0cd46e5f25eee71a49f0cdc65fb12980a82d3292ddbaed33013
+r = 0xfffffffffffcf0cd46e5f25eee71a49e0cdc65fb1299921af62d536cd10b500d
+```
+
+FP256BN is Fabric CA's default idemix curve, `FP256BN_AMCL`. Its G1 has cofactor 1, so every point on the curve other than the identity has order r, and decoding needs no subgroup check.
+
+### Group and encoding for the pseudonym
+
+| Value | Encoding | Decoding rule |
+|---|---|---|
+| Point of G1 | 64 bytes: x then y, each as 32 bytes big-endian. This is how Fabric's `SerializedIdemixIdentity` carries the Nym, as `nym_x` and `nym_y`. | Refuse any input that isn't 64 bytes, whose x or y is p or more, or that isn't on the curve. The identity has no encoding, so it is always refused. |
+| Scalar | 32 bytes, big-endian, as IBM mathlib writes a scalar. | Refuse any value of r or more. |
+| In JSON | Lowercase hex of the bytes above. | Refuse uppercase, odd lengths and other lengths. |
+
+These are big-endian, unlike the ristretto255 scalars of the rest of the scheme, which are little-endian.
+
+### Hashing for the pseudonym
+
+```text
+Hz(label, parts) = OS2IP(SHA-256(frame([label, ...parts]))) mod r
+H1(label, parts) = HashToG1(frame([label, ...parts]))
+```
+
+`frame` is the one in [Framing](#framing), and the labels are in the [label table](#hashing-and-domain-separation). `OS2IP` reads the 32-byte digest as a big-endian integer. Hz is IBM mathlib's `HashToZr` for `FP256BN_AMCL` applied to the framed bytes. A digest of r or more wraps, which happens with probability about 2^-46.
+
+HashToG1 is IBM mathlib's `HashToG1` for `FP256BN_AMCL`, which is AMCL's `Bls_hash`. No standard defines it, so here it is in full:
+
+```text
+HashToG1(m):
+  x = OS2IP(SHAKE256(m, 32 bytes)) mod p
+  loop:
+    t = x^3 + 3 mod p
+    if t is a non-zero square mod p:
+      y = the square root of t whose integer value is even
+      return (x, y)
+    x = x + 1 mod p
+```
+
+p is 3 mod 4, so a square root of t is t^((p+1)/4) mod p, and the even one is it or p minus it. The loop runs about twice on average. It isn't constant time, which doesn't matter here: its input is public.
+
+### The base point and the pseudonym
+
+```text
+B = H1("weft-scope v1", [channel, electionId])
+P = sk·B
+```
+
+`channel` and `electionId` are their UTF-8 bytes, as in the [voter tag](#the-voter-tag). B depends on the channel and the election and on nothing about the voter, so every voter of an election has the same B, and one credential has one P in it.
+
+### The proof
+
+The prover is Weft, which holds sk and, for the identity it made for this transaction, rNym. It makes the proof after the ballot, because the challenge covers the ballot's tracking code:
+
+```text
+prove:
+  a, b = scalars drawn uniformly from 0 to r - 1
+  T1 = a·HSk + b·HRand
+  T2 = a·B
+  if T1 or T2 is the identity, draw a and b again
+  c   = Hz("weft-scope-proof v1", [issuerKeyHash, channel, electionId, tracking,
+                                   B, Nym, P, T1, T2])
+  ssk = a + c·sk    mod r
+  sr  = b + c·rNym  mod r
+  proof = (P, c, ssk, sr)
+```
+
+The parts of the challenge, in this order:
+
+| Part | Bytes |
+|---|---|
+| The label | The UTF-8 bytes of `weft-scope-proof v1`. |
+| `issuerKeyHash` | The 32 bytes of SHA-256 of the issuer public key's bytes, as Fabric CA writes the `IssuerPublicKey` file and serves it from `/cainfo`. It is the record's `voters.issuerKeyHash` as bytes, and not the key's own `hash` field, which IBM idemix computes differently. |
+| `channel`, `electionId` | Their UTF-8 bytes. |
+| `tracking` | The ballot's 32-byte [tracking code](#the-tracking-code). |
+| `B`, `Nym`, `P`, `T1`, `T2` | Each as its 64-byte encoding. `Nym` is the creator's `nym_x` followed by `nym_y`, exactly as the transaction carries them. |
+
+```text
+verify (P, c, ssk, sr), given Nym from the creator, HSk and HRand from the
+pinned issuer key, and the tracking code the contract computed:
+  T1' = ssk·HSk + sr·HRand - c·Nym
+  T2' = ssk·B - c·P
+  refuse if T1' or T2' is the identity
+  accept if c = Hz("weft-scope-proof v1", [issuerKeyHash, channel, electionId, tracking,
+                                          B, Nym, P, T1', T2'])
+```
+
+Before that, the verifier has decoded P and Nym as points of G1, which refuses the identity, and c, ssk and sr as scalars below r. A proof that fails any of these is refused. In the contract, decoding failures have the [parsing messages](/experimental/contract-api/#errors) and every other failure has "The pseudonym proof is not valid."
+
+`a` and `b` are secret, like the encryption randomness, and Weft discards them, and the identity's rNym, once the transaction's commit status is in.
+
+### The proof as an argument
+
+`pseudonymJson`, the third argument of `CastAnonymousBallot`, is:
+
+```json
+{ "pseudonym": "<128 hex>", "c": "<64 hex>", "ssk": "<64 hex>", "sr": "<64 hex>" }
+```
+
+`pseudonym` is P's 64-byte encoding, and `c`, `ssk` and `sr` are scalars, all in lowercase hex. It is parsed as every other argument is ([Parsing the contract's arguments](#parsing-the-contracts-arguments)), with "The pseudonym proof" in the messages, and its values decode in the order `pseudonym`, `c`, `ssk`, `sr`. It is 160 bytes, and 360 characters as JSON. The contract stores it with the ballot, and explorers publish it.
+
+### Security argument
+
+This is the argument the external review checks, alongside the private tally's. The proof is a Schnorr proof of knowledge of sk and rNym such that Nym = sk·HSk + rNym·HRand and P = sk·B, made non-interactive with the Fiat-Shamir transform, with every public value of the statement in the challenge.
+
+- The proof is complete. For an honest prover, T1' = (a + c·sk)·HSk + (b + c·rNym)·HRand - c·(sk·HSk + rNym·HRand) = a·HSk + b·HRand = T1, and T2' = (a + c·sk)·B - c·sk·B = a·B = T2, so the verifier computes the same c.
+- It is special sound. Two accepting answers (c, ssk, sr) and (c', ssk', sr') to the same T1 and T2, with c ≠ c', give sk = (ssk - ssk')/(c - c') and rNym = (sr - sr')/(c - c') mod r, which satisfy both equations. With Hz modelled as a random oracle, the forking lemma turns any prover that convinces the verifier into one that knows sk and rNym.
+- It is honest-verifier zero knowledge. Picking c, ssk and sr uniformly and setting T1 = ssk·HSk + sr·HRand - c·Nym and T2 = ssk·B - c·P, with the oracle answering c, gives transcripts with exactly the distribution of real ones, because a and b are uniform. The proof shows nothing about sk or rNym beyond the two equations.
+- It binds P to the credential behind the Nym. The peer's idemix MSP has checked the creator's proof that its Nym is sk·HSk + rNym·HRand for the sk of a credential from the channel's issuer key. A prover that could also prove Nym = sk*·HSk + r*·HRand with sk* ≠ sk would know log_HRand(HSk) = (r* - rNym)/(sk - sk*) mod r. Without that logarithm, a credential holder can make a valid proof only for P = sk·B with the sk inside its credential. The issuer chose HSk and HRand, and IBM idemix makes each as a random multiple of G1's generator, so an issuer that kept those scalars could give one credential several pseudonyms. That issuer can already issue several credentials, and one vote per person already depends on the voters' CA ([Voter credentials](/experimental/voter-credentials/#which-credentials-can-vote)).
+- A credential has one pseudonym in an election. P is a function of sk and B, and B of the channel and the election ID, so a credential has one P, and one voter tag, in an election.
+- Pseudonyms can't be linked across elections. For two elections, B_1 and B_2 are independent outputs of HashToG1, and nobody knows their logarithms to each other or to the issuer key's points. Telling whether P_1 = sk·B_1 and P_2 = sk·B_2 have the same sk is the decisional Diffie-Hellman problem in G1. FP256BN's pairing is asymmetric (type 3), so DDH in G1 isn't broken by the pairing, and is believed hard there (the XDH assumption). The same holds for the voters' CA, which saw sk·HSk in the credential request: linking it to a P is DDH in G1 too.
+- A proof belongs to one transaction and one ballot. The challenge covers the issuer key's hash, the channel, the election ID, the tracking code, B, the Nym and P. A proof copied into another transaction is checked against another Nym, and a proof moved to another ballot against another tracking code, and either fails. The Nym signature covers the whole proposal, the arguments included, so no one without sk and rNym can change the ballot or the proof under a valid Nym. The statement in the challenge is the strong Fiat-Shamir form, whose absence allowed forged proofs in Helios (Bernhard, Pereira and Warinschi).
+- Hz is biased by about 2^-46, which changes no step above by more than that. HashToG1 is try-and-increment rather than an RFC 9380 map, and its outputs aren't uniform over G1, since an x that follows a run of non-squares is likelier. The argument needs only that nobody knows the logarithm of B to the issuer key's points or to another election's B, which the review checks for this map.
+- FP256BN is below the 128-bit level it was chosen for (see [What isn't hidden](/experimental/what-is-not-hidden/#fabrics-limits)), which ADR 0008 accepts for ballots that close within days.
+
+### Where the prototype differs
+
+The study's prototype (`lib.go`, `ScopePseudonym` and `VerifyScopePseudonym`) is the starting point for the Go package, which version 1 changes:
+
+- B was HashToG1 of `weft-scope-v1`, a zero byte and the election ID, with no framing and without the channel.
+- The challenge was HashToZr of `weft-scope-proof-v1`, a zero byte, the x and y of B, Nym, P, T1 and T2, the issuer key's own `hash` field, the election ID, a zero byte and the context, with no framing. Version 1 frames every part, puts the statement before the commitments, uses issuerKeyHash, which the election pins and explorers compare with the channel's configuration, and adds the channel.
+- Its context was the prototype contract's ballot commitment. Version 1's is the tracking code.
+- Its fields were base64. Version 1's are lowercase hex, like every other point and scalar in the contract's arguments.
+- It didn't refuse scalars of r or more, and didn't check T1' and T2' for the identity.
+- Its labels, `weft-scope-v1` and `weft-scope-proof-v1`, weren't in the style of the scheme's other labels.
 
 ## Totals
 
@@ -366,6 +537,7 @@ Find each count `t_j` in 0 to N by stepping from 0. Refuse the tally if any `t_j
 | Round 1 post, a threshold of 2 | 371 bytes as JSON, with the one-time key |
 | Round 2 post, three trustees | 440 bytes as JSON |
 | Confirmation | 143 bytes as JSON |
+| Pseudonym proof, with a voter credential | 160 bytes, 360 as JSON |
 
 ## Timings
 
@@ -383,6 +555,7 @@ The proofs exist twice, so the two implementations are tied together by vectors 
 - Provers take their randomness as an argument through `@weftwallet/tally/testing`, so the TypeScript side can reproduce a vector and the Go side, which never proves ballots, can check the same bytes.
 - The key ceremony vectors fix noble's round 1 proof bytes, the derived key and verifying shares, the share encryption with a fixed nonce, and the confirmation proofs.
 - Negative vectors are inputs that must be refused, each with the contract's exact error message from the [error table](/experimental/contract-api/#errors): the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), ballots whose own ciphertexts repeat, with proofs that verify, and non-canonical points and scalars, identity points, unknown fields, missing fields, wrong types and wrong lengths, for ballots, every ceremony post, decryption shares and the tally.
+- The per-election pseudonym has vectors of its own, in `packages/idemix/vectors/v1/pseudonym.json`, from fixed sk, rNym, a and b, with B, P, every framed challenge input, T1, T2, c, ssk, sr and the voter tag. The pseudonym package's Go tests and the WebAssembly module's tests read them. Its negative vectors carry the contract's messages: a proof for another Nym, another election, another channel, another tracking code or another issuer key, P as an off-curve point, a scalar of r or more, and a proof replayed in another transaction.
 - A change to the scheme changes the vectors first. A new label version is the only way to change an encoding, and its vectors go in a new folder, `v2/`.
 
 ## What is library code
@@ -391,4 +564,6 @@ From `@noble/curves` 2.4.0 (MIT): the ristretto255 group (RFC 9496), hashing to 
 
 In Go, the group comes from `github.com/gtank/ristretto255` v0.2.0 on `filippo.io/edwards25519` v1.2.0 (both BSD 3-Clause), and SHA-256 and SHA-512 from the standard library. `filippo.io/edwards25519` is the standard library's edwards25519 code, which was in the scope of Trail of Bits' 2025 audit of Go's cryptography. No published audit of `gtank/ristretto255` itself was found. The [contract's README](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/private-ballot-contract) gives the reasons for the choice.
 
-Hand-written, and to be reviewed: the encryption, the 0-or-1, sum, share and confirmation proofs, the share encryption's construction, the check that names the sender of a bad share, the Lagrange combination, the count search, the framing and the strict JSON parsing. In Go, `expand_message_xmd`, the check of noble's DKG proof and every verifier are hand-written too, and `gtank/ristretto255`'s encoding layer joins the review.
+For the per-election pseudonym, in Go only: FP256BN's group, HashToG1 and HashToZr from IBM mathlib v0.3.2 on AMCL (`hyperledger/fabric-amcl`), and the issuer key's decoding from IBM idemix v0.3.1, both Apache 2.0. Fabric's idemix MSP runs the same code. No published audit of either was found.
+
+Hand-written, and to be reviewed: the encryption, the 0-or-1, sum, share and confirmation proofs, the share encryption's construction, the check that names the sender of a bad share, the Lagrange combination, the count search, the framing and the strict JSON parsing. In Go, `expand_message_xmd`, the check of noble's DKG proof and every verifier are hand-written too, and `gtank/ristretto255`'s encoding layer joins the review. So do the pseudonym proof, its prover and verifier, its encodings and the [security argument](#security-argument) above.

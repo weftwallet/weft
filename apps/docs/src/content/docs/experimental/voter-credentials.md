@@ -1,6 +1,6 @@
 ---
 title: Voter credentials
-description: "Idemix voter credentials in Weft Experimental: the voters' CA, enrolment from an invite, the per-election pseudonym, what Weft stores, the relay and the explorer."
+description: "Idemix voter credentials in Weft Experimental: the voters' CA, which credentials can vote, enrolment from an invite, the per-election pseudonym, what Weft stores, the relay and the explorer."
 ---
 
 :::caution[Experimental]
@@ -9,7 +9,7 @@ This page describes Weft Experimental, a separate build that is not part of the 
 
 A voter credential is an Idemix credential from an election's own idemix CA. Weft Experimental holds it and uses it for one thing: casting ballots with [`weft_castBallot`](/experimental/cast-ballot/) in that election. A ballot signed with it names the voter organisation, an affiliation every voter shares and a role, and not the voter. ([ADR 0008](/reference/decisions/))
 
-Weft never connects a voter credential to a site, `weft_identity` never returns it, and `weft_signIn` isn't offered for it.
+A voter credential is never Weft's active identity. Weft lists it under Identities in a group of its own, named by the election's title, and never offers it in Home's identity picker or to `weft_connect`, `weft_identity`, `weft_signIn`, `weft_submit` or `weft_evaluate`. A site can't reach it, and only `weft_castBallot` uses it, for the election it was issued for. With only voter credentials, Weft has no identity for sites: Home says so, and `weft_connect` fails with `4300`. A voter credential has no expiry, so the certificate watch skips it.
 
 ## For the organisers: the voters' CA
 
@@ -17,25 +17,40 @@ Each election gets its own issuer key, because Fabric's idemix has no revocation
 
 1. Run a Fabric CA server for the election, with its own CA name, for example `ca-chair-2027`. Its `fabric-ca-server init` writes the idemix `IssuerPublicKey` and `IssuerRevocationPublicKey`. Each election has its own CA server, as in the playground.
 2. Create a channel for the election, for example `privatevote-chair-2027`, with the trustee organisations and one idemix organisation: an MSP of type idemix, for example `ChairVoters2027MSP`, whose MSP folder holds those two keys. Fabric recommends one idemix MSP per channel, because the MSP ID tells idemix organisations apart. A channel per election also keeps elections apart: one election's voters can't read another's ballots, and closing one election changes no other channel.
-3. Register every voter with the same affiliation, for example `voters`, and `maxenrollments 1`:
+3. Add an affiliation for the voters, for example `voters`, and register every voter in it, as a client with `maxenrollments 1` and no `role` attribute:
 
    ```sh
+   fabric-ca-client affiliation add voters
    fabric-ca-client register --caname ca-chair-2027 \
      --id.name voter1 --id.secret <secret> --id.type client \
      --id.affiliation voters --id.maxenrollments 1
    ```
 
-   The affiliation is disclosed in every transaction, so a unique one would name the voter.
-4. Never issue an X.509 certificate to a voter ID. Fabric CA's idemix endpoint also accepts a token signed with an X.509 enrolment certificate, and that route isn't counted against `maxenrollments`. In the prototype, a voter with an X.509 certificate got three credentials and voted three times.
-5. Create the election with `voters.kind` `idemix`, naming the MSP and pinning the issuer public key ([`CreateElection`](/experimental/contract-api/#createelection)).
-6. Before opening the election, count the credentials issued per enrolment ID in the CA's `credentials` table. Each voter must have at most one.
-7. Publish a voter invite, and give each voter their enrolment ID and secret.
+   The affiliation is disclosed in every transaction, so a unique one would name the voter. Register nothing but voters in it: the contract accepts a credential with that affiliation from any identity the CA registered there.
+4. Let voters reach the CA only through a proxy that passes `GET /api/v1/cainfo` and `POST /api/v1/idemix/credential` with basic authorisation, and refuses every other request, including token authorisation and `/api/v1/enroll`. Keep the CA's own address for the organisers' registrations. Fabric CA's idemix endpoint also accepts a token signed with an X.509 enrolment certificate, and that route isn't counted against `maxenrollments`: in the prototype, a voter with an X.509 certificate got three credentials and voted three times. The proxy keeps every voter ID from getting an X.509 certificate or using that route. It also serves HTTPS with a certificate browsers trust, which Fabric CA's own TLS certificate isn't.
+5. Create the election with `voters.kind` `idemix`, naming the MSP, the affiliation and the role `member`, and pinning the issuer public key and its SHA-256 ([`CreateElection`](/experimental/contract-api/#createelection)). `weft-trustee create --voter-credentials ChairVoters2027MSP --issuer-key <file>` reads the key file and works out the hash and the curve.
+6. Publish a [voter invite](#the-voter-invite), and give each voter their enrolment ID and secret.
+7. Count the credentials issued per enrolment ID, in the CA's `credentials` table, while voters enrol and again before the trustees close the election. Each voter must have at most one. Voters enrol while the election is open, so a count made before it opens finds none. An ID with more than one can vote more than once, and credentials can't be revoked: cancel the election if it is still in `keygen`, and otherwise tell the voters and run a new election under a new issuer key.
 
 The CA operator decides who is a voter and can register IDs that no person holds. Nothing on the ledger shows that, so the voter roll is a matter for the organisers, as it is for any election.
 
+The playground follows these steps for each voters' CA. Its CA proxy for the browser, `ca-proxy.mjs`, passes only the two requests above. `pnpm playground:credentials <election>` counts the credentials per enrolment ID, `pnpm playground:up --experimental` and `pnpm playground:count` run that count every time, and `playground:count` refuses to close an election in which an ID has more than one, unless given `--accept-extra-credentials`. The CA's own port stays open on the machine for the playground's registrations, so a tester can reach it directly, and the count is what finds a credential obtained that way.
+
+## Which credentials can vote
+
+An idemix organisation in the channel accepts every credential from its issuer key, whatever its organisational unit and role. Fabric CA issues credentials to more identities than the voters. With Fabric CA's default configuration, its bootstrap admin can enrol for idemix credentials as often as it likes, with the root affiliation, which is an empty organisational unit, and the role member. Any identity a registrar creates gets credentials with that identity's affiliation, and with the admin role if the registrar gives it the attribute `role=2`. With token authorisation, any holder of an X.509 certificate from the CA gets as many credentials as it asks for, with its own affiliation and role.
+
+`CastAnonymousBallot` therefore accepts a ballot only when:
+
+- the creator's MSP ID is the election's voter MSP;
+- the creator is an idemix identity, not an X.509 one;
+- the creator's organisational unit is the affiliation the election names, and its role is member. The peer's idemix MSP has already checked that the credential behind the transaction's Nym carries both, so a creator can't claim them.
+
+These refuse the bootstrap admin's credentials, the credentials of every identity outside the voters' affiliation, and every admin credential, whichever route issued them. They can't tell two credentials of one voter ID apart, or a voter from an ID a registrar added to the affiliation. Steps 3, 4 and 7 above cover the first, and the CA operator is trusted with the voter roll for the second.
+
 ## The voter invite
 
-A voter invite is a JSON document, served over HTTPS and shared as a link, like an [organisation's invite](/operators/invites/). It has no `weft` field, so normal Weft refuses it ('"weft" must be 1') and a voter can't spend their one enrolment on an X.509 certificate by accident.
+A voter invite is a JSON document, served over HTTPS and shared as a link, like an [organisation's invite](/operators/invites/). The election's relay serves it, at `/.well-known/weft-voter-invite/<election>.json`.
 
 ```json
 {
@@ -43,108 +58,132 @@ A voter invite is a JSON document, served over HTTPS and shared as a link, like 
   "network": "Weft Playground",
   "organization": "Chair 2027 voters",
   "mspId": "ChairVoters2027MSP",
+  "affiliation": "voters",
   "caUrl": "https://ca.voters.example.org",
   "caName": "ca-chair-2027",
   "relayUrl": "https://relay.election.example.org",
+  "relayOperator": "Example Election Services",
   "channel": "privatevote-chair-2027",
   "chaincode": "private-ballot",
   "electionId": "chair-2027",
   "issuerKeyHash": "<64 hex characters>",
   "curve": "FP256BN_AMCL",
+  "endorsers": [
+    { "mspId": "Org1MSP", "caChain": "-----BEGIN CERTIFICATE-----\n…" },
+    { "mspId": "Org2MSP", "caChain": "-----BEGIN CERTIFICATE-----\n…" }
+  ],
   "explorerUrl": "https://explorer.org1.example.org"
 }
 ```
 
-`issuerKeyHash` is SHA-256 of the `IssuerPublicKey` bytes the CA serves. `relayUrl` is the election's relay, which may differ from the organisations' own (see [The relay](#the-relay)).
+- `issuerKeyHash` is SHA-256 of the `IssuerPublicKey` bytes the CA serves, the same value the election pins.
+- `affiliation` is the affiliation every voter's credential carries, which the election pins too.
+- `relayUrl` is the election's relay, which may differ from the organisations' own (see [The relay](#the-relay)), and `relayOperator` is the name of whoever runs it, which the invite's review and Weft's approval window show.
+- `endorsers` lists each trustee organisation's MSP ID and CA chain, in PEM, which Weft checks the election's peer signatures against (see [Reading the election](#reading-the-election)).
+
+A voter invite has no `weft` field. Normal Weft recognises `weftVoterInvite` before any other check, and says "This is a voter invite for an election, and only Weft Experimental can hold voter credentials." It never enrols from it, so a voter can't spend their one enrolment on an X.509 certificate by accident, and isn't sent to ask the organisers for a new invite that would fail the same way.
+
+Weft trusts the voter invite for the issuer key, the relay, its operator and the endorsers' CA chains, as it trusts an organisation's invite for its CA and relay. A forged invite could name another network entirely, and the voter's check against it is the [election fingerprint](/experimental/private-tally-spec/#the-election-fingerprint), which every explorer shows.
 
 ## Enrolment
 
-When the voter opens a voter invite, Weft Experimental shows what they are joining, asks for the enrolment ID and secret, and then:
+When the voter opens a voter invite, Weft Experimental shows what they are joining: the election, the network, the voter organisation, the relay and who runs it, and that the credential can't be revoked. It asks for the enrolment ID and secret, and then:
 
-1. Reads the CA's `/cainfo` for the CA name and compares SHA-256 of its issuer public key with `issuerKeyHash`. If they differ, it stops: "The voters' CA has a different issuer key from the invite's. Ask the election's organisers."
-2. Sends an empty request to `/api/v1/idemix/credential` with the enrolment ID and secret, and gets a nonce and the issuer key.
-3. Loads the idemix module, draws a secret key and builds the credential request, bound to the nonce.
-4. Sends the request to the same endpoint, again with the enrolment ID and secret, and gets the credential and the credential revocation information.
-5. Checks the credential against the issuer key and its attributes: the organisational unit, the role and the enrolment ID.
-6. Seals the secret key and the credential, and saves the voter credential.
+1. Checks that it holds no voter credential for this election. If it does, it stops: "Weft already holds a voter credential for this election."
+2. Asks for host access to the voters' CA, once, as for any CA.
+3. Reads the CA's `/cainfo` and compares SHA-256 of its issuer public key with `issuerKeyHash`. If they differ, it stops: "The voters' CA has a different issuer key from the invite's. Ask the election's organisers."
+4. Starts the idemix module in a dedicated worker of the popup, and loads the issuer key. If the module doesn't start, it stops: "Weft Experimental's voting module didn't start, so nothing was sent to the voters' CA. Try again."
+5. Sends an empty request to `/api/v1/idemix/credential` with the enrolment ID and secret, and gets a nonce. The module draws a secret key and builds the credential request, bound to the nonce, and Weft sends it to the same endpoint, again with the enrolment ID and secret. The CA answers with the credential and the credential revocation information, and counts the one enrolment.
+6. Checks the credential against the issuer key and its attributes: the invite's affiliation, the role member and the enrolment ID. If it doesn't check out, Weft keeps nothing and says: "The voters' CA issued a credential that doesn't check out, so Weft didn't keep it. The CA has counted your one enrolment: ask the election's organisers to register you again."
+7. Seals the credential's secrets, saves the voter credential with the invite's election, channel, relay, relay operator and endorsers, and terminates the worker.
 
-It never asks the CA for an X.509 certificate for that ID, and never uses token authorisation. A second enrolment with the same secret fails at the CA ("Authentication failure"), as `maxenrollments 1` requires.
+Nothing secret is sent before step 5, so a CA with another issuer key, or a module that won't start, leaves the voter's one enrolment unused. Step 6 can't come earlier, because the credential is what the CA's answer carries, and by then the CA has counted the enrolment.
+
+Weft never asks the CA for an X.509 certificate for that ID, and never uses token authorisation. A second enrolment with the same secret fails at the CA ("Authentication failure"), as `maxenrollments 1` requires.
 
 ## What Weft stores
 
 | Field | Stored |
 |---|---|
 | MSP ID, curve, issuer public key, revocation public key | Readable |
-| Organisational unit and role | Readable |
-| Enrolment ID | Readable, on this device only. It is sent to the CA during enrolment and never afterwards. |
-| Credential revocation information, revocation handle | Readable |
-| Channel, contract and election ID, from the invite | Readable |
-| Secret key and credential | Sealed with AES-GCM, under a key derived from the vault key with HKDF-SHA-256 (info `weft voter credentials v1`), with the record's ID as additional data |
+| Affiliation and role | Readable. Every voter of the election has the same. |
+| Channel, contract, election ID and title, relay, relay operator and endorsers' CA chains, from the invite | Readable |
+| Secret key, credential, enrolment ID, credential revocation information and revocation handle | Sealed with AES-GCM, under a key derived from the vault key with HKDF-SHA-256 (info `weft voter credentials v1`), with the record's ID as additional data |
+| An anonymous ballot's activity: its transaction ID, block, tracking code and receipt | Sealed the same way, and shown only while Weft is unlocked |
 
-The secret key is a scalar used inside WebAssembly, so it can't be a non-extractable `CryptoKey` like Weft's other keys. Weft opens it into the module's memory to sign, while Weft is unlocked. Go's garbage collector doesn't guarantee those bytes are wiped afterwards.
+The enrolment ID and the activity are sealed because, readable side by side, they would tie the voter to the ballot's transaction for anyone who can read the browser's files, such as the administrator of an organisation's managed device.
 
-A voter credential has no expiry, so the certificate watch doesn't apply. Removing it deletes it, and with `maxenrollments 1` the voter can't enrol again for that election. Weft says so before removing it.
+The secret key is a scalar used inside WebAssembly, so it can't be a non-extractable `CryptoKey` like Weft's other keys. Weft opens it in the worker of the page that signs, while Weft is unlocked, and terminates the worker when the page is done. The module zeroes its own copies of the key once each transaction's identity is disposed of, but Go may copy it while computing and doesn't guarantee to wipe those copies. Ending the worker frees every one.
+
+Removing a voter credential deletes it, and with `maxenrollments 1` the voter can't enrol again for that election. Weft says so before removing it.
 
 ## Signing
 
-Weft signs with IBM's idemix library, the one Fabric's idemix MSP uses, compiled from Go to WebAssembly. About 300 lines of Go around the library build the CA credential request, check the credential, make a fresh identity, make the Nym signature and make the per-election pseudonym. Only Weft Experimental carries the module, 13.0 MB or 3.0 MB gzipped, and it loads only when a voter credential is used. Starting it takes about half a second, and it starts again each time the browser stops Weft's background worker.
+Weft signs with IBM's idemix library, the one Fabric's idemix MSP uses, compiled from Go to WebAssembly. About 300 lines of Go around the library build the CA credential request, check the credential, make a fresh identity, make the Nym signature and make the per-election pseudonym. Only Weft Experimental carries the module, 13.0 MB or 3.0 MB gzipped, and it loads only when a voter credential is used.
 
-- Weft makes a new idemix identity, with a new pseudonym (Nym) and proof, for every transaction, so two transactions from one credential can't be linked through the creator field. That takes 171 to 254 ms.
+The module runs in a dedicated worker that the page needing it starts, the popup to enrol and the approval window to read the election and vote, and terminates when it is done. Weft's background worker never runs it: Chrome's extension service worker can't start a worker, can stop during the module's start, and would keep the secret key in memory between votes. The background worker still makes the relay calls, and passes the window's worker the bytes to sign. Starting the module took about half a second in the prototype, in Node.
+
+- Weft makes a new idemix identity, with a new pseudonym (Nym) and proof, for every transaction, so two transactions from one credential can't be linked through the creator field. That took 171 to 254 ms in the prototype.
 - It signs the inner message bytes, the same bytes it signs with ECDSA for an X.509 identity: the proposal, the transaction and the commit status request, 5 to 13 ms each. It never signs fabric-gateway's wrapper bytes, which the peer refuses.
 - Weft's proposal check compares the transaction's creator byte for byte with the identity Weft made for that request.
 - Weft Experimental's extension pages have `script-src 'self' 'wasm-unsafe-eval'; object-src 'self';` as their content security policy. Chrome's Manifest V3 default disables WebAssembly, and Firefox needs the same policy. Normal Weft's manifest doesn't have it.
+- The module is built from Go source in `packages/idemix`, with a pinned Go toolchain and pinned modules, and only its SHA-256 is committed. The build refuses a module with another hash, and building it twice gives the same bytes.
+
+## Reading the election
+
+A voter credential's organisation has no peers, so the check that a peer of the voter's own organisation signed the election ([Reading the election](/experimental/cast-ballot/#reading-the-election)) has no meaning for it. Weft reads `GetElection` through the invite's relay, signed by a one-off identity made from the credential, and accepts the answer only when:
+
+- its proposal hash is the hash of the proposal Weft signed, it comes from the contract the site named, and its status is 200, as for any read;
+- it carries at least one endorsement, and every endorsement comes from an MSP that the invite's `endorsers` lists, with a certificate that has the `peer` role, chains to that MSP's CA chain in the invite and is in date, and a signature over the proposal response and the endorser that verifies.
+
+Otherwise the request fails with `4400`. The window says which organisations' signatures Weft checked. The invite is already the source Weft trusts for the election's issuer key, so pinning the endorsers' CA chains in it adds no party to trust.
 
 ## The per-election pseudonym
 
 The transaction's Nym changes every time, so on its own it can't stop a second vote. Weft adds a pseudonym that is the same for one credential within one election, and unrelated across elections:
 
 ```text
-B   = HashToG1("weft-scope-v1" || 0x00 || electionId)
-P   = B^sk                         the per-election pseudonym
-Nym = HSk^sk · HRand^r             the transaction's pseudonym, from its creator
-
-prove:
-  a, b = random elements of Zr
-  t1 = HSk^a · HRand^b
-  t2 = B^a
-  c  = HashToZr("weft-scope-proof-v1" || 0x00 || B || Nym || P || t1 || t2
-                || issuerKeyHash || electionId || 0x00 || tracking)
-  s1 = a + c·sk
-  s2 = b + c·r
-
-verify:
-  t1' = HSk^s1 · HRand^s2 · Nym^(-c)
-  t2' = B^s1 · P^(-c)
-  accept if P isn't the identity and c = HashToZr(... B, Nym, P, t1', t2' ...)
+B   = H1("weft-scope v1", [channel, electionId])     hashed to a point of G1
+P   = sk·B                                           the per-election pseudonym
+Nym = sk·HSk + rNym·HRand                            the transaction's pseudonym, from its creator
+proof (P, c, ssk, sr): P and Nym have the same sk, bound to the ballot's tracking code
 ```
 
-`HSk` and `HRand` come from the issuer public key, `HashToG1` and `HashToZr` are IBM mathlib's for the `FP256BN_AMCL` curve, points are written as their X and Y coordinates, and `tracking` is the ballot's 32-byte tracking code. `pseudonymJson` carries P, c, s1 and s2 in base64, 160 bytes in all.
+The [specification](/experimental/private-tally-spec/#the-per-election-pseudonym) defines the bytes, the checks and the security argument. `pseudonymJson` carries `pseudonym`, `c`, `ssk` and `sr` in lowercase hex, 160 bytes in all.
 
 The proof shows the sk behind P is the sk inside the transaction's Nym, which the peer has already checked against the channel's issuer key. It is bound to that Nym and to the ballot, so another voter can't reuse it, and a replay was refused in the prototype. Pseudonyms in different elections can't be linked, under the decisional Diffie-Hellman assumption in G1. The enrolment ID isn't used as the input, because the CA and anyone with the voter list know it.
 
-The voter tag that binds the ballot's proofs is made from P (see the [specification](/experimental/private-tally-spec/#the-voter-tag)), and the contract marks the tag as voted. This proof is Weft's own cryptography, about 150 lines of Go, and needs an external review.
+The voter tag that binds the ballot's proofs is made from P (see the [specification](/experimental/private-tally-spec/#the-voter-tag)), and the contract marks the tag as voted. Weft's approval window, its transaction detail and explorers show that tag as the ballot's Pseudonym, shortened to its first and last 8 hex characters as a tracking code is, so the voter can find their ballot. This proof is Weft's own cryptography, about 150 lines of Go in the contract's `pseudonym` package, which the WebAssembly module compiles too, and needs an external review.
 
 ## The relay
 
-The relay accepts an idemix signer, `{ "mspId": "ChairVoters2027MSP", "idemixIdentity": "<base64>" }`, and passes it to fabric-gateway as credentials. It caches no gateway for it, so each vote gets a new one. It still holds no secret, and builds and forwards messages exactly as for an X.509 signer.
+The relay accepts an idemix signer, `{ "mspId": "ChairVoters2027MSP", "idemixIdentity": "<base64>" }`, and passes it to fabric-gateway as credentials. It caches no gateway for it: each request gets a new one, closed after the commit status. It still holds no secret, and builds and forwards messages exactly as for an X.509 signer.
 
-It accepts idemix signers only when started with `WEFT_EXPERIMENTAL=1`, and only from the MSP IDs in `WEFT_IDEMIX_MSP_IDS`.
+It accepts idemix signers only when started with `WEFT_EXPERIMENTAL=1`, and only from the MSP IDs in `WEFT_IDEMIX_MSP_IDS`. It logs nothing for a request that carries an idemix signer: no request line, no network address, and no error that includes the signer.
 
 The relay sees the voter's network address and the time of each request. With the private tally it sees only ciphertext, but the address may still identify the voter. The election's relay therefore:
 
 - is run by a party that doesn't count the election and isn't a trustee;
 - keeps no request logs, at the relay or at any proxy in front of it;
-- is named in Weft's approval window and in the voter invite.
+- is named in the voter invite's `relayOperator`, which the invite's review and Weft's approval window show.
+
+The playground's elections use Org1's relay, a trustee's, which a real election rules out. The playground hides nothing from whoever runs it, and its voter invites name the relay's operator as Weft Playground.
 
 ## What the explorer shows
 
 An explorer started with `WEFT_EXPERIMENTAL=1`, with the channel's `privateElections: private-ballot` in its policy:
 
-- reads idemix organisations in the channel configuration and shows each issuer key's hash;
-- labels anonymous submitters "Anonymous member of ChairVoters2027MSP" and doesn't show the Nym;
-- compares each election's pinned issuer key with the voter organisation's key in the configuration block, and warns on the election page if they differ;
-- in the full check, verifies every ballot's pseudonym proof and counts distinct pseudonyms, which must equal the number of ballots. It does this with the same idemix module, loaded only when a visitor asks for the full check of an election with voter credentials.
+- reads idemix organisations in the channel configuration and shows SHA-256 of each issuer key;
+- compares each election's `issuerKeyHash` with SHA-256 of the voter organisation's key in the configuration block, and warns on the election page if they differ;
+- shows, in the election's Voters row, the voter organisation, the affiliation, the role, and that the credentials can't be revoked;
+- labels an anonymous submitter "Anonymous member of ChairVoters2027MSP", and publishes the anonymous creator in its JSON API and on the transaction page, even where its policy hides submitters: the MSP ID, the affiliation, the role, the one-off Nym and the proof that the Nym belongs to a credential from the issuer key. These name no one and link nothing, and the browser's full check needs the Nym to check each pseudonym proof. The election page shows the label and not the Nym's bytes;
+- shows each ballot's voter tag in a Pseudonym column, as Weft's window does, and publishes P and the tag in its JSON API;
+- checks each anonymous ballot's creator and pseudonym proof as it indexes the block, and in the full check verifies every ballot's pseudonym proof and that no voter tag repeats. The full check does this with the same idemix module, loaded in one worker only when a visitor asks for the full check of an election with voter credentials.
+
+## No revocation
+
+Fabric can't revoke a voter credential, and it has no expiry. Weft Experimental says so on the credential's detail and, in one sentence, in the voter invite's review, before the voter types the secret. Explorers say so in the election's Voters row. The approval window doesn't, because at that point it changes nothing the voter can do. [What isn't hidden](/experimental/what-is-not-hidden/#fabrics-limits) has the reasons.
 
 ## What a ballot still shows
 
-A ballot shows the voter organisation's MSP ID, the shared affiliation, the role, a one-off Nym, the per-election pseudonym P, the encrypted ballot and the time. It doesn't show the enrolment ID or the revocation handle. [What isn't hidden](/experimental/what-is-not-hidden/) has the rest.
+A ballot shows the voter organisation's MSP ID, the shared affiliation, the role, a one-off Nym with its proof, the per-election pseudonym P with its proof, the encrypted ballot and the time. It doesn't show the enrolment ID or the revocation handle. [What isn't hidden](/experimental/what-is-not-hidden/) has the rest.

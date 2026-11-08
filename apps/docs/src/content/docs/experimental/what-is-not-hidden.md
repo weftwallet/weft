@@ -24,10 +24,10 @@ The [private tally](/experimental/private-tally-spec/) hides the choice and [vot
 
 | Party | Still sees |
 |---|---|
-| The relay | The voter's network address and the time of each request, which may identify the voter, and the encrypted ballot. With X.509 voters, the certificate too. |
+| The relay | The voter's network address and the time of each request, which may identify the voter, and the encrypted ballot. With X.509 voters, the certificate too. Weft's relay logs nothing for a request with a voter credential, but the network and any proxy in front of it still see the address. |
 | The voters' CA operator | Who holds a credential, and when they enrolled. It can't link a credential to a ballot. |
 | Any k trustees together | Any single ballot, by combining their shares on it rather than on the totals. Nothing on the ledger would show that they did. With X.509 voters they also see whose ballot it is. |
-| Weft, on the voter's device | The choice and the encryption randomness while it builds the ballot, and the voter credential's secret key while it signs. Anything that can read Weft's memory at that moment, such as a compromised browser, can see them too, and a bug or a side channel in JavaScript that leaks the randomness reveals the vote. |
+| Weft, on the voter's device | The choice and the encryption randomness while it builds the ballot, and the voter credential's secret key while the approval window's worker signs. Anything that can read Weft's memory at that moment, such as a compromised browser, can see them too, and a bug or a side channel in JavaScript that leaks the randomness reveals the vote. |
 | Someone beside the voter | Whatever is on the screen. |
 
 ### Coercion and vote selling
@@ -48,7 +48,7 @@ A voter credential hides a voter among the other voters of the same organisation
 
 ### The election key
 
-Weft reads the election through the relay, by endorsing `GetElection` without submitting, and checks that a peer of the voter's own organisation signed the answer. That check needs the organisation's CA chain from enrolment, which Weft doesn't keep today, and a voter credential's organisation has no peers. Without the check, a dishonest relay could substitute a key it holds and read that one ballot, which the contract would then refuse, and the voter's check is the election fingerprint in the approval window, which explorers show too.
+Weft reads the election through the relay, by endorsing `GetElection` without submitting, and checks the peers' signatures on the answer. For an X.509 voter, Weft Experimental checks that a peer of the voter's own organisation signed it, against the CA chain it keeps from enrolment. An identity imported from files, or enrolled before Weft Experimental kept the chain, has none, and Weft reads without the check. For a voter credential, whose organisation has no peers, it checks every endorsement against the trustee organisations' CA chains that the voter invite pins ([Reading the election](/experimental/voter-credentials/#reading-the-election)), so it trusts the invite for those as it does for the issuer key. Without a check, a dishonest relay could substitute a key it holds and read that one ballot, which the contract would then refuse, and the voter's check is the election fingerprint in the approval window, which explorers show too.
 
 The Pedersen key generation lets a participant bias the distribution of the joint key (Gennaro, Jarecki, Krawczyk and Rabin). FROST and ElectionGuard accept this, and the private tally claims no more than they do.
 
@@ -64,7 +64,8 @@ Verification limits how many ballots a second an endorsing peer accepts: checkin
 
 These come from Fabric. Weft doesn't fix them for now, and upstream changes are left for later:
 
-- Fabric CA's idemix credentials can't be revoked, because it builds every credential revocation information with `ALG_NO_REVOCATION`. A fix would cross Fabric CA, Fabric's MSP and IBM's idemix, and calls for an upstream issue instead of a fork. Meanwhile each election gets a new issuer key, and a leaked credential votes only in its own election, where it can't be cancelled.
+- Fabric CA's idemix credentials can't be revoked, because it builds every credential revocation information with `ALG_NO_REVOCATION`. A fix would cross Fabric CA, Fabric's MSP and IBM's idemix, and calls for an upstream issue instead of a fork. Meanwhile each election gets a new issuer key, and a leaked credential votes only in its own election, where it can't be cancelled. Weft Experimental says so on the credential's detail and in the voter invite's review, and explorers in the election's Voters row.
+- Fabric CA limits basic-authorisation enrolments with `maxenrollments`, but not the idemix credentials an X.509 certificate holder gets with token authorisation, and its bootstrap admin has no limit by default. The contract refuses credentials outside the election's affiliation and role, and the rest rests on the voters' CA's setup and a count of credentials per enrolment ID ([Which credentials can vote](/experimental/voter-credentials/#which-credentials-can-vote)). A limit on idemix credentials per enrolment ID in Fabric CA would be better, and may be proposed upstream later.
 - Fabric CA's idemix curves are 254 or 256-bit Barreto-Naehrig curves (default `FP256BN_AMCL`). Published estimates since the 2016 improvements to the number field sieve put them below the 128-bit security level they were chosen for. ADR 0008 accepts this for ballots that close within days, and a ballot recorded today may be less protected in future.
 - Node's `fabric-contract-api` rejects every call from an idemix caller, which is one reason the contract is written in Go. A small change to fabric-chaincode-node's `ClientIdentity`, so that it tolerates idemix creators, could fix this upstream.
 - Idemix organisations can't endorse, so every election also relies on X.509 organisations as endorsers.

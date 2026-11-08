@@ -135,6 +135,18 @@ func saw(msg string) {
 var unreachable = map[string]bool{
 	"The pseudonym proof is not valid.":                   true,
 	"This credential has already voted in this election.": true,
+	// Rows that voter credentials add, which this version reaches once
+	// CreateElection accepts voters.kind "idemix" (docs/adr/0008).
+	"The curve <curve> isn't supported: voter credentials use FP256BN_AMCL.":                 true,
+	"voters.affiliation is empty.":                                                           true,
+	"voters.role isn't member, the only role that can vote.":                                 true,
+	"The issuer key isn't an idemix issuer public key for FP256BN_AMCL.":                     true,
+	"issuerKeyHash isn't SHA-256 of the issuer key.":                                         true,
+	"This election has voter credentials, so its ballots are cast with CastAnonymousBallot.": true,
+	"This election has X.509 voters, so its ballots are cast with CastBallot.":               true,
+	"This identity can't vote in this election: it isn't a voter credential.":                true,
+	"This credential can't vote in this election: its affiliation isn't <affiliation>.":      true,
+	"This credential can't vote in this election: its role isn't member.":                    true,
 }
 
 // errorRows reads the messages in contract-api.md's two error tables and

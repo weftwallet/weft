@@ -14,7 +14,7 @@ This page describes Weft Experimental, a separate build that is not part of the 
 - It uses `fabric-chaincode-go`'s shim and `cid` package, v2.3.0, and not `fabric-contract-api-go`. `cid` reads the Fabric CA attributes of an X.509 creator and the OU and role of an idemix creator, so a call from either gets an answer. `fabric-contract-api-go` also builds its caller from `cid`, and ignores the error, so it would accept idemix creators too, unlike Node's `fabric-contract-api` ([ADR 0008](/reference/decisions/)). It isn't used because its latest release, v2.2.4, needs Go 1.26.7, newer than the Go in `hyperledger/fabric-ccenv:2.5`, and because it refuses some calls with messages of its own, outside the [error table](#errors). The contract reads the creator's `SerializedIdentity` itself for the voter tag.
 - The [election context](/experimental/private-tally-spec/#the-election-context) binds the contract's own name, which the shim doesn't give. The contract reads it from the signed proposal, in the `ChaincodeHeaderExtension` of the channel header, which names the contract the client called and the peer ran. It computes the context when the third round of the ceremony is checked and when the election opens, and from then on uses the `context` in the record.
 - It is one Go module, `github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract`, with the tally's verifiers in `internal/tally`. They handle no secret: decoding, the proof checks, the tracking code, totals, the round 1 proof of knowledge, the key and verifying shares, and combining decryption shares.
-- It verifies ballot proofs with `github.com/gtank/ristretto255` on `filippo.io/edwards25519`, and the pseudonym proof with IBM's idemix library, from the same Go source as Weft's WebAssembly build. The module's README gives the reasons for the ristretto255 library.
+- It verifies ballot proofs with `github.com/gtank/ristretto255` on `filippo.io/edwards25519`. The module's README gives the reasons for the ristretto255 library. It will verify the [pseudonym proof](/experimental/private-tally-spec/#the-per-election-pseudonym) with its `pseudonym` package, on IBM mathlib, and decode issuer keys with IBM idemix's dlog package. Weft's WebAssembly module compiles the same `pseudonym` package, so one Go source proves and verifies.
 - It uses no private data collection and no transient data. Every argument is public.
 - Every function is deterministic, and none reads a clock. A transaction's timestamp is set by the client that sends it, and peers don't compare it with their own clocks. `CreateElection` is the one function that reads it, to refuse a `closesAt` that has already passed, and no other function reads it. Every endorser reads the same timestamp from the proposal, so they agree. A creator that writes a wrong time can only get past the check with a `closesAt` that has already passed, which makes its own election show as past its planned closing time, and the contract doesn't act on `closesAt`. `CastBallot`, `CloseElection` and every other function read no time, and an election stops accepting ballots when it is [closed](#closeelection) on the ledger.
 - Its endorsement and lifecycle policies name only X.509 organisations, since idemix organisations can't endorse. The playground uses `AND('Org1MSP.peer','Org2MSP.peer')`.
@@ -75,7 +75,7 @@ Each trustee's `id` is its identifier, the scalar i as 64 lowercase hex characte
 `voters` is one of:
 
 - `{ "kind": "x509", "msps": [...] }`: X.509 identities of these organisations vote. The private tally only.
-- `{ "kind": "idemix", "msp": "ChairVoters2027MSP", "issuerPublicKey": "<base64>", "issuerKeyHash": "<hex>", "curve": "FP256BN_AMCL" }`: voter credentials from this idemix organisation vote. `issuerPublicKey` is the issuer's `IssuerPublicKey` protobuf, pinned at creation. The contract can't read the channel configuration, so explorers compare `issuerKeyHash` with the organisation's key in the configuration block.
+- `{ "kind": "idemix", "msp": "ChairVoters2027MSP", "affiliation": "voters", "role": "member", "issuerPublicKey": "<base64>", "issuerKeyHash": "<64 hex characters>", "curve": "FP256BN_AMCL" }`: voter credentials from this idemix organisation vote, if their organisational unit is `affiliation` and their role is member. `issuerPublicKey` is the issuer's `IssuerPublicKey` file in base64, pinned at creation, and `issuerKeyHash` is SHA-256 of its bytes, which the contract checks. The contract can't read the channel configuration, so explorers compare `issuerKeyHash` with SHA-256 of the organisation's key in the configuration block. The affiliation and the role are pinned because an idemix MSP accepts every credential from its issuer key, including those of the voters' CA's own identities ([Voter credentials](/experimental/voter-credentials/#which-credentials-can-vote)).
 
 In `failed`, the record also has `reportedBy`, the MSP ID of the trustee organisation that reported a bad share. The `ElectionFailed` event names the sender too. From `decrypting` on, the record also has `ballots` (the number accepted), `totals` (one `{ a, b }` per option) and `closedBy` (the MSP IDs of the trustees whose requests closed it, in the order of the trustee list). From `counted`, it also has `tally: { counts: { "<option>": n }, total }`, with the counts in option order.
 
@@ -93,7 +93,7 @@ Every function that writes returns the election record as it is after the call, 
 | [`CancelElection`](#cancelelection) | `electionId` | A trustee identity of the creator's organisation | `keygen` |
 | [`OpenElection`](#openelection) | `electionId` | Anyone with an X.509 identity in the channel | `keygen`, after every confirmation |
 | [`CastBallot`](#castballot) | `electionId`, `ballotJson` | An X.509 voter | `open` |
-| [`CastAnonymousBallot`](#castanonymousballot) | `electionId`, `ballotJson`, `pseudonymJson` | A voter credential | `open` |
+| [`CastAnonymousBallot`](#castanonymousballot) | `electionId`, `ballotJson`, `pseudonymJson` | A voter credential of the election's voter organisation, with its affiliation and the role member | `open` |
 | [`CloseElection`](#closeelection) | `electionId` | A trustee, once | `open` |
 | [`PostDecryptionShare`](#postdecryptionshare) | `electionId`, `shareJson` | A trustee | `decrypting` |
 | [`PublishTally`](#publishtally) | `electionId` | Anyone with an X.509 identity in the channel | `decrypting`, with k shares |
@@ -108,7 +108,7 @@ The contract checks the caller itself, with `cid`, from the creator's MSP ID and
 
 ### CreateElection
 
-`electionJson` has `id`, `title`, `options`, `closesAt`, `trustees` (MSP IDs, in order), `threshold` and `voters`. It is parsed as the other JSON arguments are, with "The election" in the messages, and `voters` is read last: its `kind` chooses the fields the rest of it has, `msps` for `"x509"`, and `msp`, `issuerPublicKey`, `issuerKeyHash` and `curve` for `"idemix"`. A threshold is a number, and `2`, `2.0` and `2e0` are all 2. The caller's organisation becomes `creatorMsp`. Once it parses, the contract checks, in this order, that:
+`electionJson` has `id`, `title`, `options`, `closesAt`, `trustees` (MSP IDs, in order), `threshold` and `voters`. It is parsed as the other JSON arguments are, with "The election" in the messages, and `voters` is read last: its `kind` chooses the fields the rest of it has, `msps` for `"x509"`, and `msp`, `affiliation`, `role`, `issuerPublicKey`, `issuerKeyHash` and `curve`, in that order, for `"idemix"`. A threshold is a number, and `2`, `2.0` and `2e0` are all 2. The caller's organisation becomes `creatorMsp`. Once it parses, the contract checks, in this order, that:
 
 - the caller is a trustee identity of one of the named trustee organisations
 - the ID is 1 to 64 letters, digits, `-` or `_`
@@ -117,7 +117,7 @@ The contract checks the caller itself, with `cid`, from the creator's MSP ID and
 - `closesAt` is a UTC time written as `2027-01-31T17:00:00.000Z`, later than the transaction's timestamp
 - there are at least two trustee organisations, all different
 - the threshold is 2 to n
-- for idemix voters, the issuer key parses for the named curve
+- for voter credentials, in this order: the curve is `FP256BN_AMCL`; the affiliation isn't empty; the role is `member`; `issuerPublicKey` is base64 of an IBM idemix `IssuerPublicKey` that passes IBM idemix's own check for the curve (its points are on the curve and its proof of knowledge verifies) and has Fabric's four attribute names, `OU`, `Role`, `EnrollmentID` and `RevocationHandle`, in that order; and `issuerKeyHash` is SHA-256 of the bytes `issuerPublicKey` decodes to, as 64 lowercase hex characters. It isn't the key's own `hash` field, which IBM idemix computes differently.
 - for X.509 voters, `voters.msps` names at least one organisation, all different
 
 The title limit counts code points, so it is the same in every script, and Go and JavaScript count code points the same way. They count UTF-16 units and user-perceived characters differently, and the second depends on Unicode tables that change between versions, so endorsers could disagree. 200 code points holds a full motion title and keeps the record small, and Weft, `weft-trustee` and explorers show the title on one or two lines.
@@ -152,11 +152,24 @@ Once every trustee has confirmed, computes the election key, the verifying share
 
 ### CastBallot
 
-For an election with X.509 voters. The creator's MSP ID must be one of `voters.msps`. Runs the checks in the [specification](/experimental/private-tally-spec/#what-the-contract-checks), with the voter tag from the creator's certificate. Returns `{ "electionId", "txId", "tracking" }`. Event `BallotCast` with the election ID and tracking code.
+For an election with X.509 voters. After the election's state, the contract checks that the election has X.509 voters, that the creator's MSP ID is one of `voters.msps` and that the creator is an X.509 identity, then runs the checks in the [specification](/experimental/private-tally-spec/#what-the-contract-checks), with the voter tag from the creator's certificate. Returns `{ "electionId", "txId", "tracking" }`. Event `BallotCast` with the election ID and tracking code.
 
 ### CastAnonymousBallot
 
-For an election with voter credentials. The creator must be an idemix identity of `voters.msp`. `pseudonymJson` is `{ "pseudonym": <base64>, "c": <base64>, "ssk": <base64>, "sr": <base64> }`. The contract reads the Nym from the creator, checks the [pseudonym proof](/experimental/voter-credentials/#the-per-election-pseudonym) against the pinned issuer key with the ballot's tracking code as context, then runs the same checks as `CastBallot` with the voter tag made from the pseudonym. Returns and emits the same as `CastBallot`.
+For an election with voter credentials. `pseudonymJson` is the [pseudonym proof](/experimental/private-tally-spec/#the-proof-as-an-argument), `{ "pseudonym": <point>, "c": <scalar>, "ssk": <scalar>, "sr": <scalar> }`, with the pseudonym as 64 bytes and each scalar as 32 bytes of FP256BN, in lowercase hex. The contract checks, in this order, stopping at the first failure:
+
+1. The election exists and is `open`.
+2. The election has voter credentials. Otherwise: "This election has X.509 voters, so its ballots are cast with CastBallot."
+3. The creator's MSP ID is `voters.msp`.
+4. The creator is an idemix identity: its `id_bytes` decode as a `SerializedIdemixIdentity` with a Nym that is a point of G1.
+5. The creator's organisational unit, from its `ou` field, is `voters.affiliation`, and its role, from its `role` field, is member. The peer's idemix MSP has already checked that the credential behind the Nym carries both.
+6. The ballot parses and decodes.
+7. `pseudonymJson` parses and decodes.
+8. It makes the voter tag from the pseudonym and the tracking code from the ballot.
+9. The pseudonym proof verifies against the creator's Nym, the pinned issuer key and the tracking code.
+10. The ballot's proofs verify, its ciphertexts don't repeat, and the credential hasn't voted in this election.
+
+The [specification](/experimental/private-tally-spec/#what-the-contract-checks) has each step. The contract stores the pseudonym proof with the ballot. Returns and emits the same as `CastBallot`.
 
 ### CloseElection
 
@@ -180,7 +193,7 @@ Once at least k trustees have posted shares, combines the k with the lowest iden
 
 ### Readers
 
-`GetCeremony` returns `{ "electionId", "trustees": [{ "id", "msp", "round1", "round2", "confirmation", "closeRequested" }] }` in the order of the trustee list, with each post as the contract stored it and `null` for one not yet posted, and `closeRequested` true once that trustee has asked to close. `GetBallot` returns `{ "txId", "tracking", "ballot", "pseudonym"? }` for a tracking code. `GetDecryptionShares` returns `{ "electionId", "shares": [{ "id", "msp", "shares" }] }`, every posted share in the order of the trustee list. Explorers read the same data from blocks, and don't need these.
+`GetCeremony` returns `{ "electionId", "trustees": [{ "id", "msp", "round1", "round2", "confirmation", "closeRequested" }] }` in the order of the trustee list, with each post as the contract stored it and `null` for one not yet posted, and `closeRequested` true once that trustee has asked to close. `GetBallot` returns `{ "txId", "tracking", "ballot", "pseudonym"? }` for a tracking code, with `pseudonym` the stored pseudonym proof for a ballot with a voter credential. `GetDecryptionShares` returns `{ "electionId", "shares": [{ "id", "msp", "shares" }] }`, every posted share in the order of the trustee list. Explorers read the same data from blocks, and don't need these.
 
 ## State keys
 
@@ -192,7 +205,7 @@ Composite keys, with the object type first. `<trustee>` is the trustee's MSP ID,
 | `ceremony1` `<id>` `<trustee>` | A trustee's round 1 |
 | `ceremony2` `<id>` `<trustee>` | A trustee's round 2 |
 | `confirm` `<id>` `<trustee>` | A trustee's confirmation proof |
-| `ballot` `<id>` `<txId>` | `{ tracking, ballot, pseudonym? }` |
+| `ballot` `<id>` `<txId>` | `{ tracking, ballot, pseudonym? }`, with `pseudonym` the pseudonym proof of a ballot with a voter credential |
 | `tracking` `<id>` `<tracking>` | The transaction ID |
 | `ciphertext` `<id>` `<a>` | The transaction ID, one key per ciphertext, for the repeated-ciphertext check |
 | `voted` `<id>` `<voter tag>` | A marker, the ballot's transaction ID: this voter or credential has voted |
@@ -239,6 +252,11 @@ Each error says what happened and, where the caller can do something about it, w
 | `closesAt isn't later than this transaction's timestamp, <time>.` | `CreateElection` with a `closesAt` that has passed, by the timestamp the client wrote in the transaction. |
 | `An election has at least one voter organisation, all different.` | `CreateElection` with X.509 voters and an empty `voters.msps`, or one that names an organisation twice. |
 | `Elections with voter credentials aren't supported by this version of the contract.` | `CreateElection` with `voters.kind` `"idemix"`, until voter credentials are built. |
+| `The curve <curve> isn't supported: voter credentials use FP256BN_AMCL.` | `CreateElection` with voter credentials on another curve. |
+| `voters.affiliation is empty.` | `CreateElection` with voter credentials and an empty affiliation, which is the root affiliation that Fabric CA's bootstrap admin has. |
+| `voters.role isn't member, the only role that can vote.` | `CreateElection` with voter credentials and another role. |
+| `The issuer key isn't an idemix issuer public key for FP256BN_AMCL.` | `CreateElection` with an `issuerPublicKey` that isn't base64, doesn't decode, fails IBM idemix's check or has other attribute names. |
+| `issuerKeyHash isn't SHA-256 of the issuer key.` | `CreateElection` with an `issuerKeyHash` that isn't 64 lowercase hex characters, or isn't SHA-256 of the key's bytes. |
 | `The election isn't in the version 1 format: voters.kind is neither "x509" nor "idemix".` | `CreateElection` with another kind of voters. |
 | `<MSP> isn't one of the trustee organisations named in this election.` | `CreateElection` from an organisation that isn't in `trustees`. |
 | `<MSP> isn't a trustee of this election.` | A trustee function, including `CloseElection`, from another organisation. |
@@ -255,12 +273,17 @@ Each error says what happened and, where the caller can do something about it, w
 | `The confirmation from <MSP> doesn't match its verifying share.` | `ConfirmShares`. |
 | `Trustee <id> isn't another trustee of this election.` | `ReportBadShare` naming an unknown identifier or the caller's own. |
 | `<MSP> has already confirmed its shares, so it can't report a bad share.` | `ReportBadShare` from a trustee that has posted round 3. |
-| `This identity can't open the election: it isn't an X.509 identity.` | `OpenElection` from a voter credential. |
+| `This identity can't open the election: it isn't an X.509 identity.` | `OpenElection` from a voter credential. The same message, with `vote in this election`, answers `CastBallot` from an idemix identity of a voter organisation. |
 | `The election isn't open: it is in <state>.` | A ballot, or `CloseElection`, in `keygen`, `failed` or `cancelled`. |
 | `Voting has closed.` | A ballot in `decrypting` or `counted`. |
 | `Voting has already closed: the election is in <state>.` | `CloseElection` in `decrypting` or `counted`. |
 | `<MSP> has already asked to close voting.` | A second `CloseElection` from the same trustee while the election is `open`. It writes nothing and emits no event. |
-| `This identity can't vote in this election: <MSP> isn't one of its voter organisations.` | `CastBallot` from another MSP, or either cast function for the wrong kind of voter. |
+| `This identity can't vote in this election: <MSP> isn't one of its voter organisations.` | `CastBallot` from an MSP that isn't in `voters.msps`, or `CastAnonymousBallot` from one that isn't `voters.msp`. |
+| `This election has voter credentials, so its ballots are cast with CastAnonymousBallot.` | `CastBallot` in an election with voter credentials, from any identity. |
+| `This election has X.509 voters, so its ballots are cast with CastBallot.` | `CastAnonymousBallot` in an election with X.509 voters, from any identity. |
+| `This identity can't vote in this election: it isn't a voter credential.` | `CastAnonymousBallot` from an identity of `voters.msp` whose `id_bytes` aren't an idemix identity. |
+| `This credential can't vote in this election: its affiliation isn't <affiliation>.` | `CastAnonymousBallot` from a credential with another organisational unit, such as the voters' CA's bootstrap admin, whose affiliation is the root. |
+| `This credential can't vote in this election: its role isn't member.` | `CastAnonymousBallot` from a credential with the admin role. |
 | `The ballot isn't for this election.` | Wrong `v` or `electionId`. |
 | `The ballot has <n> ciphertexts; this election has <L> options.` | Wrong length. |
 | `The ballot has <n> bit proofs; this election has <L> options.` | Wrong length. |
@@ -269,7 +292,7 @@ Each error says what happened and, where the caller can do something about it, w
 | `The ballot does not choose exactly one option.` | The sum proof fails. |
 | `Ciphertexts <i> and <j> have the same randomness.` | Two ciphertexts in one ballot with the same `a`, including two identical ciphertexts, with i and j the first such pair. |
 | `A ciphertext in this ballot is already on the ledger.` | A repeated ciphertext. |
-| `The pseudonym proof is not valid.` | `CastAnonymousBallot`, including a proof copied from another voter. |
+| `The pseudonym proof is not valid.` | `CastAnonymousBallot` with a proof that doesn't verify, including one copied from another voter's transaction, one made for another ballot, election, channel or issuer key, and one whose T1 or T2 is the identity. |
 | `This identity has already voted in this election.` | A second ballot from an X.509 voter. |
 | `This credential has already voted in this election.` | A second ballot from a voter credential. |
 | `Voting hasn't closed yet: the election is in <state>, and decryption shares are posted once it is in decrypting.` | `PostDecryptionShare` in `keygen` or `open`. |
@@ -285,7 +308,7 @@ Each error says what happened and, where the caller can do something about it, w
 | `The counts add up to <s>, not to the <N> ballots, so the totals or shares are wrong.` | `PublishTally`, which should never happen with verified shares. |
 | `There's no ballot with tracking code <tracking> in election <id>.` | `GetBallot` with a tracking code no accepted ballot has. |
 
-Every JSON argument (the election, the ballot, each ceremony post and the decryption share) is refused with one of these when it doesn't parse or decode, `<thing>` being `The election`, `The ballot`, `The round 1 post`, `The round 2 post`, `The confirmation` or `The decryption share`, and `<path>` a field such as `ciphertexts[1].a`:
+Every JSON argument (the election, the ballot, each ceremony post, the decryption share and the pseudonym proof) is refused with one of these when it doesn't parse or decode, `<thing>` being `The election`, `The ballot`, `The round 1 post`, `The round 2 post`, `The confirmation`, `The decryption share` or `The pseudonym proof`, and `<path>` a field such as `ciphertexts[1].a`:
 
 | Error | When |
 |---|---|
@@ -294,10 +317,10 @@ Every JSON argument (the election, the ballot, each ceremony post and the decryp
 | `<thing> isn't in the version 1 format: it has an unknown field, <path>.` | A field the format doesn't have. With several, the first in byte order. |
 | `<thing> isn't in the version 1 format: <path> is missing.` | A field the format needs. |
 | `<thing> isn't in the version 1 format: <path> isn't a string.` | Likewise `a number`, `a list` or `an object`, for a value of the wrong type, including `null`. |
-| `<thing>'s <path> isn't a canonical point.` | Not 32 bytes of lowercase hex, or not a canonical RFC 9496 encoding. |
-| `<thing>'s <path> isn't a canonical scalar.` | Not 32 bytes of lowercase hex, or l or more. |
+| `<thing>'s <path> isn't a canonical point.` | Not 32 bytes of lowercase hex, or not a canonical RFC 9496 encoding. In the pseudonym proof, not 64 bytes of lowercase hex, a coordinate of p or more, or not a point on FP256BN. |
+| `<thing>'s <path> isn't a canonical scalar.` | Not 32 bytes of lowercase hex, or l or more. In the pseudonym proof, r or more. |
 | `<thing>'s <path> isn't <n> bytes of lowercase hex.` | A round 2 `nonce` that isn't 12 bytes, or a `box` that isn't 48. |
 
 A count of 1 takes the singular in every message: `1 ciphertext`, `1 entry`, `1 has been posted`, `1 argument`.
 
-Every negative [test vector](/experimental/private-tally-spec/#test-vectors) carries the message from this table that the contract must return for it. The contract's Go tests drive every vector through the contract's functions, reach every row of these tables but the two that only voter credentials can reach, and fail on any refusal that isn't a row here.
+Every negative [test vector](/experimental/private-tally-spec/#test-vectors) carries the message from this table that the contract must return for it. The contract's Go tests drive every vector through the contract's functions, reach every row of these tables but those that only voter credentials can reach, and fail on any refusal that isn't a row here.
