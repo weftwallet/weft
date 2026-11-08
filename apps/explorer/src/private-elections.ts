@@ -20,22 +20,30 @@
  * The voter tag is made from the ballot's pseudonym, and the indexer checks
  * the creator's proof against the election's pinned issuer key and the
  * pseudonym proof against the creator's Nym with the idemix WebAssembly
- * module, in this process, as it reads the block. It stores the anonymous
+ * module as it reads the block. It stores the anonymous
  * creator and the pseudonym proof whatever the policy says of submitters:
  * they name no one, and the browser's full check needs them (D12).
+ *
+ * Each ballot's own checks (its proofs, and an anonymous ballot's creator and
+ * pseudonym) run in a BallotChecker (check-pool.ts): the explorer's pool of
+ * worker threads, all of a block's ballots at once, so the server's main
+ * thread stays free for requests. The checks across ballots, a repeated
+ * ciphertext or voter tag, read the index, and run here in ledger order.
  *
  * Nothing here is secret: the ledger holds ciphertexts, proofs and posts
  * that anyone in the channel can read, and no ballot can be decrypted here.
  */
 
 import { createHash } from "node:crypto";
-import type { IdemixSync, PseudonymProof } from "@weftwallet/idemix";
-import { electionContext, electionFingerprint, fromHex, toHex, trackingCode, voterTagIdemix, voterTagX509, type Ballot, type Election, type ElectionSetup } from "@weftwallet/tally";
-import { checkBallot, checkConfirmation, checkDecryptionShare, checkRound1, checkRound2, electionKeys, type Round1 } from "@weftwallet/tally/verify";
+import type { PseudonymProof } from "@weftwallet/idemix";
+import { electionContext, electionFingerprint, fromHex, messages, toHex, voterTagIdemix, voterTagX509, type Election, type ElectionSetup } from "@weftwallet/tally";
+import { checkConfirmation, checkDecryptionShare, checkRound1, checkRound2, electionKeys, type Round1 } from "@weftwallet/tally/verify";
+import { taskKey, type BallotResult, type BallotTask } from "./ballot-checks.ts";
+import type { BallotChecker } from "./check-pool.ts";
 import type { DecodedBlock, DecodedTransaction } from "./decode.ts";
 import type { ExplorerDb, PrivateBallotRow, PrivateStepRow } from "./db.ts";
 import { splitKey } from "./elections.ts";
-import { checkAnonymousBallot, checkCeremony, checkCount, electionFrom, messageOf, type AnonymousCreator, type AnonymousVoters, type CeremonyPosts, type CheckedElection } from "./full-check.ts";
+import { checkCeremony, checkCount, electionFrom, messageOf, type AnonymousCreator, type AnonymousVoters, type CeremonyPosts, type CheckedElection } from "./full-check.ts";
 import { goJsonParse, goString } from "./go-utf8.ts";
 import type { Policy } from "./policy.ts";
 
@@ -137,36 +145,75 @@ const parse = (text: string): unknown => {
 
 /**
  * Indexes the private-ballot transactions of a block, for a channel whose
- * policy names privateElections. `idemix` is the idemix module, started in
- * this process, which checks anonymous ballots; without it, each anonymous
- * ballot is recorded as unchecked, with a message that says why.
+ * policy names privateElections. `checker` runs each ballot's own checks:
+ * every ballot of the block is handed to it first, so a pool of threads
+ * checks them side by side, and the block is then indexed in ledger order,
+ * each ballot taking its result. A ballot whose election changed earlier in
+ * the same block is checked again against the record it was cast under.
+ * Without the idemix module in the checker, each anonymous ballot is
+ * recorded as unchecked, with a message that says why.
  */
-export function indexPrivateBlock(db: ExplorerDb, policy: Policy, block: DecodedBlock, idemix: IdemixSync | null = null): void {
+export async function indexPrivateBlock(db: ExplorerDb, policy: Policy, block: DecodedBlock, checker: BallotChecker): Promise<void> {
   const c = policy.channels[block.channel];
   const contract = c?.privateElections;
   if (!c || !contract || c.level === "hidden") return;
-  for (const tx of block.transactions) {
-    if (tx.type !== "endorser" || tx.chaincode !== contract || tx.validation !== "VALID") continue;
-    indexTransaction(db, { channel: block.channel, contract, showSubmitter: c.submitter === "show", idemix }, block, tx);
+  const where: Where = { channel: block.channel, contract, showSubmitter: c.submitter === "show", checker };
+  const txs = block.transactions.filter((tx) => tx.type === "endorser" && tx.chaincode === contract && tx.validation === "VALID");
+  const early = new Map<DecodedTransaction, Started>();
+  for (const tx of txs) {
+    const prepared = prepare(db, where, block, tx);
+    if (prepared?.task) early.set(tx, start(checker, prepared.task));
   }
+  for (const tx of txs) await indexTransaction(db, where, block, tx, early.get(tx));
 }
 
 interface Where {
   channel: string;
   contract: string;
   showSubmitter: boolean;
-  idemix: IdemixSync | null;
+  checker: BallotChecker;
 }
 
-function indexTransaction(db: ExplorerDb, where: Where, block: DecodedBlock, tx: DecodedTransaction): void {
-  const { channel, contract } = where;
-  const args = tx.args.map(goString);
-  const writes = tx.writes
+/** A check started before its turn: its inputs' key, and its result. */
+interface Started {
+  key: string;
+  result: Promise<BallotResult>;
+}
+
+function start(checker: BallotChecker, task: BallotTask): Started {
+  const result = checker.check(task);
+  // Taken when the ballot's turn comes; one that isn't (its record changed) mustn't be an unhandled rejection.
+  result.catch(() => {});
+  return { key: taskKey(task), result };
+}
+
+/** The transaction's writes in the contract's namespace, with their keys split. */
+function writesOf(contract: string, tx: DecodedTransaction) {
+  return tx.writes
     .filter((w) => w.namespace === contract && !w.isDelete)
     .flatMap((w) => {
       const key = splitKey(w.key);
       return key ? [{ type: key.type, attrs: key.attrs, value: goString(w.value) }] : [];
     });
+}
+
+/** A ballot transaction's election record, as indexTransaction finds it, and its ballot's task, or null for any other transaction. */
+function prepare(db: ExplorerDb, where: Where, block: DecodedBlock, tx: DecodedTransaction): Prepared | null {
+  if (tx.fn !== "CastBallot" && tx.fn !== "CastAnonymousBallot") return null;
+  const args = tx.args.map(goString);
+  const writes = writesOf(where.contract, tx);
+  const written = writes.find((w) => w.type === "election");
+  const id = written?.attrs[0] ?? args[0];
+  if (!id) return null;
+  const record = written ? parseRecord(written.value) : ((db.privateElection(where.channel, id)?.record as PrivateRecord | undefined) ?? null);
+  if (!record) return null;
+  return tx.fn === "CastBallot" ? prepareBallot(where, tx, record, args, writes) : prepareAnonymousBallot(where, block, tx, record, args, writes);
+}
+
+async function indexTransaction(db: ExplorerDb, where: Where, block: DecodedBlock, tx: DecodedTransaction, early?: Started): Promise<void> {
+  const { channel, contract } = where;
+  const args = tx.args.map(goString);
+  const writes = writesOf(contract, tx);
   const written = writes.find((w) => w.type === "election");
   const id = written?.attrs[0] ?? args[0];
   if (!id) return;
@@ -229,11 +276,9 @@ function indexTransaction(db: ExplorerDb, where: Where, block: DecodedBlock, tx:
       return;
     }
     case "CastBallot":
-      indexBallot(db, where, block, tx, record, args, writes);
-      return;
+      return indexBallot(db, where, block, tx, prepareBallot(where, tx, record, args, writes), early);
     case "CastAnonymousBallot":
-      indexAnonymousBallot(db, where, block, tx, record, args, writes);
-      return;
+      return indexBallot(db, where, block, tx, prepareAnonymousBallot(where, block, tx, record, args, writes), early);
     case "CloseElection": {
       const request = writes.find((w) => w.type === "close");
       if (request) step("close", request.attrs[1] ?? "", null);
@@ -322,69 +367,61 @@ function checkPost(record: PrivateRecord, channel: string, contract: string, kin
 }
 
 /**
+ * A ballot about to be indexed: what the row stores whatever the checks
+ * find, and either the task for the checker or the failure found before
+ * one was needed.
+ */
+interface Prepared {
+  record: PrivateRecord;
+  tracking: string;
+  voterTag: string;
+  ballot: Record<string, unknown>;
+  voter: "x509" | "idemix";
+  creator: PrivateBallotRow["creator"];
+  anonymous: PrivateBallotRow["anonymous"];
+  error: string | null;
+  task: BallotTask | null;
+}
+
+/** What the contract stored for the ballot: its tracking code, its ballot and, for an anonymous ballot, its pseudonym proof. */
+function storedBallot(writes: { type: string; attrs: string[]; value: string }[]) {
+  const w = writes.find((x) => x.type === "ballot");
+  if (!w) return null;
+  const stored = parse(w.value) as { tracking?: unknown; ballot?: unknown; pseudonym?: unknown } | null;
+  return {
+    ballot: stored && typeof stored.ballot === "object" && stored.ballot ? (stored.ballot as Record<string, unknown>) : {},
+    tracking: typeof stored?.tracking === "string" ? stored.tracking : "",
+    pseudonym: stored?.pseudonym,
+    written: writes.find((x) => x.type === "voted")?.attrs[1] ?? null,
+  };
+}
+
+/**
  * A ballot, checked as the contract checks it (the specification's steps 2
  * to 7) against what this explorer has indexed, with the voter tag worked
  * out from the transaction's creator.
  */
-function indexBallot(
-  db: ExplorerDb,
-  where: Where,
-  block: DecodedBlock,
-  tx: DecodedTransaction,
-  record: PrivateRecord,
-  args: string[],
-  writes: { type: string; attrs: string[]; value: string }[],
-): void {
+function prepareBallot(where: Where, tx: DecodedTransaction, record: PrivateRecord, args: string[], writes: { type: string; attrs: string[]; value: string }[]): Prepared | null {
   const { channel, contract } = where;
-  const w = writes.find((x) => x.type === "ballot");
-  if (!w) return;
-  const stored = parse(w.value) as { tracking?: unknown; ballot?: unknown } | null;
-  const ballot = stored && typeof stored.ballot === "object" && stored.ballot ? (stored.ballot as Record<string, unknown>) : {};
-  const tracking = typeof stored?.tracking === "string" ? stored.tracking : "";
-  const written = writes.find((x) => x.type === "voted")?.attrs[1] ?? null;
+  const stored = storedBallot(writes);
+  if (!stored) return null;
   const own = tx.creator ? toHex(voterTagX509(channel, record.id, tx.creator.mspId, tx.creator.idBytes)) : null;
-  const voterTag = written ?? own ?? "";
-  const started = performance.now();
-  let error: string | null = null;
-  let ciphertexts: string[] = [];
   const e = electionOf(record, channel, contract);
+  let error: string | null = null;
   if (!e) error = "This explorer has no key for this election.";
   else if (!own) error = "The transaction has no creator, so this explorer can't work out its voter tag.";
-  else if (written && written !== own) error = "The voter tag the contract wrote isn't the one the submitter's certificate gives.";
-  else {
-    try {
-      const checked = checkBallot(e, fromHex(own, 32)!, args[1] ?? "", {
-        hasCiphertext: (a) => db.privateCiphertextSeen(channel, record.id, a, tx.txId),
-        hasVoted: (tag) => db.privateTagSeen(channel, record.id, tag, tx.txId),
-      });
-      ciphertexts = checked.ciphertexts;
-      const same = (x: unknown) => JSON.stringify({ c: (x as Record<string, unknown>).ciphertexts, b: (x as Record<string, unknown>).bitProofs, s: (x as Record<string, unknown>).sumProof });
-      if (checked.tracking !== tracking) error = "The tracking code the contract wrote isn't the one this ballot gives.";
-      else if (same(checked.ballot) !== same(ballot)) error = "The ballot the contract stored isn't the one the transaction sent.";
-    } catch (failure) {
-      error = messageOf(failure);
-    }
-  }
-  stats.ballots += 1;
-  stats.ms += performance.now() - started;
-  if (ciphertexts.length === 0) {
-    ciphertexts = ((ballot.ciphertexts as { a?: unknown }[] | undefined) ?? []).map((c) => String(c?.a ?? ""));
-  }
-  const row: PrivateBallotRow = {
-    channel,
-    election: record.id,
-    txId: tx.txId,
-    block: block.number,
-    index: tx.index,
-    timestamp: tx.timestamp,
-    tracking,
-    voterTag,
-    ballot,
-    verified: error === null,
-    error,
+  else if (stored.written && stored.written !== own) error = "The voter tag the contract wrote isn't the one the submitter's certificate gives.";
+  return {
+    record,
+    tracking: stored.tracking,
+    voterTag: stored.written ?? own ?? "",
+    ballot: stored.ballot,
+    voter: "x509",
     creator: where.showSubmitter && tx.creator ? { mspId: tx.creator.mspId, idBytes: Buffer.from(tx.creator.idBytes).toString("base64") } : null,
+    anonymous: null,
+    error,
+    task: error ? null : { kind: "x509", election: checkedOf(record, channel, contract), voterTag: own!, ballotJson: args[1] ?? "", tracking: stored.tracking, stored: stored.ballot },
   };
-  db.addPrivateBallot(row, ciphertexts);
 }
 
 /**
@@ -396,22 +433,17 @@ function indexBallot(
  * tracking code; then the ballot's own proofs, and that no ciphertext and no
  * pseudonym repeats.
  */
-function indexAnonymousBallot(
-  db: ExplorerDb,
+function prepareAnonymousBallot(
   where: Where,
   block: DecodedBlock,
   tx: DecodedTransaction,
   record: PrivateRecord,
   args: string[],
   writes: { type: string; attrs: string[]; value: string }[],
-): void {
+): Prepared | null {
   const { channel, contract } = where;
-  const w = writes.find((x) => x.type === "ballot");
-  if (!w) return;
-  const stored = parse(w.value) as { tracking?: unknown; ballot?: unknown; pseudonym?: unknown } | null;
-  const ballot = stored && typeof stored.ballot === "object" && stored.ballot ? (stored.ballot as Record<string, unknown>) : {};
-  const tracking = typeof stored?.tracking === "string" ? stored.tracking : "";
-  const written = writes.find((x) => x.type === "voted")?.attrs[1] ?? null;
+  const stored = storedBallot(writes);
+  if (!stored) return null;
   const proof = pseudonymOf(parse(args[2] ?? ""));
   const voters = anonymousVoters(record);
   const idemix = tx.creator?.idemix ?? null;
@@ -419,48 +451,79 @@ function indexAnonymousBallot(
     tx.creator && idemix ? { mspId: tx.creator.mspId, ou: idemix.ou, role: idemix.role, nym: idemix.nym, idBytes: Buffer.from(tx.creator.idBytes).toString("base64") } : null;
   const p = proof ? fromHex(proof.pseudonym, 64) : null;
   const own = p && voters ? toHex(voterTagIdemix(channel, record.id, voters.msp, p)) : null;
-  const voterTag = written ?? own ?? "";
-  const started = performance.now();
-  let error: string | null = null;
-  let ciphertexts: string[] = [];
   const e = electionOf(record, channel, contract);
+  let error: string | null = null;
   if (!e) error = "This explorer has no key for this election.";
   else if (!voters) error = "The contract accepted an anonymous ballot in an election whose voters aren't voter credentials.";
   else if (!creator) error = "The transaction's creator isn't an idemix identity, so it isn't a voter credential's.";
   else if (!proof || !own) error = "The ballot's pseudonym proof doesn't decode, so this explorer can't work out its voter tag.";
-  else if (written && written !== own) error = "The voter tag the contract wrote isn't the one the ballot's pseudonym gives.";
-  else {
+  else if (stored.written && stored.written !== own) error = "The voter tag the contract wrote isn't the one the ballot's pseudonym gives.";
+  return {
+    record,
+    tracking: stored.tracking,
+    voterTag: stored.written ?? own ?? "",
+    ballot: stored.ballot,
+    voter: "idemix",
+    creator: null,
+    anonymous: creator && proof ? { creator, pseudonym: proof } : null,
+    error,
+    task: error
+      ? null
+      : {
+          kind: "idemix",
+          election: checkedOf(record, channel, contract),
+          voters: voters!,
+          voterTag: own!,
+          ballotJson: args[1] ?? "",
+          tracking: stored.tracking,
+          stored: stored.ballot,
+          proof: proof!,
+          storedProof: pseudonymOf(stored.pseudonym),
+          creator: creator!,
+          txId: tx.txId,
+          block: block.number,
+        },
+  };
+}
+
+/**
+ * Stores a prepared ballot with its checks: the checker's result (the one
+ * started early when its inputs are the same), with the checks across
+ * ballots between its two halves, as checkBallot orders them.
+ */
+async function indexBallot(db: ExplorerDb, where: Where, block: DecodedBlock, tx: DecodedTransaction, prepared: Prepared | null, early?: Started): Promise<void> {
+  if (!prepared) return;
+  const { channel } = where;
+  const { record } = prepared;
+  let error = prepared.error;
+  let ciphertexts: string[] = [];
+  if (prepared.task) {
+    const task = prepared.task;
+    let result: BallotResult;
     try {
-      // The tracking code the pseudonym proof is bound to, from the ballot as
-      // sent; checkBallot below finds it again with the ballot's proofs.
-      const sent = goJsonParse(args[1] ?? "") as Ballot;
-      const bound = trackingCode(e, fromHex(own, 32)!, sent);
-      if (!where.idemix) error = "This explorer couldn't start the idemix module, so it can't check this ballot's creator or pseudonym.";
-      else {
-        const t = performance.now();
-        error = checkAnonymousBallot(where.idemix, e, voters, { index: -1, txId: tx.txId, block: block.number, tracking: bound, voterTag: own, ballot: sent, pseudonym: proof, anonymousCreator: creator });
-        stats.anonymous += 1;
-        stats.anonymousMs += performance.now() - t;
-      }
-      if (!error) {
-        const checked = checkBallot(e, fromHex(own, 32)!, args[1] ?? "", {
-          hasCiphertext: (a) => db.privateCiphertextSeen(channel, record.id, a, tx.txId),
-          hasVoted: (tag) => db.privateTagSeen(channel, record.id, tag, tx.txId),
-        }, "idemix");
-        ciphertexts = checked.ciphertexts;
-        const same = (x: unknown) => JSON.stringify({ c: (x as Record<string, unknown>).ciphertexts, b: (x as Record<string, unknown>).bitProofs, s: (x as Record<string, unknown>).sumProof });
-        if (checked.tracking !== tracking) error = "The tracking code the contract wrote isn't the one this ballot gives.";
-        else if (same(checked.ballot) !== same(ballot)) error = "The ballot the contract stored isn't the one the transaction sent.";
-        else if (JSON.stringify(pseudonymOf(stored?.pseudonym)) !== JSON.stringify(proof)) error = "The pseudonym proof the contract stored isn't the one the transaction sent.";
-      }
+      result = await (early && early.key === taskKey(task) ? early.result : where.checker.check(task));
     } catch (failure) {
-      error = messageOf(failure);
+      result = { before: `This explorer couldn't check this ballot: ${failure instanceof Error ? failure.message : String(failure)}`, ciphertexts: [], after: null, ms: 0, anonymousMs: null };
+    }
+    stats.ms += result.ms;
+    if (result.anonymousMs !== null) {
+      stats.anonymous += 1;
+      stats.anonymousMs += result.anonymousMs;
+    }
+    error = result.before;
+    if (!error) {
+      // Steps 6 and 7, against the index: no a_j already on the ledger, and no second ballot from this voter tag.
+      if (result.ciphertexts.some((a) => db.privateCiphertextSeen(channel, record.id, a, tx.txId))) error = messages.repeated();
+      else if (db.privateTagSeen(channel, record.id, task.voterTag, tx.txId)) error = prepared.voter === "x509" ? messages.identityVoted() : messages.credentialVoted();
+      else {
+        ciphertexts = result.ciphertexts;
+        error = result.after;
+      }
     }
   }
   stats.ballots += 1;
-  stats.ms += performance.now() - started;
   if (ciphertexts.length === 0) {
-    ciphertexts = ((ballot.ciphertexts as { a?: unknown }[] | undefined) ?? []).map((c) => String(c?.a ?? ""));
+    ciphertexts = ((prepared.ballot.ciphertexts as { a?: unknown }[] | undefined) ?? []).map((c) => String(c?.a ?? ""));
   }
   db.addPrivateBallot(
     {
@@ -470,13 +533,13 @@ function indexAnonymousBallot(
       block: block.number,
       index: tx.index,
       timestamp: tx.timestamp,
-      tracking,
-      voterTag,
-      ballot,
+      tracking: prepared.tracking,
+      voterTag: prepared.voterTag,
+      ballot: prepared.ballot,
       verified: error === null,
       error,
-      creator: null,
-      anonymous: creator && proof ? { creator, pseudonym: proof } : null,
+      creator: prepared.creator,
+      ...(prepared.voter === "idemix" ? { anonymous: prepared.anonymous } : {}),
     },
     ciphertexts,
   );
@@ -697,6 +760,57 @@ export function electionList(db: ExplorerDb, policy: Policy, channel: string, no
       const v = electionView(db, policy, channel, row.id, now);
       return v ? [{ id: v.id, title: v.title, closesAt: v.closesAt, state: v.state, phase: v.phase, ballots: v.ballots.total, fingerprint: v.fingerprint, anonymous: v.anonymous !== null }] : [];
     });
+}
+
+/**
+ * The list's state filter: each election's phase falls in one of these,
+ * which the elections page and the API take as `state`.
+ */
+export const STATE_FILTERS = ["ceremony", "open", "counting", "counted", "ended"] as const;
+export type StateFilter = (typeof STATE_FILTERS)[number];
+
+export function stateOf(phase: Phase): StateFilter {
+  switch (phase) {
+    case "round1":
+    case "round2":
+    case "round3":
+    case "opening":
+      return "ceremony";
+    case "open":
+    case "late":
+      return "open";
+    case "counting":
+      return "counting";
+    case "counted":
+      return "counted";
+    default:
+      return "ended";
+  }
+}
+
+/** `state` as a request gives it: one of STATE_FILTERS, nothing for every election, or undefined when it is neither. */
+export function parseStateFilter(value: string | undefined): StateFilter | null | undefined {
+  if (value === undefined || value === "" || value === "all") return null;
+  return (STATE_FILTERS as readonly string[]).includes(value) ? (value as StateFilter) : undefined;
+}
+
+export interface ElectionPage {
+  /** How many elections the channel has in each state, and in all. */
+  counts: Record<StateFilter, number> & { all: number };
+  /** How many match the filter, and the page of them, newest first. */
+  total: number;
+  offset: number;
+  limit: number;
+  state: StateFilter | null;
+  elections: PrivateElectionSummary[];
+}
+
+/** One page of a channel's private elections, newest first, with only those in `state` when it is given. */
+export function electionPage(list: PrivateElectionSummary[], { offset = 0, limit = 20, state = null }: { offset?: number; limit?: number; state?: StateFilter | null } = {}): ElectionPage {
+  const counts = { all: list.length, ceremony: 0, open: 0, counting: 0, counted: 0, ended: 0 };
+  for (const e of list) counts[stateOf(e.phase)] += 1;
+  const matching = state ? list.filter((e) => stateOf(e.phase) === state) : list;
+  return { counts, total: matching.length, offset, limit, state, elections: matching.slice(offset, offset + limit) };
 }
 
 /**

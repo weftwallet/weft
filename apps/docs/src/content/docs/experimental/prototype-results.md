@@ -166,6 +166,21 @@ The explorer's checks of anonymous ballots, on 8 November 2026, on the same mach
 | Of which the creator's proof and the pseudonym proof, with the module | 118 ms per ballot, most of it the creator's proof |
 | The full check's Pseudonym proofs step, in Node | 106 ms per ballot |
 | The idemix module's start in the full check's worker in Chromium: fetch, hashes, compile and run | 0.4 to 0.7 s |
-| The whole full check of `chair-2029` in Chromium, in two workers | 1.3 to 1.7 s |
+| The whole full check of `chair-2029` in Chromium, in two workers, with the Pseudonym proofs step in one of them | 1.3 to 1.7 s |
 
-An anonymous ballot costs the indexer about six times what an X.509 one does, so a backlog of 10,000 takes about 25 minutes to index. The Pseudonym proofs step runs in one worker, so 10,000 ballots add about 18 minutes to the full check. Checking the creators' proofs in more workers, each starting its own module, is left for later.
+An anonymous ballot costs the indexer about six times what an X.509 one does, so a backlog of 10,000 takes about 25 minutes to index.
+
+On 9 November 2026 the Pseudonym proofs step moved into every worker the full check starts, in batches of 10 in ledger order, each worker starting its own module from bytes the page downloads once. On the same machine, `chair-2029`'s whole full check in headless Chromium 141, in two workers, took 1.2 to 1.7 s over four runs, of which the modules' start, side by side, took 0.28 to 0.36 s. With four workers, 10,000 anonymous ballots add about 5 minutes to the full check, not 18.
+
+### The indexer's check threads
+
+The same day, the indexer's ballot checks moved off the server's main thread into a pool of worker threads (`WEFT_EXPLORER_CHECK_THREADS`), each with its own idemix module, all of a block's ballots at once; the checks across ballots stay on the main thread, in ledger order. `pnpm --filter @weftwallet/explorer bench:index` indexes a made-up election of 120 three-option X.509 ballots, 10 to a block, and `chair-2029`'s 5 anonymous ballots, and measures how long the main thread couldn't answer anything (the event loop's longest delay), as a request arriving during indexing would wait. Node 22.22.0 on the same two-core Xeon:
+
+| Indexing | Time a run | Main thread held, longest | 99th percentile |
+|---|---|---|---|
+| 120 X.509 ballots, checked in the main thread (as before) | 2.0 s | 203 ms | 199 ms |
+| The same, in 2 check threads | 1.3 s | 36 ms | 5 ms |
+| 5 anonymous ballots, in the main thread with the module | 668 ms | 116 ms | 107 ms |
+| The same, in 2 check threads, each with the module | 669 ms | 41 ms | 13 ms |
+
+A block of ten ballots held the main thread for about 200 ms before; it now holds it for the decoding and the writes. With one thread (the default on two cores) the X.509 run takes as long as before, 2.4 s, with the main thread held at most 50 ms. Each thread that starts the idemix module takes about 90 MB of memory.

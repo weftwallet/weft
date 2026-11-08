@@ -5,7 +5,8 @@ import { checkBallots, checkCeremony, checkCount, electionFrom, firstRepeat, typ
 import { goJsonParse, goString } from "./go-utf8.ts";
 import { indexBlock } from "./indexer.ts";
 import { parsePolicy, publishedChannels, type Policy } from "./policy.ts";
-import { checkedOf, electionView, publishedBallot, type PrivateRecord } from "./private-elections.ts";
+import { checkedOf, electionPage, electionView, parseStateFilter, publishedBallot, stateOf, type Phase, type PrivateElectionSummary, type PrivateRecord } from "./private-elections.ts";
+import { privateElectionsSection } from "./private-pages.ts";
 import { readTrackingReceipt } from "./receipt.ts";
 import { buildServer } from "./server.ts";
 import { chain } from "./test/blocks.ts";
@@ -20,10 +21,10 @@ const unescaped = (body: string) => body.replace(/&#(\d+);/g, (_, c: string) => 
 const policyFor = (submitter: "show" | "hide" = "hide", extra: Record<string, unknown> = {}): Policy =>
   parsePolicy({ channels: { [CHANNEL]: { level: "public", values: "show", submitter, privateElections: "private-ballot", ...extra } } });
 
-function load(f: Fixture, options: { submitter?: "show" | "hide"; experimental?: boolean } = {}) {
+async function load(f: Fixture, options: { submitter?: "show" | "hide"; experimental?: boolean } = {}) {
   const policy = policyFor(options.submitter);
   const db = new ExplorerDb(":memory:");
-  for (const b of f.blocks) indexBlock(db, policy, decodeBlock(b), { experimental: options.experimental ?? true });
+  for (const b of f.blocks) await indexBlock(db, policy, decodeBlock(b), { experimental: options.experimental ?? true });
   const app = buildServer({ name: "Org1", channels: publishedChannels(policy), policy, db, status: () => [], experimental: options.experimental ?? true });
   return { db, policy, app };
 }
@@ -37,7 +38,7 @@ const fixture = (name: string, o: Options = {}) => {
 const counted = () => fixture("counted", { until: "counted", choices: [0, 1, 1, 2, 1, 0, 1] });
 
 describe("decoding bytes the way the Go contract does", () => {
-  it("keeps valid UTF-8, and replaces each byte of an invalid sequence with one U+FFFD", () => {
+  it("keeps valid UTF-8, and replaces each byte of an invalid sequence with one U+FFFD", async () => {
     expect(goString(Buffer.from("Plan B, ünïcode ✓ 🗳️"))).toBe("Plan B, ünïcode ✓ 🗳️");
     // A truncated three-byte sequence: Go replaces each byte, the WHATWG decoder the whole sequence.
     expect(goString(Uint8Array.of(0xe2, 0x82, 0x41))).toBe("��A");
@@ -51,7 +52,7 @@ describe("decoding bytes the way the Go contract does", () => {
     expect(goString(Buffer.from("�"))).toBe("�");
   });
 
-  it("reads a lone surrogate escape in JSON as U+FFFD, as encoding/json does", () => {
+  it("reads a lone surrogate escape in JSON as U+FFFD, as encoding/json does", async () => {
     expect(goJsonParse('{"title":"a\\ud800b","\\udc00":1}')).toEqual({ title: "a�b", "�": 1 });
     expect(goJsonParse('{"ok":"\\ud83d\\uddf3"}')).toEqual({ ok: "\u{1F5F3}" });
   });
@@ -69,13 +70,13 @@ describe("decoding bytes the way the Go contract does", () => {
       { txs: [{ txId: "c0", chaincode: "", args: [], config: true }] },
       { txs: [{ txId: "aa01", chaincode: "private-ballot", args: ["CreateElection", Uint8Array.of(0x7b, 0xe2, 0x82, 0x7d)], writes: [{ key: key("election", "odd"), value: record(Uint8Array.of(0xe2, 0x82, 0x41)) }] }] },
     ]);
-    for (const b of blocks) indexBlock(db, policy, decodeBlock(b), { experimental: true });
+    for (const b of blocks) await indexBlock(db, policy, decodeBlock(b), { experimental: true });
     expect(electionView(db, policy, CHANNEL, "odd")!.title).toBe("Budget ��A");
   });
 });
 
 describe("the policy for private elections", () => {
-  it("refuses privateElections with values: hash on the same channel", () => {
+  it("refuses privateElections with values: hash on the same channel", async () => {
     expect(() => parsePolicy({ channels: { [CHANNEL]: { level: "public", values: "hash", privateElections: "private-ballot" } } })).toThrow(
       `channels.${CHANNEL} has privateElections and values: hash. Private election pages are made from the contract's arguments and writes, which values: hash publishes as hashes only. Set values: show for ${CHANNEL}, or remove privateElections.`,
     );
@@ -85,8 +86,8 @@ describe("the policy for private elections", () => {
 
   it("publishes voter tags with submitter: hide, and the submitter's certificate only with submitter: show", async () => {
     const f = await counted();
-    const hidden = load(f, { submitter: "hide" });
-    const shown = load(f, { submitter: "show" });
+    const hidden = await load(f, { submitter: "hide" });
+    const shown = await load(f, { submitter: "show" });
     const [h] = hidden.db.privateBallots(CHANNEL, f.id);
     const [s] = shown.db.privateBallots(CHANNEL, f.id);
     expect(h!.voterTag).toBe(f.ballots[0]!.voterTag);
@@ -101,7 +102,7 @@ describe("the policy for private elections", () => {
 
   it("indexes and shows nothing private without WEFT_EXPERIMENTAL=1", async () => {
     const f = await counted();
-    const { db, app } = load(f, { experimental: false });
+    const { db, app } = await load(f, { experimental: false });
     expect(db.privateElections(CHANNEL)).toEqual([]);
     expect((await app.inject(`/api/v1/channels/${CHANNEL}/private-elections`)).statusCode).toBe(404);
     expect((await app.inject(`/channels/${CHANNEL}/elections/${f.id}`)).statusCode).toBe(404);
@@ -116,7 +117,7 @@ describe("the policy for private elections", () => {
 describe("indexing a private election", () => {
   it("follows it from the key ceremony to the count, and checks every step as it reads it", async () => {
     const f = await counted();
-    const { db, policy } = load(f);
+    const { db, policy } = await load(f);
     const v = electionView(db, policy, CHANNEL, f.id)!;
     expect(v).toMatchObject({ state: "counted", phase: "counted", recordBallots: 7, fingerprintMatches: true, ballots: { total: 7, failed: 0 } });
     expect(v.tally).toEqual({ counts: f.counts, total: 7 });
@@ -135,7 +136,7 @@ describe("indexing a private election", () => {
 
   it("records a ballot whose proofs fail, with the contract's message", async () => {
     const f = await fixture("tampered", { until: "open", choices: [0, 1, 2, 1], tamper: { ballot: 2, option: 2 } });
-    const { db } = load(f);
+    const { db } = await load(f);
     const rows = db.privateBallots(CHANNEL, f.id);
     expect(rows.map((b) => b.verified)).toEqual([true, true, false, true]);
     expect(rows[2]!.error).toBe("Ciphertext 2 is not a 0 or a 1.");
@@ -157,7 +158,7 @@ describe("indexing a private election", () => {
   for (const [until, phase, closesAt] of phases) {
     it(`works out the ${phase} state${until === "closeRequested" ? " with a close requested" : ""}`, async () => {
       const f = await fixture(`${until}-${closesAt}`, { until, ...(closesAt ? { closesAt } : {}), choices: [0, 1, 2] });
-      const { db, policy } = load(f);
+      const { db, policy } = await load(f);
       const v = electionView(db, policy, CHANNEL, f.id)!;
       expect(v.phase).toBe(phase);
       if (until === "failed") expect(v.failed).toMatchObject({ reportedBy: "Org2MSP", fromTrustee: "Org1MSP" });
@@ -170,7 +171,7 @@ describe("indexing a private election", () => {
 describe("the full check's code, in Node", () => {
   it("passes a whole election, from published data only", async () => {
     const f = await counted();
-    const { db, policy } = load(f);
+    const { db, policy } = await load(f);
     const v = electionView(db, policy, CHANNEL, f.id)!;
     const e = checkedOf(db.privateElection(CHANNEL, f.id)!.record as unknown as PrivateRecord, CHANNEL, "private-ballot");
     expect(checkCeremony(e, v.trustees.map((t) => ({ round1: t.round1?.body, round2: t.round2?.body, confirmation: t.confirmation?.body })))).toBeNull();
@@ -194,7 +195,7 @@ describe("the full check's code, in Node", () => {
 
   it("stops at the first ballot that fails, and finds repeats across ballots", async () => {
     const f = await fixture("tampered", { until: "open", choices: [0, 1, 2, 1], tamper: { ballot: 2, option: 2 } });
-    const { db } = load(f);
+    const { db } = await load(f);
     const e = electionFrom(checkedOf(db.privateElection(CHANNEL, f.id)!.record as unknown as PrivateRecord, CHANNEL, "private-ballot"))!;
     const ballots = db.privateBallots(CHANNEL, f.id).map((b, i) => publishedBallot(b, i) as unknown as PublishedBallot);
     expect(checkBallots(e, ballots).failure).toMatchObject({ index: 2, txId: f.ballots[2]!.txId, message: "Ciphertext 2 is not a 0 or a 1." });
@@ -208,7 +209,7 @@ describe("the full check's code, in Node", () => {
 
   it("works each voter tag out again from the submitter's certificate, when it is published", async () => {
     const f = await counted();
-    const { db } = load(f, { submitter: "show" });
+    const { db } = await load(f, { submitter: "show" });
     const e = electionFrom(checkedOf(db.privateElection(CHANNEL, f.id)!.record as unknown as PrivateRecord, CHANNEL, "private-ballot"))!;
     const [a, b] = db.privateBallots(CHANNEL, f.id).map((r, i) => publishedBallot(r, i) as unknown as PublishedBallot);
     expect(checkBallots(e, [a!, b!]).failure).toBeNull();
@@ -217,7 +218,7 @@ describe("the full check's code, in Node", () => {
 
   it("names a ceremony post that doesn't verify", async () => {
     const f = await counted();
-    const { db, policy } = load(f);
+    const { db, policy } = await load(f);
     const v = electionView(db, policy, CHANNEL, f.id)!;
     const e = checkedOf(db.privateElection(CHANNEL, f.id)!.record as unknown as PrivateRecord, CHANNEL, "private-ballot");
     const posts = v.trustees.map((t) => ({ round1: t.round1?.body, round2: t.round2?.body, confirmation: t.confirmation?.body }));
@@ -233,7 +234,7 @@ describe("the full check's code, in Node", () => {
 
 describe("the private election pages", () => {
   const page = async (f: Fixture, path = "", submitter: "show" | "hide" = "hide") => {
-    const { app } = load(f, { submitter });
+    const { app } = await load(f, { submitter });
     const res = await app.inject(`/channels/${CHANNEL}/elections/${f.id}${path}`);
     expect(res.statusCode).toBe(200);
     return { headers: res.headers, body: unescaped(res.body) };
@@ -246,7 +247,7 @@ describe("the private election pages", () => {
     expect(res.headers["content-security-policy"]).toContain("worker-src 'self'");
     expect(body).toContain('<span class="pill pill--ok">counted</span>');
     expect(body).toContain("A private election. Experimental: no one outside the project has reviewed its cryptography.");
-    const v = (await load(f).app.inject(`/api/v1/channels/${CHANNEL}/private-elections/${f.id}`)).json();
+    const v = (await (await load(f)).app.inject(`/api/v1/channels/${CHANNEL}/private-elections/${f.id}`)).json();
     const fp = v.fingerprint as string;
     expect(body).toContain(`data-copy="${fp}">${fp.match(/.{4}/g)!.map((g) => `<span>${g}</span>`).join("")}</span>`);
     expect(body).toContain("Worked out here from the election's record. Weft shows the same before each vote.");
@@ -343,7 +344,7 @@ describe("the private election pages", () => {
     const first = (await page(f)).body;
     expect(first.match(/class="mono row-link"/g)).toHaveLength(50);
     const older = /<a href="([^"]+)">Older ballots<\/a>/.exec(first)![1]!.replace(/&#38;/g, "&");
-    const second = unescaped((await load(f).app.inject(older)).body);
+    const second = unescaped((await (await load(f)).app.inject(older)).body);
     expect(second.match(/class="mono row-link"/g)).toHaveLength(6);
     expect(second).toMatch(/<a href="[^"]+#ballots">Newer ballots<\/a>/);
     // The oldest ballot is on the second page: Weft's link opens that page.
@@ -355,7 +356,7 @@ describe("the private election pages", () => {
 
   it("lists a channel's private elections", async () => {
     const f = await counted();
-    const { app } = load(f);
+    const { app } = await load(f);
     const list = unescaped((await app.inject(`/channels/${CHANNEL}/elections`)).body);
     expect(list).toContain("Private elections, on the private-ballot contract.");
     expect(list).toContain(`<a class="row-link" href="/channels/${CHANNEL}/elections/${f.id}">Budget 2027</a>`);
@@ -367,9 +368,25 @@ describe("the private election pages", () => {
 describe("the private election API", () => {
   it("serves the election, its ballots a page at a time, tracking codes and the worker", async () => {
     const f = await counted();
-    const { app } = load(f);
+    const { app } = await load(f);
     const list = (await app.inject(`/api/v1/channels/${CHANNEL}/private-elections`)).json();
-    expect(list).toEqual([expect.objectContaining({ id: f.id, phase: "counted", ballots: 7 })]);
+    expect(list).toMatchObject({ total: 1, offset: 0, limit: 20, state: null, counts: { all: 1, counted: 1, open: 0 } });
+    expect(list.elections).toEqual([expect.objectContaining({ id: f.id, phase: "counted", ballots: 7 })]);
+    // A state filter, in the API and on the page.
+    expect((await app.inject(`/api/v1/channels/${CHANNEL}/private-elections?state=open`)).json()).toMatchObject({ total: 0, state: "open", elections: [], counts: { all: 1 } });
+    expect((await app.inject(`/api/v1/channels/${CHANNEL}/private-elections?state=counted&limit=500`)).json()).toMatchObject({ total: 1, limit: 100 });
+    const bad = await app.inject(`/api/v1/channels/${CHANNEL}/private-elections?state=closed`);
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().error).toBe("There's no state closed. Give one of ceremony, open, counting, counted and ended, or leave state out for every election.");
+    const open = unescaped((await app.inject(`/channels/${CHANNEL}/elections?state=open`)).body);
+    expect(open).toContain(`No elections on ${CHANNEL} are open now.`);
+    expect(open).toMatch(/<a href="\/channels\/privatevote-budget-2027\/elections\?state=open" aria-current="page">Open <span class="filters__count">0<\/span><\/a>/);
+    expect(open).toContain(`<title>Elections on ${CHANNEL}, open`);
+    const all = unescaped((await app.inject(`/channels/${CHANNEL}/elections`)).body);
+    expect(all).toMatch(/aria-current="page">All <span class="filters__count">1<\/span>/);
+    expect(all).toContain(`href="/channels/${CHANNEL}/elections?state=counted">Counted <span class="filters__count">1</span>`);
+    // Only the states that have an election are offered, besides All.
+    expect(all).not.toContain("?state=ceremony");
     const v = (await app.inject(`/api/v1/channels/${CHANNEL}/private-elections/${f.id}`)).json();
     expect(v).toMatchObject({ id: f.id, contract: "private-ballot", state: "counted", submitters: "hide", tally: { counts: f.counts } });
     expect(v.trustees[0].round1.body.commitments).toHaveLength(2);
@@ -385,9 +402,45 @@ describe("the private election API", () => {
   });
 });
 
+describe("the elections list's pages and state filter", () => {
+  const summary = (i: number, phase: Phase): PrivateElectionSummary => ({ id: `e${i}`, title: `E ${i}`, closesAt: "2027-01-31T17:00:00.000Z", state: "open", phase, ballots: i, fingerprint: null, anonymous: false });
+  const phases: Phase[] = ["round1", "round2", "round3", "opening", "open", "late", "counting", "counted", "failed", "cancelled"];
+  const list = Array.from({ length: 45 }, (_, i) => summary(i, phases[i % phases.length]!));
+
+  it("groups each phase in one state", () => {
+    expect(phases.map(stateOf)).toEqual(["ceremony", "ceremony", "ceremony", "ceremony", "open", "open", "counting", "counted", "ended", "ended"]);
+    expect(parseStateFilter(undefined)).toBeNull();
+    expect(parseStateFilter("all")).toBeNull();
+    expect(parseStateFilter("open")).toBe("open");
+    expect(parseStateFilter("closed")).toBeUndefined();
+  });
+
+  it("pages newest first, counts every state, and filters before paging", () => {
+    const first = electionPage(list, { limit: 20 });
+    expect(first).toMatchObject({ total: 45, offset: 0, limit: 20, state: null, counts: { all: 45, ceremony: 20, open: 9, counting: 4, counted: 4, ended: 8 } });
+    expect(first.elections.map((e) => e.id).slice(0, 2)).toEqual(["e0", "e1"]);
+    expect(electionPage(list, { offset: 40, limit: 20 }).elections).toHaveLength(5);
+    const open = electionPage(list, { state: "open", limit: 4 });
+    expect(open.total).toBe(9);
+    expect(open.elections.map((e) => e.phase)).toEqual(["open", "late", "open", "late"]);
+    expect(electionPage(list, { state: "open", offset: 8, limit: 4 }).elections).toHaveLength(1);
+  });
+
+  it("links the pages, keeping the filter, and says when a page or a state is empty", () => {
+    const body = (page: ReturnType<typeof electionPage>) => unescaped(String(privateElectionsSection(CHANNEL, page)));
+    const middle = body(electionPage(list, { state: "ceremony", offset: 4, limit: 4 }));
+    expect(middle).toContain(`href="/channels/${CHANNEL}/elections?state=ceremony">Newer elections</a>`);
+    expect(middle).toContain(`href="/channels/${CHANNEL}/elections?state=ceremony&page=3">Older elections</a>`);
+    expect(body(electionPage(list, { offset: 0, limit: 20 }))).toContain(`<a class="pager__none" role="link" aria-disabled="true">Newer elections</a>`);
+    expect(body(electionPage(list, { offset: 100, limit: 20 }))).toContain("There's no page 6 of these elections.");
+    expect(body(electionPage([], {}))).toContain(`No private elections on ${CHANNEL} yet.`);
+    expect(body(electionPage([], {}))).not.toContain("filters");
+  });
+});
+
 describe("reading a version 2 receipt", () => {
   const receipt = { type: "weft-ballot-receipt", version: 2, channel: CHANNEL, electionId: "budget-2027", txId: "ab".repeat(32), blockNumber: 41, tracking: "cd".repeat(32) };
-  it("fills the tracking code, and says why it can't", () => {
+  it("fills the tracking code, and says why it can't", async () => {
     expect(readTrackingReceipt(JSON.stringify(receipt), "budget-2027")).toEqual({ ok: true, tracking: "cd".repeat(32) });
     expect(readTrackingReceipt(JSON.stringify({ ...receipt, version: 1, commitment: "x" }), "budget-2027")).toEqual({
       ok: false,

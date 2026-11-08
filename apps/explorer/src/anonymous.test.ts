@@ -52,10 +52,10 @@ const unescaped = (body: string) => body.replace(/&#(\d+);/g, (_, c: string) => 
 const policyFor = (submitter: "show" | "hide"): Policy =>
   parsePolicy({ channels: { [CHANNEL]: { level: "public", values: "show", submitter, privateElections: "private-ballot" } } });
 
-function load(list: DecodedBlock[], idemix: IdemixSync | null, submitter: "show" | "hide" = "show") {
+async function load(list: DecodedBlock[], idemix: IdemixSync | null, submitter: "show" | "hide" = "show") {
   const policy = policyFor(submitter);
   const db = new ExplorerDb(":memory:");
-  for (const b of list) indexBlock(db, policy, b, { experimental: true, idemix });
+  for (const b of list) await indexBlock(db, policy, b, { experimental: true, idemix });
   const app = buildServer({ name: "Org1", channels: publishedChannels(policy), policy, db, status: () => [], experimental: true, idemixDir: DIST_WASM });
   return { db, policy, app };
 }
@@ -77,9 +77,9 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
     idemix = (await startIdemixNode()).sync;
   });
 
-  it("indexes each anonymous ballot with its pseudonym as the voter tag, and checks its creator and pseudonym proof", () => {
+  it("indexes each anonymous ballot with its pseudonym as the voter tag, and checks its creator and pseudonym proof", async () => {
     resetIndexStats();
-    const { db, policy } = load(blocks(), idemix);
+    const { db, policy } = await load(blocks(), idemix);
     const v = electionView(db, policy, CHANNEL, ID)!;
     expect(v.phase).toBe("counted");
     expect(v.ballots).toEqual({ total: 5, failed: 0 });
@@ -102,7 +102,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
     console.log(`Index time per anonymous ballot: ${(s.ms / s.ballots).toFixed(0)} ms in all, ${(s.anonymousMs / s.anonymous).toFixed(0)} ms of it the creator and the pseudonym proof.`);
   });
 
-  it("refuses a forged pseudonym proof, another ballot's creator, and a changed creator proof", () => {
+  it("refuses a forged pseudonym proof, another ballot's creator, and a changed creator proof", async () => {
     const cases: [string, (list: DecodedBlock[]) => void, string][] = [
       [
         "a changed sr",
@@ -128,7 +128,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
     for (const [name, change, message] of cases) {
       const list = blocks();
       change(list);
-      const { db } = load(list, idemix);
+      const { db } = await load(list, idemix);
       const bad = db.privateBallots(CHANNEL, ID).find((b) => b.block === 13)!;
       expect(bad.verified, name).toBe(false);
       expect(bad.error, name).toBe(message);
@@ -136,7 +136,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
     }
   });
 
-  it("flags a second ballot from one credential with the credential's message", () => {
+  it("flags a second ballot from one credential with the credential's message", async () => {
     const second = JSON.parse(readFileSync(new URL("chair-2029-second-ballot.json", fixtures), "utf8")) as {
       txId: string;
       creator: { mspId: string; idBytes: string };
@@ -162,7 +162,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
       { namespace: "private-ballot", key: key("voted", ID, second.voterTag), isDelete: false, value: Buffer.from(second.txId) },
     ];
     const extra: DecodedBlock = { ...template, number: 17, transactions: [tx] };
-    const { db } = load([...list.slice(0, 17), extra], idemix);
+    const { db } = await load([...list.slice(0, 17), extra], idemix);
     const rows = db.privateBallots(CHANNEL, ID);
     expect(rows).toHaveLength(6);
     const repeat = rows.find((b) => b.txId === second.txId)!;
@@ -172,15 +172,15 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
     expect(firstRepeat(rows.map((b, i) => ({ ...b, index: i, ballot: { ciphertexts: [] } })), "idemix")).toEqual({ index: 5, message: "This credential has already voted in this election." });
   });
 
-  it("records each anonymous ballot as unchecked, and says why, without the module", () => {
-    const { db } = load(blocks(), null);
+  it("records each anonymous ballot as unchecked, and says why, without the module", async () => {
+    const { db } = await load(blocks(), null);
     const rows = db.privateBallots(CHANNEL, ID);
     expect(rows).toHaveLength(5);
     for (const b of rows) expect(b.error).toBe("This explorer couldn't start the idemix module, so it can't check this ballot's creator or pseudonym.");
   });
 
   it("runs the browser's full check of anonymous ballots in Node: ballot proofs from each pseudonym, then each identity and pseudonym proof", async () => {
-    const { db, policy, app } = load(blocks(), idemix, "hide");
+    const { db, policy, app } = await load(blocks(), idemix, "hide");
     const row = db.privateElection(CHANNEL, ID)!;
     const checked = checkedOf(row.record as unknown as PrivateRecord, CHANNEL, "private-ballot");
     const e = electionFrom(checked)!;
@@ -207,7 +207,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
 
   it("shows the election with anonymous voters, the pinned issuer key and the Pseudonym column", async () => {
     for (const submitter of ["show", "hide"] as const) {
-      const { app } = load(blocks(), idemix, submitter);
+      const { app } = await load(blocks(), idemix, submitter);
       const page = unescaped((await app.inject(`/channels/${CHANNEL}/elections/${ID}`)).body);
       expect(page).toContain("A private election with anonymous voters.");
       expect(page).toContain(`signed by an anonymous member of ${VOTERS}`);
@@ -222,7 +222,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
       const list = unescaped((await app.inject(`/channels/${CHANNEL}/elections`)).body);
       expect(list).toContain(`${ID} · anonymous voters`);
     }
-    const { app } = load(blocks(), idemix, "hide");
+    const { app } = await load(blocks(), idemix, "hide");
     const tx = blocks()[12]!.transactions[0]!;
     const txPage = unescaped((await app.inject(`/channels/${CHANNEL}/transactions/${tx.txId}`)).body);
     expect(txPage).toContain(`Anonymous member of the voter organisation <span class="mono">${VOTERS}</span>`);
@@ -234,7 +234,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
   });
 
   it("shows the key mismatch banner when the pinned issuer key isn't the channel's", async () => {
-    const { db, app } = load(blocks(), idemix);
+    const { db, app } = await load(blocks(), idemix);
     const summary = db.configSummary(CHANNEL)!;
     db.setConfigSummary(CHANNEL, { ...summary, organisations: summary.organisations.map((o) => (o.mspId === VOTERS ? { ...o, issuerKeyHash: "ab".repeat(32) } : o)) });
     const page = unescaped((await app.inject(`/channels/${CHANNEL}/elections/${ID}`)).body);
@@ -244,7 +244,7 @@ describe.skipIf(skip)("anonymous ballots from real blocks", () => {
   });
 
   it("serves the pinned module to the browser's full check, gzipped, under a policy that lets it compile", async () => {
-    const { app } = load(blocks().slice(0, 1), idemix);
+    const { app } = await load(blocks().slice(0, 1), idemix);
     const wasm = await app.inject({ url: "/assets/idemix/weft-idemix.wasm", headers: { "accept-encoding": "gzip" } });
     expect(wasm.statusCode).toBe(200);
     expect(wasm.headers["content-type"]).toBe("application/wasm");

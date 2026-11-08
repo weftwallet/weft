@@ -14,7 +14,7 @@ import type { CheckpointSigner, CrossCheck } from "./checkpoints.ts";
 import { requesterIsMember, verifyExplorerRequest } from "./checkpoints.ts";
 import { checkReceipt, elections } from "./elections.ts";
 import { PUBLIC_PRODUCTS, receiptOrigins, type ProductAddresses } from "./config.ts";
-import { electionList, electionView, publishedBallot } from "./private-elections.ts";
+import { electionList, electionPage, electionView, parseStateFilter, publishedBallot } from "./private-elections.ts";
 import * as privatePages from "./private-pages.ts";
 
 export interface ServerOptions {
@@ -100,6 +100,9 @@ const PAGE = 20;
 /** Ballots on one page of a private election's table, and at most in one API answer. */
 const BALLOT_PAGE = 50;
 const BALLOT_API_PAGE = 1000;
+/** Private elections on one page of the elections list, and at most in one API answer. */
+const ELECTION_PAGE = 20;
+const ELECTION_API_PAGE = 100;
 const CONTRACT_PAGE = 50;
 /** Most headers one request returns. */
 const HEADERS = 1000;
@@ -477,13 +480,17 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     return { s, list: elections(db.contractRows(channel, contract).map(s.view)) };
   }
 
-  app.get<{ Params: { channel: string } }>("/channels/:channel/elections", async (request, reply) => {
+  app.get<{ Params: { channel: string }; Querystring: { page?: string; state?: string } }>("/channels/:channel/elections", async (request, reply) => {
     const { channel } = request.params;
     const s = scope(request);
     if (s.canSeePrivate(channel)) {
       const main = electionData(request, channel);
       const ballotContract = main ? pages.electionsList(channel, main.list) : undefined;
-      return send(reply, privatePages.privateElectionsPage(s.site, channel, electionList(db, policy, channel), ballotContract));
+      // ?state= filters by state and ?page= pages the list; a state that isn't one shows every election.
+      const state = parseStateFilter(request.query.state) ?? null;
+      const page = Math.max(1, int(request.query.page) ?? 1);
+      const list = electionPage(electionList(db, policy, channel), { offset: (page - 1) * ELECTION_PAGE, limit: ELECTION_PAGE, state });
+      return send(reply, privatePages.privateElectionsPage(s.site, channel, list, ballotContract));
     }
     const data = electionData(request, channel);
     if (!data) {
@@ -559,10 +566,21 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   const nothing = (reply: FastifyReply) => reply.code(404).send({ error: "Nothing was found at this address." });
 
-  app.get<{ Params: { channel: string } }>("/api/v1/channels/:channel/private-elections", async (request, reply) => {
-    const { channel } = request.params;
-    return scope(request).canSeePrivate(channel) ? electionList(db, policy, channel) : nothing(reply);
-  });
+  // The channel's private elections, newest first, a page at a time, with only those in ?state= when it is given.
+  app.get<{ Params: { channel: string }; Querystring: { offset?: string; limit?: string; state?: string } }>(
+    "/api/v1/channels/:channel/private-elections",
+    async (request, reply) => {
+      const { channel } = request.params;
+      if (!scope(request).canSeePrivate(channel)) return nothing(reply);
+      const state = parseStateFilter(request.query.state);
+      if (state === undefined) {
+        return reply.code(400).send({ error: `There's no state ${request.query.state}. Give one of ceremony, open, counting, counted and ended, or leave state out for every election.` });
+      }
+      const offset = int(request.query.offset) ?? 0;
+      const limit = Math.max(1, Math.min(int(request.query.limit) ?? ELECTION_PAGE, ELECTION_API_PAGE));
+      return electionPage(electionList(db, policy, channel), { offset, limit, state });
+    },
+  );
 
   app.get<{ Params: { channel: string; id: string } }>("/api/v1/channels/:channel/private-elections/:id", async (request, reply) => {
     const { channel, id } = request.params;

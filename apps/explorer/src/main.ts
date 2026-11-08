@@ -6,7 +6,7 @@ import { Indexer } from "./indexer.ts";
 import { policyFingerprint, publishedChannels } from "./policy.ts";
 import { existsSync } from "node:fs";
 import { FULL_CHECK_WORKER, buildServer } from "./server.ts";
-import type { IdemixSync } from "@weftwallet/idemix";
+import { CheckPool, inlineChecker, type BallotChecker } from "./check-pool.ts";
 
 const config = loadConfig();
 const privateElections = config.experimental && Object.values(config.policy.channels).some((c) => c.privateElections);
@@ -15,15 +15,19 @@ if (privateElections && !existsSync(FULL_CHECK_WORKER)) {
     `The policy names privateElections, and the full check's worker, ${FULL_CHECK_WORKER}, isn't built. Run pnpm --filter @weftwallet/explorer build, then start the explorer again.`,
   );
 }
-// Anonymous ballots (docs/adr/0008) are checked with the idemix module, in
-// this process as the indexer reads each block, and in the browser's full
-// check, which this explorer serves the module to. Both refuse a module whose
-// SHA-256 isn't the pinned one.
-let idemix: { sync: IdemixSync; dir: string } | null = null;
+// Ballots on private elections are checked as the indexer reads each block,
+// in a pool of worker threads (check-pool.ts) so the checks don't hold up
+// requests, or with WEFT_EXPLORER_CHECK_THREADS=0 in this thread. Anonymous
+// ballots (docs/adr/0008) are checked with the idemix module, which each
+// thread starts, and in the browser's full check, which this explorer serves
+// the module to. Both refuse a module whose SHA-256 isn't the pinned one.
+let idemixDir: string | null = null;
+let checker: BallotChecker = inlineChecker(null);
 if (privateElections) {
   const { DIST_WASM, startIdemixNode } = await import("@weftwallet/idemix/node");
+  idemixDir = DIST_WASM;
   try {
-    idemix = { sync: (await startIdemixNode()).sync, dir: DIST_WASM };
+    checker = config.checkThreads === 0 ? inlineChecker((await startIdemixNode()).sync) : await CheckPool.start({ size: config.checkThreads, idemixDir });
   } catch (error) {
     throw new Error(
       `The policy names privateElections, and the idemix module in ${DIST_WASM} didn't start: ${error instanceof Error ? error.message : String(error)} Run pnpm --filter @weftwallet/idemix build:wasm, which needs Go, then start the explorer again.`,
@@ -44,7 +48,7 @@ const app = buildServer({
   products: config.products,
   receiptOrigins: config.receiptOrigins,
   experimental: config.experimental,
-  ...(idemix ? { idemixDir: idemix.dir } : {}),
+  ...(idemixDir ? { idemixDir } : {}),
   channels,
   policy: config.policy,
   db,
@@ -55,11 +59,12 @@ const app = buildServer({
   ...(config.publicUrl ? { publicUrl: config.publicUrl } : {}),
   logger: true,
 });
-const indexer = new Indexer(config, config.policy, db, { info: (m) => app.log.info(m), warn: (m) => app.log.warn(m) }, idemix?.sync ?? null);
+const indexer = new Indexer(config, config.policy, db, { info: (m) => app.log.info(m), warn: (m) => app.log.warn(m) }, checker);
 
 const shutdown = async () => {
   indexer.stop();
   crossCheck.stop();
+  await checker.close();
   await app.close();
   db.close();
   process.exit(0);
@@ -80,6 +85,7 @@ if (config.experimental) {
     `Started with WEFT_EXPERIMENTAL=1, for Weft Experimental. ${named.length ? `Private election pages are on for ${named.join(", ")}, with each ballot's voter tag published.` : "No channel names privateElections, so no private election pages are shown."} Their cryptography hasn't been reviewed outside the project.`,
   );
 }
+if (checker instanceof CheckPool) app.log.info(`Checking private election ballots in ${checker.size} ${checker.size === 1 ? "thread" : "threads"}`);
 if (rebuilt) app.log.info("The policy changed since the last run, so the index is being rebuilt from block 0.");
 indexer.start();
 crossCheck.start();

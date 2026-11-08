@@ -20,7 +20,8 @@
     "dev": "node scripts/build-worker.mjs && node ../../scripts/dev.mjs --default WEFT_EXPLORER_PRODUCTS_DOMAIN=dev --conditions=weft-source --disable-warning=ExperimentalWarning --watch src/main.ts",
     "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning dist/main.js",
     "test": "vitest run",
-    "sample": "node --disable-warning=ExperimentalWarning src/test/serve-sample.ts"
+    "sample": "node --disable-warning=ExperimentalWarning src/test/serve-sample.ts",
+    "bench:index": "node --conditions=weft-source --disable-warning=ExperimentalWarning src/test/bench-index.ts"
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible-mono": "^5.3.0",

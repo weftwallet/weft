@@ -14,7 +14,7 @@ import { X509Certificate } from "node:crypto";
 import { html, raw, type Html } from "./html.ts";
 import type { PrivateBallotRow } from "./db.ts";
 import { blockUrl, channelUrl, crumbs, cut, enc, fieldError, invalid, layout, pager, short, time, txUrl, type Site } from "./pages.ts";
-import type { AnonymousView, Phase, PrivateElectionSummary, PrivateElectionView, StepView } from "./private-elections.ts";
+import { STATE_FILTERS, type AnonymousView, type ElectionPage, type Phase, type PrivateElectionView, type StateFilter, type StepView } from "./private-elections.ts";
 import { readTrackingReceipt } from "./receipt.ts";
 
 export const privateElectionUrl = (channel: string, id: string) => `/channels/${enc(channel)}/elections/${enc(id)}`;
@@ -64,21 +64,60 @@ function fingerprint(value: string): Html {
 
 /* The elections list ------------------------------------------------------ */
 
-export function privateElectionsSection(channel: string, list: PrivateElectionSummary[]): Html {
+/** The state filter's labels, and how an empty filtered list names its elections. */
+const STATE_LABELS: Record<StateFilter, [string, string]> = {
+  ceremony: ["Key ceremony", "in their key ceremony"],
+  open: ["Open", "open"],
+  counting: ["Counting", "being counted"],
+  counted: ["Counted", "counted"],
+  ended: ["Failed or cancelled", "failed or cancelled"],
+};
+
+/** The elections page's address for a state filter and a page. */
+export function electionsUrl(channel: string, state: StateFilter | null, page = 1): string {
+  const q = new URLSearchParams();
+  if (state) q.set("state", state);
+  if (page > 1) q.set("page", String(page));
+  const query = q.toString();
+  return `${channelUrl(channel)}/elections${query ? `?${query}` : ""}`;
+}
+
+/** Links that show every election or those in one state, each with its count, the current one marked. Only once there are elections. */
+function stateFilter(channel: string, list: ElectionPage): Html {
+  if (list.counts.all === 0) return html``;
+  const link = (state: StateFilter | null, label: string, count: number) =>
+    html`<li><a href="${electionsUrl(channel, state)}"${list.state === state ? raw(' aria-current="page"') : ""}>${label} <span class="filters__count">${n(count)}</span></a></li>`;
+  return html`<nav class="filters" aria-label="Show elections"><ul>${link(null, "All", list.counts.all)}${STATE_FILTERS.filter((st) => list.counts[st] > 0 || list.state === st).map((st) =>
+    link(st, STATE_LABELS[st][0], list.counts[st]),
+  )}</ul></nav>`;
+}
+
+export function privateElectionsSection(channel: string, list: ElectionPage): Html {
+  const page = Math.floor(list.offset / list.limit) + 1;
+  const newer = page > 1 ? electionsUrl(channel, list.state, page - 1) : null;
+  const older = list.offset + list.limit < list.total ? electionsUrl(channel, list.state, page + 1) : null;
+  const empty =
+    list.counts.all === 0
+      ? html`<p class="empty">No private elections on ${channel} yet. An election appears here once a trustee creates one with the channel's private-ballot contract.</p>`
+      : list.total === 0
+        ? html`<p class="empty">No elections on ${channel} are ${list.state ? STATE_LABELS[list.state][1] : "here"} now. <a href="${electionsUrl(channel, null)}">Show every election</a></p>`
+        : html`<p class="empty">There's no page ${page} of these elections. <a href="${electionsUrl(channel, list.state)}">Go to the first page</a></p>`;
   return html`<p class="lead">Private elections, on the private-ballot contract. Each ballot is encrypted under a key that the election's trustees share, and anyone can check the proofs and the count here. Experimental: no one outside the project has reviewed this cryptography.</p>
-<div data-live="private-elections">${list.length === 0
-    ? html`<p class="empty">No private elections on ${channel} yet. An election appears here once a trustee creates one with the channel's private-ballot contract.</p>`
-    : html`<table class="table"><thead><tr><th>Election</th><th>Planned closing time</th><th class="num">Ballots</th><th>State</th></tr></thead><tbody>${list.map(
+<div data-live="private-elections">${stateFilter(channel, list)}${list.elections.length === 0
+    ? empty
+    : html`<table class="table"><thead><tr><th>Election</th><th>Planned closing time</th><th class="num">Ballots</th><th>State</th></tr></thead><tbody>${list.elections.map(
         (e) =>
           html`<tr><td><a class="row-link" href="${privateElectionUrl(channel, e.id)}">${e.title}</a><div class="mono subtle small">${e.id}${e.anonymous ? " · anonymous voters" : ""}</div></td><td data-label="Closes">${time(Date.parse(e.closesAt))}</td><td class="num mono" data-label="Ballots">${n(e.ballots)}</td><td>${phasePill(e.phase)}</td></tr>`,
-      )}</tbody></table>`}</div>`;
+      )}</tbody></table>`}${newer || older ? pager("Pages of elections", ["Newer elections", newer], ["Older elections", older]) : ""}</div>`;
 }
 
 /** The channel's elections page, with its private elections and, when the policy also names a ballot contract, those too. */
-export function privateElectionsPage(site: Site, channel: string, list: PrivateElectionSummary[], ballotContract?: Html): string {
+export function privateElectionsPage(site: Site, channel: string, list: ElectionPage, ballotContract?: Html): string {
+  const filtered = list.state ? ` ${STATE_LABELS[list.state][0].toLowerCase()}` : "";
+  const page = Math.floor(list.offset / list.limit) + 1;
   return layout(
     site,
-    `Elections on ${channel}`,
+    `Elections on ${channel}${filtered ? `,${filtered}` : ""}${page > 1 ? `, page ${page}` : ""}`,
     html`${crumbs(["Overview", "/"], [channel, channelUrl(channel), true], "Elections")}
 <h1>Elections</h1>
 ${privateElectionsSection(channel, list)}
@@ -323,8 +362,9 @@ export const MS_PER_BALLOT = 27;
 /**
  * For an election with voter credentials: about how long Chromium takes to
  * download, check and start the idemix module from a local explorer, and to
- * check one ballot's identity and pseudonym proof in its one worker
- * (prototype-results.md).
+ * check one ballot's identity and pseudonym proof in one worker
+ * (prototype-results.md). The workers start their modules side by side and
+ * share the ballots.
  */
 export const MS_IDEMIX_START = 1500;
 export const MS_PER_PSEUDONYM = 110;
@@ -352,7 +392,7 @@ ${a
   ? step(
       "pseudonyms",
       "Pseudonym proofs",
-      `Each ballot's one-off identity against ${a.msp}'s issuer key, its pseudonym proof against that identity and the tracking code, and that no pseudonym repeats. In 1 worker with Weft's idemix module, which this browser downloads for this check only.`,
+      `Each ballot's one-off identity against ${a.msp}'s issuer key, its pseudonym proof against that identity and the tracking code, and that no pseudonym repeats. In each worker with Weft's idemix module, which this browser downloads once, for this check only.`,
       true,
     )
   : ""}
@@ -372,8 +412,10 @@ const json = (x: unknown) => JSON.stringify(x).replace(/</g, "\\u003c");
  * The full check's script. It reads the election and its ballots from this
  * explorer's API, starts up to four workers (/assets/full-check.js, which
  * the content security policy's worker-src allows), and checks the key
- * ceremony, then the ballots in batches of 50 in ledger order, then the
- * totals, the decryption shares and the tally. It reports the first failure
+ * ceremony, then the ballots in batches of 50 in ledger order, then, with
+ * voter credentials, the pseudonyms in batches of 10 in ledger order, each
+ * worker with its own idemix module from bytes the page downloads once, then
+ * the totals, the decryption shares and the tally. It reports the first failure
  * by ballot and transaction, or that everything checks out, and how long
  * it took. Stop checking ends the workers.
  */
@@ -384,7 +426,7 @@ function fullCheckScript(v: PrivateElectionView): string {
   var CHANNEL = ${json(v.channel)};
   var MS = ${MS_PER_BALLOT};
   var ANON = ${v.anonymous ? "true" : "false"}, MS_START = ${MS_IDEMIX_START}, MS_PSEUDONYM = ${MS_PER_PSEUDONYM};
-  var PAGE = 1000, BATCH = 50;
+  var PAGE = 1000, BATCH = 50, PBATCH = 10;
   var WORKERS = Math.max(1, Math.min(4, navigator.hardwareConcurrency || 2));
   var card = document.getElementById("xcheck"), run = document.getElementById("xcheck-run"), stop = document.getElementById("xcheck-stop");
   var hint = document.getElementById("xcheck-hint"), out = document.getElementById("xcheck-result");
@@ -395,7 +437,7 @@ function fullCheckScript(v: PrivateElectionView): string {
   function cut(s) { return s.length <= 17 ? s : s.slice(0, 8) + "\\u2026" + s.slice(-8); }
   function seconds(ms) { return ms < 10000 ? (ms / 1000).toFixed(1) + " s" : ms < 120000 ? Math.round(ms / 1000) + " s" : (ms / 60000).toFixed(1) + " minutes"; }
   function estimate(total) {
-    var ms = total * MS / WORKERS + (ANON ? MS_START + total * MS_PSEUDONYM : 0);
+    var ms = total * MS / WORKERS + (ANON ? MS_START + total * MS_PSEUDONYM / WORKERS : 0);
     return "About " + (ms < 60000 ? Math.max(1, Math.round(ms / 1000)) + (ms < 1500 ? " second" : " seconds") : Math.round(ms / 60000) + (ms < 90000 ? " minute" : " minutes")) + " for " + plural(total, "ballot") + " in " + plural(WORKERS, "worker") + (ANON ? ", with the idemix module's start." : ".");
   }
   hint.textContent = estimate(${v.ballots.total});
@@ -592,24 +634,48 @@ function fullCheckScript(v: PrivateElectionView): string {
       bar(1);
 
       // With voter credentials: each ballot's one-off identity and pseudonym
-      // proof, in one worker with the idemix module, then a repeated pseudonym.
+      // proof, in batches across the workers, each starting its own idemix
+      // module from the bytes downloaded here once, then a repeated pseudonym.
       var moduleMs = 0;
       if (ANON) {
         var plimit = again ? again.index + 1 : ballots.length;
-        var pdone = 0, pframe = 0;
         word("pseudonyms", "busy", "starting the module");
-        var pres = await ask(c, c.workers[0], {
-          type: "pseudonyms", election: e, wasmUrl: "/assets/idemix/weft-idemix.wasm", wasmExecUrl: "/assets/idemix/wasm_exec.js",
-          ballots: ballots.slice(0, plimit).map(item),
-          onProgress: function (d) {
-            pdone = d;
-            if (!pframe) pframe = requestAnimationFrame(function () { pframe = 0; if (!c.stopped) { word("pseudonyms", "busy", fmt(pdone) + " of " + fmt(ballots.length)); bar(pdone / Math.max(1, ballots.length), false, "pseudonyms"); } });
-          },
-        });
+        var mod = await fetch("/assets/idemix/weft-idemix.wasm", { signal: AbortSignal.timeout(60000) });
+        if (!mod.ok) throw { http: mod.status };
+        var wasm = await mod.arrayBuffer();
+        if (c.stopped) return;
+        var pitems = ballots.slice(0, plimit).map(item);
+        var pbatches = [];
+        for (var ps = 0; ps < plimit; ps += PBATCH) pbatches.push({ start: ps, items: pitems.slice(ps, ps + PBATCH), done: 0 });
+        var pfailures = [], pnext = 0, pframe = 0, pstarted = false;
+        function ppaint() {
+          pframe = 0;
+          var pdone = pbatches.reduce(function (a, bt) { return a + bt.done; }, 0);
+          if (!c.stopped && pstarted) { word("pseudonyms", "busy", fmt(pdone) + " of " + fmt(ballots.length)); bar(pdone / Math.max(1, ballots.length), false, "pseudonyms"); }
+        }
+        function ptick() { if (!pframe) pframe = requestAnimationFrame(ppaint); }
+        await Promise.all(c.workers.map(async function (w) {
+          var first = true;
+          while (!c.stopped && pnext < pbatches.length) {
+            var bt = pbatches[pnext++];
+            if (pfailures.length && bt.start > Math.min.apply(null, pfailures.map(function (f) { return f.index; }))) continue;
+            // The module's bytes go with each worker's first batch only: it keeps the module it started.
+            var res = await ask(c, w, {
+              type: "pseudonyms", election: e, wasmUrl: "/assets/idemix/weft-idemix.wasm", wasmExecUrl: "/assets/idemix/wasm_exec.js", wasm: first ? wasm : null,
+              ballots: bt.items,
+              onProgress: function (d) { pstarted = true; bt.done = d; ptick(); },
+            });
+            first = false;
+            pstarted = true;
+            bt.done = res.done;
+            ptick();
+            moduleMs = Math.max(moduleMs, res.startMs || 0);
+            if (res.failure) pfailures.push(res.failure);
+          }
+        }));
         if (c.stopped) return;
         if (pframe) cancelAnimationFrame(pframe);
-        moduleMs = pres.startMs || 0;
-        var pf = pres.failure || (again ? { index: again.index, txId: ballots[again.index].txId, block: ballots[again.index].block, tracking: ballots[again.index].tracking, message: again.message } : null);
+        var pf = pfailures.sort(function (a, b) { return a.index - b.index; })[0] || (again ? { index: again.index, txId: ballots[again.index].txId, block: ballots[again.index].block, tracking: ballots[again.index].tracking, message: again.message } : null);
         if (pf) {
           failed("pseudonyms", pf, ["totals", "shares", "tally"]);
           return;

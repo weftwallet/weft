@@ -43,13 +43,24 @@ function livePage() {
   const text = element("live-note-text");
   const button = element("live-check");
   const h1 = element("h1");
+  const chipText = element("chip-text");
+  chipText.textContent = "live";
+  const chip = { ...element("chip"), querySelector: (sel: string) => (sel === "[data-chip-text]" ? chipText : null) };
+  // classList.toggle, which the pills use.
+  const chipClasses = new Set<string>();
+  chip.classList = {
+    add: (c: string) => chipClasses.add(c),
+    remove: (c: string) => chipClasses.delete(c),
+    contains: (c: string) => chipClasses.has(c),
+    toggle: (c: string, on: boolean) => (on ? chipClasses.add(c) : chipClasses.delete(c)),
+  } as typeof chip.classList;
   const byId: Record<string, unknown> = { "live-note": note, "live-note-text": text, "live-check": button };
   const document = {
     hidden: false,
     activeElement: null as unknown,
     getElementById: (id: string) => byId[id] ?? null,
     querySelector: (s: string) => (s === "main h1" ? h1 : null),
-    querySelectorAll: (s: string) => (s === "main [data-show]" ? page.shown : []),
+    querySelectorAll: (s: string) => (s === "main [data-show]" ? page.shown : s === "main [data-live-chip]" ? [chip] : []),
     addEventListener: () => {},
     dispatchEvent: (e: { type: string }) => void page.events.push(e.type),
   };
@@ -83,7 +94,7 @@ function livePage() {
     scrollY: 0,
   });
   const settle = () => new Promise((r) => setTimeout(r, 0));
-  return { page, note, text, button, h1, document, settle };
+  return { page, note, text, button, h1, chip, chipText, document, settle };
 }
 
 /** Three failed checks, each from a press, so the note shows. */
@@ -104,6 +115,29 @@ describe("a live page's Check now", () => {
     expect(live.note.hidden).toBe(false);
     expect(live.note.classList.contains("is-open")).toBe(true);
     expect(live.page.said).toContain("This page has stopped updating. It checks again every 4 seconds.");
+  });
+
+  it("turns the live pill to not updating with the note, and back once the page catches up", async () => {
+    const live = livePage();
+    await live.settle();
+    live.page.online = false;
+    for (let i = 0; i < 2; i++) {
+      live.button.press();
+      await live.settle();
+    }
+    // Two failures aren't enough: the pill and the note wait for the third.
+    expect(live.chipText.textContent).toBe("live");
+    live.button.press();
+    await live.settle();
+    expect(live.chipText.textContent).toBe("not updating");
+    expect(live.chip.classList.contains("is-stale")).toBe(true);
+    expect(live.chip.getAttribute("title")).toMatch(/^This page stopped updating at \d\d:\d\d\.$/);
+    live.page.online = true;
+    live.button.press();
+    await live.settle();
+    expect(live.chipText.textContent).toBe("live");
+    expect(live.chip.classList.contains("is-stale")).toBe(false);
+    expect(live.chip.getAttribute("title")).toBe(null);
   });
 
   it("retries at once, busy while it tries, and says so when the explorer still doesn't answer", async () => {

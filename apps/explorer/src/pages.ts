@@ -672,6 +672,8 @@ function signInScript(name: string, getWeft: string): string {
  * What a live page shows after three failed checks: when it stopped, how
  * often it checks, and Check now, which checks at once. The LIVE script
  * writes the times. A reversible (motion.css), so it leaves the way it came.
+ * The page's "live" pills say "not updating" at the same time, with a
+ * hollow dot, and say "live" again once the page catches up.
  */
 const LIVE_NOTE = html`<div class="live-note reversible reversible--down" id="live-note" hidden><p id="live-note-text">This page has stopped updating. It checks again every 4 seconds.</p><button type="button" class="btn btn--small" id="live-check">Check now</button></div>`;
 
@@ -680,6 +682,16 @@ export const LIVE = `
   if (/[?&]before=/.test(location.search)) return;
   var seen = null, failures = 0, stoppedAt = null, resumed = false, every = 4000;
   var note = document.getElementById("live-note"), noteText = document.getElementById("live-note-text"), checkNow = document.getElementById("live-check");
+  // The "live" pills (LIVE_CHIP): "not updating" while the note shows. A pill the page fetches again comes back as the explorer sends it.
+  function pills(stale) {
+    document.querySelectorAll("main [data-live-chip]").forEach(function (pill) {
+      pill.classList.toggle("is-stale", stale);
+      var label = pill.querySelector("[data-chip-text]");
+      if (label) label.textContent = stale ? "not updating" : "live";
+      if (stale) pill.setAttribute("title", "This page stopped updating at " + stoppedAt + ".");
+      else pill.removeAttribute("title");
+    });
+  }
   var clock = function () { return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); };
   var checksAgain = "It checks again every " + every / 1000 + " seconds.";
   var rowKey = function (row) { var a = row.querySelector("a[href]"); return a ? a.getAttribute("href") : null; };
@@ -784,11 +796,13 @@ export const LIVE = `
       noteText.textContent = "This page stopped updating at " + stoppedAt + ". " + checksAgain;
       note.hidden = false;
       note.classList.add("is-open");
+      pills(true);
       weftSay("This page has stopped updating. " + checksAgain);
     }
   }
   // The note leaves, and the page fetches itself again to catch up on what it missed.
   function recovered() {
+    pills(false);
     if (note && !note.hidden) {
       var hadFocus = note.contains(document.activeElement);
       note.classList.remove("is-open");
@@ -873,8 +887,8 @@ function indexerState(site: Site, c: ChannelSummary, s: ChannelStatus | undefine
   return { pill: LIVE_CHIP, note: html`` };
 }
 
-/** "live", with a steady accent dot: this page updates as blocks arrive. */
-const LIVE_CHIP = html`<span class="pill pill--live"><span class="pill__dot" aria-hidden="true"></span>live</span>`;
+/** "live", with a steady accent dot: this page updates as blocks arrive. The LIVE script makes it "not updating" when updates stop. */
+const LIVE_CHIP = html`<span class="pill pill--live" data-live-chip><span class="pill__dot" aria-hidden="true"></span><span data-chip-text>live</span></span>`;
 
 /** Whether the indexer is reading a channel and has caught up with its peer. */
 function isLive(c: ChannelSummary, s: ChannelStatus | undefined): boolean {

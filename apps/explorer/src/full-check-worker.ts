@@ -9,15 +9,17 @@
  * Messages in, each with an id that the answer repeats:
  *   { type: "ceremony", election, posts }
  *   { type: "ballots", election, ballots }   answered with "progress" messages, then "done"
- *   { type: "pseudonyms", election, ballots, wasmUrl, wasmExecUrl }   the same, with startMs
+ *   { type: "pseudonyms", election, ballots, wasmUrl, wasmExecUrl, wasm }   the same, with startMs
  *   { type: "count", election, count }
  *
  * "pseudonyms" is for an election with voter credentials (docs/adr/0008):
- * the first one starts the idemix module in this worker, from the explorer's
- * /assets/idemix/, refusing a module or wasm_exec.js whose SHA-256 isn't the
- * pinned one, and checks each ballot's one-off identity against the pinned
- * issuer key and its pseudonym proof against that identity. The page sends
- * every pseudonym to one worker, so the module starts once.
+ * the first one starts the idemix module in this worker, from `wasm`, the
+ * module's bytes the page downloaded once for every worker, or from the
+ * explorer's /assets/idemix/ without them, refusing a module or wasm_exec.js
+ * whose SHA-256 isn't the pinned one, and checks each ballot's one-off
+ * identity against the pinned issuer key and its pseudonym proof against
+ * that identity. The page shares the pseudonyms among its workers in
+ * batches, one batch at a time per worker, so each starts its module once.
  */
 
 import { PINNED, sha256Hex, startModule, type IdemixSync } from "@weftwallet/idemix";
@@ -38,7 +40,7 @@ import {
 type In =
   | { id: number; type: "ceremony"; election: CheckedElection; posts: CeremonyPosts[] }
   | { id: number; type: "ballots"; election: CheckedElection; ballots: PublishedBallot[] }
-  | { id: number; type: "pseudonyms"; election: CheckedElection; ballots: PublishedBallot[]; wasmUrl: string; wasmExecUrl: string }
+  | { id: number; type: "pseudonyms"; election: CheckedElection; ballots: PublishedBallot[]; wasmUrl: string; wasmExecUrl: string; wasm?: ArrayBuffer | null }
   | { id: number; type: "count"; election: CheckedElection; count: CountCheck };
 
 interface WorkerScope {
@@ -50,15 +52,20 @@ const scope = globalThis as unknown as WorkerScope;
 
 /** The idemix module, once started in this worker, and how long its start took. */
 let idemix: { sync: IdemixSync; startMs: number } | null = null;
-async function startIdemix(wasmUrl: string, wasmExecUrl: string): Promise<{ sync: IdemixSync; startMs: number; started: boolean }> {
+async function startIdemix(wasmUrl: string, wasmExecUrl: string, wasm: ArrayBuffer | null): Promise<{ sync: IdemixSync; startMs: number; started: boolean }> {
   if (idemix) return { ...idemix, started: false };
   const t = performance.now();
   const exec = await (await fetch(wasmExecUrl)).arrayBuffer();
   if ((await sha256Hex(exec)) !== PINNED.wasmExecSha256) throw new Error("The explorer's wasm_exec.js isn't the one pinned with the idemix module, so this browser didn't start it.");
   scope.importScripts(wasmExecUrl);
-  const response = await fetch(wasmUrl);
-  if (!response.ok) throw new Error(`The explorer didn't serve the idemix module (HTTP ${response.status}).`);
-  const { sync } = await startModule(new Uint8Array(await response.arrayBuffer()));
+  let bytes = wasm;
+  if (!bytes) {
+    const response = await fetch(wasmUrl);
+    if (!response.ok) throw new Error(`The explorer didn't serve the idemix module (HTTP ${response.status}).`);
+    bytes = await response.arrayBuffer();
+  }
+  // startModule refuses bytes whose SHA-256 isn't the pinned module's.
+  const { sync } = await startModule(new Uint8Array(bytes));
   idemix = { sync, startMs: performance.now() - t };
   return { ...idemix, started: true };
 }
@@ -78,7 +85,7 @@ function election(e: CheckedElection): Election {
 scope.onmessage = (event) => {
   const m = event.data;
   if (m.type === "pseudonyms") {
-    startIdemix(m.wasmUrl, m.wasmExecUrl).then(
+    startIdemix(m.wasmUrl, m.wasmExecUrl, m.wasm ?? null).then(
       ({ sync, startMs, started }) => {
         try {
           const voters = m.election.anonymous;

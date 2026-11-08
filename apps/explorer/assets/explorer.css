@@ -289,6 +289,13 @@ main { overflow-anchor: none; }
 /* "live": a steady accent dot, beside the heading or a channel's name. */
 .pill--live { display: inline-flex; align-items: center; gap: 6px; background: var(--weft-accent-soft); color: var(--weft-accent-text); font-family: var(--weft-font-mono); }
 .pill__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--weft-accent); flex: none; }
+/* "not updating": the page's updates stopped (the live note says when). The
+   colours change over duration-fast, and the dot goes hollow, so the state
+   reads without colour too. */
+.pill--live { transition: background-color var(--weft-duration-fast) var(--weft-ease-out), color var(--weft-duration-fast) var(--weft-ease-out); }
+.pill--live .pill__dot { transition: background-color var(--weft-duration-fast) var(--weft-ease-out), box-shadow var(--weft-duration-fast) var(--weft-ease-out); }
+.pill--live.is-stale { background: var(--weft-warn-soft); color: var(--weft-warn-text); }
+.pill--live.is-stale .pill__dot { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
 /* The chip centres on the heading's line: the heading's top margin moves to
    the row, or the chip would centre on the margin too. */
 .title-row.title-row--chip { align-items: center; justify-content: flex-start; gap: var(--weft-space-3); margin-top: var(--weft-space-8); }
@@ -450,6 +457,21 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 .pager > a { padding-block: var(--weft-space-1); margin-block: calc(var(--weft-space-1) * -1); border-radius: var(--weft-radius-sm); }
 .pager__none { color: var(--weft-text-subtle); opacity: var(--weft-disabled-opacity); cursor: not-allowed; }
 .empty { color: var(--weft-text-subtle); }
+/* A list's filter: links, each with its count, wrapping on a phone. The
+   current one is selected (SYSTEM.md, States): accent-soft and accent-line. */
+.filters ul { display: flex; flex-wrap: wrap; gap: var(--weft-space-2); margin: 0 0 var(--weft-space-4); padding: 0; list-style: none; }
+.filters a {
+  display: inline-flex; align-items: center; gap: var(--weft-space-2); min-height: 36px; padding: 0 var(--weft-space-3);
+  border: 1px solid var(--weft-line-strong); border-radius: var(--weft-radius-lg); color: var(--weft-text); text-decoration: none;
+  font-size: var(--weft-type-md); line-height: var(--weft-leading-md);
+  transition: border-color var(--weft-duration-fast) var(--weft-ease-out), background-color var(--weft-duration-fast) var(--weft-ease-out), color var(--weft-duration-fast) var(--weft-ease-out);
+}
+.filters a[aria-current="page"] { background: var(--weft-accent-soft); border-color: var(--weft-accent-line); color: var(--weft-accent-text); }
+.filters__count { font-family: var(--weft-font-mono); font-size: var(--weft-type-xs); color: var(--weft-text-subtle); font-variant-numeric: tabular-nums; }
+.filters a[aria-current="page"] .filters__count { color: var(--weft-accent-text); }
+@media (hover: hover) {
+  .filters a:hover:not([aria-current="page"]) { border-color: var(--weft-text-subtle); text-decoration: none; }
+}
 
 /* Cross-checking with other organisations */
 .orgs { margin-top: var(--weft-space-4); padding-top: var(--weft-space-3); border-top: 1px solid var(--weft-line); font-size: var(--weft-type-md); line-height: var(--weft-leading-md); }

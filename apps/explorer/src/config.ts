@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { domain as REGISTRY_DOMAIN, productUrl, type ProductId } from "@weftwallet/brand/products";
 import { loadPolicy, type Policy } from "./policy.ts";
@@ -40,6 +41,25 @@ export interface ExplorerConfig {
    * then may the policy name a channel's privateElections.
    */
   experimental: boolean;
+  /**
+   * WEFT_EXPLORER_CHECK_THREADS: how many worker threads check private
+   * elections' ballots as blocks are read (check-pool.ts), or 0 to check them
+   * in the main thread. By default one fewer than the machine's cores, from 1 to 4.
+   */
+  checkThreads: number;
+}
+
+/** Check threads by default: one fewer than the machine has, so the main thread keeps a core, from 1 to 4. */
+export const defaultThreads = () => Math.max(1, Math.min(4, availableParallelism() - 1));
+
+/** WEFT_EXPLORER_CHECK_THREADS, or the default when it isn't set. */
+export function checkThreads(value: string | undefined, fallback: number): number {
+  if (value === undefined || value.trim() === "") return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > 64) {
+    throw new Error(`WEFT_EXPLORER_CHECK_THREADS: ${value} isn't a number of threads. Give a whole number from 0 to 64, where 0 checks ballots in the main thread.`);
+  }
+  return n;
 }
 
 /**
@@ -156,6 +176,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ExplorerConfig
     products,
     receiptOrigins: receiptOrigins(products, env.WEFT_EXPLORER_RECEIPT_ORIGINS),
     experimental,
+    checkThreads: checkThreads(env.WEFT_EXPLORER_CHECK_THREADS, defaultThreads()),
     peers: (env.WEFT_EXPLORER_PEERS ?? "")
       .split(",")
       .map((u) => u.trim().replace(/\/+$/, ""))
