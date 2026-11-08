@@ -270,8 +270,12 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
     const sign = await signerFor(active.record);
     if (method === "weft_evaluate") {
       const result = await evaluateCall(relay, signer, call, sign, progress);
-      await saveActivity({ ...base, status: "evaluated" });
-      finish(approval, { status: "approved", activityId: base.id });
+      // A refused write loses only the activity row: the site still gets what it read.
+      const saved = await saveActivity({ ...base, status: "evaluated" }).then(
+        () => true,
+        () => false,
+      );
+      finish(approval, { status: "approved", activityId: saved ? base.id : null });
       return result;
     }
     const result = await submitCall(relay, signer, call, sign, progress);
@@ -283,14 +287,18 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
       code: result.status,
     };
     const kept = receipt ? await keepReceipt(committed, receipt.request, result, sealed) : null;
-    if (!kept?.outcome.kept) await saveActivity(committed, kept?.outcome.kept === false && kept.outcome.reason === "storage");
+    // The transaction is on the ledger whatever the browser does now: a
+    // refused write is said in the window, which keeps the transaction ID and
+    // any receipt, and isn't a failure.
+    const unsaved = kept?.outcome.kept ? null : await saveActivity(committed).then(() => null, refused);
     finish(approval, {
       status: "approved",
-      activityId: base.id,
+      activityId: unsaved ? null : base.id,
       blockNumber: result.blockNumber,
       transactionId: result.transactionId,
       ...(active.network.explorerUrl ? { explorerUrl: active.network.explorerUrl } : {}),
       ...(kept ? { receipt: kept.outcome } : {}),
+      ...(unsaved ? { unsaved: { error: unsaved, ...(kept ? { receipt: kept.result.receipt } : {}) } } : {}),
     });
     return kept ? { ...result, receipt: kept.result } : result;
   } catch (error) {
@@ -306,10 +314,14 @@ async function runCall(origin: string, method: "weft_evaluate" | "weft_submit", 
           "It was sent to the network, but Weft got no answer about whether it committed. Check the site or your organisation's explorer before sending it again.",
       };
     }
-    await saveActivity({ ...base, status: "failed", ...failure.record });
+    // The window says the details are in the activity only when they are.
+    const saved = await saveActivity({ ...base, status: "failed", ...failure.record }).then(
+      () => true,
+      () => false,
+    );
     finish(approval, {
       status: "failed",
-      activityId: base.id,
+      activityId: saved ? base.id : null,
       title: failure.record.title,
       detail: failure.record.detail,
       code: failure.record.code,
@@ -335,17 +347,16 @@ function mayHaveCommitted(stage: string | null, error: unknown): boolean {
 
 /**
  * Saves an activity record and tells any open popup, so the row arrives while
- * it's looked at. `quiet`: a failure to save is let go, for a committed vote
- * whose receipt the browser just refused, so the commit is still reported.
+ * it's looked at. Throws when the browser refuses the write; nothing is
+ * announced then.
  */
-async function saveActivity(record: ActivityRecord, quiet = false): Promise<void> {
-  try {
-    await db.put<ActivityRecord>("activity", record);
-  } catch (error) {
-    if (!quiet) throw error;
-  }
+async function saveActivity(record: ActivityRecord): Promise<void> {
+  await db.put<ActivityRecord>("activity", record);
   announceActivity();
 }
+
+/** A refused write's error, as the window's Details show it. */
+const refused = (error: unknown): string => (error instanceof Error ? `${error.name}: ${error.message}` : String(error));
 
 function announceActivity(): void {
   void browser.runtime.sendMessage({ channel: "weft-ui-event", event: "activity" } satisfies UiEvent).catch(() => {});

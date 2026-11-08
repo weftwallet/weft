@@ -656,7 +656,7 @@ function ReceiptProblem({ outcome, anonymous }: { outcome: Approved; anonymous: 
           Your ballot is committed, but this browser refused to store the vote in your Weft activity, so the activity won't list it. Save the receipt now if you
           want a copy: Weft has one only while this window is open. It holds the tracking code, not your choice.
         </div>
-        <SaveReceipt receipt={unsaved.receipt} copied={copied} />
+        {unsaved.receipt && <SaveReceipt receipt={unsaved.receipt} copied={copied} />}
         <ErrorDetails>{unsaved.error}</ErrorDetails>
       </div>
     );

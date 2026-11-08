@@ -104,11 +104,13 @@ export type ApprovalOutcome =
       /** weft_castBallot: the tracking code Weft computed for the ballot. */
       tracking?: string;
       /**
-       * weft_castBallot: the browser refused to store the vote's activity
-       * record after the ballot committed. The window holds the receipt, so
-       * the voter can save it before closing.
+       * The browser refused to store the activity record after the
+       * transaction committed. The window stays open and holds what the
+       * activity would have: the transaction ID, and the receipt when one was
+       * involved (always, for weft_castBallot), so the user can save them
+       * before closing.
        */
-      unsaved?: { receipt: BallotReceiptV2; error: string };
+      unsaved?: { error: string; receipt?: BallotReceipt | BallotReceiptV2 };
     }
   | {
       status: "failed";

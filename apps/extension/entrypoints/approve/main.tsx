@@ -141,7 +141,7 @@ function Approve() {
   // (weft_castBallot) couldn't save the vote at all: the window says why, and
   // for a refused write it holds the only copy.
   useEffect(() => {
-    if (phase !== "done" || outcome?.status !== "approved" || receiptTrouble(outcome.receipt) || outcome.unsaved) return;
+    if (phase !== "done" || outcome?.status !== "approved" || commitTrouble(outcome)) return;
     const t = setTimeout(() => window.close(), tokenMs("--weft-hold-after-done", 1400));
     return () => clearTimeout(t);
   }, [phase, outcome]);
@@ -334,6 +334,16 @@ interface Done {
 /** A receipt the user asked Weft to keep, and it couldn't. */
 const receiptTrouble = (receipt: ReceiptOutcome | undefined) =>
   receipt?.kept === false && (receipt.reason === "storage" || receipt.reason === "mismatch");
+
+type Approved = Extract<ApprovalOutcome, { status: "approved" }>;
+
+/**
+ * Whether the window stays open after the commit: Weft couldn't keep a
+ * receipt the user asked it to, or the browser refused the transaction's
+ * activity record, so the window holds the only copy of what it would have
+ * kept.
+ */
+const commitTrouble = (outcome: Approved | null) => Boolean(outcome && (outcome.unsaved || receiptTrouble(outcome.receipt)));
 
 /**
  * The footer: Reject and the action while the request is reviewed, the
@@ -615,7 +625,7 @@ function SignRequest({ view, onDecide, deciding, progress }: RequestProps) {
       />
       <main className={bodyClass(progress)} aria-busy={progress.phase === "working" || undefined}>
         <FailureOutcome progress={progress} view={view} />
-        <ReceiptProblem progress={progress} electionId={view.receipt?.request.electionId ?? ""} />
+        <CommitProblem progress={progress} electionId={view.receipt?.request.electionId ?? ""} />
         <div className={`notice ${submit ? "notice--amber" : "notice--thread"}`}>
           <span className="tag" style={{ background: submit ? "var(--weft-warn)" : "var(--weft-accent)" }}>
             {submit ? "Submit" : "Evaluate"}
@@ -778,9 +788,9 @@ function signDone(view: ApprovalView, outcome: ApprovalOutcome | null): Done {
   if (view.method !== "weft_submit") return { headline: "Read from the ledger.", detail: `${detail} Closing.` };
   const block = approved?.blockNumber ? ` in block ${Number(approved.blockNumber).toLocaleString()}` : "";
   const receipt = approved?.receipt;
-  const trouble = receiptTrouble(receipt);
+  const unsaved = Boolean(approved?.unsaved);
   const link =
-    approved?.explorerUrl && approved.transactionId && !trouble
+    approved?.explorerUrl && approved.transactionId && !receiptTrouble(receipt)
       ? {
           href: `${approved.explorerUrl}/channels/${encodeURIComponent(view.call!.channel)}/transactions/${encodeURIComponent(approved.transactionId)}`,
           label: "View in the explorer",
@@ -801,9 +811,19 @@ function signDone(view: ApprovalView, outcome: ApprovalOutcome | null): Done {
         </>
       )
     ) : receipt?.kept === false && receipt.reason === "storage" ? (
-      " Weft couldn't keep your receipt. Save it above before you close this window."
+      unsaved ? (
+        " Weft couldn't save it or your receipt in your activity. Save them above before you close this window."
+      ) : (
+        " Weft couldn't keep your receipt. Save it above before you close this window."
+      )
     ) : receipt?.kept === false && receipt.reason === "mismatch" ? (
-      " Weft didn't keep your receipt. The reason is above."
+      unsaved ? (
+        " Weft didn't keep your receipt and couldn't save the transaction in your activity. Both are explained above."
+      ) : (
+        " Weft didn't keep your receipt. The reason is above."
+      )
+    ) : unsaved ? (
+      ` Weft couldn't save it in your activity. Copy the transaction ID${approved?.unsaved?.receipt ? " and save the receipt" : ""} above before you close this window.`
     ) : null;
   return {
     headline: `Committed${block}.`,
@@ -814,7 +834,7 @@ function signDone(view: ApprovalView, outcome: ApprovalOutcome | null): Done {
       </>
     ),
     ...(link ? { link } : {}),
-    ...(trouble ? { stays: true } : {}),
+    ...(commitTrouble(approved) ? { stays: true } : {}),
   };
 }
 
@@ -866,43 +886,121 @@ function KeepReceipt({
 }
 
 /**
- * At the top of a committed vote's body, when Weft couldn't keep the receipt
- * the user asked it to: the browser refused the write, so this window offers
- * the only copy Weft has, or the contract's commitment wasn't the one for the
- * choice and salt, so a receipt with it wouldn't check out.
+ * At the top of a committed transaction's body, when the window stays open
+ * (commitTrouble). The browser refused the receipt the user asked Weft to
+ * keep, so this window offers the only copy Weft has; or the contract's
+ * commitment wasn't the one for the choice and salt, so a receipt with it
+ * wouldn't check out; or the browser refused the transaction's activity
+ * record, so the window holds the transaction ID, and the receipt when one
+ * was involved, with Copy transaction ID, Download receipt and Copy receipt.
  */
-function ReceiptProblem({ progress, electionId }: { progress: Progress; electionId: string }) {
+function CommitProblem({ progress, electionId }: { progress: Progress; electionId: string }) {
   const box = useRef<HTMLDivElement>(null);
-  const outcome = progress.phase === "done" && progress.outcome?.status === "approved" ? progress.outcome.receipt : undefined;
-  const trouble = receiptTrouble(outcome);
+  const outcome = progress.phase === "done" && progress.outcome?.status === "approved" ? progress.outcome : null;
+  const shown = commitTrouble(outcome);
+  // The notice is the first thing in the body: its title comes into view, as in the ballot window.
   useEffect(() => {
-    if (trouble) box.current?.scrollIntoView({ block: "nearest" });
-  }, [trouble]);
-  if (!outcome || outcome.kept || !trouble) return null;
-  return (
+    if (shown) box.current?.closest("main")?.scrollTo({ top: 0 });
+  }, [shown]);
+  if (!outcome || !shown) return null;
+  const receipt = outcome.receipt;
+  const unsaved = outcome.unsaved;
+  const txId = unsaved && outcome.transactionId ? <TransactionId value={outcome.transactionId} /> : null;
+  const copied = "Copied. Paste it somewhere you'll keep it.";
+  const problem = (title: string, children: ReactNode) => (
     <div ref={box} className="notice notice--amber notice--column receipt-problem arrive" role="alert">
       <div className="inline strong receipt-problem__title">
         <Icon name="alert" size={18} />
-        {outcome.reason === "storage" ? "Weft couldn't keep your receipt" : "Weft didn't keep the receipt"}
+        {title}
       </div>
-      {outcome.reason === "storage" ? (
-        <>
-          <div>Your vote is committed, but this browser refused to store the receipt. Save it now: Weft has a copy only while this window is open.</div>
-          <SaveReceipt receipt={outcome.receipt} copied="Copied. Paste it somewhere you'll keep it." />
-          <ErrorDetails>{outcome.error}</ErrorDetails>
-        </>
-      ) : outcome.reason === "mismatch" ? (
-        <>
+      {children}
+    </div>
+  );
+  if (receipt?.kept === false && receipt.reason === "storage") {
+    return problem(
+      "Weft couldn't keep your receipt",
+      <>
+        <div>
+          {unsaved
+            ? "Your vote is committed, but this browser refused to store the receipt and the transaction in your Weft activity. Save them now: Weft has a copy only while this window is open."
+            : "Your vote is committed, but this browser refused to store the receipt. Save it now: Weft has a copy only while this window is open."}
+        </div>
+        {txId}
+        <SaveReceipt receipt={receipt.receipt} copied={copied} />
+        <ErrorDetails>{unsaved && unsaved.error !== receipt.error ? `${receipt.error}\n${unsaved.error}` : receipt.error}</ErrorDetails>
+      </>,
+    );
+  }
+  if (receipt?.kept === false && receipt.reason === "mismatch") {
+    return problem(
+      "Weft didn't keep the receipt",
+      <>
+        <div>
+          Your vote is committed, but the commitment the contract returned isn't the one for your choice and salt. A receipt with it
+          wouldn't check out in the explorer, so Weft kept nothing. Tell the site's owner.
+        </div>
+        {unsaved && (
           <div>
-            Your vote is committed, but the commitment the contract returned isn't the one for your choice and salt. A receipt with it
-            wouldn't check out in the explorer, so Weft kept nothing. Tell the site's owner.
+            This browser also refused to store the transaction in your Weft activity, so the activity won't list it. Copy the transaction ID now: Weft has
+            it only while this window is open.
           </div>
-          <ErrorDetails>
-            Expected {shorten(outcome.expected)}, SHA-256 of {electionId}, the choice and the salt.{" "}
-            {outcome.returned ? `The contract returned ${shorten(outcome.returned)}.` : "The contract returned no commitment."}
-          </ErrorDetails>
-        </>
-      ) : null}
+        )}
+        {txId}
+        <ErrorDetails>
+          Expected {shorten(receipt.expected)}, SHA-256 of {electionId}, the choice and the salt.{" "}
+          {receipt.returned ? `The contract returned ${shorten(receipt.returned)}.` : "The contract returned no commitment."}
+          {unsaved && `\n${unsaved.error}`}
+        </ErrorDetails>
+      </>,
+    );
+  }
+  if (!unsaved) return null;
+  return problem(
+    "Weft couldn't save this transaction",
+    <>
+      <div>
+        {unsaved.receipt
+          ? "It's committed, but this browser refused to store it in your Weft activity, so the activity won't list it. Copy the transaction ID and save the receipt now if you want a copy: Weft has them only while this window is open."
+          : "It's committed, but this browser refused to store it in your Weft activity, so the activity won't list it. Copy the transaction ID now: Weft has it only while this window is open."}
+      </div>
+      {txId}
+      {unsaved.receipt && <SaveReceipt receipt={unsaved.receipt} copied={copied} />}
+      <ErrorDetails>{unsaved.error}</ErrorDetails>
+    </>,
+  );
+}
+
+/**
+ * A committed transaction's ID in full, in groups of four, with Copy
+ * transaction ID, which copies it without the spaces, and the line that says
+ * whether it did.
+ */
+function TransactionId({ value }: { value: string }) {
+  const [copied, setCopied] = useState<{ text: string; ok: boolean } | null>(null);
+  return (
+    <div className="saved-id">
+      <span className="eyebrow" id="saved-id-label">
+        Transaction ID
+      </span>
+      <span className="mono saved-id__value" aria-labelledby="saved-id-label">
+        {(value.match(/.{1,4}/g) ?? []).map((g, i) => (
+          <span key={i}>{g}</span>
+        ))}
+      </span>
+      <Button
+        className="btn btn--sm"
+        onClick={() =>
+          void navigator.clipboard.writeText(value).then(
+            () => setCopied({ text: "Copied. Paste it somewhere you'll keep it.", ok: true }),
+            () => setCopied({ text: "This browser didn't allow copying. Select the ID and copy it instead.", ok: false }),
+          )
+        }
+      >
+        Copy transaction ID
+      </Button>
+      <p className={`field__status receipt-status ${copied ? (copied.ok ? "field-ok" : "field-error") : ""}`} role="status">
+        {copied?.text}
+      </p>
     </div>
   );
 }

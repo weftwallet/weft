@@ -880,7 +880,12 @@ details.error-details[open] summary::before {
   gap: 12px;
 }
 
+/* A chip holds an identifier (an MSP ID): one longer than its row wraps
+   inside the chip, anywhere, rather than pushing the row wider. */
 .chip {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: var(--weft-font-mono);
   font-size: var(--weft-type-xs);
   padding: 4px 8px;
@@ -1341,14 +1346,17 @@ details.error-details[open] summary::before {
   max-width: 40%;
 }
 
-/* A long value scrolls in its row rather than pushing the buttons away. A
-   short value sits at the right of its row; one that wraps reads from the
-   left, line under line, rather than ragged against the right edge. */
+/* A long value wraps anywhere (the row's overflow-wrap) and, past 160px
+   tall, scrolls down in its row rather than pushing the buttons away; it
+   never scrolls sideways (SYSTEM.md, Overflow). A short value sits at the
+   right of its row; one that wraps reads from the left, line under line,
+   rather than ragged against the right edge. */
 .args__value {
   min-width: 0;
   margin-left: auto;
   text-align: left;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   max-height: 160px;
   overflow: auto;
   scrollbar-width: thin;
@@ -2624,4 +2632,30 @@ p.flat {
   align-items: center;
   gap: 6px;
   min-width: 0;
+}
+
+/* A committed transaction's ID, when the browser refused its activity record:
+   in groups of four, which wrap as whole groups, with Copy transaction ID
+   under it at the notice's width. */
+.saved-id {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  align-self: stretch;
+  margin-top: 4px;
+}
+
+.saved-id__value {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.6ch;
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+  color: var(--weft-text-strong);
+  user-select: all;
+}
+
+.saved-id .btn {
+  margin-top: 4px;
 }
