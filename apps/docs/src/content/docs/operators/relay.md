@@ -75,3 +75,26 @@ Errors are `{ "error": { "kind", "message", "details": [{ "mspId", "address", "m
 
 - It sees transaction contents, as your peers do. Run it inside the same trust boundary.
 - It **cannot** sign as a user. A tampered relay could try to get a user to sign something else, which is why the wallet decodes and checks every message before signing. See the [security model](/reference/security/).
+
+## Experimental: the relay for an election with voter credentials
+
+:::caution[Experimental]
+This section describes Weft Experimental, a separate build that is not part of the main product, and nothing in it applies to a relay started without `WEFT_EXPERIMENTAL=1`. No one outside the project has reviewed it. See [Voter credentials](/experimental/voter-credentials/#the-relay).
+:::
+
+The relay that an election with voter credentials names in its voter invite accepts one-off idemix identities as signers, from the election's voter MSP.
+
+| Variable | Description |
+|---|---|
+| `WEFT_EXPERIMENTAL` | `1` turns the experimental behaviour on. Any other value leaves it off. |
+| `WEFT_IDEMIX_MSP_IDS` | Comma-separated voter MSPs, one per election, for example `ChairVoters2027MSP`. The relay refuses to start with it and without `WEFT_EXPERIMENTAL=1`. |
+| `WEFT_VOTER_INVITES` | A folder of voter invites, one `<election>.json` each, served at `/.well-known/weft-voter-invite/<election>.json`. Each is checked at startup, and must name an MSP in `WEFT_IDEMIX_MSP_IDS`. The relay refuses to start with it and without `WEFT_EXPERIMENTAL=1`. |
+
+A signer is then either `{ "mspId", "certificate" }` or `{ "mspId", "idemixIdentity" }`, the serialized idemix identity in base64. For an idemix signer the relay:
+
+- builds and forwards every message as for an X.509 signer, with the identity's bytes as the creator;
+- makes a new gateway for each request and closes it when the request is done, since each identity signs one transaction;
+- writes no log line for the request, of any kind: on such a relay, every request other than a `GET` is unlogged until the relay has read its signer as an X.509 one, and an X.509 request gets one line when it completes;
+- names no part of the identity in an error.
+
+It refuses an X.509 signer that names one of the voter MSPs. A proxy or load balancer in front of the relay keeps its own access log unless it is set not to, and the election's relay must keep none.

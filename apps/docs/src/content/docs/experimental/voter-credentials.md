@@ -4,12 +4,24 @@ description: "Idemix voter credentials in Weft Experimental: the voters' CA, whi
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. None of it is built yet, and the page describes the planned design.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The contract, the idemix module, the relay's part and the playground's voters' CAs are built; Weft Experimental can't hold a voter credential yet, and the explorer doesn't read anonymous ballots yet. [What is built](#what-is-built) has the details, and the rest of the page describes the design.
 :::
 
 A voter credential is an Idemix credential from an election's own idemix CA. Weft Experimental holds it and uses it for one thing: casting ballots with [`weft_castBallot`](/experimental/cast-ballot/) in that election. A ballot signed with it names the voter organisation, an affiliation every voter shares and a role, and not the voter. ([ADR 0008](/reference/decisions/))
 
 A voter credential is never Weft's active identity. Weft lists it under Identities in a group of its own, named by the election's title, and never offers it in Home's identity picker or to `weft_connect`, `weft_identity`, `weft_signIn`, `weft_submit` or `weft_evaluate`. A site can't reach it, and only `weft_castBallot` uses it, for the election it was issued for. With only voter credentials, Weft has no identity for sites: Home says so, and `weft_connect` fails with `4300`. A voter credential has no expiry, so the certificate watch skips it.
+
+## What is built
+
+- The contract's `CreateElection` with voter credentials and `CastAnonymousBallot`, with the pseudonym proof ([Contract API](/experimental/contract-api/#what-is-built)).
+- The idemix module in `packages/idemix`, built to WebAssembly from Go source, with its hash pinned. Node tests and the playground's test drivers run it; Weft Experimental doesn't load it yet.
+- The relay: idemix signers, a gateway for each of their requests, no request logs for them, and voter invites ([The relay](#the-relay)).
+- `@weftwallet/core`'s proposal check compares an idemix creator with the identity Weft made, byte for byte.
+- The playground: a voters' CA and a voters-only CA proxy for each election with voter credentials, `chair-2027` seeded open with its issuer key pinned, its voter invite served by the relay, and the credential count on every `playground:up` and `playground:count`, and on demand with `playground:credentials` ([For the organisers](#for-the-organisers-the-voters-ca)).
+
+Not built yet: enrolment and signing in Weft Experimental, the approval window for anonymous ballots, the explorer's reading of idemix organisations and anonymous ballots, and normal Weft's message for a voter invite.
+
+On the native network the earlier steps' tests ran on, voters enrolled through the CA proxy with the module, read the election and cast anonymous ballots through the relay with `@weftwallet/core`'s flows, the relay wrote no log line for any of their requests, a second ballot from one credential was refused, and the count was right. A voter who took an X.509 certificate at the CA's own port got two credentials through token authorisation and voted twice; `playground:credentials` named that voter, and `playground:count` refused to close the election until given `--accept-extra-credentials`.
 
 ## For the organisers: the voters' CA
 
@@ -34,7 +46,9 @@ Each election gets its own issuer key, because Fabric's idemix has no revocation
 
 The CA operator decides who is a voter and can register IDs that no person holds. Nothing on the ledger shows that, so the voter roll is a matter for the organisers, as it is for any election.
 
-The playground follows these steps for each voters' CA. Its CA proxy for the browser, `ca-proxy.mjs`, passes only the two requests above. `pnpm playground:credentials <election>` counts the credentials per enrolment ID, `pnpm playground:up --experimental` and `pnpm playground:count` run that count every time, and `playground:count` refuses to close an election in which an ID has more than one, unless given `--accept-extra-credentials`. The CA's own port stays open on the machine for the playground's registrations, so a tester can reach it directly, and the count is what finds a credential obtained that way.
+The playground follows these steps for each voters' CA. Each election's entry in its list names a port for the CA's proxy, `ca.proxy`, 7081 for `chair-2027`, and `pnpm playground:up --experimental` runs `ca-proxy.mjs --voters-only` there, in front of the CA: plain HTTP on `localhost`, or HTTPS with a mkcert certificate under `--https`. The proxy passes `GET /api/v1/cainfo`, and `POST /api/v1/idemix/credential` with basic authorisation, and answers every other request with `403` and Fabric CA's error shape: "Refused POST /api/v1/enroll: this proxy for a voters' CA passes only GET /api/v1/cainfo, and POST /api/v1/idemix/credential with basic authorisation." It checks the path after resolving `.` and `..` and forwards that path, so no other spelling of a path reaches the CA, and it answers a browser's preflight only for the two requests it passes.
+
+`pnpm playground:credentials <election>` reads the CA's `credentials` and `users` tables, read-only, and prints how many credentials each ID registered in the voters' affiliation holds, and any credentials of IDs outside it. It exits with status 1 when an ID in the affiliation holds more than one. `pnpm playground:up --experimental` prints the count for each election with voter credentials, and `pnpm playground:count` checks it before closing an open election and refuses to close one in which an ID holds more than one, unless given `--accept-extra-credentials`. The CA's own port stays open on the machine for the playground's registrations, so a tester can reach it directly, and the count is what finds a credential obtained that way.
 
 ## Which credentials can vote
 
@@ -82,6 +96,8 @@ A voter invite is a JSON document, served over HTTPS and shared as a link, like 
 - `endorsers` lists each trustee organisation's MSP ID and CA chain, in PEM, which Weft checks the election's peer signatures against (see [Reading the election](#reading-the-election)).
 
 A voter invite has no `weft` field. Normal Weft recognises `weftVoterInvite` before any other check, and says "This is a voter invite for an election, and only Weft Experimental can hold voter credentials." It never enrols from it, so a voter can't spend their one enrolment on an X.509 certificate by accident, and isn't sent to ask the organisers for a new invite that would fail the same way.
+
+The relay checks each voter invite when it starts: every field above, `curve` `FP256BN_AMCL`, at least one endorser with a PEM chain, a file named for its election, and an MSP in `WEFT_IDEMIX_MSP_IDS`, since an invite for another MSP would send voters to a relay that refuses their ballots. The playground writes `chair-2027`'s invite to `playground/.state/voter-invites/chair-2027.json`, with the CA proxy's URL, Org1's relay, `relayOperator` "Weft Playground", SHA-256 of the CA's `IssuerPublicKey`, and Org1MSP's and Org2MSP's CA certificates as the endorsers, and the relay serves it at `http://localhost:8787/.well-known/weft-voter-invite/chair-2027.json`.
 
 Weft trusts the voter invite for the issuer key, the relay, its operator and the endorsers' CA chains, as it trusts an organisation's invite for its CA and relay. A forged invite could name another network entirely, and the voter's check against it is the [election fingerprint](/experimental/private-tally-spec/#the-election-fingerprint), which every explorer shows.
 
@@ -159,13 +175,17 @@ The voter tag that binds the ballot's proofs is made from P (see the [specificat
 
 The relay accepts an idemix signer, `{ "mspId": "ChairVoters2027MSP", "idemixIdentity": "<base64>" }`, and passes it to fabric-gateway as credentials. It caches no gateway for it: each request gets a new one, closed after the commit status. It still holds no secret, and builds and forwards messages exactly as for an X.509 signer.
 
-It accepts idemix signers only when started with `WEFT_EXPERIMENTAL=1`, and only from the MSP IDs in `WEFT_IDEMIX_MSP_IDS`. It logs nothing for a request that carries an idemix signer: no request line, no network address, and no error that includes the signer.
+It accepts idemix signers only when started with `WEFT_EXPERIMENTAL=1`, and only from the MSP IDs in `WEFT_IDEMIX_MSP_IDS`. It refuses an idemix signer without the switch, from another MSP, with an identity that isn't base64, or beside a certificate, and an X.509 signer that names a voter MSP. None of its messages repeats the identity.
+
+It logs nothing for a request that carries an idemix signer: no request line, no network address, no URL, no body and no error. Fastify, which the relay runs on, writes its request line when a request arrives, before it has read the body, so before anything can know who signed. On a relay that accepts idemix signers, a log controller of the relay's own therefore writes no line on arrival. Every request other than a `GET` starts unlogged, a browser's preflight included, and becomes loggable only once the relay has read its signer as an X.509 one. Fastify's lines for a completed, failed or unknown request, and the relay's own error line, are skipped for every unlogged request, and a loggable one gets a single line when it completes, with its address. A request whose body can't be read stays unlogged, since nothing shows who sent it. Request IDs are random, so the log doesn't show how many unlogged requests came between two logged ones. The relay's tests capture its log while idemix requests succeed, fail at the peer and are refused, and find it empty. A relay without idemix signers logs as before.
 
 The relay sees the voter's network address and the time of each request. With the private tally it sees only ciphertext, but the address may still identify the voter. The election's relay therefore:
 
 - is run by a party that doesn't count the election and isn't a trustee;
 - keeps no request logs, at the relay or at any proxy in front of it;
 - is named in the voter invite's `relayOperator`, which the invite's review and Weft's approval window show.
+
+The relay can't remove what runs in front of it: a TLS-terminating proxy or load balancer keeps its own access log unless it is set not to.
 
 The playground's elections use Org1's relay, a trustee's, which a real election rules out. The playground hides nothing from whoever runs it, and its voter invites name the relay's operator as Weft Playground.
 

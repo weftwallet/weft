@@ -4,7 +4,7 @@ description: What a trustee organisation does before and after a private electio
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The contract and `weft-trustee` are built, and the playground runs the ceremony for its seeded election.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The contract and `weft-trustee` are built, and the playground runs the ceremony for its seeded elections.
 :::
 
 A private election's key is shared among its trustee organisations. Before voting, they run a key ceremony over the ledger, which ends with an election key whose secret none of them holds. After voting, k of them each post a decryption share of the totals. The [specification](/experimental/private-tally-spec/#key-ceremony) has the cryptography, and this page covers what a trustee does.
@@ -27,7 +27,7 @@ Commands:
 
 | Command | Does |
 |---|---|
-| `weft-trustee status --election <id>` | Shows the election's state and each trustee's progress, including who has asked to close and, for a failed election, which organisation reported a bad share, and what to run next. `--json` prints the records. |
+| `weft-trustee status --election <id>` | Shows the election's state, who votes (the X.509 organisations, or the voter MSP, affiliation, role and pinned issuer key's hash for voter credentials) and each trustee's progress, including who has asked to close and, for a failed election, which organisation reported a bad share, and what to run next. `--json` prints the records. |
 | `weft-trustee create --election <id>` | Calls `CreateElection` with `--title`, an `--option` for each option, `--closes-at`, a `--trustee` for each trustee organisation in order, `--threshold` (a majority by default) and a `--voter` for each voter organisation (the trustees by default). For an election with voter credentials, `--voter-credentials` names the voter MSP and `--issuer-key` the `IssuerPublicKey` file its CA wrote, and `--affiliation` the affiliation that votes, `voters` by default: the tool sends the key in base64 with its SHA-256 as `issuerKeyHash`, and the role `member`. It refuses a `--closes-at` that has already passed by this machine's clock, and the contract refuses one that has passed by the transaction's timestamp. |
 | `weft-trustee commit --election <id>` | Round 1: draws the polynomial and the one-time key, and posts the commitments, the proof of knowledge and the one-time public key. |
 | `weft-trustee share --election <id>` | Round 2: once every trustee has posted round 1, encrypts a share to each other trustee and posts them. |
