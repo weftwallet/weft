@@ -137,10 +137,11 @@ function Approve() {
   };
 
   // A success state stays hold-after-done, then the window closes (SYSTEM.md,
-  // Errors). Not when Weft couldn't keep a receipt the user asked it to: the
-  // window says why, and for a refused write it holds the only copy.
+  // Errors). Not when Weft couldn't keep a receipt the user asked it to, or
+  // (weft_castBallot) couldn't save the vote at all: the window says why, and
+  // for a refused write it holds the only copy.
   useEffect(() => {
-    if (phase !== "done" || outcome?.status !== "approved" || receiptTrouble(outcome.receipt)) return;
+    if (phase !== "done" || outcome?.status !== "approved" || receiptTrouble(outcome.receipt) || outcome.unsaved) return;
     const t = setTimeout(() => window.close(), tokenMs("--weft-hold-after-done", 1400));
     return () => clearTimeout(t);
   }, [phase, outcome]);

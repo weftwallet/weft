@@ -16,14 +16,17 @@ import { FakeRelay, makeOrg, recordOf, testElection, type Org } from "./test/fab
 const stores = new Map<string, Map<string, unknown>>();
 const store = (name: string) => stores.get(name) ?? (stores.set(name, new Map()), stores.get(name)!);
 const RAW_VAULT_KEY = crypto.getRandomValues(new Uint8Array(32));
-const fixtures = vi.hoisted(() => ({ x509: false }));
+const fixtures = vi.hoisted(() => ({ x509: false, refuseActivity: false }));
 
 vi.mock("../db", () => ({
   newId: () => crypto.randomUUID(),
   db: {
     all: async (name: string) => [...store(name).values()],
     get: async (name: string, id: string) => store(name).get(id),
-    put: async (name: string, value: { id: string }) => void store(name).set(value.id, structuredClone(value)),
+    put: async (name: string, value: { id: string }) => {
+      if (fixtures.refuseActivity && name === "anonymousActivity") throw Object.assign(new Error("The quota has been exceeded."), { name: "QuotaExceededError" });
+      store(name).set(value.id, structuredClone(value));
+    },
     delete: async (name: string, id: string) => void store(name).delete(id),
     putWithReceipt: async () => {
       throw new Error("An anonymous ballot's receipt is never written to the receipts store.");
@@ -263,6 +266,30 @@ describe("an election with voter credentials", () => {
     expect(entry!.activity.call.args).toHaveLength(3);
     expect(JSON.parse(entry!.activity.call.args![2]!)).toEqual({ pseudonym: expect.any(String), c: result.receipt.receipt.tracking, ssk: "01".repeat(32), sr: "02".repeat(32) });
     expect(entry!.receipt).toMatchObject({ tracking: result.receipt.receipt.tracking, option: "Plan B" });
+  });
+
+  it("keeps the receipt in the window when the browser refuses the sealed activity, and still answers VALID", async () => {
+    store("voterCredentials").set("cred-1", credential());
+    fixtures.refuseActivity = true;
+    try {
+      for (const keepReceipt of [true, false]) {
+        const r = await request();
+        await ballotRead(r.view().id);
+        r.decide({ approved: true, keepReceipt, choice: 1 });
+        const result = (await r.result) as CastBallotResult;
+        expect(result).toMatchObject({ status: "VALID", receipt: { kept: false, reason: keepReceipt ? "storage" : "declined" } });
+        expect(r.finished[0]).toMatchObject({
+          status: "approved",
+          activityId: null,
+          unsaved: { receipt: { tracking: result.receipt.receipt.tracking }, error: "QuotaExceededError: The quota has been exceeded." },
+        });
+        // A new credential for each round: the fake contract refuses a second ballot from one pseudonym.
+        relay.ballots.length = 0;
+      }
+      expect(store("anonymousActivity").size).toBe(0);
+    } finally {
+      fixtures.refuseActivity = false;
+    }
   });
 
   it("says when Weft's own activity has a ballot from the credential, and passes on the contract's refusal", async () => {

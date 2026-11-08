@@ -33,7 +33,7 @@ import {
   useFocusOnArrival,
   type ErrorInfo,
 } from "../../components/ui";
-import { ui, type ApprovalOutcome, type ApprovalView, type BallotElectionView, type BallotFailureView, type BallotReadView, type ReceiptOutcome } from "../../lib/messages";
+import { ui, type ApprovalOutcome, type ApprovalView, type BallotElectionView, type BallotFailureView, type BallotReadView } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
 import { measure, startVoterModule } from "../../lib/voter/module";
 import { PORT_PREFIX, serveSigner } from "../../lib/voter/remote";
@@ -454,7 +454,7 @@ function ConfirmScreen({
       <Header title={title} origin={view.origin} subtitle={subtitle} />
       <main className={`page step${working ? " page--dim" : ""}`} data-dir={dir} aria-busy={working || undefined}>
         {failed && <CastFailed outcome={failed} />}
-        {approved && <ReceiptProblem receipt={approved.receipt} tracking={approved.tracking ?? ""} anonymous={Boolean(anon)} />}
+        {approved && <ReceiptProblem outcome={approved} anonymous={Boolean(anon)} />}
         <section className="choice-card" aria-labelledby="choice-label">
           <div className="row-between">
             <span className="eyebrow" id="choice-label">
@@ -604,32 +604,71 @@ function CastFailed({ outcome }: { outcome: Extract<ApprovalOutcome, { status: "
   );
 }
 
-const trouble = (receipt: ReceiptOutcome | undefined) => receipt?.kept === false && (receipt.reason === "storage" || receipt.reason === "mismatch");
+type Approved = Extract<ApprovalOutcome, { status: "approved" }>;
 
-/** When Weft couldn't keep the receipt the voter asked for: the browser refused it, or the tracking codes differ. */
-function ReceiptProblem({ receipt, tracking, anonymous }: { receipt: ReceiptOutcome | undefined; tracking: string; anonymous: boolean }) {
+/** Whether the window stays open after the commit: Weft couldn't keep the receipt the voter asked for, or couldn't save the vote at all. */
+const trouble = (outcome: Approved) =>
+  Boolean(outcome.unsaved) || (outcome.receipt?.kept === false && (outcome.receipt.reason === "storage" || outcome.receipt.reason === "mismatch"));
+
+/**
+ * When the browser refused a write after the ballot committed: the receipt
+ * and the note of the choice, the vote's activity record, or both. The
+ * window keeps the receipt, with Download receipt and Copy receipt, and says
+ * what wasn't saved. A mismatched tracking code is said too.
+ */
+function ReceiptProblem({ outcome, anonymous }: { outcome: Approved; anonymous: boolean }) {
   const box = useRef<HTMLDivElement>(null);
-  const shown = trouble(receipt);
+  const receipt = outcome.receipt;
+  const tracking = outcome.tracking ?? "";
+  const shown = trouble(outcome);
   useEffect(() => {
     if (shown) box.current?.closest("main")?.scrollTo({ top: 0 });
   }, [shown]);
-  if (!receipt || receipt.kept || !shown) return null;
+  if (!shown) return null;
+  const unsaved = outcome.unsaved;
+  const copied = "Copied. It holds the tracking code, not your choice.";
+  if (receipt?.kept === false && receipt.reason === "storage") {
+    return (
+      <div ref={box} className="notice notice--amber notice--column receipt-problem arrive" role="alert">
+        <div className="inline strong receipt-problem__title">
+          <Icon name="alert" size={18} />
+          Weft couldn't keep your receipt
+        </div>
+        <div>
+          {unsaved
+            ? "Your ballot is committed, but this browser refused to store the receipt, your note of the choice and the vote in your Weft activity. "
+            : "Your ballot is committed, but this browser refused to store the receipt and your note of the choice. "}
+          Save the receipt now: Weft has a copy only while this window is open. It holds the tracking code, not your choice.
+        </div>
+        <SaveReceipt receipt={receipt.receipt} copied={copied} />
+        <ErrorDetails>{unsaved && unsaved.error !== receipt.error ? `${receipt.error}\n${unsaved.error}` : receipt.error}</ErrorDetails>
+      </div>
+    );
+  }
+  if (unsaved && !(receipt?.kept === false && receipt.reason === "mismatch")) {
+    return (
+      <div ref={box} className="notice notice--amber notice--column receipt-problem arrive" role="alert">
+        <div className="inline strong receipt-problem__title">
+          <Icon name="alert" size={18} />
+          Weft couldn't save this vote
+        </div>
+        <div>
+          Your ballot is committed, but this browser refused to store the vote in your Weft activity, so the activity won't list it. Save the receipt now if you
+          want a copy: Weft has one only while this window is open. It holds the tracking code, not your choice.
+        </div>
+        <SaveReceipt receipt={unsaved.receipt} copied={copied} />
+        <ErrorDetails>{unsaved.error}</ErrorDetails>
+      </div>
+    );
+  }
+  if (!receipt || receipt.kept) return null;
   return (
     <div ref={box} className="notice notice--amber notice--column receipt-problem arrive" role="alert">
       <div className="inline strong receipt-problem__title">
         <Icon name="alert" size={18} />
-        {receipt.reason === "storage" ? "Weft couldn't keep your receipt" : "Weft didn't keep the receipt"}
+        Weft didn't keep the receipt
       </div>
-      {receipt.reason === "storage" ? (
-        <>
-          <div>
-            Your ballot is committed, but this browser refused to store the receipt and your note of the choice. Save the receipt now: Weft has a copy only
-            while this window is open. It holds the tracking code, not your choice.
-          </div>
-          <SaveReceipt receipt={receipt.receipt} copied="Copied. It holds the tracking code, not your choice." />
-          <ErrorDetails>{receipt.error}</ErrorDetails>
-        </>
-      ) : receipt.reason === "mismatch" ? (
+      {receipt.reason === "mismatch" ? (
         <>
           <div>
             Your ballot is committed, but the tracking code the contract returned isn't the one Weft worked out for the ballot it made. The explorer may not find
@@ -639,6 +678,7 @@ function ReceiptProblem({ receipt, tracking, anonymous }: { receipt: ReceiptOutc
             Weft worked out {shorten(tracking)} from the election context, {anonymous ? "your pseudonym's voter tag" : "your voter tag"} and the ballot.{" "}
             {receipt.returned ? `The contract returned ${shorten(receipt.returned)}.` : "The contract returned no tracking code."}
           </ErrorDetails>
+          {unsaved && <div>This browser also refused to store the vote in your Weft activity, so the activity won't list it.</div>}
         </>
       ) : null}
     </div>
@@ -646,9 +686,9 @@ function ReceiptProblem({ receipt, tracking, anonymous }: { receipt: ReceiptOutc
 }
 
 /** One status line once the ballot is committed: the block, the tracking code, the receipt, and the explorer's check. */
-function DoneFooter({ election, host, outcome }: { election: BallotElectionView; host: string; outcome: Extract<ApprovalOutcome, { status: "approved" }> }) {
+function DoneFooter({ election, host, outcome }: { election: BallotElectionView; host: string; outcome: Approved }) {
   const receipt = outcome.receipt;
-  const stays = trouble(receipt);
+  const stays = trouble(outcome);
   const tracking = outcome.tracking ?? "";
   const said: ReactNode =
     receipt?.kept === true ? (
@@ -663,6 +703,8 @@ function DoneFooter({ election, host, outcome }: { election: BallotElectionView;
           <span className="kept-line">Weft kept your receipt</span> with it in your activity.
         </>
       )
+    ) : receipt?.kept === false && receipt.reason === "declined" && outcome.unsaved ? (
+      " Weft couldn't save this vote in your activity. Save the receipt above before you close this window if you want a copy."
     ) : receipt?.kept === false && receipt.reason === "declined" ? (
       ` You left Keep the receipt in Weft off, so ${host} has the only copy of the tracking code.`
     ) : receipt?.kept === false && receipt.reason === "storage" ? (

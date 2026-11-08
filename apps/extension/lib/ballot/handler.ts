@@ -441,24 +441,31 @@ async function cast<A extends { view: ApprovalView; decision: { promise: Promise
     };
     const returned = returnedTracking(result.text);
     const kept = await keepReceipt(committed, receipt, returned, sealed, host);
-    if (!kept.result.kept) await host.saveActivity(committed, kept.outcome.kept === false && kept.outcome.reason === "storage");
+    // The ballot is on the ledger whatever the browser does now: a refused
+    // write is said in the window, which keeps the receipt, and isn't a failure.
+    const unsaved = kept.result.kept ? null : await host.saveActivity(committed).then(() => null, refused);
     host.finish(approval, {
       status: "approved",
-      activityId: base.id,
+      activityId: unsaved ? null : base.id,
       blockNumber: result.blockNumber,
       transactionId: result.transactionId,
       ...(network.explorerUrl ? { explorerUrl: network.explorerUrl } : {}),
       receipt: kept.outcome,
       tracking: ballot.tracking,
+      ...(unsaved ? { unsaved: { receipt, error: unsaved } } : {}),
     });
     return { transactionId: result.transactionId, blockNumber: result.blockNumber, status: "VALID", receipt: kept.result };
   } catch (error) {
     const failure = castFailure(error, stage, ctx);
     const o = failure.outcome;
-    await host
+    // The window says the details are in the activity only when they are.
+    const saved = await host
       .saveActivity({ ...base, status: "failed", code: o.code ?? "INTERNAL", title: o.title, detail: [o.detail, o.next].filter(Boolean).join(" "), ...(o.raw ? { raw: o.raw } : {}) })
-      .catch(() => {});
-    host.finish(approval, { ...o, activityId: base.id });
+      .then(
+        () => true,
+        () => false,
+      );
+    host.finish(approval, { ...o, activityId: saved ? base.id : null });
     throw failure.error;
   }
 }
@@ -549,16 +556,17 @@ async function castAnonymous<A extends { view: ApprovalView; decision: { promise
         kept = { result: { kept: false, reason: "storage", receipt }, outcome: { kept: false, reason: "storage", receipt, error: message } };
       }
     }
-    if (!kept.result.kept) await saveAnonymous(key, { activity: committed, receipt: null }).catch(() => {});
-    host.announceActivity();
+    const unsaved = kept.result.kept ? null : await saveAnonymous(key, { activity: committed, receipt: null }).then(() => null, refused);
+    if (!unsaved) host.announceActivity();
     host.finish(approval, {
       status: "approved",
-      activityId: base.id,
+      activityId: unsaved ? null : base.id,
       blockNumber: result.blockNumber,
       transactionId: result.transactionId,
       ...(invite.explorerUrl ? { explorerUrl: invite.explorerUrl } : {}),
       receipt: kept.outcome,
       tracking,
+      ...(unsaved ? { unsaved: { receipt, error: unsaved } } : {}),
     });
     return { transactionId: result.transactionId, blockNumber: result.blockNumber, status: "VALID", receipt: kept.result };
   } catch (error) {
@@ -574,6 +582,9 @@ async function castAnonymous<A extends { view: ApprovalView; decision: { promise
     throw failure.error;
   }
 }
+
+/** A refused write's error, as the window's Details show it. */
+const refused = (error: unknown): string => (error instanceof Error ? `${error.name}: ${error.message}` : String(error));
 
 /**
  * Keeps the receipt with its activity record when the voter asked and the

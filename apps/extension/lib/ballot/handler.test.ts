@@ -12,6 +12,8 @@ import { FakeRelay, makeOrg, testElection, type Org } from "./test/fabric";
 const stores = new Map<string, Map<string, unknown>>();
 const store = (name: string) => stores.get(name) ?? (stores.set(name, new Map()), stores.get(name)!);
 let refuseWrites = false;
+/** The host's activity writes fail as a full browser's do. */
+let refuseActivity = false;
 const wallet = {
   org: null as Org | null,
   channels: ["mychannel", "privatevote-budget-2027"],
@@ -90,6 +92,7 @@ beforeAll(async () => {
 beforeEach(() => {
   stores.clear();
   refuseWrites = false;
+  refuseActivity = false;
   Object.assign(wallet, { org: org1, channels: ["mychannel", "privatevote-budget-2027"], inviteUrl: undefined, chain: true, inviteChannels: ["mychannel"], updated: null });
   relay = new FakeRelay(testElection(), [org1, org2]);
   setRelayForTests(() => relay);
@@ -116,7 +119,10 @@ async function request(raw: unknown = params) {
       return { view: v, decision: { promise: decision } };
     },
     finish: (_a, o) => void finished.push(o),
-    saveActivity: async (r) => void saved.push(r),
+    saveActivity: async (r) => {
+      if (refuseActivity) throw Object.assign(new Error("The quota has been exceeded."), { name: "QuotaExceededError" });
+      saved.push(r);
+    },
     announceActivity: () => {},
   }).then(
     (r) => ({ ok: true as const, value: r }),
@@ -203,6 +209,45 @@ describe("weft_castBallot", () => {
     const out = (await req.result) as { value: CastBallotResult };
     expect(out.value.receipt).toMatchObject({ kept: false, reason: "storage" });
     expect(req.finished[0]).toMatchObject({ receipt: { kept: false, reason: "storage", error: "QuotaExceededError: The quota has been exceeded." } });
+  });
+
+  it("keeps the receipt in the window when the browser refuses the vote's activity record, and still answers VALID", async () => {
+    refuseActivity = true;
+    const req = await request();
+    await ballotRead(req.view.id);
+    req.decide({ approved: true, keepReceipt: false, choice: 1 });
+    const out = await req.result;
+    expect(out.ok).toBe(true);
+    expect((out as { value: CastBallotResult }).value).toMatchObject({ status: "VALID", receipt: { kept: false, reason: "declined" } });
+    expect(req.finished[0]).toMatchObject({
+      status: "approved",
+      activityId: null,
+      receipt: { kept: false, reason: "declined" },
+      unsaved: { receipt: { tracking: relay.ballots[0]!.tracking }, error: "QuotaExceededError: The quota has been exceeded." },
+    });
+    expect(req.saved).toHaveLength(0);
+  });
+
+  it("says both the receipt and the activity record weren't stored when the browser refuses every write", async () => {
+    refuseWrites = true;
+    refuseActivity = true;
+    const req = await request();
+    await ballotRead(req.view.id);
+    req.decide({ approved: true, keepReceipt: true, choice: 0 });
+    const out = (await req.result) as { value: CastBallotResult };
+    expect(out.value).toMatchObject({ status: "VALID", receipt: { kept: false, reason: "storage" } });
+    expect(req.finished[0]).toMatchObject({ activityId: null, receipt: { reason: "storage" }, unsaved: { error: "QuotaExceededError: The quota has been exceeded." } });
+  });
+
+  it("doesn't say a failure's details are in the activity when the browser refused them", async () => {
+    refuseActivity = true;
+    relay.record = { ...relay.record };
+    const req = await request();
+    await ballotRead(req.view.id);
+    relay.record = { ...relay.record, state: "decrypting" };
+    req.decide({ approved: true, keepReceipt: false, choice: 1 });
+    expect(((await req.result) as { error: WeftError }).error.code).toBe(5001);
+    expect(req.finished[0]).toMatchObject({ status: "failed", activityId: null });
   });
 
   it("answers the site at once with 4400 for an election that isn't open, and keeps the window until it closes", async () => {

@@ -103,6 +103,12 @@ export type ApprovalOutcome =
       receipt?: ReceiptOutcome;
       /** weft_castBallot: the tracking code Weft computed for the ballot. */
       tracking?: string;
+      /**
+       * weft_castBallot: the browser refused to store the vote's activity
+       * record after the ballot committed. The window holds the receipt, so
+       * the voter can save it before closing.
+       */
+      unsaved?: { receipt: BallotReceiptV2; error: string };
     }
   | {
       status: "failed";

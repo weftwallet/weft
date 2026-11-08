@@ -16,6 +16,7 @@
     "typecheck": "wxt prepare && tsc --noEmit",
     "build:e2e": "WEFT_E2E=1 wxt build",
     "build:e2e:experimental": "WEFT_E2E=1 WEFT_EXPERIMENTAL=1 wxt build",
+    "check:normal": "node scripts/check-normal-build.mjs",
     "test": "vitest run"
   },
   "dependencies": {
