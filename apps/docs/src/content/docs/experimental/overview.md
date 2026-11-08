@@ -4,7 +4,7 @@ description: Weft Experimental, a separate build with a private tally and anonym
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The private tally is built: the build switch, the experimental channels, its cryptography (`@weftwallet/tally` and the contract's verifiers), the contract, the trustee tool, `weft-trustee`, casting a private ballot in Weft Experimental with `weft_castBallot`, the explorer's private election pages with the full check, and the playground's Private election section. The playground seeds and counts an election with them. For voter credentials, the contract, the idemix module, the relay's part and the playground's voters' CAs, CA proxies and voter invites are built; Weft Experimental can't hold a voter credential yet, and the page describes the rest as planned.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The private tally is built: the build switch, the experimental channels, its cryptography (`@weftwallet/tally` and the contract's verifiers), the contract, the trustee tool, `weft-trustee`, casting a private ballot in Weft Experimental with `weft_castBallot`, the explorer's private election pages with the full check, and the playground's Private election section. The playground seeds and counts an election with them. For voter credentials, the contract, the idemix module, the relay's part, the playground's voters' CAs, CA proxies and voter invites, and enrolment and anonymous ballots in Weft Experimental are built; the explorer's part and the playground's section aren't yet.
 :::
 
 ## The experimental track
@@ -18,7 +18,7 @@ A page detects the experimental build from `window.weft.features`:
 | Build | `features` |
 |---|---|
 | Weft | `["receipts"]` |
-| Weft Experimental | `["receipts", "castBallot", "voterCredentials"]`, each once it's built. Today it lists `["receipts", "castBallot"]`. |
+| Weft Experimental | `["receipts", "castBallot", "voterCredentials"]` |
 
 Both report `version` 0.1.0, so a page checks `features` to tell them apart. See [Casting a ballot](/experimental/cast-ballot/#detecting-support).
 
@@ -72,6 +72,8 @@ Load `apps/extension/.output-experimental/chrome-mv3` into a browser profile tha
 
 Weft Experimental's popup and windows say "Weft Experimental" and draw its pinked mark, and its welcome says it is a separate build. It has its own extension ID (in Firefox, `experimental@weft.ifeanyiugwu.dev`), so you enrol in it separately.
 
+To get a voter credential for `chair-2027`, choose Join from an invite in Weft Experimental's popup, paste `http://localhost:8787/.well-known/weft-voter-invite/chair-2027.json`, and enrol as one of `voter1` to `voter5` (secret `voter1pw` and so on). Each ID enrols once. Weft Experimental then votes in `chair-2027` anonymously when a site calls `weft_castBallot` for it.
+
 `--experimental` adds, on top of everything `playground:up` runs:
 
 | What | Value | Now |
@@ -95,7 +97,7 @@ Weft Playground, at `http://localhost:4323`, shows a "Private election" section 
 
 | Part | Switch | Off by default |
 |---|---|---|
-| Extension | `WEFT_EXPERIMENTAL=1` at build time, which `dev:experimental`, `build:experimental` and `build:e2e:experimental` set. It changes the name, the extension ID, the output folder, the mark and `features`, adds `weft_castBallot`, and keeps the CA chain at enrolment. The normal build contains none of the experimental code. | Yes |
+| Extension | `WEFT_EXPERIMENTAL=1` at build time, which `dev:experimental`, `build:experimental` and `build:e2e:experimental` set. It changes the name, the extension ID, the output folder, the mark and `features`, adds `weft_castBallot`, keeps the CA chain at enrolment, and adds voter credentials: the idemix module, `'wasm-unsafe-eval'` in its extension pages' content security policy, enrolment from a voter invite and anonymous ballots. The normal build contains none of the experimental code, only the sentence that tells a voter a voter invite needs Weft Experimental. | Yes |
 | Relay | `WEFT_EXPERIMENTAL=1`, `WEFT_IDEMIX_MSP_IDS` for the voter MSPs, and `WEFT_VOTER_INVITES` for the voter invites. It refuses to start with `WEFT_IDEMIX_MSP_IDS` or `WEFT_VOTER_INVITES` and without `WEFT_EXPERIMENTAL=1`. Without the switch it refuses every idemix signer, and logs as it always has. | Yes |
 | Explorer | `WEFT_EXPERIMENTAL=1`, and a channel's `privateElections` in the policy. It refuses to start with `privateElections` and without `WEFT_EXPERIMENTAL=1`, or with `privateElections` and `values: hash` on the same channel. With `privateElections`, it publishes each ballot's voter tag even when `submitter: hide`. Without the switch it indexes, serves and allows in its content security policy none of the private election pages, their API or the full check's worker. | Yes |
 | Playground stack | `pnpm playground:up --experimental` | Yes |

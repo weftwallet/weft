@@ -129,4 +129,18 @@ The prototype used channel `anonvote` on a local Fabric 2.5.16 network: three Ra
 | Per-election pseudonym proof | 13 to 23 ms |
 | Creator identity, signature, pseudonym proof | 1,019, 136 and 160 bytes |
 
-The timings are from Node 22 on the build machine, and none were taken in a browser. A vote makes one identity and three signatures (proposal, transaction, commit status), about 0.3 s of signing after the module has loaded.
+The timings above are from Node 22 on the build machine, and none of them were taken in a browser; Weft Experimental's are below. A vote makes one identity and three signatures (proposal, transaction, commit status), about 0.3 s of signing after the module has loaded.
+
+### In Weft Experimental
+
+Weft Experimental's own timings, from the User Timing marks it records (`lib/voter/module.ts`), on 8 November 2026: its e2e build in headless Chromium 141 on a 2.1 GHz Intel Xeon with two cores, against the native Fabric 2.5.16 network the earlier steps' tests ran on, with Fabric CA 1.5.17 behind the playground's voters-only CA proxy and the relay on the same machine. Five enrolments and five votes, by five voters, in an election with voter credentials and three options.
+
+| Step | Time |
+|---|---|
+| Start the module in a dedicated worker: fetch both files, check their hashes, compile and run | 350 to 449 ms, of which the fetch 65 to 89 ms, the hash 39 to 62 ms, the compile 31 to 43 ms and Go's start 183 to 277 ms |
+| Enrolment, from Get a voter credential to the saved credential: the CA's `cainfo`, the module's start, two requests to the CA, the credential's check and the seal | 718 to 847 ms |
+| The approval window's module ready: open the credential, start the module, load the issuer key, connect the port | 451 to 538 ms |
+| Read the election through the relay with a one-off identity, check every endorsement against the invite's CA chains, and make the pseudonym | 511 to 631 ms |
+| A vote, from Sign and vote to the committed block: a new identity, the pseudonym, the ballot and its proofs, the pseudonym proof, three signatures through the port, and the network's wait for the block | 2.8 to 3.1 s |
+
+The network's batch timeout is 2 seconds, so most of a vote is the wait for its block. The host access prompt was granted in advance, as the e2e build allows for `localhost`, so enrolment doesn't include the voter's press. Firefox wasn't available where these were measured.

@@ -26,7 +26,7 @@ Arguments are strings, as in every Fabric contract. JSON arguments are parsed in
 
 Everything on this page is built, in `examples/private-ballot-contract`, including elections with voter credentials ([ADR 0008](/reference/decisions/)): `CreateElection` with `voters.kind` `"idemix"`, and `CastAnonymousBallot` with the pseudonym proof. `weft-trustee create` creates one with `--voter-credentials` and `--issuer-key`. On the native network the step 4 tests ran on, voter credentials from Fabric CA 1.5.17 voted in such an election and were counted, and the refusals for a second ballot, another affiliation, the admin role, a changed proof, a proof from another voter's transaction, an election pinning another issuer key and the wrong cast function came back word for word.
 
-The playground deploys it on every election's channel, and seeds `budget-2027` and `chair-2027`, with voter credentials, with [`weft-trustee`](/experimental/key-ceremony/#the-trustee-tool). Weft Experimental can't hold a voter credential yet: the playground's test drivers enrol and cast with the idemix module in Node, through the relay.
+The playground deploys it on every election's channel, and seeds `budget-2027` and `chair-2027`, with voter credentials, with [`weft-trustee`](/experimental/key-ceremony/#the-trustee-tool). Weft Experimental enrols from a voter invite and casts `CastAnonymousBallot` ([Voter credentials](/experimental/voter-credentials/#what-is-built)), and the playground's test drivers do the same with the idemix module in Node, through the relay.
 
 ## Election states
 
