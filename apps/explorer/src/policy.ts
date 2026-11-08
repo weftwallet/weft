@@ -27,7 +27,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
 import type { ConfigSummary } from "./channel-config.ts";
-import type { DecodedBlock, DecodedTransaction, Party, PrivateDataSet } from "./decode.ts";
+import type { DecodedBlock, DecodedTransaction, IdemixCreator, Party, PrivateDataSet } from "./decode.ts";
 
 export type Level = "public" | "members" | "hidden";
 const LEVELS: Level[] = ["public", "members", "hidden"];
@@ -47,7 +47,10 @@ export interface ChannelPolicy {
    * and only with values: show, since the pages are made from the contract's
    * arguments and writes. Every ballot's voter tag is published, even with
    * submitter: hide, because every ballot proof is bound to it; the
-   * submitter's certificate, name and MSP ID stay hidden.
+   * submitter's certificate, name and MSP ID stay hidden. An anonymous
+   * ballot's creator, a voter credential's one-off identity with its Nym,
+   * is published either way: it names no one, and the browser's full check
+   * needs it to check each pseudonym (docs/adr/0008, D12).
    */
   privateElections?: string;
   /**
@@ -168,6 +171,12 @@ function shown(bytes: Uint8Array, mode: "show" | "hash"): ShownValue {
 export interface PublishedParty {
   mspId: string;
   name: string | null;
+  /**
+   * An anonymous member of an idemix organisation, a voter credential's
+   * one-off identity: its OU, role and Nym. Published even where the policy
+   * hides submitters, since it names no one (docs/adr/0008, D12).
+   */
+  anonymous?: IdemixCreator;
 }
 
 export interface PublishedTransaction {
@@ -212,7 +221,10 @@ export interface PublishedBlock extends Omit<DecodedBlock, "transactions"> {
   transactions: PublishedTransaction[];
 }
 
-const partyView = (p: Party): PublishedParty => ({ mspId: p.mspId, name: p.name });
+const partyView = (p: Party): PublishedParty => ({ mspId: p.mspId, name: p.name, ...(p.idemix ? { anonymous: p.idemix } : {}) });
+/** A transaction's submitter as the policy publishes it: shown, or anonymous anyway, or not at all. */
+const submitterView = (submitter: "show" | "hide", p: Party | null): PublishedParty | null =>
+  !p ? null : submitter === "show" ? partyView(p) : p.idemix ? { mspId: p.mspId, name: null, anonymous: p.idemix } : null;
 
 /** Applies the channel's policy to one decoded transaction. */
 export function publishTransaction(policy: Policy, channel: string, tx: DecodedTransaction): PublishedTransaction {
@@ -236,7 +248,7 @@ export function publishTransaction(policy: Policy, channel: string, tx: DecodedT
       ...empty,
       level: channelOpen,
       redacted: false,
-      creator: c.submitter === "show" && tx.creator ? partyView(tx.creator) : null,
+      creator: submitterView(c.submitter, tx.creator),
       ...(tx.config
         ? { config: { summary: tx.config.summary, changes: tx.config.changes ?? [], signers: tx.config.signers.map(people), first: tx.config.first ?? false } }
         : {}),
@@ -250,7 +262,7 @@ export function publishTransaction(policy: Policy, channel: string, tx: DecodedT
     ...base,
     level,
     redacted: false,
-    creator: c.submitter === "show" && tx.creator ? partyView(tx.creator) : null,
+    creator: submitterView(c.submitter, tx.creator),
     chaincode: tx.chaincode,
     fn: tx.fn,
     args: tx.args.map((a) => shown(a, c.values)),

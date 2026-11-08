@@ -703,3 +703,8 @@ section > .pager, [data-live] > .pager { margin-top: var(--weft-space-3); }
 @media (prefers-reduced-motion: reduce) {
   .xcheck__bar > span { transition-duration: 0s; }
 }
+/* Anonymous ballots (docs/adr/0008): a voter credential's one-off identity
+   names no one, so the table says what it is, in the muted tone, with the
+   voter organisation under it. */
+.anon { color: var(--weft-text-muted); }
+.ballots td .small { display: block; }

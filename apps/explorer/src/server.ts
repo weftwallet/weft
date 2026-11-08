@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { SignInError } from "@weftwallet/core";
 import { Auth, SESSION_COOKIE, UnreadableSignIn, type Viewer } from "./auth.ts";
@@ -44,6 +45,11 @@ export interface ServerOptions {
    * check's worker. Off by default, and then none of it is served.
    */
   experimental?: boolean;
+  /**
+   * The folder with the idemix module and its wasm_exec.js, served to the
+   * browser's full check for elections with voter credentials (docs/adr/0008).
+   */
+  idemixDir?: string;
   logger?: boolean;
 }
 
@@ -200,13 +206,32 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     reply.header("x-content-type-options", "nosniff");
     reply.header("referrer-policy", "no-referrer");
     if (!request.url.startsWith("/api/") && !request.url.startsWith("/assets/")) {
-      // The private elections' full check runs in workers from /assets/full-check.js.
+      // The private elections' full check runs in workers from
+      // /assets/full-check.js, and for elections with voter credentials
+      // compiles the idemix module there, which 'wasm-unsafe-eval' allows.
       reply.header(
         "content-security-policy",
-        `default-src 'self'; script-src 'unsafe-inline'; style-src 'self'; img-src 'self'; font-src 'self'; ${experimental ? "worker-src 'self'; " : ""}frame-ancestors 'none'`,
+        `default-src 'self'; script-src 'unsafe-inline'${experimental ? " 'wasm-unsafe-eval'" : ""}; style-src 'self'; img-src 'self'; font-src 'self'; ${experimental ? "worker-src 'self'; " : ""}frame-ancestors 'none'`,
       );
     }
   });
+
+  /** The idemix module's files, read once, with the module also gzipped once for browsers that accept it. */
+  const idemixFiles = new Map<string, { body: Buffer; gzip?: Buffer }>();
+  function idemixFile(name: string): { body: Buffer; gzip?: Buffer } | null {
+    if (!options.idemixDir) return null;
+    let f = idemixFiles.get(name);
+    if (!f) {
+      try {
+        const body = readFileSync(join(options.idemixDir, name));
+        f = name.endsWith(".wasm") ? { body, gzip: gzipSync(body, { level: 6 }) } : { body };
+      } catch {
+        return null;
+      }
+      idemixFiles.set(name, f);
+    }
+    return f;
+  }
 
   app.get<{ Params: { "*": string } }>("/assets/*", async (request, reply) => {
     if (experimental && request.params["*"] === "full-check.js") {
@@ -216,7 +241,20 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       } catch {
         return reply.code(404).send();
       }
-      return reply.header("content-type", "text/javascript; charset=utf-8").header("cache-control", "no-cache").send(body);
+      // The worker's own policy: it loads wasm_exec.js and compiles the idemix module.
+      return reply
+        .header("content-type", "text/javascript; charset=utf-8")
+        .header("cache-control", "no-cache")
+        .header("content-security-policy", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'")
+        .send(body);
+    }
+    const idemixName = { "idemix/weft-idemix.wasm": "weft-idemix.wasm", "idemix/wasm_exec.js": "wasm_exec.js" }[request.params["*"]];
+    if (experimental && idemixName) {
+      const f = idemixFile(idemixName);
+      if (!f) return reply.code(404).send();
+      reply.header("content-type", idemixName.endsWith(".wasm") ? "application/wasm" : "text/javascript; charset=utf-8").header("cache-control", "no-cache").header("vary", "accept-encoding");
+      if (f.gzip && /\bgzip\b/.test(String(request.headers["accept-encoding"] ?? ""))) return reply.header("content-encoding", "gzip").send(f.gzip);
+      return reply.send(f.body);
     }
     const entry = ASSETS[request.params["*"]];
     if (!entry) return reply.code(404).send();
@@ -324,7 +362,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const blocks = db.blocks(channel, { before, limit: PAGE });
     return send(
       reply,
-      pages.channelPage(s.site, summary!, statusOf(channel), blocks, db.contracts(channel, s.memberOf(channel)), { ...(before !== undefined ? { before } : {}), size: PAGE }),
+      pages.channelPage(s.site, summary!, statusOf(channel), blocks, db.contracts(channel, s.memberOf(channel)), { ...(before !== undefined ? { before } : {}), size: PAGE }, db.configSummary(channel)),
     );
   });
 

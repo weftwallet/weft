@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2023"],
+    // DOM for the full check's worker, which runs in the browser, and for the
+    // idemix module's types (WebAssembly), which the indexer runs in Node.
+    "lib": ["ES2023", "DOM"],
     "types": ["node"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",

@@ -14,6 +14,7 @@ import { configChanges } from "./channel-config.ts";
 import { decodeBlock, type DecodedBlock } from "./decode.ts";
 import { publishBlock, publishedChannels, type Policy } from "./policy.ts";
 import { indexPrivateBlock } from "./private-elections.ts";
+import type { IdemixSync } from "@weftwallet/idemix";
 
 export interface ChannelStatus {
   channel: string;
@@ -37,12 +38,15 @@ export class Indexer {
   private readonly db: ExplorerDb;
   private readonly log: Log;
   private readonly experimental: boolean;
+  private readonly idemix: IdemixSync | null;
 
-  constructor(config: ExplorerConfig, policy: Policy, db: ExplorerDb, log: Log = { info: console.log, warn: console.warn }) {
+  /** `idemix` is the idemix module, started in this process, which checks anonymous ballots (docs/adr/0008). */
+  constructor(config: ExplorerConfig, policy: Policy, db: ExplorerDb, log: Log = { info: console.log, warn: console.warn }, idemix: IdemixSync | null = null) {
     this.policy = policy;
     this.db = db;
     this.log = log;
     this.experimental = config.experimental;
+    this.idemix = idemix;
     const credentials = config.peerTlsCaCert
       ? grpc.credentials.createSsl(config.peerTlsCaCert)
       : grpc.credentials.createInsecure();
@@ -116,7 +120,7 @@ export class Indexer {
         this.update(channel, { state: "following", lastError: null });
         this.log.info(`Following ${channel} from block ${startBlock}`);
         for await (const block of blocks) {
-          indexBlock(this.db, this.policy, decodeBlock(block), { experimental: this.experimental });
+          indexBlock(this.db, this.policy, decodeBlock(block), { experimental: this.experimental, idemix: this.idemix });
           this.update(channel, { lastBlockAt: Date.now() });
           delay = 1000;
         }
@@ -152,18 +156,19 @@ export class Indexer {
  * members are (who may sign in) and the configuration each later config
  * block is compared with. With `experimental` (WEFT_EXPERIMENTAL=1), a
  * channel whose policy names privateElections also has its private-ballot
- * transactions indexed as elections (private-elections.ts).
+ * transactions indexed as elections (private-elections.ts), with `idemix`
+ * checking anonymous ballots.
  */
-export function indexBlock(db: ExplorerDb, policy: Policy, decoded: DecodedBlock, options: { experimental?: boolean } = {}): void {
+export function indexBlock(db: ExplorerDb, policy: Policy, decoded: DecodedBlock, options: { experimental?: boolean; idemix?: IdemixSync | null } = {}): void {
   for (const tx of decoded.transactions) {
     if (tx.members) db.setMembers(decoded.channel, tx.members);
     if (tx.config) {
       const before = db.configSummary(decoded.channel);
       tx.config.changes = configChanges(before, tx.config.summary);
       tx.config.first = before === null;
-      db.setConfigSummary(decoded.channel, tx.config.summary);
+      db.setConfigSummary(decoded.channel, { ...tx.config.summary, block: decoded.number });
     }
   }
   db.addBlock(publishBlock(policy, decoded));
-  if (options.experimental) indexPrivateBlock(db, policy, decoded);
+  if (options.experimental) indexPrivateBlock(db, policy, decoded, options.idemix ?? null);
 }

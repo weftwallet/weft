@@ -8,10 +8,12 @@ import { DatabaseSync } from "node:sqlite";
 import type { PeerStatus } from "./checkpoints.ts";
 import type { ChannelMember } from "./decode.ts";
 import type { ConfigSummary } from "./channel-config.ts";
+import type { AnonymousCreator } from "./full-check.ts";
+import type { PseudonymProof } from "@weftwallet/idemix";
 import type { PublishedBlock, PublishedTransaction } from "./policy.ts";
 
 /** Bumped when the tables change; an older index is rebuilt from block 0. */
-const SCHEMA = "5";
+const SCHEMA = "6";
 
 export interface BlockRow {
   channel: string;
@@ -83,6 +85,12 @@ export interface PrivateBallotRow {
   error: string | null;
   /** The submitter, only when the policy shows submitters: its MSP ID and id_bytes, base64. */
   creator: { mspId: string; idBytes: string } | null;
+  /**
+   * An anonymous ballot's creator and pseudonym proof (docs/adr/0008),
+   * stored whatever the policy says of submitters: they name no one, and the
+   * browser's full check needs them (D12).
+   */
+  anonymous?: { creator: AnonymousCreator; pseudonym: PseudonymProof } | null;
 }
 
 export interface ChannelSummary {
@@ -197,6 +205,7 @@ export class ExplorerDb {
         error TEXT,
         creator_msp TEXT,
         creator_id TEXT,
+        anonymous TEXT,
         PRIMARY KEY (channel, election, tx_id)
       );
       CREATE INDEX IF NOT EXISTS pe_ballot_order ON pe_ballots (channel, election, block_number, idx);
@@ -490,10 +499,25 @@ export class ExplorerDb {
     try {
       this.db
         .prepare(
-          `INSERT OR REPLACE INTO pe_ballots (channel, election, tx_id, block_number, idx, timestamp, tracking, voter_tag, ballot, verified, error, creator_msp, creator_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO pe_ballots (channel, election, tx_id, block_number, idx, timestamp, tracking, voter_tag, ballot, verified, error, creator_msp, creator_id, anonymous)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(b.channel, b.election, b.txId, b.block, b.index, b.timestamp, b.tracking, b.voterTag, JSON.stringify(b.ballot), b.verified ? 1 : 0, b.error, b.creator?.mspId ?? null, b.creator?.idBytes ?? null);
+        .run(
+          b.channel,
+          b.election,
+          b.txId,
+          b.block,
+          b.index,
+          b.timestamp,
+          b.tracking,
+          b.voterTag,
+          JSON.stringify(b.ballot),
+          b.verified ? 1 : 0,
+          b.error,
+          b.creator?.mspId ?? null,
+          b.creator?.idBytes ?? null,
+          b.anonymous ? JSON.stringify(b.anonymous) : null,
+        );
       const insert = this.db.prepare("INSERT OR REPLACE INTO pe_ciphertexts (channel, election, a, tx_id) VALUES (?, ?, ?, ?)");
       for (const a of ciphertexts) insert.run(b.channel, b.election, a, b.txId);
       this.db.exec("COMMIT");
@@ -591,5 +615,6 @@ function toPrivateBallot(r: Row): PrivateBallotRow {
     verified: r.verified === 1,
     error: (r.error as string | null) ?? null,
     creator: r.creator_msp ? { mspId: r.creator_msp as string, idBytes: r.creator_id as string } : null,
+    anonymous: r.anonymous ? (JSON.parse(r.anonymous as string) as PrivateBallotRow["anonymous"]) : null,
   };
 }

@@ -18,6 +18,21 @@ export interface Party {
    * makes a voter tag from (private-elections.ts). Never stored or published.
    */
   idBytes: Uint8Array;
+  /**
+   * An idemix creator, a voter credential's one-off identity
+   * (docs/adr/0008): what its SerializedIdemixIdentity discloses, read
+   * without checking its proof. It names no one.
+   */
+  idemix?: IdemixCreator;
+}
+
+export interface IdemixCreator {
+  /** The organisational unit, the credential's affiliation. */
+  ou: string;
+  /** "member" or "admin", as Fabric's MSPRole names it. */
+  role: string;
+  /** The one-off Nym, its 32-byte X then Y, in lowercase hex. */
+  nym: string;
 }
 
 export interface Write {
@@ -146,7 +161,25 @@ function party(serialized: Uint8Array): Party | null {
   } catch {
     /* not a certificate (for example an idemix identity); keep the MSP ID */
   }
-  return { mspId: identity.getMspid(), name, certificate, idBytes };
+  const idemix = name === null ? idemixCreator(idBytes) : null;
+  return { mspId: identity.getMspid(), name, certificate, idBytes, ...(idemix ? { idemix } : {}) };
+}
+
+const MSP_ROLES: Record<number, string> = { 0: "member", 1: "admin", 2: "client", 3: "peer", 4: "orderer" };
+
+/** An idemix creator's disclosed fields, or null when id_bytes isn't a SerializedIdemixIdentity with a 64-byte Nym and a proof. */
+export function idemixCreator(idBytes: Uint8Array): IdemixCreator | null {
+  try {
+    const sid = msp.SerializedIdemixIdentity.deserializeBinary(idBytes);
+    const x = sid.getNymX_asU8();
+    const y = sid.getNymY_asU8();
+    if (x.length !== 32 || y.length !== 32 || sid.getProof_asU8().length === 0) return null;
+    const ou = msp.OrganizationUnit.deserializeBinary(sid.getOu_asU8()).getOrganizationalUnitIdentifier();
+    const role = msp.MSPRole.deserializeBinary(sid.getRole_asU8()).getRole();
+    return { ou, role: MSP_ROLES[role] ?? String(role), nym: Buffer.concat([x, y]).toString("hex") };
+  } catch {
+    return null;
+  }
 }
 
 function timestampOf(header: common.ChannelHeader): number | null {

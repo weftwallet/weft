@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { common, msp, orderer, peer } from "@hyperledger/fabric-protos";
 import { describe, expect, it } from "vitest";
 import { configChanges, configUpdateSigners, describePolicy, summariseConfig } from "./channel-config.ts";
@@ -232,5 +234,36 @@ describe("channel configuration", async () => {
     policy.setType(common.Policy.PolicyType.SIGNATURE);
     policy.setValue(envelope.serializeBinary());
     expect(describePolicy(policy)).toBe("OR(Org1MSP.admin, Org2MSP.peer)");
+  });
+});
+
+describe("idemix organisations (docs/adr/0008)", () => {
+  // Block 0 of privatevote-chair-2029, recorded from a local network: Org1MSP,
+  // Org2MSP and ChairVoters2029MSP, an organisation of voter credentials.
+  const genesis = () => {
+    const raw = gunzipSync(readFileSync(new URL("./test/fixtures/privatevote-chair-2029.blocks.gz", import.meta.url)));
+    const block = common.Block.deserializeBinary(raw.subarray(4, 4 + raw.readUInt32BE(0)));
+    const envelope = common.Envelope.deserializeBinary(block.getData()!.getDataList_asU8()[0]!);
+    return summariseConfig(common.Payload.deserializeBinary(envelope.getPayload_asU8()).getData_asU8())!;
+  };
+
+  it("reads MSP type 1, with SHA-256 of its issuer key", () => {
+    const s = genesis();
+    const voters = s.organisations.find((o) => o.mspId === "ChairVoters2029MSP")!;
+    expect(voters.kind).toBe("idemix");
+    expect(voters.issuerKeyHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(voters.rootCas).toEqual([]);
+    expect(s.organisations.find((o) => o.mspId === "Org1MSP")!.kind).toBeUndefined();
+    expect(configChanges(null, s)).toEqual(["The channel starts with ChairVoters2029MSP, Org1MSP, Org2MSP as members.", "Ordering by OrdererMSP, using etcdraft."]);
+  });
+
+  it("says when an idemix organisation's issuer key changes, or one joins", () => {
+    const s = genesis();
+    const voters = s.organisations.find((o) => o.mspId === "ChairVoters2029MSP")!;
+    const changed = { ...s, organisations: s.organisations.map((o) => (o === voters ? { ...o, issuerKeyHash: "ab".repeat(32) } : o)), digest: "other" };
+    const h = voters.issuerKeyHash!;
+    expect(configChanges(s, changed)).toEqual([`ChairVoters2029MSP's issuer key changed from ${h.slice(0, 8)}…${h.slice(-8)} to abababab…abababab.`]);
+    const without = { ...s, organisations: s.organisations.filter((o) => o !== voters) };
+    expect(configChanges(without, s)[0]).toBe(`ChairVoters2029MSP joined as a member: an organisation of voter credentials, with issuer key ${h.slice(0, 8)}…${h.slice(-8)}.`);
   });
 });

@@ -20,6 +20,14 @@ export interface CaSummary {
 
 export interface OrgSummary {
   mspId: string;
+  /**
+   * "idemix" for an organisation of voter credentials (MSP type 1, docs/adr/0008),
+   * whose members are anonymous; absent for an X.509 organisation, as every
+   * summary stored before idemix organisations were read.
+   */
+  kind?: "idemix";
+  /** An idemix organisation's issuer key: SHA-256 of IdemixMSPConfig.ipk, the bytes Fabric CA serves, in lowercase hex. */
+  issuerKeyHash?: string;
   rootCas: CaSummary[];
   intermediateCas: CaSummary[];
   /** host:port, application organisations only. */
@@ -42,6 +50,8 @@ export interface ConfigSummary {
   policies: Record<string, string>;
   /** SHA-256 of the whole configuration, to notice changes the summary leaves out. */
   digest: string;
+  /** The block it is from, once the indexer has stored it as the channel's latest. */
+  block?: number;
 }
 
 /* Reading ------------------------------------------------------------ */
@@ -80,6 +90,11 @@ function orgSummary(group: common.ConfigGroup, key: string): OrgSummary {
           }),
         ),
       ].sort();
+    } else if (config.getType() === 1) {
+      const idemix = msp.IdemixMSPConfig.deserializeBinary(config.getConfig_asU8());
+      summary.mspId = idemix.getName() || key;
+      summary.kind = "idemix";
+      summary.issuerKeyHash = createHash("sha256").update(idemix.getIpk_asU8()).digest("hex");
     }
   }
   const anchors = group.getValuesMap().get("AnchorPeers");
@@ -226,6 +241,7 @@ const list = (items: string[]) => (items.length ? items.join(", ") : "none");
 const added = (before: string[], after: string[]) => after.filter((x) => !before.includes(x));
 const removed = (before: string[], after: string[]) => before.filter((x) => !after.includes(x));
 const caLabel = (c: CaSummary) => `${c.subject} (${c.fingerprint})`;
+const short = (hash: string) => `${hash.slice(0, 8)}…${hash.slice(-8)}`;
 
 function setChange(what: string, before: string[], after: string[], out: string[]) {
   const plus = added(before, after);
@@ -239,11 +255,16 @@ function orgChanges(kind: string, before: OrgSummary[], after: OrgSummary[], out
   for (const org of after) {
     const old = before.find((o) => o.mspId === org.mspId);
     if (!old) {
-      out.push(`${org.mspId} joined as ${kind}.`);
+      out.push(org.issuerKeyHash ? `${org.mspId} joined as ${kind}: an organisation of voter credentials, with issuer key ${short(org.issuerKeyHash)}.` : `${org.mspId} joined as ${kind}.`);
       continue;
     }
     setChange(`${org.mspId}'s root CAs`, old.rootCas.map(caLabel), org.rootCas.map(caLabel), out);
     setChange(`${org.mspId}'s intermediate CAs`, old.intermediateCas.map(caLabel), org.intermediateCas.map(caLabel), out);
+    if (old.issuerKeyHash !== org.issuerKeyHash) {
+      if (old.issuerKeyHash && org.issuerKeyHash) out.push(`${org.mspId}'s issuer key changed from ${short(old.issuerKeyHash)} to ${short(org.issuerKeyHash)}.`);
+      else if (org.issuerKeyHash) out.push(`${org.mspId} became an organisation of voter credentials, with issuer key ${short(org.issuerKeyHash)}.`);
+      else out.push(`${org.mspId} is no longer an organisation of voter credentials.`);
+    }
     setChange(`${org.mspId}'s anchor peers`, old.anchorPeers, org.anchorPeers, out);
     setChange(`${org.mspId}'s orderer endpoints`, old.endpoints, org.endpoints, out);
     const newlyRevoked = added(old.revoked ?? [], org.revoked ?? []);

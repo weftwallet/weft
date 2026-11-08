@@ -6,12 +6,29 @@ import { Indexer } from "./indexer.ts";
 import { policyFingerprint, publishedChannels } from "./policy.ts";
 import { existsSync } from "node:fs";
 import { FULL_CHECK_WORKER, buildServer } from "./server.ts";
+import type { IdemixSync } from "@weftwallet/idemix";
 
 const config = loadConfig();
-if (config.experimental && Object.values(config.policy.channels).some((c) => c.privateElections) && !existsSync(FULL_CHECK_WORKER)) {
+const privateElections = config.experimental && Object.values(config.policy.channels).some((c) => c.privateElections);
+if (privateElections && !existsSync(FULL_CHECK_WORKER)) {
   throw new Error(
     `The policy names privateElections, and the full check's worker, ${FULL_CHECK_WORKER}, isn't built. Run pnpm --filter @weftwallet/explorer build, then start the explorer again.`,
   );
+}
+// Anonymous ballots (docs/adr/0008) are checked with the idemix module, in
+// this process as the indexer reads each block, and in the browser's full
+// check, which this explorer serves the module to. Both refuse a module whose
+// SHA-256 isn't the pinned one.
+let idemix: { sync: IdemixSync; dir: string } | null = null;
+if (privateElections) {
+  const { DIST_WASM, startIdemixNode } = await import("@weftwallet/idemix/node");
+  try {
+    idemix = { sync: (await startIdemixNode()).sync, dir: DIST_WASM };
+  } catch (error) {
+    throw new Error(
+      `The policy names privateElections, and the idemix module in ${DIST_WASM} didn't start: ${error instanceof Error ? error.message : String(error)} Run pnpm --filter @weftwallet/idemix build:wasm, which needs Go, then start the explorer again.`,
+    );
+  }
 }
 const db = new ExplorerDb(config.databasePath);
 const rebuilt = db.usePolicy(policyFingerprint(config.policy));
@@ -27,6 +44,7 @@ const app = buildServer({
   products: config.products,
   receiptOrigins: config.receiptOrigins,
   experimental: config.experimental,
+  ...(idemix ? { idemixDir: idemix.dir } : {}),
   channels,
   policy: config.policy,
   db,
@@ -37,7 +55,7 @@ const app = buildServer({
   ...(config.publicUrl ? { publicUrl: config.publicUrl } : {}),
   logger: true,
 });
-const indexer = new Indexer(config, config.policy, db, { info: (m) => app.log.info(m), warn: (m) => app.log.warn(m) });
+const indexer = new Indexer(config, config.policy, db, { info: (m) => app.log.info(m), warn: (m) => app.log.warn(m) }, idemix?.sync ?? null);
 
 const shutdown = async () => {
   indexer.stop();

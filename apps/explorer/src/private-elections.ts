@@ -15,16 +15,27 @@
  * submitters, because every ballot proof is bound to it. The creator's
  * certificate is stored only when the policy shows submitters.
  *
+ * In an election with voter credentials (docs/adr/0008), each ballot comes
+ * from CastAnonymousBallot, signed by a voter credential's one-off identity.
+ * The voter tag is made from the ballot's pseudonym, and the indexer checks
+ * the creator's proof against the election's pinned issuer key and the
+ * pseudonym proof against the creator's Nym with the idemix WebAssembly
+ * module, in this process, as it reads the block. It stores the anonymous
+ * creator and the pseudonym proof whatever the policy says of submitters:
+ * they name no one, and the browser's full check needs them (D12).
+ *
  * Nothing here is secret: the ledger holds ciphertexts, proofs and posts
  * that anyone in the channel can read, and no ballot can be decrypted here.
  */
 
-import { electionContext, electionFingerprint, fromHex, toHex, voterTagX509, type Election, type ElectionSetup } from "@weftwallet/tally";
+import { createHash } from "node:crypto";
+import type { IdemixSync, PseudonymProof } from "@weftwallet/idemix";
+import { electionContext, electionFingerprint, fromHex, toHex, trackingCode, voterTagIdemix, voterTagX509, type Ballot, type Election, type ElectionSetup } from "@weftwallet/tally";
 import { checkBallot, checkConfirmation, checkDecryptionShare, checkRound1, checkRound2, electionKeys, type Round1 } from "@weftwallet/tally/verify";
 import type { DecodedBlock, DecodedTransaction } from "./decode.ts";
 import type { ExplorerDb, PrivateBallotRow, PrivateStepRow } from "./db.ts";
 import { splitKey } from "./elections.ts";
-import { checkCeremony, checkCount, electionFrom, messageOf, type CeremonyPosts, type CheckedElection } from "./full-check.ts";
+import { checkAnonymousBallot, checkCeremony, checkCount, electionFrom, messageOf, type AnonymousCreator, type AnonymousVoters, type CeremonyPosts, type CheckedElection } from "./full-check.ts";
 import { goJsonParse, goString } from "./go-utf8.ts";
 import type { Policy } from "./policy.ts";
 
@@ -38,7 +49,13 @@ export interface PrivateRecord {
   creatorMsp: string;
   trustees: { id: string; msp: string }[];
   threshold: number;
-  voters: { kind: string; msps?: string[]; msp?: string };
+  /**
+   * Who votes: X.509 identities of msps (kind "x509"), or voter credentials
+   * (kind "idemix") of the idemix organisation msp with the OU affiliation
+   * and the role member, under the pinned issuer key (base64) whose SHA-256
+   * is issuerKeyHash.
+   */
+  voters: { kind: string; msps?: string[]; msp?: string; affiliation?: string; role?: string; issuerPublicKey?: string; issuerKeyHash?: string; curve?: string };
   state: "keygen" | "open" | "decrypting" | "counted" | "failed" | "cancelled";
   publicKey?: string;
   verifyingShares?: string[];
@@ -51,13 +68,21 @@ export interface PrivateRecord {
   reportedBy?: string;
 }
 
-/** How long indexing has spent checking ballots, for the timings in prototype-results.md. */
-const stats = { ballots: 0, ms: 0 };
+/** How long indexing has spent checking ballots, and anonymous ballots' creators and pseudonyms, for the timings in prototype-results.md. */
+const stats = { ballots: 0, ms: 0, anonymous: 0, anonymousMs: 0 };
 export const indexStats = () => ({ ...stats });
 export const resetIndexStats = () => {
   stats.ballots = 0;
   stats.ms = 0;
+  stats.anonymous = 0;
+  stats.anonymousMs = 0;
 };
+
+/** The voters of an election with voter credentials, or null for X.509 voters. */
+export function anonymousVoters(r: PrivateRecord): AnonymousVoters | null {
+  const v = r.voters;
+  return v.kind === "idemix" && v.msp && v.issuerPublicKey ? { msp: v.msp, affiliation: v.affiliation ?? "", issuerPublicKey: v.issuerPublicKey } : null;
+}
 
 /** What the verifiers need of a record before the key exists. */
 export function setupOf(r: PrivateRecord, channel: string, chaincode: string): ElectionSetup {
@@ -71,6 +96,7 @@ export function checkedOf(r: PrivateRecord, channel: string, chaincode: string):
     verifyingShares: r.verifyingShares ?? null,
     context: r.context ?? null,
     fingerprint: r.fingerprint ?? null,
+    anonymous: anonymousVoters(r),
   };
 }
 
@@ -109,14 +135,19 @@ const parse = (text: string): unknown => {
   }
 };
 
-/** Indexes the private-ballot transactions of a block, for a channel whose policy names privateElections. */
-export function indexPrivateBlock(db: ExplorerDb, policy: Policy, block: DecodedBlock): void {
+/**
+ * Indexes the private-ballot transactions of a block, for a channel whose
+ * policy names privateElections. `idemix` is the idemix module, started in
+ * this process, which checks anonymous ballots; without it, each anonymous
+ * ballot is recorded as unchecked, with a message that says why.
+ */
+export function indexPrivateBlock(db: ExplorerDb, policy: Policy, block: DecodedBlock, idemix: IdemixSync | null = null): void {
   const c = policy.channels[block.channel];
   const contract = c?.privateElections;
   if (!c || !contract || c.level === "hidden") return;
   for (const tx of block.transactions) {
     if (tx.type !== "endorser" || tx.chaincode !== contract || tx.validation !== "VALID") continue;
-    indexTransaction(db, { channel: block.channel, contract, showSubmitter: c.submitter === "show" }, block, tx);
+    indexTransaction(db, { channel: block.channel, contract, showSubmitter: c.submitter === "show", idemix }, block, tx);
   }
 }
 
@@ -124,6 +155,7 @@ interface Where {
   channel: string;
   contract: string;
   showSubmitter: boolean;
+  idemix: IdemixSync | null;
 }
 
 function indexTransaction(db: ExplorerDb, where: Where, block: DecodedBlock, tx: DecodedTransaction): void {
@@ -198,6 +230,9 @@ function indexTransaction(db: ExplorerDb, where: Where, block: DecodedBlock, tx:
     }
     case "CastBallot":
       indexBallot(db, where, block, tx, record, args, writes);
+      return;
+    case "CastAnonymousBallot":
+      indexAnonymousBallot(db, where, block, tx, record, args, writes);
       return;
     case "CloseElection": {
       const request = writes.find((w) => w.type === "close");
@@ -352,6 +387,109 @@ function indexBallot(
   db.addPrivateBallot(row, ciphertexts);
 }
 
+/**
+ * An anonymous ballot (docs/adr/0008), checked as CastAnonymousBallot checks
+ * it: the creator is a one-off identity of the voter organisation whose
+ * proof checks out against the pinned issuer key, with the affiliation and
+ * the role member; the voter tag is made from the ballot's pseudonym P;
+ * the pseudonym proof ties the creator's Nym to P and to the ballot's
+ * tracking code; then the ballot's own proofs, and that no ciphertext and no
+ * pseudonym repeats.
+ */
+function indexAnonymousBallot(
+  db: ExplorerDb,
+  where: Where,
+  block: DecodedBlock,
+  tx: DecodedTransaction,
+  record: PrivateRecord,
+  args: string[],
+  writes: { type: string; attrs: string[]; value: string }[],
+): void {
+  const { channel, contract } = where;
+  const w = writes.find((x) => x.type === "ballot");
+  if (!w) return;
+  const stored = parse(w.value) as { tracking?: unknown; ballot?: unknown; pseudonym?: unknown } | null;
+  const ballot = stored && typeof stored.ballot === "object" && stored.ballot ? (stored.ballot as Record<string, unknown>) : {};
+  const tracking = typeof stored?.tracking === "string" ? stored.tracking : "";
+  const written = writes.find((x) => x.type === "voted")?.attrs[1] ?? null;
+  const proof = pseudonymOf(parse(args[2] ?? ""));
+  const voters = anonymousVoters(record);
+  const idemix = tx.creator?.idemix ?? null;
+  const creator: AnonymousCreator | null =
+    tx.creator && idemix ? { mspId: tx.creator.mspId, ou: idemix.ou, role: idemix.role, nym: idemix.nym, idBytes: Buffer.from(tx.creator.idBytes).toString("base64") } : null;
+  const p = proof ? fromHex(proof.pseudonym, 64) : null;
+  const own = p && voters ? toHex(voterTagIdemix(channel, record.id, voters.msp, p)) : null;
+  const voterTag = written ?? own ?? "";
+  const started = performance.now();
+  let error: string | null = null;
+  let ciphertexts: string[] = [];
+  const e = electionOf(record, channel, contract);
+  if (!e) error = "This explorer has no key for this election.";
+  else if (!voters) error = "The contract accepted an anonymous ballot in an election whose voters aren't voter credentials.";
+  else if (!creator) error = "The transaction's creator isn't an idemix identity, so it isn't a voter credential's.";
+  else if (!proof || !own) error = "The ballot's pseudonym proof doesn't decode, so this explorer can't work out its voter tag.";
+  else if (written && written !== own) error = "The voter tag the contract wrote isn't the one the ballot's pseudonym gives.";
+  else {
+    try {
+      // The tracking code the pseudonym proof is bound to, from the ballot as
+      // sent; checkBallot below finds it again with the ballot's proofs.
+      const sent = goJsonParse(args[1] ?? "") as Ballot;
+      const bound = trackingCode(e, fromHex(own, 32)!, sent);
+      if (!where.idemix) error = "This explorer couldn't start the idemix module, so it can't check this ballot's creator or pseudonym.";
+      else {
+        const t = performance.now();
+        error = checkAnonymousBallot(where.idemix, e, voters, { index: -1, txId: tx.txId, block: block.number, tracking: bound, voterTag: own, ballot: sent, pseudonym: proof, anonymousCreator: creator });
+        stats.anonymous += 1;
+        stats.anonymousMs += performance.now() - t;
+      }
+      if (!error) {
+        const checked = checkBallot(e, fromHex(own, 32)!, args[1] ?? "", {
+          hasCiphertext: (a) => db.privateCiphertextSeen(channel, record.id, a, tx.txId),
+          hasVoted: (tag) => db.privateTagSeen(channel, record.id, tag, tx.txId),
+        }, "idemix");
+        ciphertexts = checked.ciphertexts;
+        const same = (x: unknown) => JSON.stringify({ c: (x as Record<string, unknown>).ciphertexts, b: (x as Record<string, unknown>).bitProofs, s: (x as Record<string, unknown>).sumProof });
+        if (checked.tracking !== tracking) error = "The tracking code the contract wrote isn't the one this ballot gives.";
+        else if (same(checked.ballot) !== same(ballot)) error = "The ballot the contract stored isn't the one the transaction sent.";
+        else if (JSON.stringify(pseudonymOf(stored?.pseudonym)) !== JSON.stringify(proof)) error = "The pseudonym proof the contract stored isn't the one the transaction sent.";
+      }
+    } catch (failure) {
+      error = messageOf(failure);
+    }
+  }
+  stats.ballots += 1;
+  stats.ms += performance.now() - started;
+  if (ciphertexts.length === 0) {
+    ciphertexts = ((ballot.ciphertexts as { a?: unknown }[] | undefined) ?? []).map((c) => String(c?.a ?? ""));
+  }
+  db.addPrivateBallot(
+    {
+      channel,
+      election: record.id,
+      txId: tx.txId,
+      block: block.number,
+      index: tx.index,
+      timestamp: tx.timestamp,
+      tracking,
+      voterTag,
+      ballot,
+      verified: error === null,
+      error,
+      creator: null,
+      anonymous: creator && proof ? { creator, pseudonym: proof } : null,
+    },
+    ciphertexts,
+  );
+}
+
+/** pseudonymJson's four fields, as strings, or null. */
+function pseudonymOf(x: unknown): PseudonymProof | null {
+  const o = x as Record<string, unknown> | null;
+  if (!o || typeof o !== "object") return null;
+  const { pseudonym, c, ssk, sr } = o;
+  return typeof pseudonym === "string" && typeof c === "string" && typeof ssk === "string" && typeof sr === "string" ? { pseudonym, c, ssk, sr } : null;
+}
+
 /* Views, for the pages and the API ------------------------------------- */
 
 export type Phase = "round1" | "round2" | "round3" | "opening" | "open" | "late" | "counting" | "counted" | "failed" | "cancelled";
@@ -413,6 +551,22 @@ export interface PrivateElectionView {
   ballots: { total: number; failed: number };
   /** Whether this explorer publishes each ballot's submitter, so the browser works out each voter tag again itself. */
   submitters: "show" | "hide";
+  /** An election with voter credentials (docs/adr/0008): its voters, and its pinned issuer key compared with the channel's configuration. */
+  anonymous: AnonymousView | null;
+}
+
+export interface AnonymousView {
+  /** The voter MSP ID, the affiliation and the role every ballot's credential must have. */
+  msp: string;
+  affiliation: string;
+  role: string;
+  /** SHA-256 of the pinned issuer key, as the record gives it, and whether it is SHA-256 of the key the record holds. */
+  issuerKeyHash: string;
+  hashMatchesKey: boolean;
+  /** The voter MSP's issuer key hash in the channel's latest configuration, or null when that has no idemix organisation by this ID. */
+  channelKeyHash: string | null;
+  /** The block of that configuration, when known. */
+  configBlock: number | null;
 }
 
 const view = (s: PrivateStepRow | undefined): StepView | null =>
@@ -495,6 +649,29 @@ export function electionView(db: ExplorerDb, policy: Policy, channel: string, id
     cancelled: r.state === "cancelled" ? view(of("cancel")) : null,
     ballots: db.privateBallotCount(channel, id),
     submitters: policy.channels[channel]?.submitter ?? "hide",
+    anonymous: anonymousView(db, channel, r),
+  };
+}
+
+function anonymousView(db: ExplorerDb, channel: string, r: PrivateRecord): AnonymousView | null {
+  const v = r.voters;
+  if (v.kind !== "idemix" || !v.msp) return null;
+  let hashMatchesKey = false;
+  try {
+    hashMatchesKey = createHash("sha256").update(Buffer.from(v.issuerPublicKey ?? "", "base64")).digest("hex") === v.issuerKeyHash;
+  } catch {
+    /* not base64: no match */
+  }
+  const config = db.configSummary(channel);
+  const org = config?.organisations.find((o) => o.mspId === v.msp && o.kind === "idemix");
+  return {
+    msp: v.msp,
+    affiliation: v.affiliation ?? "",
+    role: v.role ?? "member",
+    issuerKeyHash: v.issuerKeyHash ?? "",
+    hashMatchesKey,
+    channelKeyHash: org?.issuerKeyHash ?? null,
+    configBlock: config?.block ?? null,
   };
 }
 
@@ -506,6 +683,8 @@ export interface PrivateElectionSummary {
   phase: Phase;
   ballots: number;
   fingerprint: string | null;
+  /** Whether its voters vote anonymously, with voter credentials. */
+  anonymous: boolean;
 }
 
 /** A channel's private elections, newest first. */
@@ -516,11 +695,15 @@ export function electionList(db: ExplorerDb, policy: Policy, channel: string, no
     .reverse()
     .flatMap((row) => {
       const v = electionView(db, policy, channel, row.id, now);
-      return v ? [{ id: v.id, title: v.title, closesAt: v.closesAt, state: v.state, phase: v.phase, ballots: v.ballots.total, fingerprint: v.fingerprint }] : [];
+      return v ? [{ id: v.id, title: v.title, closesAt: v.closesAt, state: v.state, phase: v.phase, ballots: v.ballots.total, fingerprint: v.fingerprint, anonymous: v.anonymous !== null }] : [];
     });
 }
 
-/** A ballot as the API publishes it: everything the browser's full check needs, and the submitter only when the policy shows it. */
+/**
+ * A ballot as the API publishes it: everything the browser's full check
+ * needs, the submitter only when the policy shows it, and an anonymous
+ * ballot's pseudonym proof and creator always (D12).
+ */
 export function publishedBallot(b: PrivateBallotRow, index: number) {
   return {
     index,
@@ -534,6 +717,7 @@ export function publishedBallot(b: PrivateBallotRow, index: number) {
     error: b.error,
     ballot: b.ballot,
     ...(b.creator ? { creator: b.creator } : {}),
+    ...(b.anonymous ? { pseudonym: b.anonymous.pseudonym, anonymousCreator: b.anonymous.creator } : {}),
   };
 }
 

@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { products } from "@weftwallet/brand/products";
 import { explainStatus } from "@weftwallet/core";
+import type { ConfigSummary } from "./channel-config.ts";
 import type { BlockRow, ChannelSummary, TransactionRow } from "./db.ts";
 import { html, raw, type Html } from "./html.ts";
 import type { ChannelStatus } from "./indexer.ts";
@@ -139,6 +140,7 @@ export function time(at: number | null): Html {
 
 function party(p: PublishedParty | null): Html {
   if (!p) return html`<span class="subtle">not published</span>`;
+  if (p.anonymous) return html`<span class="anon">Anonymous member</span> <span class="mono subtle">${p.mspId}</span>`;
   return p.name ? html`<span>${p.name}</span> <span class="mono subtle">${p.mspId}</span>` : html`<span class="mono">${p.mspId}</span>`;
 }
 
@@ -1079,6 +1081,7 @@ export function channelPage(
   blocks: BlockRow[],
   contracts: { chaincode: string; transactions: number; lastBlock: number }[],
   page: { before?: number; size: number },
+  members: ConfigSummary | null = null,
 ): string {
   const name = channel.channel;
   const newest = blocks[0]?.number;
@@ -1115,7 +1118,10 @@ ${site.elections(name)
   : ""}
 <section><h2>${range ?? "Blocks"}</h2><div data-live="blocks">${blockRows(site, blocks, empty)}
 ${newer || older ? pager("Pages of blocks", ["Newer blocks", newer], ["Older blocks", older]) : ""}</div>
-</section>`,
+</section>
+${members && page.before === undefined
+  ? html`<section class="section-gap" id="members"><h2>Members</h2><p class="lead">From the channel's latest configuration${members.block !== undefined ? html`, block <a class="mono" href="${blockUrl(name, members.block)}">#${members.block}</a>` : ""}.</p>${membersTable(members.organisations)}</section>`
+  : ""}`,
     { live: true },
   );
 }
@@ -1239,7 +1245,7 @@ ${tx.redacted
     <dt>Time</dt><dd>${time(tx.timestamp)}</dd>
     <dt>Type</dt><dd>${tx.type === "endorser" ? "Contract call" : tx.type === "config" ? "Channel configuration" : tx.typeName}</dd>
     ${tx.chaincode ? html`<dt>Contract</dt><dd><a class="mono" href="${contractUrl(tx.channel, tx.chaincode)}">${tx.chaincode}</a></dd><dt>Function</dt><dd class="mono fn">${tx.fn ?? ""}</dd>` : ""}
-    <dt>Submitted by</dt><dd>${party(tx.creator)}</dd>
+    <dt>Submitted by</dt><dd>${tx.creator?.anonymous ? anonymousSubmitter(tx.creator) : party(tx.creator)}</dd>
     ${tx.type === "endorser" ? html`<dt>Endorsed by</dt><dd>${tx.endorsers.length === 0 ? html`<span class="subtle">none</span>` : tx.endorsers.map((e) => html`<div>${party(e)}</div>`)}</dd>` : ""}
   </dl>
 </section>
@@ -1261,11 +1267,31 @@ ${tx.event ? html`<section><h2>Event</h2><div class="card"><div class="mono fn">
   return layout(site, `Transaction ${cut(tx.txId)} on ${tx.channel}`, html`${body}${capped}`);
 }
 
+/**
+ * An anonymous submitter, a voter credential's one-off identity
+ * (docs/adr/0008, D12): its organisation, affiliation and role, and the
+ * one-off Nym, which names no one and appears in no other transaction.
+ */
+function anonymousSubmitter(p: PublishedParty): Html {
+  const a = p.anonymous!;
+  return html`Anonymous member of the voter organisation <span class="mono">${p.mspId}</span><div class="small subtle">Affiliation <span class="mono">${a.ou}</span>, role ${a.role}. One-off Nym <span class="mono" title="${a.nym}" data-copy="${a.nym}">${cut(a.nym)}</span>, used for this transaction only.</div>`;
+}
+
+/** The channel's organisations: X.509 ones with their root CAs, idemix ones with their issuer key. */
+function membersTable(orgs: ConfigSummary["organisations"]): Html {
+  const cas = (list: { subject: string; fingerprint: string }[]) =>
+    list.length ? list.map((c) => html`<div>${c.subject} <span class="mono subtle">${c.fingerprint}</span></div>`) : html`<span class="subtle">none</span>`;
+  const names = (list: string[]) => (list.length ? html`<span class="mono">${list.join(", ")}</span>` : html`<span class="subtle">none</span>`);
+  return html`<table class="table table--plain members-table"><thead><tr><th>Organisation</th><th>Kind</th><th>Identity roots</th><th>Anchor peers</th></tr></thead><tbody>${orgs.map((o) =>
+    o.kind === "idemix"
+      ? html`<tr><td class="mono">${o.mspId}</td><td data-label="Kind">Idemix</td><td data-label="Identity roots">Issuer key <span class="mono subtle" title="${o.issuerKeyHash ?? ""}" data-copy="${o.issuerKeyHash ?? ""}">${cut(o.issuerKeyHash ?? "")}</span><div class="small subtle">Members are anonymous. They can't endorse. Fabric can't revoke their credentials.</div></td><td data-label="Anchor peers">${names(o.anchorPeers)}</td></tr>`
+      : html`<tr><td class="mono">${o.mspId}</td><td data-label="Kind">X.509</td><td data-label="Identity roots">${cas(o.rootCas)}</td><td data-label="Anchor peers">${names(o.anchorPeers)}</td></tr>`,
+  )}</tbody></table>`;
+}
+
 /** A config transaction: what changed, who signed the update, and the configuration it leaves. */
 function configSection(config: NonNullable<TransactionRow["config"]>): Html {
   const s = config.summary;
-  const cas = (list: { subject: string; fingerprint: string }[]) =>
-    list.length ? list.map((c) => html`<div>${c.subject} <span class="mono subtle">${c.fingerprint}</span></div>`) : html`<span class="subtle">none</span>`;
   const names = (list: string[]) => (list.length ? html`<span class="mono">${list.join(", ")}</span>` : html`<span class="subtle">none</span>`);
   return html`<section><h2>${config.first ? "How the channel started" : "What changed"}</h2>${
     config.changes.length
@@ -1277,9 +1303,7 @@ function configSection(config: NonNullable<TransactionRow["config"]>): Html {
       : ""
   }</section>
 <section><h2>Members after this change</h2>
-<table class="table table--plain"><thead><tr><th>Organisation</th><th>Root CAs</th><th>Anchor peers</th></tr></thead><tbody>${s.organisations.map(
-    (o) => html`<tr><td class="mono">${o.mspId}</td><td data-label="Root CAs">${cas(o.rootCas)}</td><td data-label="Anchor peers">${names(o.anchorPeers)}</td></tr>`,
-  )}</tbody></table></section>
+${membersTable(s.organisations)}</section>
 <section><h2>Ordering</h2><div class="card"><dl class="details">
   <dt>Consensus</dt><dd class="mono">${s.consensus ?? html`<span class="subtle">not set</span>`}</dd>
   <dt>Consenters</dt><dd>${names(s.consenters)}</dd>

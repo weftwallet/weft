@@ -12,7 +12,8 @@
  * and the tests run it alike.
  */
 
-import { electionContext, electionFingerprint, fromHex, toHex, voterTagX509, type Election, type ElectionSetup } from "@weftwallet/tally";
+import type { IdemixSync, PseudonymProof } from "@weftwallet/idemix";
+import { electionContext, electionFingerprint, fromHex, toHex, voterTagIdemix, voterTagX509, type Election, type ElectionSetup } from "@weftwallet/tally";
 import {
   TallyError,
   addTotals,
@@ -33,6 +34,33 @@ export interface CheckedElection extends ElectionSetup {
   verifyingShares: readonly string[] | null;
   context: string | null;
   fingerprint: string | null;
+  /** An election with voter credentials (docs/adr/0008): who may vote, as the record pins it. Absent for X.509 voters. */
+  anonymous?: AnonymousVoters | null;
+}
+
+/** The voters of an election with voter credentials, as CreateElection pinned them. */
+export interface AnonymousVoters {
+  /** The voter MSP ID. */
+  msp: string;
+  /** The organisational unit every ballot's credential must have. */
+  affiliation: string;
+  /** The idemix issuer public key, base64, as Fabric CA serves it. */
+  issuerPublicKey: string;
+}
+
+/**
+ * An anonymous ballot's creator as the explorer publishes it (D12): the
+ * voter MSP ID and the one-off identity's SerializedIdemixIdentity, base64,
+ * which holds the Nym, the OU, the role and the proof that the Nym belongs to
+ * a credential. It names no one.
+ */
+export interface AnonymousCreator {
+  mspId: string;
+  ou: string;
+  role: string;
+  /** The one-off Nym, 64 bytes in lowercase hex. */
+  nym: string;
+  idBytes: string;
 }
 
 /** One ballot, as the explorer publishes it. */
@@ -46,6 +74,10 @@ export interface PublishedBallot {
   ballot: unknown;
   /** Only when the explorer shows submitters: the MSP ID and id_bytes (base64), from which the tag is worked out again. */
   creator?: { mspId: string; idBytes: string } | null;
+  /** An anonymous ballot's pseudonym proof, CastAnonymousBallot's pseudonymJson, from which the tag is worked out again. */
+  pseudonym?: PseudonymProof | null;
+  /** An anonymous ballot's creator, published whether or not the explorer shows submitters. */
+  anonymousCreator?: AnonymousCreator | null;
 }
 
 export interface BallotFailure {
@@ -136,15 +168,19 @@ export function checkCeremony(e: CheckedElection, posts: readonly CeremonyPosts[
  * contract checks them, and its tracking code. Ballots that repeat a voter
  * tag or a ciphertext are found across ballots, by the caller.
  */
-export function checkOneBallot(e: Election, b: PublishedBallot, ledger?: Ledger): string | null {
+export function checkOneBallot(e: Election, b: PublishedBallot, ledger?: Ledger, anonymous: AnonymousVoters | null = null): string | null {
   try {
     const tag = fromHex(b.voterTag, 32);
     if (!tag) return "Its voter tag isn't 32 bytes of lowercase hex.";
-    if (b.creator) {
+    if (anonymous) {
+      const p = b.pseudonym ? fromHex(b.pseudonym.pseudonym, 64) : null;
+      if (!p) return "It has no pseudonym, and this election's ballots are anonymous.";
+      if (toHex(voterTagIdemix(e.channel, e.electionId, anonymous.msp, p)) !== b.voterTag) return "Its voter tag isn't the one its pseudonym gives.";
+    } else if (b.creator) {
       const own = toHex(voterTagX509(e.channel, e.electionId, b.creator.mspId, base64(b.creator.idBytes)));
       if (own !== b.voterTag) return "Its voter tag isn't the one its submitter's certificate gives.";
     }
-    const checked = checkBallot(e, tag, JSON.stringify(b.ballot), ledger);
+    const checked = checkBallot(e, tag, JSON.stringify(b.ballot), ledger, anonymous ? "idemix" : "x509");
     if (checked.tracking !== b.tracking) return "Its tracking code isn't the one the ballot gives.";
     return null;
   } catch (error) {
@@ -153,9 +189,14 @@ export function checkOneBallot(e: Election, b: PublishedBallot, ledger?: Ledger)
 }
 
 /** A run of ballots in ledger order, stopping at the first failure. `progress` is called every few ballots. */
-export function checkBallots(e: Election, ballots: readonly PublishedBallot[], progress?: (done: number) => void): { done: number; failure: BallotFailure | null } {
+export function checkBallots(
+  e: Election,
+  ballots: readonly PublishedBallot[],
+  progress?: (done: number) => void,
+  anonymous: AnonymousVoters | null = null,
+): { done: number; failure: BallotFailure | null } {
   for (const [n, b] of ballots.entries()) {
-    const message = checkOneBallot(e, b);
+    const message = checkOneBallot(e, b, undefined, anonymous);
     if (message) return { done: n, failure: { index: b.index, txId: b.txId, block: b.block, tracking: b.tracking, message } };
     if (progress && (n + 1) % 5 === 0) progress(n + 1);
   }
@@ -168,14 +209,14 @@ export function checkBallots(e: Election, ballots: readonly PublishedBallot[], p
  * ciphertext already on the ledger. Plain string comparisons: the points
  * are canonical, so equal hex is an equal point.
  */
-export function firstRepeat(ballots: readonly PublishedBallot[]): { index: number; message: string } | null {
+export function firstRepeat(ballots: readonly PublishedBallot[], voter: "x509" | "idemix" = "x509"): { index: number; message: string } | null {
   const tags = new Set<string>();
   const as = new Set<string>();
   for (const b of ballots) {
     const cts = (b.ballot as { ciphertexts?: { a?: unknown }[] } | null)?.ciphertexts ?? [];
     const own = cts.map((c) => String(c?.a));
     if (own.some((a) => as.has(a))) return { index: b.index, message: "A ciphertext in this ballot is already on the ledger." };
-    if (tags.has(b.voterTag)) return { index: b.index, message: "This identity has already voted in this election." };
+    if (tags.has(b.voterTag)) return { index: b.index, message: voter === "x509" ? "This identity has already voted in this election." : "This credential has already voted in this election." };
     own.forEach((a) => as.add(a));
     tags.add(b.voterTag);
   }
@@ -235,4 +276,56 @@ export function checkCount(e: Election, c: CountCheck): CountResult {
     result.tally = messageOf(error);
   }
   return result;
+}
+
+/* Anonymous ballots (docs/adr/0008) ---------------------------------------- */
+
+/** The issuer key each idemix module last loaded, so a run of ballots loads it once. */
+const loadedKeys = new WeakMap<IdemixSync, string>();
+
+/**
+ * An anonymous ballot's creator and pseudonym, with the idemix module: the
+ * creator is a voter credential's one-off identity of the election's voter
+ * organisation, with its affiliation and the role member, whose proof
+ * checks out against the election's pinned issuer key, as a peer's idemix
+ * MSP checks it; and the pseudonym proof ties that identity's Nym to the
+ * ballot's pseudonym and tracking code, as CastAnonymousBallot checks it.
+ * The voter tag made from the pseudonym, and the ballot's own proofs, are
+ * checkOneBallot's. Returns the first failure's message, or null.
+ */
+export function checkAnonymousBallot(idemix: IdemixSync, e: ElectionSetup, voters: AnonymousVoters, b: PublishedBallot): string | null {
+  const c = b.anonymousCreator;
+  if (!c) return "It has no anonymous creator, and this election's ballots are anonymous.";
+  if (!b.pseudonym) return "It has no pseudonym, and this election's ballots are anonymous.";
+  if (c.mspId !== voters.msp) return `This identity can't vote in this election: ${c.mspId} isn't one of its voter organisations.`;
+  try {
+    if (loadedKeys.get(idemix) !== voters.issuerPublicKey) {
+      idemix.loadIssuerKey(voters.issuerPublicKey);
+      loadedKeys.set(idemix, voters.issuerPublicKey);
+    }
+    const seen = idemix.verifyIdentity(c.idBytes);
+    if (seen.nym !== c.nym || seen.ou !== c.ou || seen.role !== c.role) return "Its published creator isn't the one-off identity that signed it.";
+    if (seen.ou !== voters.affiliation) return `This credential can't vote in this election: its affiliation isn't ${voters.affiliation}.`;
+    if (seen.role !== "member") return "This credential can't vote in this election: its role isn't member.";
+    idemix.verifyPseudonym(seen.nym, e.channel, e.electionId, b.tracking, b.pseudonym);
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+/** A run of anonymous ballots' creators and pseudonyms, in ledger order, stopping at the first failure. `progress` is called every few ballots. */
+export function checkPseudonyms(
+  idemix: IdemixSync,
+  e: ElectionSetup,
+  voters: AnonymousVoters,
+  ballots: readonly PublishedBallot[],
+  progress?: (done: number) => void,
+): { done: number; failure: BallotFailure | null } {
+  for (const [n, b] of ballots.entries()) {
+    const message = checkAnonymousBallot(idemix, e, voters, b);
+    if (message) return { done: n, failure: { index: b.index, txId: b.txId, block: b.block, tracking: b.tracking, message } };
+    if (progress && (n + 1) % 5 === 0) progress(n + 1);
+  }
+  return { done: ballots.length, failure: null };
 }

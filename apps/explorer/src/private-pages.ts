@@ -14,7 +14,7 @@ import { X509Certificate } from "node:crypto";
 import { html, raw, type Html } from "./html.ts";
 import type { PrivateBallotRow } from "./db.ts";
 import { blockUrl, channelUrl, crumbs, cut, enc, fieldError, invalid, layout, pager, short, time, txUrl, type Site } from "./pages.ts";
-import type { Phase, PrivateElectionSummary, PrivateElectionView, StepView } from "./private-elections.ts";
+import type { AnonymousView, Phase, PrivateElectionSummary, PrivateElectionView, StepView } from "./private-elections.ts";
 import { readTrackingReceipt } from "./receipt.ts";
 
 export const privateElectionUrl = (channel: string, id: string) => `/channels/${enc(channel)}/elections/${enc(id)}`;
@@ -70,7 +70,7 @@ export function privateElectionsSection(channel: string, list: PrivateElectionSu
     ? html`<p class="empty">No private elections on ${channel} yet. An election appears here once a trustee creates one with the channel's private-ballot contract.</p>`
     : html`<table class="table"><thead><tr><th>Election</th><th>Planned closing time</th><th class="num">Ballots</th><th>State</th></tr></thead><tbody>${list.map(
         (e) =>
-          html`<tr><td><a class="row-link" href="${privateElectionUrl(channel, e.id)}">${e.title}</a><div class="mono subtle small">${e.id}</div></td><td data-label="Closes">${time(Date.parse(e.closesAt))}</td><td class="num mono" data-label="Ballots">${n(e.ballots)}</td><td>${phasePill(e.phase)}</td></tr>`,
+          html`<tr><td><a class="row-link" href="${privateElectionUrl(channel, e.id)}">${e.title}</a><div class="mono subtle small">${e.id}${e.anonymous ? " · anonymous voters" : ""}</div></td><td data-label="Closes">${time(Date.parse(e.closesAt))}</td><td class="num mono" data-label="Ballots">${n(e.ballots)}</td><td>${phasePill(e.phase)}</td></tr>`,
       )}</tbody></table>`}</div>`;
 }
 
@@ -113,7 +113,37 @@ function banner(v: PrivateElectionView): Html {
     return html`<div class="banner banner--quiet private-banner" data-live="banner"><p class="banner__title">${v.creatorMsp} cancelled this election during the key ceremony.</p><p>No key was made and no ballot was cast.</p></div>`;
   }
   const msps = v.trustees.map((t) => t.msp);
+  const a = v.anonymous;
+  if (a && keyProblem(a)) {
+    return html`<div class="banner banner--bad private-banner" data-live="banner"><p class="banner__title">${
+      a.channelKeyHash === null ? `The channel's configuration has no idemix organisation ${a.msp}, so this election's voters can't vote.` : `This election's issuer key isn't ${a.msp}'s key in the channel's configuration.`
+    }</p><p>${
+      a.channelKeyHash === null
+        ? "The contract accepts ballots only from voter credentials of that organisation, and the channel's peers accept identities only of organisations in its configuration. Ask the organisers before you vote."
+        : "The contract accepts ballots only from credentials under the pinned key, and the channel's peers accept only identities under the configured one, so no ballot can be cast until they agree. One of them was changed. Ask the organisers before you vote."
+    }</p></div>`;
+  }
+  if (a) {
+    return html`<div class="banner banner--quiet private-banner" data-live="banner"><p class="banner__title">A private election with anonymous voters. Experimental: no one outside the project has reviewed its cryptography.</p><p>Each ballot is encrypted under a key that ${list(msps)} share, and signed by an anonymous member of ${a.msp}. This explorer checks the proofs on the ledger, and can't read any ballot or tell who cast it.</p></div>`;
+  }
   return html`<div class="banner banner--quiet private-banner" data-live="banner"><p class="banner__title">A private election. Experimental: no one outside the project has reviewed its cryptography.</p><p>Each ballot is encrypted under a key that ${list(msps)} share. This explorer checks the proofs on the ledger, and can't read any ballot.</p></div>`;
+}
+
+/** Whether the pinned issuer key and the channel's configuration disagree, or the record's hash isn't its key's. */
+const keyProblem = (a: AnonymousView) => !a.hashMatchesKey || a.channelKeyHash !== a.issuerKeyHash;
+
+/** The Voters and Issuer key rows of an election with voter credentials. */
+function anonymousRows(v: PrivateElectionView, a: AnonymousView): Html {
+  const created = v.created ? html`, in block ${block(v.channel, v.created)}` : "";
+  const note = !a.hashMatchesKey
+    ? html`<div class="small bad">It isn't SHA-256 of the issuer key the election's record holds. Don't vote in this election until its organisers have explained why.</div>`
+    : a.channelKeyHash === null
+      ? html`<div class="small bad">The channel's configuration has no idemix organisation ${a.msp} to compare it with. Don't vote in this election until its organisers have explained why.</div>`
+      : a.channelKeyHash !== a.issuerKeyHash
+        ? html`<div class="small bad">It isn't ${a.msp}'s key in the channel's configuration, <span class="mono" title="${a.channelKeyHash}">${cut(a.channelKeyHash)}</span>. Don't vote in this election until its organisers have explained why.</div>`
+        : html`<div class="small subtle">SHA-256 of the key pinned when the election was created${created}. It matches ${a.msp}'s key in the channel's configuration.</div>`;
+  return html`<dt>Voters</dt><dd>Voter credentials from <span class="mono">${a.msp}</span>.<div class="subtle small">Each ballot shows ${a.msp}, the affiliation ${a.affiliation} and the role ${a.role}, and not who cast it. Each credential has one pseudonym in this election. Fabric can't revoke these credentials.</div></dd>
+<dt>Issuer key</dt><dd><span class="mono grouped" data-copy="${a.issuerKeyHash}" title="${a.issuerKeyHash}">${(a.issuerKeyHash.slice(0, 32).match(/.{1,4}/g) ?? []).join(" ")}</span>${note}</dd>`;
 }
 
 function closing(v: PrivateElectionView): Html {
@@ -157,7 +187,7 @@ function summary(v: PrivateElectionView): Html {
 <dt>Options</dt><dd>${v.options.join(", ")}</dd>
 ${closing(v)}
 <dt>Run by</dt><dd class="mono">${v.creatorMsp}</dd>
-<dt>Voters</dt><dd>${voters}<div class="subtle small">Who voted is visible to every member. Each ballot shows a voter tag, which names no one.</div></dd>
+${v.anonymous ? anonymousRows(v, v.anonymous) : html`<dt>Voters</dt><dd>${voters}<div class="subtle small">Who voted is visible to every member. Each ballot shows a voter tag, which names no one.</div></dd>`}
 <dt>Trustees</dt><dd>${v.trustees.map((t, i) => html`${i ? (i === v.trustees.length - 1 ? " and " : ", ") : ""}<span class="mono">${t.msp}</span> (${i + 1})`)}. Any ${v.threshold} of ${msps.length} can decrypt.</dd>
 <dt>Election fingerprint</dt><dd>${key}</dd>
 <dt>Encrypted ballots</dt><dd>${ballots}</dd>
@@ -290,24 +320,42 @@ ${sharesTable(v)}</div>`;
 
 /** About how long one worker takes per three-option ballot in Chromium, for the estimate under the button (prototype-results.md). */
 export const MS_PER_BALLOT = 27;
+/**
+ * For an election with voter credentials: about how long Chromium takes to
+ * download, check and start the idemix module from a local explorer, and to
+ * check one ballot's identity and pseudonym proof in its one worker
+ * (prototype-results.md).
+ */
+export const MS_IDEMIX_START = 1500;
+export const MS_PER_PSEUDONYM = 110;
 
 function fullCheckSection(v: PrivateElectionView): Html {
   const shown = shownOnceOpen(v, "check");
   if (!shown) return html``;
   const L = v.options.length;
-  const detail =
-    v.submitters === "show"
+  const a = v.anonymous;
+  const detail = a
+    ? `${L} bit proofs, a sum proof and the tracking code of each, against the voter tag made from its pseudonym`
+    : v.submitters === "show"
       ? `${L} bit proofs, a sum proof and the tracking code of each, with each voter tag worked out again from its submitter's certificate`
       : `${L} bit proofs, a sum proof and the tracking code of each, against its published voter tag. This explorer hides submitters, so its own server checks that each tag belongs to its submitter`;
   const step = (key: string, label: string, text: string, bar = false) =>
     html`<li class="xcheck__step" data-step="${key}"><span>${label}</span><span class="small subtle xcheck__word" data-word>waiting</span><span class="small subtle xcheck__detail">${text}</span>${
       bar ? html`<div class="xcheck__bar" aria-hidden="true"><span></span></div>` : ""
     }</li>`;
-  return html`<section class="section-gap" id="check"${shown}><h2>Check the whole election</h2><p class="lead">This browser reads the key ceremony, every ballot, the totals and the decryption shares from this explorer and checks each proof again, so you don't have to rely on this explorer's own check. Nothing is sent anywhere.</p>
+  return html`<section class="section-gap" id="check"${shown}><h2>Check the whole election</h2><p class="lead">This browser reads the key ceremony, every ballot${a ? " with its pseudonym" : ""}, the totals and the decryption shares from this explorer and checks each proof again, so you don't have to rely on this explorer's own check. Nothing is sent anywhere.</p>
 <div class="card xcheck" id="xcheck">
 <ol class="xcheck__steps">
 ${step("ceremony", "Key ceremony", `${v.trustees.length} proofs of knowledge and ${v.trustees.length} confirmations, with the key, the context and the fingerprint worked out again from the commitments.`)}
 ${step("ballots", "Ballot proofs", `${detail}.`, true)}
+${a
+  ? step(
+      "pseudonyms",
+      "Pseudonym proofs",
+      `Each ballot's one-off identity against ${a.msp}'s issuer key, its pseudonym proof against that identity and the tracking code, and that no pseudonym repeats. In 1 worker with Weft's idemix module, which this browser downloads for this check only.`,
+      true,
+    )
+  : ""}
 ${step("totals", "Totals", "Every ballot added up again, against the totals written when voting closed.")}
 ${step("shares", "Decryption shares", `${L} proofs from each trustee that posted a share.`)}
 ${step("tally", "Tally", "The shares combined, and each count found again.")}
@@ -335,6 +383,7 @@ function fullCheckScript(v: PrivateElectionView): string {
   var API = ${json(apiUrl(v.channel, v.id))};
   var CHANNEL = ${json(v.channel)};
   var MS = ${MS_PER_BALLOT};
+  var ANON = ${v.anonymous ? "true" : "false"}, MS_START = ${MS_IDEMIX_START}, MS_PSEUDONYM = ${MS_PER_PSEUDONYM};
   var PAGE = 1000, BATCH = 50;
   var WORKERS = Math.max(1, Math.min(4, navigator.hardwareConcurrency || 2));
   var card = document.getElementById("xcheck"), run = document.getElementById("xcheck-run"), stop = document.getElementById("xcheck-stop");
@@ -346,8 +395,8 @@ function fullCheckScript(v: PrivateElectionView): string {
   function cut(s) { return s.length <= 17 ? s : s.slice(0, 8) + "\\u2026" + s.slice(-8); }
   function seconds(ms) { return ms < 10000 ? (ms / 1000).toFixed(1) + " s" : ms < 120000 ? Math.round(ms / 1000) + " s" : (ms / 60000).toFixed(1) + " minutes"; }
   function estimate(total) {
-    var ms = total * MS / WORKERS;
-    return "About " + (ms < 60000 ? Math.max(1, Math.round(ms / 1000)) + (ms < 1500 ? " second" : " seconds") : Math.round(ms / 60000) + (ms < 90000 ? " minute" : " minutes")) + " for " + plural(total, "ballot") + " in " + plural(WORKERS, "worker") + ".";
+    var ms = total * MS / WORKERS + (ANON ? MS_START + total * MS_PSEUDONYM : 0);
+    return "About " + (ms < 60000 ? Math.max(1, Math.round(ms / 1000)) + (ms < 1500 ? " second" : " seconds") : Math.round(ms / 60000) + (ms < 90000 ? " minute" : " minutes")) + " for " + plural(total, "ballot") + " in " + plural(WORKERS, "worker") + (ANON ? ", with the idemix module's start." : ".");
   }
   hint.textContent = estimate(${v.ballots.total});
   // As ballots arrive (pages.ts LIVE), the estimate follows the count, unless a check is running.
@@ -361,14 +410,16 @@ function fullCheckScript(v: PrivateElectionView): string {
     w.textContent = text;
     w.className = "small xcheck__word" + (kind === "ok" ? " ok" : kind === "bad" ? " bad" : kind === "busy" ? "" : " subtle");
   }
-  function bar(frac, bad) {
-    var b = step("ballots").querySelector(".xcheck__bar");
+  function bar(frac, bad, key) {
+    var b = step(key || "ballots").querySelector(".xcheck__bar");
     b.classList.toggle("xcheck__bar--bad", !!bad);
     b.firstChild.style.transform = "scaleX(" + Math.max(0, Math.min(1, frac)) + ")";
   }
+  var LATER = ANON ? ["pseudonyms", "totals", "shares", "tally"] : ["totals", "shares", "tally"];
   function reset() {
-    ["ceremony", "ballots", "totals", "shares", "tally"].forEach(function (k) { word(k, "", "waiting"); });
+    ["ceremony", "ballots"].concat(LATER).forEach(function (k) { word(k, "", "waiting"); });
     bar(0);
+    if (ANON) bar(0, false, "pseudonyms");
     out.innerHTML = "";
   }
   function show(kind, title, body) {
@@ -448,7 +499,8 @@ function fullCheckScript(v: PrivateElectionView): string {
     try {
       var v = await getJson(API);
       if (c.stopped) return;
-      var e = { channel: v.channel, chaincode: v.contract, electionId: v.id, options: v.options, threshold: v.threshold, trustees: v.trustees.map(function (t) { return t.msp; }), publicKey: v.publicKey, verifyingShares: v.verifyingShares, context: v.context, fingerprint: v.fingerprint };
+      var e = { channel: v.channel, chaincode: v.contract, electionId: v.id, options: v.options, threshold: v.threshold, trustees: v.trustees.map(function (t) { return t.msp; }), publicKey: v.publicKey, verifyingShares: v.verifyingShares, context: v.context, fingerprint: v.fingerprint,
+        anonymous: v.anonymous ? { msp: v.anonymous.msp, affiliation: v.anonymous.affiliation, issuerPublicKey: v.voters.issuerPublicKey } : null };
       c.total = v.ballots.total;
       word("ballots", "busy", "reading 0 of " + fmt(c.total));
       var ballots = [];
@@ -468,25 +520,31 @@ function fullCheckScript(v: PrivateElectionView): string {
       if (c.stopped) return;
       if (cer.failure) {
         word("ceremony", "bad", "failed");
-        ["ballots", "totals", "shares", "tally"].forEach(function (k) { word(k, "", "not checked"); });
+        ["ballots"].concat(LATER).forEach(function (k) { word(k, "", "not checked"); });
         finish(c);
         show("bad", "The key ceremony doesn't check out.", [cer.failure + " The check stopped there, before the ballots."]);
         return;
       }
       word("ceremony", "ok", "checks out");
 
-      // The checks across ballots, in ledger order: a repeated voter tag or ciphertext.
-      var tags = {}, as = {}, repeat = null;
+      // The checks across ballots, in ledger order: a repeated ciphertext, and
+      // a repeated voter tag. With voter credentials, the tag is made from the
+      // pseudonym, so a repeat is the pseudonym step's.
+      var tags = {}, as = {}, repeat = null, again = null;
       for (var j = 0; j < ballots.length && !repeat; j++) {
         var b = ballots[j], cts = (b.ballot && b.ballot.ciphertexts) || [];
         for (var x = 0; x < cts.length; x++) if (as[cts[x].a]) { repeat = { index: j, message: "A ciphertext in this ballot is already on the ledger." }; break; }
-        if (!repeat && tags[b.voterTag]) repeat = { index: j, message: "This identity has already voted in this election." };
+        if (!repeat && !again && tags[b.voterTag]) {
+          if (ANON) again = { index: j, message: "This credential has already voted in this election." };
+          else repeat = { index: j, message: "This identity has already voted in this election." };
+        }
         cts.forEach(function (ct) { as[ct.a] = true; });
         tags[b.voterTag] = true;
       }
       var limit = repeat ? repeat.index + 1 : ballots.length;
+      function item(b, k) { return { index: k, txId: b.txId, block: b.block, tracking: b.tracking, voterTag: b.voterTag, ballot: b.ballot, creator: b.creator || null, pseudonym: b.pseudonym || null, anonymousCreator: b.anonymousCreator || null }; }
       var batches = [];
-      for (var s = 0; s < limit; s += BATCH) batches.push({ start: s, items: ballots.slice(s, Math.min(limit, s + BATCH)).map(function (b, k) { return { index: s + k, txId: b.txId, block: b.block, tracking: b.tracking, voterTag: b.voterTag, ballot: b.ballot, creator: b.creator || null }; }), done: 0 });
+      for (var s = 0; s < limit; s += BATCH) batches.push({ start: s, items: ballots.slice(s, Math.min(limit, s + BATCH)).map(function (b, k) { return item(b, s + k); }), done: 0 });
       var failures = [], next = 0, frame = 0;
       function paint() {
         frame = 0;
@@ -515,21 +573,50 @@ function fullCheckScript(v: PrivateElectionView): string {
         var rb = ballots[repeat.index];
         failures.push({ index: repeat.index, txId: rb.txId, block: rb.block, tracking: rb.tracking, message: repeat.message });
       }
-      if (failures.length) {
-        var f = failures.sort(function (a, b) { return a.index - b.index; })[0];
-        word("ballots", "bad", "failed at " + fmt(f.index + 1) + " of " + fmt(ballots.length));
-        bar((f.index + 1) / Math.max(1, ballots.length), true);
-        ["totals", "shares", "tally"].forEach(function (k) { word(k, "", "not checked"); });
+      function failed(key, f, later) {
+        word(key, "bad", "failed at " + fmt(f.index + 1) + " of " + fmt(ballots.length));
+        bar((f.index + 1) / Math.max(1, ballots.length), true, key);
+        later.forEach(function (k) { word(k, "", "not checked"); });
         finish(c);
         show("bad", "Ballot " + fmt(f.index + 1) + " of " + fmt(ballots.length) + " doesn't check out.", [
           f.message + " It is in transaction ", link("/channels/" + encodeURIComponent(CHANNEL) + "/transactions/" + encodeURIComponent(f.txId), cut(f.txId)),
           ", block #" + f.block + ", with tracking code " + cut(f.tracking) + ". The check stopped at this first failure. The contract should have refused this ballot, so tell the network's operators.",
         ]);
         out.firstChild.dataset.ms = String(Math.round(performance.now() - t0));
+      }
+      if (failures.length) {
+        failed("ballots", failures.sort(function (a, b) { return a.index - b.index; })[0], LATER);
         return;
       }
       word("ballots", "ok", plural(ballots.length, "ballot") + " check out");
       bar(1);
+
+      // With voter credentials: each ballot's one-off identity and pseudonym
+      // proof, in one worker with the idemix module, then a repeated pseudonym.
+      var moduleMs = 0;
+      if (ANON) {
+        var plimit = again ? again.index + 1 : ballots.length;
+        var pdone = 0, pframe = 0;
+        word("pseudonyms", "busy", "starting the module");
+        var pres = await ask(c, c.workers[0], {
+          type: "pseudonyms", election: e, wasmUrl: "/assets/idemix/weft-idemix.wasm", wasmExecUrl: "/assets/idemix/wasm_exec.js",
+          ballots: ballots.slice(0, plimit).map(item),
+          onProgress: function (d) {
+            pdone = d;
+            if (!pframe) pframe = requestAnimationFrame(function () { pframe = 0; if (!c.stopped) { word("pseudonyms", "busy", fmt(pdone) + " of " + fmt(ballots.length)); bar(pdone / Math.max(1, ballots.length), false, "pseudonyms"); } });
+          },
+        });
+        if (c.stopped) return;
+        if (pframe) cancelAnimationFrame(pframe);
+        moduleMs = pres.startMs || 0;
+        var pf = pres.failure || (again ? { index: again.index, txId: ballots[again.index].txId, block: ballots[again.index].block, tracking: ballots[again.index].tracking, message: again.message } : null);
+        if (pf) {
+          failed("pseudonyms", pf, ["totals", "shares", "tally"]);
+          return;
+        }
+        word("pseudonyms", "ok", plural(ballots.length, "ballot") + " check out");
+        bar(1, false, "pseudonyms");
+      }
 
       var closed = !!v.totals;
       var shares = v.trustees.map(function (t, i) { return t.share ? { index: i, share: t.share.body } : null; }).filter(Boolean);
@@ -562,10 +649,12 @@ function fullCheckScript(v: PrivateElectionView): string {
       var took = performance.now() - t0;
       finish(c);
       var body;
-      if (counts) body = "The key ceremony, the " + plural(ballots.length, "ballot") + ", the totals and " + (shares.length === 2 ? "both decryption shares" : plural(shares.length, "decryption share")) + " give " + list(v.options.map(function (o, i) { return o + " " + fmt(counts[i]); })) + ". ";
-      else if (closed) body = "The key ceremony, the " + plural(ballots.length, "ballot") + ", the totals and the " + plural(shares.length, "decryption share") + " posted so far. The tally is checked once it is published. ";
-      else body = "The key ceremony and the " + plural(ballots.length, "ballot") + " so far. The totals, the decryption shares and the tally are checked once they are on the ledger. ";
-      show("ok", "Everything checks out.", [body + "Took " + seconds(took) + " in " + plural(WORKERS, "worker") + "."]);
+      var theBallots = ANON ? "the " + plural(ballots.length, "ballot") + ", their " + plural(ballots.length, "different pseudonym") : "the " + plural(ballots.length, "ballot");
+      if (counts) body = "The key ceremony, " + theBallots + ", the totals and " + (shares.length === 2 ? "both decryption shares" : plural(shares.length, "decryption share")) + " give " + list(v.options.map(function (o, i) { return o + " " + fmt(counts[i]); })) + ". ";
+      else if (closed) body = "The key ceremony, " + theBallots + ", the totals and the " + plural(shares.length, "decryption share") + " posted so far. The tally is checked once it is published. ";
+      else body = "The key ceremony and " + (ANON ? "the " + plural(ballots.length, "ballot") + " so far, from " + plural(ballots.length, "different pseudonym") : "the " + plural(ballots.length, "ballot") + " so far") + ". The totals, the decryption shares and the tally are checked once they are on the ledger. ";
+      show("ok", "Everything checks out.", [body + "Took " + seconds(took) + " in " + plural(WORKERS, "worker") + (moduleMs ? ", " + seconds(moduleMs) + " of it starting the idemix module." : ".")]);
+      out.firstChild.dataset.moduleMs = String(Math.round(moduleMs));
       out.firstChild.dataset.ms = String(Math.round(took));
     } catch (error) {
       if (c.stopped) return;
@@ -595,6 +684,9 @@ function trackingResult(v: PrivateElectionView, t: TrackingLookup): Html {
         : "It will be in the totals when the trustees close voting.";
   if (!b.verified) {
     return html`<div class="banner banner--bad" id="tracking-result"><p class="banner__title">Your ballot is in block #${b.block}, and its proofs don't pass this explorer's check.</p><p>${b.error ?? ""} Transaction <a class="mono" href="${txUrl(v.channel, b.txId)}">${short(b.txId)}</a>. Tell the network's operators.</p></div>`;
+  }
+  if (v.anonymous) {
+    return html`<div class="banner banner--ok" id="tracking-result"><p class="banner__title">Your ballot is in block #${b.block} and its proofs verify.</p><p>${where} Transaction <a class="mono" href="${txUrl(v.channel, b.txId)}">${short(b.txId)}</a>, committed ${time(b.timestamp)}, by an anonymous member of ${v.anonymous.msp}. The tracking code shows nothing about your choice or you.</p></div>`;
   }
   return html`<div class="banner banner--ok" id="tracking-result"><p class="banner__title">Your ballot is in block #${b.block} and its proofs verify.</p><p>${where} Transaction <a class="mono" href="${txUrl(v.channel, b.txId)}">${short(b.txId)}</a>, committed ${time(b.timestamp)}. The tracking code shows nothing about your choice.</p></div>`;
 }
@@ -695,22 +787,32 @@ function ballotsSection(v: PrivateElectionView, page: BallotsPage, yours: string
   if (!hasKey(v)) return html``;
   const L = v.options.length;
   const showSubmitter = v.submitters === "show";
+  const a = v.anonymous;
+  const tagLabel = a ? "Pseudonym" : "Voter tag";
   const rows = page.rows.map((b) => {
     const mine = b.txId === yours;
+    const by = a
+      ? html`<span class="anon">Anonymous member</span><span class="mono subtle small">${b.anonymous?.creator.mspId ?? a.msp}</span>`
+      : submitter(b);
     return html`<tr${mine ? raw(' class="is-yours"') : ""}><td><a class="mono row-link" href="${txUrl(v.channel, b.txId)}"><span data-copy="${b.tracking}" title="${b.tracking}">${cut(b.tracking)}</span></a>${mine ? html` <span class="small ok">yours</span>` : ""}</td>${
-      showSubmitter ? html`<td data-label="Submitted by">${submitter(b)}</td>` : ""
-    }<td class="mono subtle" data-label="Voter tag">${short(b.voterTag)}</td><td data-label="Block"><a class="mono" href="${blockUrl(v.channel, b.block)}">#${b.block}</a></td><td data-label="Committed">${time(b.timestamp)}</td><td>${
+      showSubmitter ? html`<td data-label="Submitted by">${by}</td>` : ""
+    }<td class="mono subtle" data-label="${tagLabel}"${a ? html` title="${b.voterTag}"` : ""}>${a ? cut(b.voterTag) : short(b.voterTag)}</td><td data-label="Block"><a class="mono" href="${blockUrl(v.channel, b.block)}">#${b.block}</a></td><td data-label="Committed">${time(b.timestamp)}</td><td>${
       b.verified ? pill("ok", "proofs verify") : pill("bad", "proofs fail", b.error ?? undefined)
     }</td></tr>`;
   });
-  return html`<section class="section-gap" id="ballots" data-live="ballots"><h2>Ballots</h2><p class="lead">Each ballot is ${L} ciphertexts with proofs that it chooses exactly one option. This explorer checked every proof as it read the block. A tracking code is a hash of the ballot and shows nothing about the choice. A voter tag names no one, and anyone with the voter's certificate can work it out for this election.${
-    v.submitters === "hide"
-      ? " This explorer doesn't show who submitted each ballot, and shows its voter tag, which every proof is bound to."
-      : " This explorer shows who submitted each ballot, from the certificate that signed it."
-  }</p>
+  const lead = a
+    ? `Each ballot is ${L} ciphertexts with proofs that it chooses exactly one option, signed by a one-off identity from a voter credential, with a proof that ties it to the credential's pseudonym in this election. This explorer checked every proof as it read the block. A tracking code is a hash of the ballot and shows nothing about the choice. A pseudonym names no one: it is the same for every ballot from one credential in this election, so a repeat would show, and it is different in every other election.${
+        v.submitters === "hide" ? " This explorer doesn't show who submitted each ballot. For these ballots that is only the voter organisation." : ""
+      }`
+    : `Each ballot is ${L} ciphertexts with proofs that it chooses exactly one option. This explorer checked every proof as it read the block. A tracking code is a hash of the ballot and shows nothing about the choice. A voter tag names no one, and anyone with the voter's certificate can work it out for this election.${
+        v.submitters === "hide"
+          ? " This explorer doesn't show who submitted each ballot, and shows its voter tag, which every proof is bound to."
+          : " This explorer shows who submitted each ballot, from the certificate that signed it."
+      }`;
+  return html`<section class="section-gap" id="ballots" data-live="ballots"><h2>Ballots</h2><p class="lead">${lead}</p>
 ${page.rows.length === 0
   ? html`<p class="empty">No ballots yet. Each ballot appears here once its block is indexed.</p>`
-  : html`<table class="table ballots"><thead><tr><th>Tracking code</th>${showSubmitter ? html`<th>Submitted by</th>` : ""}<th>Voter tag</th><th>Block</th><th>Committed</th><th>Proofs</th></tr></thead><tbody>${rows}</tbody></table>`}
+  : html`<table class="table ballots"><thead><tr><th>Tracking code</th>${showSubmitter ? html`<th>Submitted by</th>` : ""}<th>${tagLabel}</th><th>Block</th><th>Committed</th><th>Proofs</th></tr></thead><tbody>${rows}</tbody></table>`}
 ${page.newer || page.older ? pager("Pages of ballots", ["Newer ballots", page.newer], ["Older ballots", page.older]) : ""}
 </section>`;
 }

@@ -30,6 +30,7 @@
     "@hyperledger/fabric-protos": "^0.3.7",
     "@weftwallet/brand": "workspace:*",
     "@weftwallet/core": "workspace:*",
+    "@weftwallet/idemix": "workspace:*",
     "@weftwallet/tally": "workspace:*",
     "@weftwallet/ui": "workspace:*",
     "fastify": "^5.12.7",
