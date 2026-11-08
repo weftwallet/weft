@@ -1,0 +1,508 @@
+{
+  "description": "Test vectors for the per-election pseudonym of a voter credential, version 1, from private-tally-spec.md, The per-election pseudonym. Every byte string is lowercase hex. Written by the pseudonym package's Go tests (go test ./pseudonym -run TestVectorsFile -update) from fixed seeds.",
+  "curve": "FP256BN_AMCL",
+  "p": "fffffffffffcf0cd46e5f25eee71a49f0cdc65fb12980a82d3292ddbaed33013",
+  "r": "fffffffffffcf0cd46e5f25eee71a49e0cdc65fb1299921af62d536cd10b500d",
+  "streams": {
+    "issuer": "IBM idemix v0.3.1's NewIssuerKey with Fabric's four attribute names, reading SHA-512(frame([\"weft-scope test rng v1\", seed, i])) for i = 0, 1 and so on (i as 4 bytes big-endian), serialised with deterministic protobuf",
+    "value": "OS2IP(SHA-512(frame([\"weft-scope test v1\", seed, name]))) mod r, for sk (name \"sk\", from the seed before '#'), rNym, a and b; a tracking code is the first 32 bytes of SHA-512(frame([\"weft-scope test v1\", seed, \"tracking\"]))"
+  },
+  "hashToG1": [
+    {
+      "name": "B of chair-2027",
+      "input": "0000000d776566742d73636f70652076310000001670726976617465766f74652d63686169722d323032370000000a63686169722d32303237",
+      "shake256": "d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282",
+      "x0": "d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282",
+      "increments": 0,
+      "point": "d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282c995c960a9c7384b65cf4816432097f2bdb4f23605236d555d9f40ea37318544"
+    },
+    {
+      "name": "B of chair-2028",
+      "input": "0000000d776566742d73636f70652076310000001670726976617465766f74652d63686169722d323032380000000a63686169722d32303238",
+      "shake256": "0331a1bb18ac34916cc9d72913925d47ed7c8080e1511f385afb831fe923090a",
+      "x0": "0331a1bb18ac34916cc9d72913925d47ed7c8080e1511f385afb831fe923090a",
+      "increments": 3,
+      "point": "0331a1bb18ac34916cc9d72913925d47ed7c8080e1511f385afb831fe923090d66ae7f2ab45b0809544f9998d4a5f39d90e5c9b53ea6f4f7a147a2486b2927fe"
+    },
+    {
+      "name": "the empty string",
+      "input": "",
+      "shake256": "46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762f",
+      "x0": "46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed5762f",
+      "increments": 1,
+      "point": "46b9dd2b0ba88d13233b3feb743eeb243fcd52ea62b81b82b50c27646ed57630dbb0772ce1c640cbe6c0deb19dc03ece698ddfb7e20290785e6b4565faa733c0"
+    },
+    {
+      "name": "abc",
+      "input": "616263",
+      "shake256": "483366601360a8771c6863080cc4114d8db44530f8f1e1ee4f94ea37e78b5739",
+      "x0": "483366601360a8771c6863080cc4114d8db44530f8f1e1ee4f94ea37e78b5739",
+      "increments": 0,
+      "point": "483366601360a8771c6863080cc4114d8db44530f8f1e1ee4f94ea37e78b5739988034327df493e07d645e4b8c443b59cd69a97172cb0d36a35d2e0b2e044328"
+    }
+  ],
+  "issuers": [
+    {
+      "name": "issuer-a",
+      "seed": "issuer a",
+      "issuerPublicKey": "0a024f550a04526f6c650a0c456e726f6c6c6d656e7449440a105265766f636174696f6e48616e646c6512440a200ef907d06754bbc0e7d0fac4dabbba4175990ed4e88d75e32d38834eea97cc1f1220ef60e492824df980b2f58b89e61b36b90c90670eacfdb8ba0e7d90878c34d4f71a440a20b6a0bca85e3c63b05465875e29b1fb118d96f024e9774b7dcd84d82a61d39fc51220867dd62c38b73a1655c962e2ce78235c2c0daa36de4dde298e5669be4fe6a8c322440a2004bb9dfaff1f177348204c8a9710817613715d99b46f7116d59b6436c082ac981220388535ca0c72414e0e4361a9ff9f2be1ec53881a2386645d584441bf7b5d84d922440a2047aa06d54357adc8568b67e7fe4e885f7783cffc7cdf6b83b80f6a682cfc8e0212203f85683f76919fa3ec1f328ee139c208ddcf47d78425ed81bc3de5771905ba6b22440a204e04843c1a19959dae38666eefba19a4bc6d1e1c27dfd6b2f58aecb858589ab81220248ddd1521a36f939e880563368e2ae28d585a42d2b4a2ee3d13425d6634ee4022440a20d86913b6287cf66141d3f5513711a4fd8f93bade9d546528940761ac99a39904122029b70a554108299b300f5411a5157cda17815884c44b5edf50d2d682e92bebb72a88010a20bb9e1e4eef14147031bc4ebe62d0ca96eb393241eb63c4544b0a0d92e2c8c28312209b76184a2bdcf96b5cf8839ca4d2252afca5e402c8848692c7d7c9f8d59daa921a20a3026366c6ca05617ac16014abf66b6f0953b1601ee4108e850ba6d5503afaa72220206a4ee5606a27dcf56ab19177926cfe0c3f8fc96b10e330d04cea6c5b34877332440a20f87110b3c73dbbb32d18686dab1d3c317b0c193ea02e1c6d49833459999c73a81220cf555b3227486981a3af79f036cbd7adf892fb08747df8728ca8d7aac19300f03a440a205df9ad95b821aa7a90d30104bcd55e8246e513880db04e9b84ad27f6851c3ed612200c11ac9c2c532cc6d380a87c9bb0f2a2778482895d4e414d61929cd14a5bf6114220ee87a30b207c59cda57bb183bd94660b5f68c4f532a88d75a7f5979c4f339c204a2015739265766be56bc6a8d5222c1c7adaee9c38a2fd9f27f7d387b5f5a57d2316522072bbaa4a26313255588e8321b30305bf929a79f84d06f2c3c1441869ca290f1c",
+      "issuerKeyHash": "20ed0f29449549da5e10c66f6b290bfe9f7c1116f9af353b7fdc054782e8b2c8",
+      "HSk": "0ef907d06754bbc0e7d0fac4dabbba4175990ed4e88d75e32d38834eea97cc1fef60e492824df980b2f58b89e61b36b90c90670eacfdb8ba0e7d90878c34d4f7",
+      "HRand": "b6a0bca85e3c63b05465875e29b1fb118d96f024e9774b7dcd84d82a61d39fc5867dd62c38b73a1655c962e2ce78235c2c0daa36de4dde298e5669be4fe6a8c3"
+    },
+    {
+      "name": "issuer-b",
+      "seed": "issuer b",
+      "issuerPublicKey": "0a024f550a04526f6c650a0c456e726f6c6c6d656e7449440a105265766f636174696f6e48616e646c6512440a204ca54fd7d0773c95cb1024015b03b1b333547b7c100706f8ba722d0f9b505fff122078b37b29d53637e3ae0be4e296aeaba36f977ddff89fb104863431eebb56fc691a440a20254522a5f6eda874831ec0a663e3db00a71fc2a11fde4b083651227e074f91091220b896a5c605799141ac2791b886e78e0a7783ea31561f8b7094993a0ef5caaf3322440a20a6279cb2dc55539fcfbde1a0e574eb48682bf41d8565e49bb396ccb5195581c412206c739b87f3c3e39315d284a70fc52934b3a3f95b5808b5ace4340a7d528436da22440a207ecae13d66f404790582ce09ec15382484a77c347cb1be91d7f0d6e0ea0a3242122071ad5d4dba7fe31e2293e32758c5d4423263adee93b3be79d44236d35ad09a4a22440a20ed58fbe658ffb5d57c0492b21ce74a529ba8c7118c0a09b39393528d7cbef32612200a23fc9d75ff1ff99d8380698ce260a2e37129d28da5278a82e40bce65e3d50422440a2052f4657324cdb9ed03442b9e90e2896305b08d5796c3ebdeeaadba1d81bd01bb122007aec827e89cc51da072470daf18424ed5c8fdec6b5f4c63b9ae2d7756bb19812a88010a2055673833b296a09a6cd47508423cabae71f7d9bf7525e6a569fe2ffb097c445512205a58b2ab5a8fc94a4adbd92fb6edfcd2fe26fab3a17b45b251497cf50d662fab1a20334a01838b88b7fb8d75761dfb3429c3800c764b0385e00a37f0e34f9d348bd52220db5d11d3cbb6957cb8a0d0b64fb6052ddba63003d43a36be205d2deb2cf5817932440a204942ce15d7a2b6a419f854568f51e062b84910f7186642539ffb1bad3fc0fc8e12209ab3e5b9ee0e74bc3afd598015d922345553a5984cec1efde3f32f62117ee6d03a440a206697190acbbf9a0775f0c55d85f9787c439683516135a086af108f5f8215f9fe1220ac4c99b052ec05ef8ee39ffdd0f0c11c0b67e164487c2227078ae22ed406743342208a54dffcbec5bd5d4d90ea1d109d18a50b46031d93299f3cb44146aaa0e387474a20270f3dcc75ad3765d41360bda82a9eb8155bcf8d595ffe01340e568e557658985220100d3ecaf17889556511bac76bfa0ae4d15e881bfa53dfe9d72edbe2713705f9",
+      "issuerKeyHash": "3091c90cbe7c98792abca973afe2e786b1aee625df66cfdc9eb05ac7d48f6b7d",
+      "HSk": "4ca54fd7d0773c95cb1024015b03b1b333547b7c100706f8ba722d0f9b505fff78b37b29d53637e3ae0be4e296aeaba36f977ddff89fb104863431eebb56fc69",
+      "HRand": "254522a5f6eda874831ec0a663e3db00a71fc2a11fde4b083651227e074f9109b896a5c605799141ac2791b886e78e0a7783ea31561f8b7094993a0ef5caaf33"
+    }
+  ],
+  "positive": [
+    {
+      "name": "voter1 in chair-2027",
+      "issuer": "issuer-a",
+      "seed": "voter1",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "mspId": "ChairVoters2027MSP",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "sk": "8b19d3bdab71a83972c1536d6355d670cc6f67399b8e4de9a324d4f3db7eeadd",
+      "rNym": "6a2a4c8a6e4af358f6026dfb74010165a03056d03e29f9d74626c8bfa90555e7",
+      "a": "f04d6689d479d5b8896d4a2e3235eec5caf582d439acb7709f05a9e5544913ba",
+      "b": "c9962b95704f646c1ce5b068bbe73c970fcb99617847bab28f2413953571f59c",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "B": "d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282c995c960a9c7384b65cf4816432097f2bdb4f23605236d555d9f40ea37318544",
+      "P": "45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c",
+      "T1": "ad1bda1caaf8f2099e5d0bc29a1716ff9814b386b8cacd95be167f8b3db762fc86d9bcc013b8e864ca33be52634c9dc38715e91586052ce538a8f780e5f3f3fa",
+      "T2": "5d13c263917866b0d80f78a7b710864751cbf6ee293e2fbc4f84df9982a68be3c1324b52cbead476d6a900931831e2747706fd84f47bfbf1419dc8ec17f451ce",
+      "challengeInput": "00000013776566742d73636f70652d70726f6f662076310000002020ed0f29449549da5e10c66f6b290bfe9f7c1116f9af353b7fdc054782e8b2c80000001670726976617465766f74652d63686169722d323032370000000a63686169722d3230323700000020d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f700000040d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282c995c960a9c7384b65cf4816432097f2bdb4f23605236d555d9f40ea3731854400000040b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b8979320000004045297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c00000040ad1bda1caaf8f2099e5d0bc29a1716ff9814b386b8cacd95be167f8b3db762fc86d9bcc013b8e864ca33be52634c9dc38715e91586052ce538a8f780e5f3f3fa000000405d13c263917866b0d80f78a7b710864751cbf6ee293e2fbc4f84df9982a68be3c1324b52cbead476d6a900931831e2747706fd84f47bfbf1419dc8ec17f451ce",
+      "c": "b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a",
+      "ssk": "f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880",
+      "sr": "dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "voterTag": "74db7b7cea21e1cd3886b42013ba4bed9b3e6bed40040bde2b98180ff2cf6ae5"
+    },
+    {
+      "name": "voter1 in chair-2027 with another Nym",
+      "issuer": "issuer-a",
+      "seed": "voter1#2",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "mspId": "ChairVoters2027MSP",
+      "tracking": "a8385f82a3ebe3d1472849f666c948fef5a64c7b213a308a894bdc96616146c5",
+      "sk": "8b19d3bdab71a83972c1536d6355d670cc6f67399b8e4de9a324d4f3db7eeadd",
+      "rNym": "6e5b30c0d1e115d95b844704215f0642258994425c1ab1f36ac6c6a74bd74aef",
+      "a": "acb24221077f6b06c3d38a8ccbb10f817e4409c756d3679fa83114606e10ec42",
+      "b": "5048c65b1fd2001cc800123252aa5722972c001a3632c7d7e061fbc5bfcbdbe2",
+      "nym": "6d6f2f2319bea7db2ee1b21110ea24eff61c9d01214e3b1066bf616af73065a6c6856e065e8c6d72715b16b5bdcc5dc52afa23eb2e9feaf4a50981fb7629b238",
+      "B": "d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282c995c960a9c7384b65cf4816432097f2bdb4f23605236d555d9f40ea37318544",
+      "P": "45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c",
+      "T1": "d7ddcec96dcecfc25d27ab873a8ca113e4f637bfeee516862c1e091ffdadfbb32da376836499290a197f2a5ff5843f1f44510643afce50b60d38f8887c1ad3d9",
+      "T2": "5a2287f4475c955f43bce7eecc09fdbc20d1303a04fe403f2bee1313a73db93281f925a855dc5b5aad56fb54edc181dccdca5d7936a9c32b11b503375d1c05f8",
+      "challengeInput": "00000013776566742d73636f70652d70726f6f662076310000002020ed0f29449549da5e10c66f6b290bfe9f7c1116f9af353b7fdc054782e8b2c80000001670726976617465766f74652d63686169722d323032370000000a63686169722d3230323700000020a8385f82a3ebe3d1472849f666c948fef5a64c7b213a308a894bdc96616146c500000040d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282c995c960a9c7384b65cf4816432097f2bdb4f23605236d555d9f40ea37318544000000406d6f2f2319bea7db2ee1b21110ea24eff61c9d01214e3b1066bf616af73065a6c6856e065e8c6d72715b16b5bdcc5dc52afa23eb2e9feaf4a50981fb7629b2380000004045297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c00000040d7ddcec96dcecfc25d27ab873a8ca113e4f637bfeee516862c1e091ffdadfbb32da376836499290a197f2a5ff5843f1f44510643afce50b60d38f8887c1ad3d9000000405a2287f4475c955f43bce7eecc09fdbc20d1303a04fe403f2bee1313a73db93281f925a855dc5b5aad56fb54edc181dccdca5d7936a9c32b11b503375d1c05f8",
+      "c": "dc7bc43a23a9a9386ff53ecea68d523b15b8849f89fbedc288c3dfa7bb958e9c",
+      "ssk": "2221a2d8aa383fd6131ebe166b31b9bd87b488cf043cd25c0537e1e2780b5a07",
+      "sr": "6cfa477aa6ce0663ffa5cfead13ece946e7b61b1da4d8a316a1d1a3897ec09e0",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"dc7bc43a23a9a9386ff53ecea68d523b15b8849f89fbedc288c3dfa7bb958e9c\",\"ssk\":\"2221a2d8aa383fd6131ebe166b31b9bd87b488cf043cd25c0537e1e2780b5a07\",\"sr\":\"6cfa477aa6ce0663ffa5cfead13ece946e7b61b1da4d8a316a1d1a3897ec09e0\"}",
+      "voterTag": "74db7b7cea21e1cd3886b42013ba4bed9b3e6bed40040bde2b98180ff2cf6ae5"
+    },
+    {
+      "name": "voter1 in chair-2028",
+      "issuer": "issuer-a",
+      "seed": "voter1#3",
+      "channel": "privatevote-chair-2028",
+      "electionId": "chair-2028",
+      "mspId": "ChairVoters2027MSP",
+      "tracking": "adee345cb89288597c4b77f5b581358b76f189f57988226f4f5083589a52c962",
+      "sk": "8b19d3bdab71a83972c1536d6355d670cc6f67399b8e4de9a324d4f3db7eeadd",
+      "rNym": "674d79420077c7cf54df83ecf24b8e00a5d11741de33b5dcf7e7336138627d96",
+      "a": "0c0f68a84e06c41b6670bd8ee7018c26941ca7210af96a1a92253d2527a6a116",
+      "b": "8187ec5bcaab5cef32fadd12486e800059ebccd433f50e473c016ae46001870e",
+      "nym": "d998da9fbe9d196820b029973d899da00eb111faa9fc2244d03b028fa8a23aa3a8f6ddad46d39b2c3aa8f1af79c8cdc8ee69f59bdde2e83a5d94bfc19812746a",
+      "B": "0331a1bb18ac34916cc9d72913925d47ed7c8080e1511f385afb831fe923090d66ae7f2ab45b0809544f9998d4a5f39d90e5c9b53ea6f4f7a147a2486b2927fe",
+      "P": "a962be4e07db8c1cb02998b47d61915d21db67850808ef4945f717b98bfe62845c77eb36018de336d7a8181dfd50a315eb840f3f3bba2513e3873192be69e9c1",
+      "T1": "f885707a4e23a270e49d7c5d490c88e7b69e738ed9e17ed6d6495a995fcf23c468f67c5afb1975c14f7d6c1c7f066ff8afc7b9aecccb9d898049bb81a3dc67dd",
+      "T2": "d6dcd0a1690cb6475400464f99575d1071baa4ae090dc2f2d0e25c42102c002011804b1d14a23c3ced23b70f425726027cb191f7dbcd79a500e65d3f535c37c3",
+      "challengeInput": "00000013776566742d73636f70652d70726f6f662076310000002020ed0f29449549da5e10c66f6b290bfe9f7c1116f9af353b7fdc054782e8b2c80000001670726976617465766f74652d63686169722d323032380000000a63686169722d3230323800000020adee345cb89288597c4b77f5b581358b76f189f57988226f4f5083589a52c962000000400331a1bb18ac34916cc9d72913925d47ed7c8080e1511f385afb831fe923090d66ae7f2ab45b0809544f9998d4a5f39d90e5c9b53ea6f4f7a147a2486b2927fe00000040d998da9fbe9d196820b029973d899da00eb111faa9fc2244d03b028fa8a23aa3a8f6ddad46d39b2c3aa8f1af79c8cdc8ee69f59bdde2e83a5d94bfc19812746a00000040a962be4e07db8c1cb02998b47d61915d21db67850808ef4945f717b98bfe62845c77eb36018de336d7a8181dfd50a315eb840f3f3bba2513e3873192be69e9c100000040f885707a4e23a270e49d7c5d490c88e7b69e738ed9e17ed6d6495a995fcf23c468f67c5afb1975c14f7d6c1c7f066ff8afc7b9aecccb9d898049bb81a3dc67dd00000040d6dcd0a1690cb6475400464f99575d1071baa4ae090dc2f2d0e25c42102c002011804b1d14a23c3ced23b70f425726027cb191f7dbcd79a500e65d3f535c37c3",
+      "c": "a32a7c2d9bf7b962db92c22c8aedf140e3fd15aa073c2528306db40152374e50",
+      "ssk": "58331609c3acbd4530221af445ae635822cc7595a4bf453397adbbde50209b6c",
+      "sr": "0f586169736b7b4587631a78ade075dd63195c17ec05bb89d5ad306bcde69cba",
+      "pseudonymJson": "{\"pseudonym\":\"a962be4e07db8c1cb02998b47d61915d21db67850808ef4945f717b98bfe62845c77eb36018de336d7a8181dfd50a315eb840f3f3bba2513e3873192be69e9c1\",\"c\":\"a32a7c2d9bf7b962db92c22c8aedf140e3fd15aa073c2528306db40152374e50\",\"ssk\":\"58331609c3acbd4530221af445ae635822cc7595a4bf453397adbbde50209b6c\",\"sr\":\"0f586169736b7b4587631a78ade075dd63195c17ec05bb89d5ad306bcde69cba\"}",
+      "voterTag": "63931ffaf7e06569576beb01e76cbedccc684eb87d1e62db20ecda146ff15c06"
+    },
+    {
+      "name": "voter2 in chair-2027",
+      "issuer": "issuer-a",
+      "seed": "voter2",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "mspId": "ChairVoters2027MSP",
+      "tracking": "745704c1775ee5bf29a42e2697dbd8c5ce748cc9c961f162a5c226c833636ab9",
+      "sk": "896bc1193cac2dbbc713dfaab36f807f721f508197cb2f57e473884f48d86117",
+      "rNym": "b855d67d39b5f32787dc4b639a7637c7e908dbab08dbc435cd48ce9b098bd20a",
+      "a": "74fe7381100ed30ea567511d0225e9c67c608afc89e1f1c3277dd3b55fa1c039",
+      "b": "91b79ce671ceb84abe34886e48f1eab7875575bdaeedfa74f4bc1681b1b03826",
+      "nym": "efb10362a9463632ea5b72f4c5d33828e9c76504d16d31c6233c69527a46911a4e0802cc3f9ebfbfb69e2d6028b76c8f631abaeb3f07d9ca9f0fae30e184dc91",
+      "B": "d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282c995c960a9c7384b65cf4816432097f2bdb4f23605236d555d9f40ea37318544",
+      "P": "7878e050edd300270ba1ae8ab16a0c77b33c865ae8e172582bcdef035e1e29a0d3287df19cc5de6b325d899e0cc84c55ee1284c4da792ec38a8704f5b2da6a2f",
+      "T1": "4c63c7c154e2df5b167e475e132908227307abcdb8fe92d016dc698dbe14bd9d38df314bf9a110d13b2cb9435e5cfcec1823b93f3f5c333853817ebc8d6fbdc5",
+      "T2": "887525ba68bb46cdbc955aace5f1c7dbb11be0c11fa54755a27362a1264e03291547874a8c2302be962b1940790e8e122eb10e0838026d1ceb424a3875826ac5",
+      "challengeInput": "00000013776566742d73636f70652d70726f6f662076310000002020ed0f29449549da5e10c66f6b290bfe9f7c1116f9af353b7fdc054782e8b2c80000001670726976617465766f74652d63686169722d323032370000000a63686169722d3230323700000020745704c1775ee5bf29a42e2697dbd8c5ce748cc9c961f162a5c226c833636ab900000040d2a7bf4597afd28e6492445e0a91be9ec9de64e50f0faa8be09b26833762a282c995c960a9c7384b65cf4816432097f2bdb4f23605236d555d9f40ea3731854400000040efb10362a9463632ea5b72f4c5d33828e9c76504d16d31c6233c69527a46911a4e0802cc3f9ebfbfb69e2d6028b76c8f631abaeb3f07d9ca9f0fae30e184dc91000000407878e050edd300270ba1ae8ab16a0c77b33c865ae8e172582bcdef035e1e29a0d3287df19cc5de6b325d899e0cc84c55ee1284c4da792ec38a8704f5b2da6a2f000000404c63c7c154e2df5b167e475e132908227307abcdb8fe92d016dc698dbe14bd9d38df314bf9a110d13b2cb9435e5cfcec1823b93f3f5c333853817ebc8d6fbdc500000040887525ba68bb46cdbc955aace5f1c7dbb11be0c11fa54755a27362a1264e03291547874a8c2302be962b1940790e8e122eb10e0838026d1ceb424a3875826ac5",
+      "c": "f80ac71b4411f64ef7674968e5b8bf59adb37535d80360c045bf678e20b774fd",
+      "ssk": "0d257e80a22741ccaa714593dbf81cf50355ec501059a052d6c08d3a895dcf64",
+      "sr": "a168b0863b4c3705c801d5709d0ff0f59b049b3abf960b9610c928acc998ade9",
+      "pseudonymJson": "{\"pseudonym\":\"7878e050edd300270ba1ae8ab16a0c77b33c865ae8e172582bcdef035e1e29a0d3287df19cc5de6b325d899e0cc84c55ee1284c4da792ec38a8704f5b2da6a2f\",\"c\":\"f80ac71b4411f64ef7674968e5b8bf59adb37535d80360c045bf678e20b774fd\",\"ssk\":\"0d257e80a22741ccaa714593dbf81cf50355ec501059a052d6c08d3a895dcf64\",\"sr\":\"a168b0863b4c3705c801d5709d0ff0f59b049b3abf960b9610c928acc998ade9\"}",
+      "voterTag": "0a879fa88156f5bc0d49e8feb48f4fe94599abe01e2b29ae8b3f325fd9704033"
+    }
+  ],
+  "negative": [
+    {
+      "name": "a proof for another Nym: voter1's proof with voter2's Nym",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "efb10362a9463632ea5b72f4c5d33828e9c76504d16d31c6233c69527a46911a4e0802cc3f9ebfbfb69e2d6028b76c8f631abaeb3f07d9ca9f0fae30e184dc91",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a proof replayed in another transaction: voter1's proof with the Nym of voter1's next identity",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "6d6f2f2319bea7db2ee1b21110ea24eff61c9d01214e3b1066bf616af73065a6c6856e065e8c6d72715b16b5bdcc5dc52afa23eb2e9feaf4a50981fb7629b238",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a proof for another election on the same channel",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2028",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a proof for another channel",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2028",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a proof for another ballot's tracking code",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "745704c1775ee5bf29a42e2697dbd8c5ce748cc9c961f162a5c226c833636ab9",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a proof checked against another issuer key",
+      "issuer": "issuer-b",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "another voter's pseudonym in voter1's proof",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"7878e050edd300270ba1ae8ab16a0c77b33c865ae8e172582bcdef035e1e29a0d3287df19cc5de6b325d899e0cc84c55ee1284c4da792ec38a8704f5b2da6a2f\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a changed c",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879b\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a changed ssk",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49881\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "a changed sr",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addb0\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "T1' is the identity",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"7878e050edd300270ba1ae8ab16a0c77b33c865ae8e172582bcdef035e1e29a0d3287df19cc5de6b325d899e0cc84c55ee1284c4da792ec38a8704f5b2da6a2f\",\"c\":\"dff63af82a9683ebcfd1320e5cfabf807e6551fa1b61ecd2726bbed8bc0d3521\",\"ssk\":\"f984e2f8484744a12bd6e20f3ed222a29e264d4493f8a5f2e6fc392dbed6b7d9\",\"sr\":\"4060056516650fc2f19de800039ed56f36a751e082137d2ac8046164c0c62544\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "T2' is the identity",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"7c5ff75fe50794c29694f42bc3fc9b69868ace724185dd224c571901694fee8cadd228ab1b842840d4b5761d41bf19f5c53972b777055b73be00e75789088cac\",\"c\":\"dff63af82a9683ebcfd1320e5cfabf807e6551fa1b61ecd2726bbed8bc0d3521\",\"ssk\":\"a90c99f2c9eea95706a3e7b1abcf250388224889fc7e340856c565da1af59f46\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof is not valid."
+    },
+    {
+      "name": "P off the curve",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2d\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "P with x equal to p",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"fffffffffffcf0cd46e5f25eee71a49f0cdc65fb12980a82d3292ddbaed330130b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "P with y equal to p",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfafffffffffffcf0cd46e5f25eee71a49f0cdc65fb12980a82d3292ddbaed33013\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "P as 64 zero bytes, an attempt at the identity",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "P of 63 bytes",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "P in uppercase hex",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297EC7E67B259BBF2218F79A5D6D0099EC69F9A8A93AF11D5ABBD4A30E0CFA0B7420E84640C25EBAB5F7F6FD5445FEB9D1C3A317779F6455039D10CD6D4F2C\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "P with an odd number of hex characters",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c0\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "c equal to r",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"fffffffffffcf0cd46e5f25eee71a49e0cdc65fb1299921af62d536cd10b500d\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's c isn't a canonical scalar."
+    },
+    {
+      "name": "ssk of 2^256 - 1",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's ssk isn't a canonical scalar."
+    },
+    {
+      "name": "sr equal to r",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"fffffffffffcf0cd46e5f25eee71a49e0cdc65fb1299921af62d536cd10b500d\"}",
+      "error": "The pseudonym proof's sr isn't a canonical scalar."
+    },
+    {
+      "name": "c in uppercase hex",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"B0692B55B68B7B2295BBEF957C363FED82F771D56A37552C014600E4C065879A\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's c isn't a canonical scalar."
+    },
+    {
+      "name": "sr of 31 bytes",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719add\"}",
+      "error": "The pseudonym proof's sr isn't a canonical scalar."
+    },
+    {
+      "name": "a bad P and a bad c: P first",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"\",\"c\":\"\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof's pseudonym isn't a canonical point."
+    },
+    {
+      "name": "a bad ssk and a bad sr: ssk first",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"\",\"sr\":\"\"}",
+      "error": "The pseudonym proof's ssk isn't a canonical scalar."
+    },
+    {
+      "name": "not JSON",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "pseudonym",
+      "error": "The pseudonym proof isn't JSON."
+    },
+    {
+      "name": "JSON followed by more text",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"} {}",
+      "error": "The pseudonym proof isn't JSON."
+    },
+    {
+      "name": "null",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "null",
+      "error": "The pseudonym proof isn't a JSON object."
+    },
+    {
+      "name": "a list",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "[]",
+      "error": "The pseudonym proof isn't a JSON object."
+    },
+    {
+      "name": "unknown fields, the first in byte order named",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"nym\":\"00\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\",\"P\":\"00\"}",
+      "error": "The pseudonym proof isn't in the version 1 format: it has an unknown field, P."
+    },
+    {
+      "name": "sr missing",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\"}",
+      "error": "The pseudonym proof isn't in the version 1 format: sr is missing."
+    },
+    {
+      "name": "c a number",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":\"45297ec7e67b259bbf2218f79a5d6d0099ec69f9a8a93af11d5abbd4a30e0cfa0b7420e84640c25ebab5f7f6fd5445feb9d1c3a317779f6455039d10cd6d4f2c\",\"c\":1,\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof isn't in the version 1 format: c isn't a string."
+    },
+    {
+      "name": "pseudonym null",
+      "issuer": "issuer-a",
+      "channel": "privatevote-chair-2027",
+      "electionId": "chair-2027",
+      "tracking": "d11f71f24817972cb19900ab082a91e0e2f9614ae0f53b02b812b76736b540f7",
+      "nym": "b0e2f33a6d525f2291ea7e2617146181966e6b02eb4d09d3c6d0d22e7fe341d4817ae8ba412bb9df84897d5d425bae6c9fcd72e71554656cd5cbcae30b897932",
+      "pseudonymJson": "{\"pseudonym\":null,\"c\":\"b0692b55b68b7b2295bbef957c363fed82f771d56a37552c014600e4c065879a\",\"ssk\":\"f9e2153c0e05040f1d1f56b08d5427d5cf52c8e64c08e864af811dc4a8a49880\",\"sr\":\"dcde3a52cb21e6bb09bffa3ea813d91450017b6b8358cbc65b409849719addaf\"}",
+      "error": "The pseudonym proof isn't in the version 1 format: pseudonym isn't a string."
+    }
+  ],
+  "counts": {
+    "hashToG1": 4,
+    "issuers": 2,
+    "negative": 34,
+    "positive": 4
+  }
+}

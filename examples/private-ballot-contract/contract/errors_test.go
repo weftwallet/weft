@@ -93,8 +93,8 @@ func TestCreateElection(t *testing.T) {
 		{org1, newElection(map[string]any{"id": "x1", "threshold": 1}), "The threshold must be from 2 to the number of trustees."},
 		{org1, newElection(map[string]any{"id": "x1", "threshold": 3}), "The threshold must be from 2 to the number of trustees."},
 		{org1, newElection(map[string]any{"id": "x1", "threshold": 2.5}), "The threshold must be from 2 to the number of trustees."},
-		{org1, newElection(map[string]any{"id": "x1", "voters": map[string]any{"kind": "idemix", "msp": "ChairVoters2027MSP", "issuerPublicKey": "AAAA", "issuerKeyHash": "00", "curve": "FP256BN_AMCL"}}),
-			"Elections with voter credentials aren't supported by this version of the contract."},
+		{org1, newElection(map[string]any{"id": "x1", "voters": map[string]any{"kind": "idemix", "msp": "ChairVoters2027MSP", "affiliation": "voters", "role": "member", "issuerPublicKey": "AAAA", "issuerKeyHash": "00", "curve": "FP256BN_AMCL"}}),
+			"The issuer key isn't an idemix issuer public key for FP256BN_AMCL."},
 		{org1, newElection(map[string]any{"id": "x1", "voters": map[string]any{"kind": "x509", "msps": []string{}}}), "An election has at least one voter organisation, all different."},
 		{org1, newElection(map[string]any{"id": "x1", "voters": map[string]any{"kind": "x509", "msps": []string{"Org1MSP", "Org2MSP", "Org1MSP"}}}), "An election has at least one voter organisation, all different."},
 		// The voter organisations are checked last.
@@ -114,7 +114,7 @@ func TestCreateElection(t *testing.T) {
 		{org1, newElection(map[string]any{"voters": map[string]any{"kind": "anyone"}}), `The election isn't in the version 1 format: voters.kind is neither "x509" nor "idemix".`},
 		{org1, newElection(map[string]any{"voters": map[string]any{"kind": "x509", "msps": []string{}, "msp": "x"}}), "The election isn't in the version 1 format: it has an unknown field, voters.msp."},
 		{org1, newElection(map[string]any{"voters": map[string]any{"kind": "x509"}}), "The election isn't in the version 1 format: voters.msps is missing."},
-		{org1, newElection(map[string]any{"voters": map[string]any{"kind": "idemix", "msp": "M"}}), "The election isn't in the version 1 format: voters.issuerPublicKey is missing."},
+		{org1, newElection(map[string]any{"voters": map[string]any{"kind": "idemix", "msp": "M"}}), "The election isn't in the version 1 format: voters.affiliation is missing."},
 	}
 	for _, c := range cases {
 		refused(t, n.endorse(c.who, "CreateElection", c.json), c.want)
@@ -271,9 +271,12 @@ func TestVotingAndCountingRefusals(t *testing.T) {
 	refused(t, n.endorse(member(t, "Org3MSP"), "CastBallot", id, ada.JSON),
 		"This identity can't vote in this election: Org3MSP isn't one of its voter organisations.")
 	refused(t, n.endorse(idemixCreator("Org1MSP"), "CastBallot", id, ada.JSON),
-		"This identity can't vote in this election: Org1MSP isn't one of its voter organisations.")
+		"This identity can't vote in this election: it isn't an X.509 identity.")
+	// CastAnonymousBallot in an election with X.509 voters, from any identity.
 	refused(t, n.endorse(idemixCreator("ChairVoters2027MSP"), "CastAnonymousBallot", id, ada.JSON, "{}"),
-		"This identity can't vote in this election: ChairVoters2027MSP isn't one of its voter organisations.")
+		"This election has X.509 voters, so its ballots are cast with CastBallot.")
+	refused(t, n.endorse(ada.Voter.identity(t), "CastAnonymousBallot", id, ada.JSON, "{}"),
+		"This election has X.509 voters, so its ballots are cast with CastBallot.")
 	ok(t, n.submit(ada.Voter.identity(t), "CastBallot", id, ada.JSON))
 	refused(t, n.endorse(ada.Voter.identity(t), "CastBallot", id, grace.JSON), "Ciphertext 0 is not a 0 or a 1.")
 	refused(t, n.endorse(member(t, "Org1MSP"), "GetBallot", id, strings.Repeat("0", 64)),

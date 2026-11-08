@@ -7,6 +7,7 @@ import (
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 
 	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/internal/tally"
+	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
 )
 
 type bitProof struct {
@@ -31,10 +32,12 @@ type ballotDoc struct {
 	SumProof    sumProof           `json:"sumProof"`
 }
 
-// storedBallot is the value at ballot <id> <txId>.
+// storedBallot is the value at ballot <id> <txId>, with the pseudonym
+// proof of a ballot cast with a voter credential.
 type storedBallot struct {
-	Tracking string    `json:"tracking"`
-	Ballot   ballotDoc `json:"ballot"`
+	Tracking  string          `json:"tracking"`
+	Ballot    ballotDoc       `json:"ballot"`
+	Pseudonym *pseudonym.JSON `json:"pseudonym,omitempty"`
 }
 
 // lookups answers the verifiers' ledger questions for one election, and
@@ -68,18 +71,24 @@ func votingState(r *Record) error {
 	}
 }
 
-// votesIn reports whether the creator is an X.509 identity of one of the
-// election's voter organisations.
-func votesIn(r *Record, c *caller) bool {
-	if r.Voters.Kind != "x509" || !c.x509() {
-		return false
+// x509Voter checks CastBallot's caller, after the election's state: the
+// election has X.509 voters, the creator's MSP ID is one of its voter
+// organisations, and the creator is an X.509 identity.
+func x509Voter(r *Record, c *caller) error {
+	if r.Voters.Kind != votersX509 {
+		return errUseAnonymous()
 	}
+	named := false
 	for _, m := range r.Voters.Msps {
-		if m == c.msp {
-			return true
-		}
+		named = named || m == c.msp
 	}
-	return false
+	if !named {
+		return errNotVoter(c.msp)
+	}
+	if !c.x509() {
+		return errNotX509("vote in this election")
+	}
+	return nil
 }
 
 type castResult struct {
@@ -109,8 +118,8 @@ func castBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	if !votesIn(r, c) {
-		return nil, errNotVoter(c.msp)
+	if err := x509Voter(r, c); err != nil {
+		return nil, err
 	}
 	channel := stub.GetChannelID()
 	p, err := r.prepared(channel)
@@ -126,13 +135,20 @@ func castBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
+	return storeBallot(stub, l, r, args[1], checked, tag, nil)
+}
+
+// storeBallot writes an accepted ballot, its tracking code, its
+// ciphertexts' first components and the voter's marker, and returns
+// CastBallot's result with the event BallotCast.
+func storeBallot(stub shim.ChaincodeStubInterface, l ledger, r *Record, ballotJSON string, checked *tally.CheckedBallot, tag []byte, proof *pseudonym.JSON) ([]byte, error) {
 	doc := ballotDoc{}
-	if _, err := canonical(args[1], &doc); err != nil {
+	if _, err := canonical(ballotJSON, &doc); err != nil {
 		return nil, err
 	}
 	doc.V = "1"
 	txID := stub.GetTxID()
-	if err := l.putJSON(storedBallot{checked.Tracking, doc}, keyBallot, r.ID, txID); err != nil {
+	if err := l.putJSON(storedBallot{checked.Tracking, doc, proof}, keyBallot, r.ID, txID); err != nil {
 		return nil, err
 	}
 	tx := []byte(txID)
@@ -156,9 +172,24 @@ func castBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error)
 	return out, l.event("BallotCast", castEvent{r.ID, checked.Tracking})
 }
 
-// CastAnonymousBallot(electionId, ballotJson, pseudonymJson): for elections
-// with voter credentials, which this version of the contract can't create,
-// so every call is refused after the election's state.
+// CastAnonymousBallot(electionId, ballotJson, pseudonymJson): a voter
+// credential of the election's voter organisation, with its affiliation and
+// the role member, while the election is open, with the checks in the
+// specification's order (private-tally-spec.md, What the contract checks):
+//
+//  1. the election is open;
+//  2. it has voter credentials;
+//  3. the creator's MSP ID is the election's voter MSP;
+//  4. the creator is an idemix identity whose Nym is a point of G1;
+//  5. its organisational unit is the election's affiliation, and its role
+//     is member;
+//  6. the ballot parses and decodes;
+//  7. the pseudonym proof parses and decodes;
+//  8. the voter tag from P, and the tracking code;
+//  9. the pseudonym proof, against the creator's Nym, the pinned issuer key
+//     and the tracking code;
+//  10. to 13. the bit proofs, the sum proof, repeated ciphertexts, and the
+//     credential's earlier ballot, by the voter tag.
 func castAnonymousBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	l := ledger{stub}
 	r, err := l.election(args[0])
@@ -168,20 +199,71 @@ func castAnonymousBallot(stub shim.ChaincodeStubInterface, args []string) ([]byt
 	if err := votingState(r); err != nil {
 		return nil, err
 	}
+	if r.Voters.Kind != votersIdemix {
+		return nil, errUseCastBallot()
+	}
 	c, err := creator(stub)
 	if err != nil {
 		return nil, err
 	}
-	if r.Voters.Kind == "x509" {
+	if c.msp != r.Voters.Msp {
 		return nil, errNotVoter(c.msp)
 	}
-	return nil, errIdemixUnsupported()
+	nym, ok := c.idemixNym()
+	if !ok {
+		return nil, errNotCredential()
+	}
+	ou, role := c.idemixAttributes()
+	if ou != r.Voters.Affiliation {
+		return nil, errAffiliation(r.Voters.Affiliation)
+	}
+	if role != roleMember {
+		return nil, errRole()
+	}
+	channel := stub.GetChannelID()
+	p, err := r.prepared(channel)
+	if err != nil {
+		return nil, err
+	}
+	d, err := tally.ParseBallot(&p.Setup, args[1])
+	if err != nil {
+		return nil, err
+	}
+	fields, err := tally.ParsePseudonym(args[2])
+	if err != nil {
+		return nil, err
+	}
+	proof, err := pseudonym.Decode(pseudonym.JSON{Pseudonym: fields.Pseudonym, C: fields.C, SSk: fields.SSk, SR: fields.SR})
+	if err != nil {
+		return nil, err
+	}
+	tag := tally.VoterTagIdemix(channel, r.ID, c.msp, proof.PBytes())
+	tracking, _ := tally.FromHex(tally.TrackingCode(p, tag, d), 32)
+	key, err := r.issuerKey()
+	if err != nil {
+		return nil, err
+	}
+	st := &pseudonym.Statement{Key: key, Channel: channel, ElectionID: r.ID, Tracking: tracking, Nym: nym}
+	if err := pseudonym.Verify(st, proof); err != nil {
+		return nil, err
+	}
+	look := &lookups{l: l, id: r.ID}
+	checked, err := tally.CheckDecoded(p, tag, d, look, true)
+	if look.err != nil {
+		return nil, look.err
+	}
+	if err != nil {
+		return nil, err
+	}
+	stored := proof.JSON()
+	return storeBallot(stub, l, r, args[1], checked, tag, &stored)
 }
 
 type ballotView struct {
-	TxID     string    `json:"txId"`
-	Tracking string    `json:"tracking"`
-	Ballot   ballotDoc `json:"ballot"`
+	TxID      string          `json:"txId"`
+	Tracking  string          `json:"tracking"`
+	Ballot    ballotDoc       `json:"ballot"`
+	Pseudonym *pseudonym.JSON `json:"pseudonym,omitempty"`
 }
 
 // GetBallot(electionId, tracking): a ballot by its tracking code.
@@ -209,5 +291,5 @@ func getBallot(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) 
 	if err := json.Unmarshal(b, &s); err != nil {
 		return nil, fmt.Errorf("contract: the ballot in %s doesn't decode: %w", tx, err)
 	}
-	return marshal(ballotView{string(tx), s.Tracking, s.Ballot})
+	return marshal(ballotView{string(tx), s.Tracking, s.Ballot, s.Pseudonym})
 }

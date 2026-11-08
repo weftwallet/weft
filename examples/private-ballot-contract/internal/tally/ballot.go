@@ -213,14 +213,23 @@ type CheckedBallot struct {
 	Trace    *ProofTrace
 }
 
-// CheckBallot runs steps 2 to 7 of what the contract checks, in order,
-// stopping at the first failure. Step 1, the election's state, is the
-// contract's own. credential selects the message for a second vote.
+// CheckBallot runs CastBallot's steps 3 to 8 of what the contract checks,
+// in order, stopping at the first failure. Steps 1 and 2, the election's
+// state and the caller, are the contract's own. credential selects the
+// message for a second vote.
 func CheckBallot(p *Prepared, voterTag []byte, text string, ledger Ledger, credential bool) (*CheckedBallot, error) {
 	d, err := ParseBallot(&p.Setup, text)
 	if err != nil {
 		return nil, err
 	}
+	return CheckDecoded(p, voterTag, d, ledger, credential)
+}
+
+// CheckDecoded runs the checks after a ballot has parsed and decoded: every
+// bit proof, the sum proof, repeated ciphertexts and the voter's earlier
+// ballot, in that order. CastAnonymousBallot runs it once the pseudonym
+// proof has verified.
+func CheckDecoded(p *Prepared, voterTag []byte, d *DecodedBallot, ledger Ledger, credential bool) (*CheckedBallot, error) {
 	tr, err := VerifyBallotProofs(p, voterTag, d)
 	if err != nil {
 		return nil, err

@@ -34,8 +34,31 @@ func errClosesAtPassed(now string) error {
 func errVoters() error {
 	return refuse("An election has at least one voter organisation, all different.")
 }
-func errIdemixUnsupported() error {
-	return refuse("Elections with voter credentials aren't supported by this version of the contract.")
+func errCurve(curve string) error {
+	return refuse("The curve %s isn't supported: voter credentials use FP256BN_AMCL.", curve)
+}
+func errAffiliationEmpty() error { return refuse("voters.affiliation is empty.") }
+func errRoleNotMember() error {
+	return refuse("voters.role isn't member, the only role that can vote.")
+}
+func errIssuerKey() error {
+	return refuse("The issuer key isn't an idemix issuer public key for FP256BN_AMCL.")
+}
+func errIssuerKeyHash() error { return refuse("issuerKeyHash isn't SHA-256 of the issuer key.") }
+func errUseAnonymous() error {
+	return refuse("This election has voter credentials, so its ballots are cast with CastAnonymousBallot.")
+}
+func errUseCastBallot() error {
+	return refuse("This election has X.509 voters, so its ballots are cast with CastBallot.")
+}
+func errNotCredential() error {
+	return refuse("This identity can't vote in this election: it isn't a voter credential.")
+}
+func errAffiliation(affiliation string) error {
+	return refuse("This credential can't vote in this election: its affiliation isn't %s.", affiliation)
+}
+func errRole() error {
+	return refuse("This credential can't vote in this election: its role isn't member.")
 }
 func errNotNamedTrustee(msp string) error {
 	return refuse("%s isn't one of the trustee organisations named in this election.", msp)

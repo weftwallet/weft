@@ -4,7 +4,7 @@ description: The Go contract for private elections, its functions, arguments, st
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The contract is built for elections with X.509 voters, and the playground deploys it. [What is built](#what-is-built) lists what isn't.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The contract is built for elections with X.509 voters and with voter credentials, and the playground deploys it. [What is built](#what-is-built) says what uses it.
 :::
 
 `examples/private-ballot-contract` is the contract for private elections, shared by the [private tally](/experimental/private-tally-spec/) and [voter credentials](/experimental/voter-credentials/). It is written in Go and deployed as `private-ballot`. The main product's `examples/ballot-contract` stays as it is, with its private collection and version 1 receipts.
@@ -14,22 +14,19 @@ This page describes Weft Experimental, a separate build that is not part of the 
 - It uses `fabric-chaincode-go`'s shim and `cid` package, v2.3.0, and not `fabric-contract-api-go`. `cid` reads the Fabric CA attributes of an X.509 creator and the OU and role of an idemix creator, so a call from either gets an answer. `fabric-contract-api-go` also builds its caller from `cid`, and ignores the error, so it would accept idemix creators too, unlike Node's `fabric-contract-api` ([ADR 0008](/reference/decisions/)). It isn't used because its latest release, v2.2.4, needs Go 1.26.7, newer than the Go in `hyperledger/fabric-ccenv:2.5`, and because it refuses some calls with messages of its own, outside the [error table](#errors). The contract reads the creator's `SerializedIdentity` itself for the voter tag.
 - The [election context](/experimental/private-tally-spec/#the-election-context) binds the contract's own name, which the shim doesn't give. The contract reads it from the signed proposal, in the `ChaincodeHeaderExtension` of the channel header, which names the contract the client called and the peer ran. It computes the context when the third round of the ceremony is checked and when the election opens, and from then on uses the `context` in the record.
 - It is one Go module, `github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract`, with the tally's verifiers in `internal/tally`. They handle no secret: decoding, the proof checks, the tracking code, totals, the round 1 proof of knowledge, the key and verifying shares, and combining decryption shares.
-- It verifies ballot proofs with `github.com/gtank/ristretto255` on `filippo.io/edwards25519`. The module's README gives the reasons for the ristretto255 library. It will verify the [pseudonym proof](/experimental/private-tally-spec/#the-per-election-pseudonym) with its `pseudonym` package, on IBM mathlib, and decode issuer keys with IBM idemix's dlog package. Weft's WebAssembly module compiles the same `pseudonym` package, so one Go source proves and verifies.
+- It verifies ballot proofs with `github.com/gtank/ristretto255` on `filippo.io/edwards25519`. The module's README gives the reasons for the ristretto255 library. It verifies the [pseudonym proof](/experimental/private-tally-spec/#the-per-election-pseudonym) with its `pseudonym` package, on IBM mathlib, and decodes issuer keys with IBM idemix's dlog package. Weft's WebAssembly module compiles the same `pseudonym` package, so one Go source proves and verifies.
 - It uses no private data collection and no transient data. Every argument is public.
 - Every function is deterministic, and none reads a clock. A transaction's timestamp is set by the client that sends it, and peers don't compare it with their own clocks. `CreateElection` is the one function that reads it, to refuse a `closesAt` that has already passed, and no other function reads it. Every endorser reads the same timestamp from the proposal, so they agree. A creator that writes a wrong time can only get past the check with a `closesAt` that has already passed, which makes its own election show as past its planned closing time, and the contract doesn't act on `closesAt`. `CastBallot`, `CloseElection` and every other function read no time, and an election stops accepting ballots when it is [closed](#closeelection) on the ledger.
 - Its endorsement and lifecycle policies name only X.509 organisations, since idemix organisations can't endorse. The playground uses `AND('Org1MSP.peer','Org2MSP.peer')`.
-- The peer builds it in Docker, as for the playground's other contracts, with test-network's `deployCC -ccl go`, which runs `go mod vendor` in the contract's folder. `vendor/` isn't committed, and the `go` line in `go.mod` is no newer than the Go in `hyperledger/fabric-ccenv:2.5`: it is `go 1.24.0`, and the image for Fabric 2.5.16 has Go 1.26.4. The `main` package is at the module's root, which is where the peer's Go build looks.
+- The peer builds it in Docker, as for the playground's other contracts, with test-network's `deployCC -ccl go`, which runs `go mod vendor` in the contract's folder. `vendor/` isn't committed, and the `go` line in `go.mod` is no newer than the Go in `hyperledger/fabric-ccenv:2.5`: it is `go 1.26.3`, the oldest Go IBM idemix v0.3.1 builds with, and the image for Fabric 2.5.16 has Go 1.26.4. Its `toolchain` line is `go1.26.10`, the toolchain of Weft's idemix WebAssembly module, which Go downloads on a machine whose Go is older when it vendors the modules. The `main` package is at the module's root, which is where the peer's Go build looks.
 
 Arguments are strings, as in every Fabric contract. JSON arguments are parsed into fixed fields: unknown fields, missing fields and wrong types are refused, in the order [the specification](/experimental/private-tally-spec/#parsing-the-contracts-arguments) sets. Points and scalars are lowercase hex, as the [specification](/experimental/private-tally-spec/#group-and-encoding) says.
 
 ## What is built
 
-Everything on this page is built, in `examples/private-ballot-contract`, except what voter credentials need, which comes with [ADR 0008](/reference/decisions/)'s step:
+Everything on this page is built, in `examples/private-ballot-contract`, including elections with voter credentials ([ADR 0008](/reference/decisions/)): `CreateElection` with `voters.kind` `"idemix"`, and `CastAnonymousBallot` with the pseudonym proof. `weft-trustee create` creates one with `--voter-credentials` and `--issuer-key`. On the native network the step 4 tests ran on, voter credentials from Fabric CA 1.5.17 voted in such an election and were counted, and the refusals for a second ballot, another affiliation, the admin role, a changed proof, a proof from another voter's transaction, an election pinning another issuer key and the wrong cast function came back word for word.
 
-- `CreateElection` refuses `voters.kind` `"idemix"` with "Elections with voter credentials aren't supported by this version of the contract."
-- `CastAnonymousBallot` checks the election and its state, then refuses every call, since no election with voter credentials can exist. It doesn't check the pseudonym proof yet.
-
-The playground deploys it on every election's channel, and seeds `budget-2027` with [`weft-trustee`](/experimental/key-ceremony/#the-trustee-tool).
+The playground deploys it on every election's channel, and seeds `budget-2027` with [`weft-trustee`](/experimental/key-ceremony/#the-trustee-tool). It doesn't seed `chair-2027` yet, and Weft Experimental can't hold a voter credential yet.
 
 ## Election states
 
@@ -117,7 +114,7 @@ The contract checks the caller itself, with `cid`, from the creator's MSP ID and
 - `closesAt` is a UTC time written as `2027-01-31T17:00:00.000Z`, later than the transaction's timestamp
 - there are at least two trustee organisations, all different
 - the threshold is 2 to n
-- for voter credentials, in this order: the curve is `FP256BN_AMCL`; the affiliation isn't empty; the role is `member`; `issuerPublicKey` is base64 of an IBM idemix `IssuerPublicKey` that passes IBM idemix's own check for the curve (its points are on the curve and its proof of knowledge verifies) and has Fabric's four attribute names, `OU`, `Role`, `EnrollmentID` and `RevocationHandle`, in that order; and `issuerKeyHash` is SHA-256 of the bytes `issuerPublicKey` decodes to, as 64 lowercase hex characters. It isn't the key's own `hash` field, which IBM idemix computes differently.
+- for voter credentials, in this order: the curve is `FP256BN_AMCL`; the affiliation isn't empty; the role is `member`; `issuerPublicKey` is standard base64, with its padding and without line breaks, of an IBM idemix `IssuerPublicKey` that passes IBM idemix's own check for the curve (its points are on the curve and its proof of knowledge verifies), whose `HSk` and `HRand` aren't the identity, and that has Fabric's four attribute names, `OU`, `Role`, `EnrollmentID` and `RevocationHandle`, in that order; and `issuerKeyHash` is SHA-256 of the bytes `issuerPublicKey` decodes to, as 64 lowercase hex characters. It isn't the key's own `hash` field, which IBM idemix computes differently.
 - for X.509 voters, `voters.msps` names at least one organisation, all different
 
 The title limit counts code points, so it is the same in every script, and Go and JavaScript count code points the same way. They count UTF-16 units and user-perceived characters differently, and the second depends on Unicode tables that change between versions, so endorsers could disagree. 200 code points holds a full motion title and keeps the record small, and Weft, `weft-trustee` and explorers show the title on one or two lines.
@@ -161,8 +158,8 @@ For an election with voter credentials. `pseudonymJson` is the [pseudonym proof]
 1. The election exists and is `open`.
 2. The election has voter credentials. Otherwise: "This election has X.509 voters, so its ballots are cast with CastBallot."
 3. The creator's MSP ID is `voters.msp`.
-4. The creator is an idemix identity: its `id_bytes` decode as a `SerializedIdemixIdentity` with a Nym that is a point of G1.
-5. The creator's organisational unit, from its `ou` field, is `voters.affiliation`, and its role, from its `role` field, is member. The peer's idemix MSP has already checked that the credential behind the Nym carries both.
+4. The creator is an idemix identity: its `id_bytes` decode as a `SerializedIdemixIdentity` whose `nym_x` and `nym_y`, 32 bytes each, are a point of G1.
+5. The creator's organisational unit, from its `ou` field, is `voters.affiliation`, and its role, from its `role` field, is member, as `cid` reads them. The peer's idemix MSP has already checked that the credential behind the Nym carries both. A credential with Fabric CA's role 2 passes the channel's `member` policies, and this check is what refuses it.
 6. The ballot parses and decodes.
 7. `pseudonymJson` parses and decodes.
 8. It makes the voter tag from the pseudonym and the tracking code from the ballot.
@@ -251,7 +248,6 @@ Each error says what happened and, where the caller can do something about it, w
 | `closesAt isn't a time in the form 2027-01-31T17:00:00.000Z.` | `CreateElection`. |
 | `closesAt isn't later than this transaction's timestamp, <time>.` | `CreateElection` with a `closesAt` that has passed, by the timestamp the client wrote in the transaction. |
 | `An election has at least one voter organisation, all different.` | `CreateElection` with X.509 voters and an empty `voters.msps`, or one that names an organisation twice. |
-| `Elections with voter credentials aren't supported by this version of the contract.` | `CreateElection` with `voters.kind` `"idemix"`, until voter credentials are built. |
 | `The curve <curve> isn't supported: voter credentials use FP256BN_AMCL.` | `CreateElection` with voter credentials on another curve. |
 | `voters.affiliation is empty.` | `CreateElection` with voter credentials and an empty affiliation, which is the root affiliation that Fabric CA's bootstrap admin has. |
 | `voters.role isn't member, the only role that can vote.` | `CreateElection` with voter credentials and another role. |

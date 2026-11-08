@@ -2,12 +2,14 @@ package contract
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 
 	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/internal/tally"
+	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
 )
 
 // The election states (contract-api.md, Election states).
@@ -41,11 +43,50 @@ type Trustee struct {
 	Msp string `json:"msp"`
 }
 
-// Voters says who votes. Only X.509 voters exist in this version.
+// Voters says who votes: X.509 identities of the organisations in Msps
+// (kind "x509"), or voter credentials (kind "idemix") of the idemix
+// organisation Msp whose organisational unit is Affiliation and whose role
+// is member, from the pinned issuer key. Each kind marshals its own fields,
+// in the order contract-api.md lists them.
 type Voters struct {
+	Kind            string   `json:"kind"`
+	Msps            []string `json:"msps"`
+	Msp             string   `json:"msp"`
+	Affiliation     string   `json:"affiliation"`
+	Role            string   `json:"role"`
+	IssuerPublicKey string   `json:"issuerPublicKey"`
+	IssuerKeyHash   string   `json:"issuerKeyHash"`
+	Curve           string   `json:"curve"`
+}
+
+type x509Voters struct {
 	Kind string   `json:"kind"`
 	Msps []string `json:"msps"`
 }
+
+type idemixVoters struct {
+	Kind            string `json:"kind"`
+	Msp             string `json:"msp"`
+	Affiliation     string `json:"affiliation"`
+	Role            string `json:"role"`
+	IssuerPublicKey string `json:"issuerPublicKey"`
+	IssuerKeyHash   string `json:"issuerKeyHash"`
+	Curve           string `json:"curve"`
+}
+
+// MarshalJSON writes the kind's fields only, every one of them.
+func (v Voters) MarshalJSON() ([]byte, error) {
+	if v.Kind == votersIdemix {
+		return marshal(idemixVoters{v.Kind, v.Msp, v.Affiliation, v.Role, v.IssuerPublicKey, v.IssuerKeyHash, v.Curve})
+	}
+	return marshal(x509Voters{v.Kind, v.Msps})
+}
+
+// The kinds of voters.
+const (
+	votersX509   = "x509"
+	votersIdemix = "idemix"
+)
 
 // Count is one option's count, kept in option order.
 type Count struct {
@@ -164,6 +205,20 @@ func (r *Record) prepared(channel string) (*tally.Prepared, error) {
 	}
 	e := &tally.Election{Setup: r.setup(channel, ""), Keys: tally.Keys{PublicKey: r.PublicKey, VerifyingShares: r.VerifyingShares}}
 	return tally.PrepareWithContext(e, ctx)
+}
+
+// issuerKey decodes the pinned issuer key of an election with voter
+// credentials, which CreateElection checked.
+func (r *Record) issuerKey() (*pseudonym.Key, error) {
+	raw, err := base64.StdEncoding.DecodeString(r.Voters.IssuerPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("contract: election %s's issuer key isn't base64: %w", r.ID, err)
+	}
+	key, err := pseudonym.LoadIssuerKey(raw)
+	if err != nil {
+		return nil, fmt.Errorf("contract: election %s's issuer key doesn't load: %w", r.ID, err)
+	}
+	return key, nil
 }
 
 // marshal is encoding/json without HTML escaping and without the trailing

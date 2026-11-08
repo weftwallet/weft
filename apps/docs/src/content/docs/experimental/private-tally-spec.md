@@ -4,7 +4,7 @@ description: The private tally's cryptography as a specification, with its encod
 ---
 
 :::caution[Experimental]
-This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The cryptography on this page is built, in `@weftwallet/tally` and the contract's `internal/tally`, except [the per-election pseudonym](#the-per-election-pseudonym) for voter credentials, which is specified and not built yet. The contract, Weft Experimental, `weft-trustee` and the explorer use it.
+This page describes Weft Experimental, a separate build that is not part of the main product, and nothing on it applies to Weft as you install it. No one outside the project has reviewed its cryptography. The cryptography on this page is built, in `@weftwallet/tally` and the contract's `internal/tally`, and [the per-election pseudonym](#the-per-election-pseudonym) for voter credentials in the contract's `pseudonym` package. The contract, Weft Experimental, `weft-trustee` and the explorer use the private tally, and the contract and Weft's idemix module the pseudonym.
 :::
 
 This is the scheme from [ADR 0007](/reference/decisions/), written so that the Go contract and the TypeScript code in Weft, the trustee tool and the explorer can be built from it and checked against each other. It follows the prototype from the private tally study, except where a section says version 1 differs.
@@ -331,7 +331,7 @@ P = sk·B
 
 ### The proof
 
-The prover is Weft, which holds sk and, for the identity it made for this transaction, rNym. It makes the proof after the ballot, because the challenge covers the ballot's tracking code:
+The prover is Weft, which holds sk and, for the identity it made for this transaction, rNym. It computes P first, because the voter tag and so the ballot's proofs need it, and makes the proof after the ballot, because the challenge covers the ballot's tracking code:
 
 ```text
 prove:
@@ -555,7 +555,7 @@ The proofs exist twice, so the two implementations are tied together by vectors 
 - Provers take their randomness as an argument through `@weftwallet/tally/testing`, so the TypeScript side can reproduce a vector and the Go side, which never proves ballots, can check the same bytes.
 - The key ceremony vectors fix noble's round 1 proof bytes, the derived key and verifying shares, the share encryption with a fixed nonce, and the confirmation proofs.
 - Negative vectors are inputs that must be refused, each with the contract's exact error message from the [error table](/experimental/contract-api/#errors): the prototype's eight refusals (a ballot sent by another voter, a repeated ballot, a slot holding 2, two options chosen, another key, a changed proof value, a share made with another key, a tally from too few trustees), ballots whose own ciphertexts repeat, with proofs that verify, and non-canonical points and scalars, identity points, unknown fields, missing fields, wrong types and wrong lengths, for ballots, every ceremony post, decryption shares and the tally.
-- The per-election pseudonym has vectors of its own, in `packages/idemix/vectors/v1/pseudonym.json`, from fixed sk, rNym, a and b, with B, P, every framed challenge input, T1, T2, c, ssk, sr and the voter tag. The pseudonym package's Go tests and the WebAssembly module's tests read them. Its negative vectors carry the contract's messages: a proof for another Nym, another election, another channel, another tracking code or another issuer key, P as an off-curve point, a scalar of r or more, and a proof replayed in another transaction.
+- The per-election pseudonym has vectors of its own, in the contract's module, `examples/private-ballot-contract/pseudonym/testdata/v1/pseudonym.json`, from fixed sk, rNym, a and b, with B, P, every framed challenge input, T1, T2, c, ssk, sr and the voter tag, and two issuer keys that IBM idemix draws from fixed seeds. HashToG1 has vectors of its own, each with its SHAKE256 output, its first x and the number of steps the loop took, and the Go tests check IBM mathlib's HashToG1 and HashToZr against the descriptions above on random inputs. The pseudonym package's Go tests write the file, and regenerate it in memory and compare every byte; the WebAssembly module's tests reproduce every positive vector through a test build of the module and check the negative ones with the contract's verifier. Its negative vectors carry the contract's messages: a proof for another Nym, another election, another channel, another tracking code or another issuer key, another voter's P, a changed c, ssk or sr, T1' or T2' the identity, P off the curve, with a coordinate of p or as 64 zero bytes, a scalar of r or more, hex in uppercase, of another length or of an odd length, a proof replayed in another transaction, and every parsing failure.
 - A change to the scheme changes the vectors first. A new label version is the only way to change an encoding, and its vectors go in a new folder, `v2/`.
 
 ## What is library code

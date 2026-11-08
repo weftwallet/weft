@@ -4,12 +4,15 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	math "github.com/IBM/mathlib"
 	"github.com/hyperledger/fabric-chaincode-go/v2/pkg/cid"
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 	"github.com/hyperledger/fabric-protos-go-apiv2/common"
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"github.com/hyperledger/fabric-protos-go-apiv2/peer"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
 )
 
 // TrusteeAttribute is the Fabric CA attribute a trustee identity's
@@ -41,6 +44,40 @@ func creator(stub shim.ChaincodeStubInterface) (*caller, error) {
 func (c *caller) x509() bool {
 	block, _ := pem.Decode(c.idBytes)
 	return block != nil && block.Type == "CERTIFICATE"
+}
+
+// idemixNym returns the Nym of an idemix creator: its id_bytes decode as a
+// SerializedIdemixIdentity whose nym_x and nym_y, 32 bytes each, are a
+// point of G1. The peer's idemix MSP has already checked the creator's
+// proof that the Nym belongs to a credential from the channel's issuer key.
+func (c *caller) idemixNym() (*math.G1, bool) {
+	if c.x509() {
+		return nil, false
+	}
+	sid := &msp.SerializedIdemixIdentity{}
+	if err := proto.Unmarshal(c.idBytes, sid); err != nil {
+		return nil, false
+	}
+	if len(sid.GetNymX()) != 32 || len(sid.GetNymY()) != 32 {
+		return nil, false
+	}
+	return pseudonym.DecodePoint(append(append([]byte{}, sid.GetNymX()...), sid.GetNymY()...))
+}
+
+// idemixAttributes returns an idemix creator's organisational unit and
+// role, as cid reads them from the SerializedIdemixIdentity's ou and role
+// fields: the role is "member" for MSPRole MEMBER. The peer's idemix MSP has
+// already checked that the credential behind the Nym carries both. cid
+// fails only if either field doesn't decode, which the peer would have
+// refused, and then the creator has neither.
+func (c *caller) idemixAttributes() (ou, role string) {
+	id, err := cid.New(c.stub)
+	if err != nil {
+		return "", ""
+	}
+	ou, _, _ = id.GetAttributeValue("ou")
+	role, _, _ = id.GetAttributeValue("role")
+	return ou, role
 }
 
 // trusteeIdentity reports whether the creator carries weft.trustee=true.

@@ -72,6 +72,7 @@ The contract was timed on 7 and 8 November 2026 on the native network the step 4
 | A ballot from `weft_castBallot`, from submitting the signed transaction to its commit | about 2 s |
 | `CreateElection`, each round of the key ceremony, `OpenElection`, a decryption share and `PublishTally` | 1 to 5 ms each |
 | `CloseElection`, the request that closes voting and adds up the ballots, for up to 13 ballots | 2 to 3 ms |
+| `CastAnonymousBallot`, a three-option ballot with a voter credential, which also decodes the pinned issuer key and checks the pseudonym proof, measured on 8 November 2026 | 15 to 32 ms on Org1's peer, for the calls that reached the pseudonym proof, and 130 to 183 ms for the endorsement through the gateway, both peers signing |
 
 The time from submit to commit is the orderers' batch and block time, not the contract's. Across the whole of a ceremony or a count, the trustee tool's time is in its gateway calls and commits: `seedElection` creating an election and running its key ceremony for Org1 and Org2 (eight transactions, the last opening it) took 26 s, and `pnpm playground:count` closing an election, posting both decryption shares and publishing the tally took 14.5 s, both with the ledger reads between steps.
 

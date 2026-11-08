@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -10,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 
 	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/internal/tally"
+	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
 )
 
 var electionIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -58,14 +60,61 @@ func allDifferent(xs []string) bool {
 	return true
 }
 
+// checkVoters checks electionJson's voters, the last of CreateElection's
+// checks. For voter credentials, in this order: the curve, the
+// affiliation, the role, the issuer key, which must be base64 of an IBM
+// idemix IssuerPublicKey that passes IBM idemix's check with Fabric's four
+// attribute names, and issuerKeyHash, which must be SHA-256 of the key's
+// bytes as 64 lowercase hex characters. For X.509 voters, the voter
+// organisations.
+func checkVoters(v *tally.VotersRequest) (Voters, error) {
+	if v.Kind == votersX509 {
+		if len(v.Msps) < 1 || !allDifferent(v.Msps) {
+			return Voters{}, errVoters()
+		}
+		return Voters{Kind: votersX509, Msps: append([]string{}, v.Msps...)}, nil
+	}
+	if v.Curve != curveFP256BN {
+		return Voters{}, errCurve(v.Curve)
+	}
+	if v.Affiliation == "" {
+		return Voters{}, errAffiliationEmpty()
+	}
+	if v.Role != roleMember {
+		return Voters{}, errRoleNotMember()
+	}
+	raw, err := base64.StdEncoding.DecodeString(v.IssuerPublicKey)
+	if err != nil || base64.StdEncoding.EncodeToString(raw) != v.IssuerPublicKey {
+		return Voters{}, errIssuerKey()
+	}
+	key, err := pseudonym.LoadIssuerKey(raw)
+	if err != nil {
+		return Voters{}, errIssuerKey()
+	}
+	if v.IssuerKeyHash != key.HashHex() {
+		return Voters{}, errIssuerKeyHash()
+	}
+	return Voters{
+		Kind: votersIdemix, Msp: v.Msp, Affiliation: v.Affiliation, Role: v.Role,
+		IssuerPublicKey: v.IssuerPublicKey, IssuerKeyHash: v.IssuerKeyHash, Curve: v.Curve,
+	}, nil
+}
+
+// The one curve and the one role voter credentials vote with.
+const (
+	curveFP256BN = "FP256BN_AMCL"
+	roleMember   = "member"
+)
+
 type electionEvent struct {
 	ElectionID string `json:"electionId"`
 }
 
 // CreateElection(electionJson), in the order contract-api.md lists the
 // checks, after the argument has parsed: the caller, the ID, the title, the
-// options, closesAt, the trustees, the threshold, the kind of voters and the
-// voter organisations.
+// options, closesAt, the trustees, the threshold, and the voters: the voter
+// organisations, or for voter credentials the curve, the affiliation, the
+// role, the issuer key and issuerKeyHash.
 func createElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	req, err := tally.ParseElectionRequest(args[0])
 	if err != nil {
@@ -120,11 +169,9 @@ func createElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, er
 	if float64(k) != req.Threshold || k < 2 || k > len(req.Trustees) {
 		return nil, errThreshold()
 	}
-	if req.Voters.Kind != "x509" {
-		return nil, errIdemixUnsupported()
-	}
-	if len(req.Voters.Msps) < 1 || !allDifferent(req.Voters.Msps) {
-		return nil, errVoters()
+	voters, err := checkVoters(&req.Voters)
+	if err != nil {
+		return nil, err
 	}
 	r := &Record{
 		V:          1,
@@ -134,7 +181,7 @@ func createElection(stub shim.ChaincodeStubInterface, args []string) ([]byte, er
 		ClosesAt:   req.ClosesAt,
 		CreatorMsp: c.msp,
 		Threshold:  k,
-		Voters:     Voters{Kind: "x509", Msps: append([]string{}, req.Voters.Msps...)},
+		Voters:     voters,
 		State:      stateKeygen,
 	}
 	for i, msp := range req.Trustees {

@@ -24,6 +24,8 @@ type VotersRequest struct {
 	Msps []string
 	// For "idemix".
 	Msp             string
+	Affiliation     string
+	Role            string
 	IssuerPublicKey string
 	IssuerKeyHash   string
 	Curve           string
@@ -41,7 +43,7 @@ var electionSchema = sObj(
 
 var votersSchemas = map[string]*schema{
 	"x509":   sObj(f("kind", sStr), f("msps", sList(sStr))),
-	"idemix": sObj(f("kind", sStr), f("msp", sStr), f("issuerPublicKey", sStr), f("issuerKeyHash", sStr), f("curve", sStr)),
+	"idemix": sObj(f("kind", sStr), f("msp", sStr), f("affiliation", sStr), f("role", sStr), f("issuerPublicKey", sStr), f("issuerKeyHash", sStr), f("curve", sStr)),
 }
 
 func stringList(x any) []string {
@@ -92,9 +94,32 @@ func ParseElectionRequest(text string) (*ElectionRequest, error) {
 		r.Voters.Msps = stringList(voters["msps"])
 	} else {
 		r.Voters.Msp = voters["msp"].(string)
+		r.Voters.Affiliation = voters["affiliation"].(string)
+		r.Voters.Role = voters["role"].(string)
 		r.Voters.IssuerPublicKey = voters["issuerPublicKey"].(string)
 		r.Voters.IssuerKeyHash = voters["issuerKeyHash"].(string)
 		r.Voters.Curve = voters["curve"].(string)
 	}
 	return r, nil
+}
+
+// PseudonymFields is CastAnonymousBallot's pseudonymJson once it has parsed
+// into its fixed fields, still as hex. The pseudonym package decodes them.
+type PseudonymFields struct {
+	Pseudonym string
+	C         string
+	SSk       string
+	SR        string
+}
+
+var pseudonymSchema = sObj(f("pseudonym", sStr), f("c", sStr), f("ssk", sStr), f("sr", sStr))
+
+// ParsePseudonym parses pseudonymJson as every other argument is parsed,
+// with "The pseudonym proof" in the messages.
+func ParsePseudonym(text string) (*PseudonymFields, error) {
+	x, err := parseStrict(thingPseudonym, text, pseudonymSchema)
+	if err != nil {
+		return nil, err
+	}
+	return &PseudonymFields{x["pseudonym"].(string), x["c"].(string), x["ssk"].(string), x["sr"].(string)}, nil
 }

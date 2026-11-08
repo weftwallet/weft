@@ -27,6 +27,8 @@ const (
 	thingConfirm  = "The confirmation"
 	thingDecShare = "The decryption share"
 	thingElection = "The election"
+	// thingPseudonym is the pseudonym package's Thing.
+	thingPseudonym = "The pseudonym proof"
 )
 
 func errNotJSON(t string) error   { return refuse("%s isn't JSON.", t) }

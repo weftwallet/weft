@@ -193,10 +193,17 @@ func (vv voterVector) identity(t *testing.T) identity {
 // electionJSON is CreateElection's argument for a vector election, with the
 // voter organisations of its X.509 ballots.
 func electionJSON(e electionVector, voterMsps []string) string {
+	return electionJSONWith(e, map[string]any{"kind": "x509", "msps": voterMsps})
+}
+
+// electionJSONWith is the election of a vector with other voters. The
+// election context doesn't bind the voters, so the vector's ceremony opens
+// it with the vector's keys.
+func electionJSONWith(e electionVector, voters map[string]any) string {
 	b, _ := json.Marshal(map[string]any{
 		"id": e.ElectionID, "title": "Vector " + e.ElectionID, "options": e.Options,
 		"closesAt": "2027-01-31T17:00:00.000Z", "trustees": e.Trustees, "threshold": e.Threshold,
-		"voters": map[string]any{"kind": "x509", "msps": voterMsps},
+		"voters": voters,
 	})
 	return string(b)
 }
@@ -257,11 +264,17 @@ func eventIs(t *testing.T, e *endorsement, name string, payload string) {
 // given (1, 2 or 3 rounds posted, or 4 for opened) on a new network.
 func ceremony(t *testing.T, v *vectors, name string, stage int) *network {
 	t.Helper()
+	return ceremonyWith(t, v, name, stage, map[string]any{"kind": "x509", "msps": v.voterMsps(name)})
+}
+
+// ceremonyWith is ceremony for the vector's election with other voters.
+func ceremonyWith(t *testing.T, v *vectors, name string, stage int, voters map[string]any) *network {
+	t.Helper()
 	e := v.elections[name]
 	c := v.ceremonies[name]
 	n := newNetwork(t, e.Channel)
 	n.chaincode = e.Chaincode
-	created := ok(t, n.submit(trustee(t, e.Trustees[0]), "CreateElection", electionJSON(e, v.voterMsps(name))))
+	created := ok(t, n.submit(trustee(t, e.Trustees[0]), "CreateElection", electionJSONWith(e, voters)))
 	eventIs(t, created, "ElectionCreated", fmt.Sprintf(`{"electionId":%q}`, e.ElectionID))
 	rounds := []struct {
 		fn   string
@@ -295,14 +308,16 @@ func ceremony(t *testing.T, v *vectors, name string, stage int) *network {
 }
 
 // injectBallot writes a voter credential's ballot as CastAnonymousBallot
-// will in ADR 0008's step: this version refuses voter credentials, and the
-// referendum vector has one.
+// writes one, without its pseudonym proof: the tally vectors' voter
+// credential has a fixed P and no proof, and the referendum vector has one
+// such ballot in an election with X.509 voters. anonymous_test.go casts
+// voter credentials' ballots through CastAnonymousBallot.
 func injectBallot(t *testing.T, n *network, id string, b ballotVector, txID string) {
 	var doc ballotDoc
 	if err := json.Unmarshal([]byte(b.JSON), &doc); err != nil {
 		t.Fatal(err)
 	}
-	stored, _ := marshal(storedBallot{b.Tracking, doc})
+	stored, _ := marshal(storedBallot{b.Tracking, doc, nil})
 	n.put(t, stored, keyBallot, id, txID)
 	n.put(t, []byte(txID), keyTracking, id, b.Tracking)
 	for _, ct := range doc.Ciphertexts {
@@ -436,8 +451,9 @@ func TestNegativeVectorsThroughTheContract(t *testing.T) {
 		switch c.Kind {
 		case "ballot":
 			if c.Voter != "x509" {
-				// Voter credentials go through CastAnonymousBallot, which
-				// this version refuses; internal/tally runs this vector.
+				// The tally vectors' voter credential has a fixed P and no
+				// pseudonym proof, so internal/tally runs this vector, and
+				// anonymous_test.go casts voter credentials' ballots.
 				continue
 			}
 			n := stage(c.Election, 4)
