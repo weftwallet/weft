@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "typecheck": "astro check",
     "preview": "astro preview"
   },
   "dependencies": {
@@ -15,5 +16,9 @@
     "@weftwallet/sdk": "workspace:*",
     "@weftwallet/ui": "workspace:*",
     "astro": "^7.4.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "typescript": "~5.9.3"
   }
 }

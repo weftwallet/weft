@@ -170,6 +170,23 @@ export function paths(state) {
 
 /** The background process name, and so the log, of an election's voters' CA proxy. */
 export const caProxyName = (e) => `ca-proxy-${e.id}`;
+/**
+ * What is left running of elections no longer in ELECTIONS: the voters' CA
+ * proxies, by their background names from the pid files in .state
+ * (`pidFiles`), and the voters' CA containers, by name (`containers`, named
+ * by `containerOf`). The next `playground:up --experimental` stops both.
+ */
+export function unlistedVoters({ pidFiles, containers }, containerOf, elections = voterElections()) {
+  const proxies = new Set(elections.map(caProxyName));
+  const kept = new Set(elections.map(containerOf));
+  return {
+    proxies: pidFiles
+      .filter((f) => /^ca-proxy-.+\.pid$/.test(f))
+      .map((f) => f.replace(/\.pid$/, ""))
+      .filter((name) => !proxies.has(name)),
+    containers: containers.filter((name) => !kept.has(name)),
+  };
+}
 /** Where the browser reaches an election's voters' CA. */
 export const caProxyUrl = (e, { https = false } = {}) => `${https ? "https" : "http"}://localhost:${e.voterOrg.ca.proxy}`;
 /**
@@ -1011,8 +1028,9 @@ function caChain(mspDir) {
  * Writes the voter invite of each election with voter credentials to
  * .state/voter-invites/<election>.json, for the relay to serve. Its CA URL is
  * the election's CA proxy, its relay is Org1's, named as run by Weft
- * Playground, its issuer key hash is SHA-256 of the CA's IssuerPublicKey, and
- * its endorsers are the trustee organisations with their CA chains. Returns
+ * Playground, its title is the seed's, its issuer key hash is SHA-256 of the
+ * CA's IssuerPublicKey, and its endorsers are the trustee organisations with
+ * their CA chains. Returns
  * the elections whose invite changed, so the relay can be restarted to serve them.
  */
 export function writeVoterInvites(net, state, { relayUrl, explorerUrl, https = false, network = "Weft playground" }) {
@@ -1040,6 +1058,7 @@ export function writeVoterInvites(net, state, { relayUrl, explorerUrl, https = f
       channel: electionChannel(election),
       chaincode: PRIVATE_CONTRACT,
       electionId: election.id,
+      ...(election.seed?.title ? { title: election.seed.title } : {}),
       issuerKeyHash: fileHash(join(paths(state).election(election).home, "IssuerPublicKey")),
       curve: CURVE,
       endorsers: net.orgs.map((o) => ({ mspId: o.msp, caChain: caChain(o.mspDir) })),

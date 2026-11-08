@@ -8,6 +8,7 @@ pnpm playground:up --https   # the same, with the CA on https://localhost:7443 (
 pnpm playground:up --experimental   # also Weft Experimental's channels (needs Go)
 pnpm playground:count budget-2027   # with --experimental: close an election early and count it
 pnpm playground:credentials chair-2027   # with --experimental: the credentials a voters' CA has issued
+pnpm playground:smoke    # with --experimental: enrol, vote twice through the relay and check both explorers, without a browser
 pnpm dev                 # in another terminal: the sites, then open http://localhost:4323
 pnpm playground:down     # stop everything and remove the network
 pnpm playground:status   # what's running
@@ -166,6 +167,8 @@ An election with voter credentials also has `voterOrg`, its MSP ID and its CA's 
 ```
 
 The next `pnpm playground:up --experimental` creates the election's channel, `privatevote-budget-2028` or `privatevote-chair-2028`, joins the orderer and both peers to it, deploys `private-ballot` on it, seeds it if it has a `seed`, and restarts the relay and the explorers with the new channel in the invite and the policies. With `voterOrg`, it first starts the election's CA in its own container, registers the demo voters, starts its CA proxy and writes its MSP folder to `.state/voters-msp/ChairVoters2028MSP`, and the relay gets the new MSP ID in `WEFT_IDEMIX_MSP_IDS` and serves the election's voter invite. The demo voters' IDs repeat in every election, but each election's CA is separate, so `voter1` of `chair-2027` and `voter1` of `chair-2028` hold unrelated credentials with unrelated pseudonyms. The other elections' channels don't change. The election's ID names its channel, so it uses lower-case letters, digits, dots and hyphens, starting with a letter, as Fabric's channel names do.
+
+An election removed from `ELECTIONS` keeps its channel, its ballots and its CA's home in `.state/voters-ca/<election>` until `pnpm playground:down`, so putting it back gives it the same issuer key. The next `pnpm playground:up --experimental` stops its CA proxy and its CA's container, removes its voter invite and restarts the relay without its MSP ID, so nothing answers for it.
 
 A channel holds one election's idemix organisation at most. Fabric recommends one idemix MSP per channel, because the MSP ID tells idemix organisations apart, and a channel per election keeps elections apart: one election's voters can't read another's ballots, and closing one election changes no other channel. The channel's Admins policy names Org1's and Org2's admins, so a configuration update needs both. Under `MAJORITY Admins`, which test-network's channels use, the idemix organisation would count, and one organisation's admin with an admin credential from the voters' CA would be enough.
 

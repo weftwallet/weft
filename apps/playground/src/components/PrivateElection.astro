@@ -18,10 +18,16 @@
 // The voter enrols there, and the ballot is signed by an anonymous member of
 // the voter organisation, so this page learns neither the choice nor the voter.
 import { productHref } from "@weftwallet/ui/links";
+// The local playground's own elections with voter credentials, and the demo
+// voters it registers on each one's voters' CA (playground/experimental.mjs).
+// Any other election, such as one the e2e tests create, has voters that its
+// organisers registered, so the hint doesn't name the demo voters for it.
+import { DEMO_VOTERS, voterElections } from "../../../../playground/experimental.mjs";
 const docs = (path: string) => productHref("docs", path);
+const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: string }) => e.id), voters: DEMO_VOTERS.map((v: { id: string; secret: string }) => [v.id, v.secret]) });
 ---
 
-<section class="pg-card" id="pg-private" aria-labelledby="pg-private-heading" data-feature="castBallot" hidden>
+<section class="pg-card" id="pg-private" aria-labelledby="pg-private-heading" data-feature="castBallot" data-demo-voters={demoVoters} hidden>
   <div class="pg-head pg-head--status">
     <h2 id="pg-private-heading">Private election</h2>
     <span class="pg-chips">
@@ -191,6 +197,15 @@ const docs = (path: string) => productHref("docs", path);
   }
   const api = (channel: string, id?: string) =>
     `${explorer}/api/v1/channels/${encodeURIComponent(channel)}/private-elections${id ? `/${encodeURIComponent(id)}` : ""}`;
+  /** Every private election on a channel, from the explorer's list a page at a time, newest first. */
+  async function allElections(channel: string): Promise<Summary[]> {
+    const out: Summary[] = [];
+    for (let offset = 0; ; offset += 100) {
+      const page = await getJson<{ total: number; elections: Summary[] }>(`${api(channel)}?offset=${offset}&limit=100`);
+      out.push(...page.elections);
+      if (page.elections.length === 0 || out.length >= page.total) return out;
+    }
+  }
   const pageFor = (channel: string, id: string) => `${explorer}/channels/${encodeURIComponent(channel)}/elections/${encodeURIComponent(id)}`;
 
   function setPill(state: "ok" | "pending", text: string) {
@@ -226,7 +241,7 @@ const docs = (path: string) => productHref("docs", path);
     try {
       const at = await getJson<{ name: string; channels: { channel: string; publishes?: { privateElections?: boolean } }[] }>(`${explorer}/api/v1/status`);
       const channels = at.channels.filter((c) => c.publishes?.privateElections).map((c) => c.channel);
-      const lists = await Promise.all(channels.map((channel) => getJson<Summary[]>(api(channel)).then((l) => l.map((e) => ({ ...e, channel })))));
+      const lists = await Promise.all(channels.map((channel) => allElections(channel).then((l) => l.map((e) => ({ ...e, channel })))));
       elections = lists.flat().sort((a, b) => RANK[a.phase] - RANK[b.phase]);
       clearError($("pg-pe-list-error"));
       const name = `${at.name}'s explorer`;
@@ -401,24 +416,36 @@ const docs = (path: string) => productHref("docs", path);
     }
     const url = inviteUrl(v.id);
     const hint = $("pg-pe-invite-hint");
-    hint.replaceChildren();
-    const code = (t: string) => Object.assign(document.createElement("code"), { textContent: t });
-    hint.append(
-      `${v.id}'s voters vote anonymously, with a credential from its own voters' CA. Copy the voter invite and paste it into Weft Experimental's Join from an invite, then enrol as `,
-      code("voter1"),
-      " to ",
-      code("voter5"),
-      ", secrets ",
-      code("voter1pw"),
-      " to ",
-      code("voter5pw"),
-      ". Each enrolment ID works once.",
-    );
+    hint.replaceChildren(...voterHint(v.id));
     if ($("pg-pe-invite-url").textContent !== url) {
       $("pg-pe-invite-url").textContent = url;
       says("", "");
     }
     reveal(box);
+  }
+
+  /** The playground's own elections with voter credentials, and their demo voters' IDs and secrets, from the build. */
+  const demo = JSON.parse($("pg-private").dataset.demoVoters ?? "{}") as { elections?: string[]; voters?: [string, string][] };
+
+  /**
+   * How to get a credential for this election: the demo voters for one of the
+   * playground's own elections, and otherwise the voters its organisers registered.
+   */
+  function voterHint(id: string): (Node | string)[] {
+    const code = (t: string) => Object.assign(document.createElement("code"), { textContent: t });
+    const voters = demo.voters ?? [];
+    const first = voters[0];
+    const last = voters.at(-1);
+    const lead = `${id}'s voters vote anonymously, with a credential from its own voters' CA. Copy the voter invite and paste it into Weft Experimental's Join from an invite, then enrol `;
+    if (first && last && demo.elections?.includes(id)) {
+      return [lead, "as ", code(first[0]), " to ", code(last[0]), ", secrets ", code(first[1]), " to ", code(last[1]), ". Each enrolment ID works once."];
+    }
+    const own = demo.elections ?? [];
+    return [
+      lead,
+      `with the enrolment ID and secret registered for you on ${id}'s voters' CA. Each enrolment ID works once.`,
+      ...(first && last && own.length ? [" The playground registers its demo voters, ", code(first[0]), " to ", code(last[0]), `, for ${list(own)}.`] : []),
+    ];
   }
 
   function says(kind: "ok" | "error" | "", text: string) {
@@ -598,7 +625,7 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
         if (/aren't voter credentials of/.test(said)) return `Your voter credential can't vote in ${v.id}, so no ballot was cast: its voters are ${v.anonymous ? v.anonymous.msp : list(v.voters?.msps ?? [])}.`;
         // An election with voter credentials, and Weft holds none for it, whatever else it holds.
         if (v.anonymous || /voter credential/.test(said)) {
-          return `Weft has no voter credential for ${v.id}, so no ballot was cast. Copy the voter invite above into Weft Experimental's Join from an invite, enrol as one of the demo voters, then vote again.`;
+          return `Weft has no voter credential for ${v.id}, so no ballot was cast. Copy the voter invite above into Weft Experimental's Join from an invite, enrol ${demo.elections?.includes(v.id) ? "as one of the demo voters" : "with the enrolment ID and secret registered for you"}, then vote again.`;
         }
         if (Array.isArray(data.voterMsps)) {
           return `None of your identities in Weft can vote in ${v.title}: its voters are ${list(data.voterMsps)} identities. Make one of them active in Weft, then vote again.`;

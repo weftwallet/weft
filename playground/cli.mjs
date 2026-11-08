@@ -637,6 +637,26 @@ async function startVotersCaProxy(election) {
   return { started: true, url };
 }
 
+/**
+ * Stops the voters' CA proxy and container of each election no longer in
+ * ELECTIONS, as a removed election's channel stays until playground:down
+ * but nothing should answer for it. Its CA's home in .state stays too.
+ */
+function stopUnlistedVoters() {
+  const containers = has("docker")
+    ? (spawnSync("docker", ["ps", "-a", "--filter", `label=${VOTERS_CA_LABEL}`, "--format", "{{.Names}}"], { encoding: "utf8" }).stdout ?? "").split("\n").filter(Boolean)
+    : [];
+  const left = experimentalNetwork.unlistedVoters({ pidFiles: existsSync(state) ? readdirSync(state) : [], containers }, votersCaContainer);
+  for (const name of left.proxies) {
+    stopBackground(name, { quiet: true });
+    note(`stopped ${name}: its election is no longer in ELECTIONS`);
+  }
+  for (const name of left.containers) {
+    spawnSync("docker", ["rm", "-f", name], { stdio: "ignore" });
+    note(`stopped ${name}: its election is no longer in ELECTIONS`);
+  }
+}
+
 /** Stops every voters' CA proxy, including those of elections no longer listed. */
 function stopVotersCaProxies() {
   if (!existsSync(state)) return;
@@ -773,6 +793,7 @@ async function up(flags) {
   if (experimental) {
     // The voters' CA proxies serve HTTPS with the same certificate as Org1's.
     if (https) proxyTls = mkcertCertificate();
+    stopUnlistedVoters();
     await experimentalNetwork.startVotersCas(net, state, tools);
     await experimentalNetwork.createElectionChannels(net, state, tools);
     experimentalNetwork.deployPrivateBallot(net, state, tools);
