@@ -11,7 +11,7 @@
   "scripts": {
     "build": "pnpm -r --filter \"./packages/**\" build && pnpm -r --filter \"./apps/**\" build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --filter \"!@weftwallet/e2e\" test && node --test \"playground/test/*.test.mjs\"",
     "dev": "node scripts/dev-all.mjs",
     "dev:extension": "pnpm --filter @weftwallet/extension dev",
     "dev:extension:experimental": "pnpm --filter @weftwallet/extension dev:experimental",
@@ -27,6 +27,8 @@
     "playground:explorer": "node playground/cli.mjs explorer",
     "playground:count": "node --disable-warning=ExperimentalWarning playground/cli.mjs count",
     "playground:credentials": "node --disable-warning=ExperimentalWarning playground/cli.mjs credentials",
+    "playground:smoke": "node --disable-warning=ExperimentalWarning playground/smoke.mjs",
+    "check:mac": "node --disable-warning=ExperimentalWarning scripts/mac-check.mjs",
     "test:e2e": "WEFT_PRODUCTS=dev pnpm --filter @weftwallet/relay... --filter @weftwallet/site --filter @weftwallet/docs --filter @weftwallet/playground --filter @weftwallet/network build && pnpm --filter @weftwallet/extension build:e2e && pnpm --filter @weftwallet/extension build:e2e:experimental && pnpm --filter @weftwallet/e2e test"
   },
   "devDependencies": {

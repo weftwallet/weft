@@ -14,6 +14,9 @@ coverage/
 .env.*
 !.env.example
 
+# pnpm check:mac's logs (scripts/mac-check.mjs)
+.mac-check/
+
 # End-to-end tests
 e2e/test-results/
 e2e/playwright-report/

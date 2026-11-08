@@ -4,8 +4,11 @@
 
 ```sh
 pnpm install
-pnpm test
+pnpm test        # every package's unit tests and the playground's own (playground/test), not the browser tests
+pnpm typecheck   # tsc everywhere, wxt prepare for the extension and astro check for Weft Playground
 ```
+
+`pnpm test` needs no Fabric CA and no Docker. The browser tests are their own script, `pnpm test:e2e` (below). With Go on your `PATH`, `packages/idemix`'s tests also build the idemix module and its Go test tool; without it they skip and say why.
 
 ## How the packages resolve
 
@@ -29,7 +32,25 @@ pnpm test:e2e              # builds the relay, the sites and the test extension,
 
 To test against real peers, start the playground (`pnpm playground:up`), then run the suite with `WEFT_E2E_STACK=playground`. That also runs the `@fabric` tests, which submit to the `basic` contract. With `pnpm playground:up --experimental`, the `experimental-stack` Playwright project runs too: its setup creates a fresh private election for the run, and its tests vote in it from a site and from Weft Playground with Weft Experimental, count it with `pnpm playground:count` and check it in both explorers (`e2e/support/experimental.ts`). The `voter-credentials` project does the same for voter credentials: its setup creates a fresh election with voter credentials on `privatevote-chair-2027` and registers two voters on its voters' CA, and its test has them enrol and vote from Weft Playground in two browser profiles, then counts the election and runs both explorers' full check. It registers the voters with `fabric-ca-client`, from `FABRIC_CA_BIN` or the playground's Fabric binaries. Without the experimental stack, those tests are skipped.
 
+`pnpm playground:smoke` checks a running experimental playground without a browser, and prints PASS or FAIL for each step: it reads the relay's invite and the voter invite, checks the voters' CA proxy's issuer key against the invite, registers a new voter and enrols it through the proxy with the idemix module, registers a new Org1 user and enrols it through Org1's CA proxy, casts a private ballot as that user and an anonymous ballot as the voter through the relay, and finds both ballots, checked, in both explorers. It registers new IDs each run, so it can run again on the same stack.
+
 CI (`.github/workflows/ci.yml`) runs all three: unit tests and typecheck, the browser tests, and the browser tests against the playground.
+
+## Checks on a Mac with Docker
+
+`pnpm check:mac` (`scripts/mac-check.mjs`) runs, in order, the checks this repository's own machines can't: it needs Docker Desktop or OrbStack running, and Go for the last steps. It takes about half an hour, and takes the playground down first.
+
+1. Docker is running, and `pnpm build`.
+2. `pnpm playground:down`, then `pnpm playground:up --experimental`.
+3. The private-ballot contract, vendored as the peer gets it, builds in `hyperledger/fabric-ccenv:2.5` with no network, so `go.mod`'s `toolchain go1.26.10` line can't make Go download a toolchain.
+4. `pnpm playground:credentials <election>` for each election with voter credentials.
+5. `pnpm playground:smoke`.
+6. `pnpm playground:count <election> --channel <channel>` on a fresh election it creates, as the e2e tests do.
+7. The experimental e2e projects (`experimental-setup`, `experimental-stack`, `voter-credentials-setup`, `voter-credentials`) with `WEFT_E2E_STACK=playground` and the default `playground/.state`.
+8. With mkcert installed, `pnpm playground:up --experimental --https` and the smoke test over HTTPS, then back to HTTP. `--no-https` skips it.
+9. `go mod download` and `go mod verify` in `examples/private-ballot-contract` and `packages/idemix`, and `pnpm --filter @weftwallet/idemix check:wasm`, which builds the module twice and compares both with the pinned hash. These don't need Docker, so they run whatever happened before.
+
+A step that fails stops the steps that depend on it, with a message that says why; the others still run. It ends with a summary, the path of its log (`.mac-check/mac-check-<time>.log`, with every command's whole output, and `--verbose` shows it as it runs), and the list of what to look at by hand on the running playground: Firefox with normal Weft (`pnpm --filter @weftwallet/extension dev:firefox`) for receipts, the salt Weft generates and the explorer handoff; Weft Experimental in Firefox (`pnpm --filter @weftwallet/extension dev:firefox:experimental`) enrolling and voting; that the extension's content security policy lets it reach the relay and the CA proxies on `http://localhost`; and the timings to note for [Prototype results](apps/docs/src/content/docs/experimental/prototype-results.md).
 
 ## Where things go
 
