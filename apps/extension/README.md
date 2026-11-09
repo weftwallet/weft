@@ -9,7 +9,7 @@ pnpm install
 pnpm dev:extension   # opens its own Chrome with Weft loaded, and reloads it as you edit
 ```
 
-That Chrome keeps its profile in `.wxt/chrome-data`, so the wallet you set up in it is still there next time. Delete the folder to start from a new wallet. `dev:firefox` does the same with its own Firefox, in `.wxt/firefox-data`. Before reusing that, web-ext reads Firefox's own `profiles.ini` to make sure it isn't your everyday profile. macOS can block your terminal from reading that file. When it does, the dev Firefox starts with a new profile each time and WXT says so. To keep the profile, give your terminal app access in **System Settings › Privacy & Security › Full Disk Access**, or allow it when macOS asks.
+That Chrome keeps its profile in `.wxt/chrome-data`, so the wallet you set up in it is still there next time. Delete the folder to start from a new wallet. `dev:firefox` does the same with its own Firefox, in `.wxt/firefox-data`. Before reusing that, web-ext reads Firefox's own `profiles.ini` to make sure it isn't your everyday profile, and on macOS it can read that file only when the app you run `pnpm` in has Full Disk Access. Without it, the dev Firefox starts with a new profile each time and WXT says so. To keep the profile, open **System Settings**, then **Privacy & Security**, then **Full Disk Access**, press **+** and add Terminal from Applications/Utilities (or your editor, such as VS Code, if you use its terminal), then restart that app.
 
 In dev, the popup and the windows load their code from WXT's dev server, while the background worker and the content scripts are built to disk and rebuilt as you edit. A browser can keep running an older background after a rebuild, most often in a profile it kept from an earlier run. If anything looks old after a rebuild, reload Weft on the browser's extensions page, or restart the browser. The popup says so when it can tell: every build carries the time it was made, the popup's Security screen shows it under Build for the popup and for the background, and when the background is older than the popup, Home and Security say "Weft's background is older than this window, so they run different code. Reload Weft in your browser's extensions page." (`lib/build-stamp.ts`).
 
@@ -22,11 +22,12 @@ To change how either browser starts (another browser, a page to open), add a `we
 Weft runs in Firefox 140 or later, as Manifest V3 like Chrome.
 
 ```sh
-pnpm --filter @weftwallet/extension dev:firefox            # opens its own Firefox with Weft loaded
-pnpm --filter @weftwallet/extension build -b firefox       # writes .output/firefox-mv3
+pnpm --filter @weftwallet/extension dev:firefox                  # opens its own Firefox with Weft loaded
+pnpm --filter @weftwallet/extension build:firefox                # writes .output/firefox-mv3
+pnpm --filter @weftwallet/extension build:firefox:experimental   # writes .output-experimental/firefox-mv3
 ```
 
-To load a build by hand, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on** and pick `manifest.json` in `.output/firefox-mv3`. Firefox removes a temporary add-on when it closes.
+To load a build by hand, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on** and pick `manifest.json` in `.output/firefox-mv3` (or `.output-experimental/firefox-mv3`). The output folders' names start with a dot, so macOS hides them in the file picker: press Cmd+Shift+. (full stop) there to show them. Firefox removes a temporary add-on when it closes.
 
 ## Permission prompts and the popup
 
@@ -40,7 +41,7 @@ A toolbar popup can't keep a permission prompt in view. Chrome closes the popup 
 pnpm --filter @weftwallet/extension dev:experimental            # its own Chrome, profile in .wxt/chrome-data-experimental
 pnpm --filter @weftwallet/extension dev:firefox:experimental    # its own Firefox, profile in .wxt/firefox-data-experimental
 pnpm --filter @weftwallet/extension build:experimental          # .output-experimental/chrome-mv3
-pnpm --filter @weftwallet/extension build:experimental -b firefox
+pnpm --filter @weftwallet/extension build:firefox:experimental  # .output-experimental/firefox-mv3
 pnpm --filter @weftwallet/extension build:e2e:experimental      # .output-e2e-experimental, for the e2e tests
 ```
 

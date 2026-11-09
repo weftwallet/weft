@@ -462,13 +462,36 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
     const last = voters.at(-1);
     const lead = `${id}'s voters vote anonymously, with a credential from its own voters' CA. Copy the voter invite and paste it into Weft Experimental's Join from an invite, then enrol `;
     if (first && last && demo.elections?.includes(id)) {
-      return [lead, "as ", code(first[0]), " to ", code(last[0]), ", secrets ", code(first[1]), " to ", code(last[1]), ". Each enrolment ID works once."];
+      return [
+        lead,
+        "as ",
+        code(first[0]),
+        " to ",
+        code(last[0]),
+        ", secrets ",
+        code(first[1]),
+        " to ",
+        code(last[1]),
+        ". Each enrolment ID works once, so use one that hasn't enrolled yet. ",
+        code(`pnpm playground:credentials ${id}`),
+        " lists the ones already used.",
+      ];
     }
     const own = demo.elections ?? [];
     return [
       lead,
       `with the enrolment ID and secret registered for you on ${id}'s voters' CA. Each enrolment ID works once.`,
-      ...(first && last && own.length ? [" The playground registers its demo voters, ", code(first[0]), " to ", code(last[0]), `, for ${list(own)}.`] : []),
+      ...(first && last && own.length
+        ? [
+            " The playground registers its demo voters, ",
+            code(first[0]),
+            " to ",
+            code(last[0]),
+            `, for ${list(own)}. Each works once there too, and `,
+            code(`pnpm playground:credentials ${own.length === 1 ? own[0] : "<election>"}`),
+            " lists the ones already used.",
+          ]
+        : []),
     ];
   }
 
