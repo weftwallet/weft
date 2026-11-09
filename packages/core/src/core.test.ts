@@ -178,8 +178,21 @@ describe("plain errors for services that don't answer", () => {
         new Response(JSON.stringify({ success: false, errors: [{ code: 20, message: "Authentication failure" }] }), { status: 401 }),
     });
     const error = await ca.enroll("alice", "wrong", await generateKeyPair()).catch((e) => e);
-    expect(error.message).toMatch(/didn't accept that enrolment ID and secret/);
-    expect(error.detail).toBe("20: Authentication failure");
+    expect(error.message).toMatch(/^The CA at ca\.example\.com didn't accept that enrolment ID and secret/);
+    expect(error.detail).toBe("Asked the CA at ca.example.com. 20: Authentication failure");
+  });
+
+  it("names the CA and its CA name when one server hosts several", async () => {
+    const { FabricCaClient } = await import("./index.ts");
+    const ca = new FabricCaClient({
+      url: "http://localhost:7080/",
+      caName: "ca-org1",
+      fetch: async () =>
+        new Response(JSON.stringify({ success: false, errors: [{ code: 20, message: "Authentication failure" }] }), { status: 401 }),
+    });
+    const error = await ca.enroll("voter1", "voter1pw", await generateKeyPair()).catch((e) => e);
+    expect(error.message).toMatch(/^The CA at localhost:7080 \(CA ca-org1\) didn't accept/);
+    expect(error.detail).toContain("Asked the CA at localhost:7080 (CA ca-org1).");
   });
 
   it("explains an invite server that can't be reached", async () => {

@@ -25,21 +25,27 @@ export class FabricCaError extends Error {
   readonly errors: { code: number; message: string }[];
   readonly detail: string;
 
-  constructor(status: number, errors: { code: number; message: string }[], message?: string) {
+  /**
+   * `ca` names the CA that was asked, such as "localhost:7080 (CA ca-org1)".
+   * It goes into the message where it helps to know which CA refused, and
+   * into the details.
+   */
+  constructor(status: number, errors: { code: number; message: string }[], message?: string, ca?: string) {
     const raw = errors.map((e) => (e.code ? `${e.code}: ${e.message}` : e.message)).join("; ");
-    super(message ?? explainCaErrors(status, errors));
+    super(message ?? explainCaErrors(status, errors, ca));
     this.name = "FabricCaError";
     this.status = status;
     this.errors = errors;
-    this.detail = raw || `HTTP ${status}`;
+    this.detail = [ca ? `Asked the CA at ${ca}.` : "", raw || `HTTP ${status}`].filter(Boolean).join(" ");
   }
 }
 
 /** Fabric CA's messages are written for its operators; these are for the person enrolling. */
-function explainCaErrors(status: number, errors: { code: number; message: string }[]): string {
+function explainCaErrors(status: number, errors: { code: number; message: string }[], ca?: string): string {
   const text = errors.map((e) => e.message).join(" ").toLowerCase();
+  const theCa = ca ? `The CA at ${ca}` : "The CA";
   if (errors.some((e) => e.code === 20) || status === 401 || text.includes("authentication failure")) {
-    return "The CA didn't accept that enrolment ID and secret. Check them with your administrator. A secret usually works only once.";
+    return `${theCa} didn't accept that enrolment ID and secret. Check them with your administrator, and check this is the CA they were issued for. A secret usually works only once.`;
   }
   if (text.includes("max") && text.includes("enroll")) {
     return "This enrolment ID has been used as many times as the CA allows. Ask your administrator for a new secret.";
@@ -48,7 +54,7 @@ function explainCaErrors(status: number, errors: { code: number; message: string
     return "The CA has revoked this identity. Ask your administrator.";
   }
   if (text.includes("not found") || text.includes("not registered") || text.includes("unknown identity")) {
-    return "The CA doesn't know this enrolment ID. Check it with your administrator.";
+    return `${theCa} doesn't know this enrolment ID. Check it with your administrator, and check this is the CA it was registered with.`;
   }
   if (text.includes("ca") && text.includes("does not exist")) {
     return "The CA server doesn't host a CA with that name. Check the CA name in the network's settings.";
@@ -113,6 +119,17 @@ export class FabricCaClient {
     return this.post(path, body, token);
   }
 
+  /** The CA as the person enrolling knows it: its host, and its name when one server hosts several. */
+  private describe(): string {
+    let host = this.url;
+    try {
+      host = new URL(this.url).host;
+    } catch {
+      // Keep the address as it was given.
+    }
+    return this.caName ? `${host} (CA ${this.caName})` : host;
+  }
+
   private body(csr: string): Record<string, string> {
     return this.caName ? { certificate_request: csr, caname: this.caName } : { certificate_request: csr };
   }
@@ -153,7 +170,7 @@ export class FabricCaClient {
       );
     }
     if (!response.ok || !json.success || !json.result?.Cert) {
-      throw new FabricCaError(response.status, json.errors ?? []);
+      throw new FabricCaError(response.status, json.errors ?? [], undefined, this.describe());
     }
     const chain = json.result.ServerInfo?.CAChain;
     return {
