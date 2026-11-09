@@ -2,6 +2,10 @@
 
 ## Setup
 
+Weft is built and tested on Node 22, from 22.23.4, which `.nvmrc` names and CI uses. With fnm or nvm, `fnm use` or `nvm use` in the repository switches to it. With fnm's shell hook (`eval "$(fnm env --use-on-cd --shell zsh)"` in `~/.zshrc`) the switch happens on every `cd` into it, in terminals opened after the hook was added. `pnpm check:mac` and `pnpm check:sideways` stop straight away on another Node and say so. Other Nodes aren't tested: on Node 26, Playwright 1.56's browser install stalls after its download.
+
+After each pull, run `pnpm install`. `pnpm <script>` refuses to run while `node_modules` is older than `pnpm-lock.yaml` (`verifyDepsBeforeRun` in `pnpm-workspace.yaml`) and says to run it.
+
 ```sh
 pnpm install
 pnpm test        # every package's unit tests and the playground's own (playground/test), not the browser tests

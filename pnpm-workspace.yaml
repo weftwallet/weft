@@ -3,6 +3,10 @@ packages:
   - "apps/*"
   - "e2e"
 
+# pnpm <script> refuses to run when node_modules is older than pnpm-lock.yaml,
+# and says to run pnpm install. It never installs by itself.
+verifyDepsBeforeRun: error
+
 onlyBuiltDependencies:
   - esbuild
   - sharp

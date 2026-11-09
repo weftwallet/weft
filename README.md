@@ -57,7 +57,7 @@ Browsers can't open gRPC connections to Fabric peers, so each organisation runs 
 
 ## Develop
 
-Requires Node 22.13 or later and pnpm 10.
+Requires Node 22, from 22.23.4 (the repository's `.nvmrc` says 22), and pnpm 10.
 
 ```sh
 pnpm install

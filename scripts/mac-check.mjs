@@ -19,6 +19,9 @@ import { cpSync, createWriteStream, existsSync, mkdirSync, mkdtempSync, readFile
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { requirePinnedNode } from "./node-version.mjs";
+
+requirePinnedNode();
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const flags = new Set(process.argv.slice(2).filter((a) => a !== "--"));
