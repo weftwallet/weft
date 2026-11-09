@@ -6,6 +6,7 @@ import { useFeedback } from "../feedback";
 import { useChecks } from "../form";
 import { openPasskeyWindow } from "../lock";
 import { ActionError, BackHeader, Button, Field, Icon, SecretInput, Select, timeAgo, toErrorInfo, tokenMs } from "../ui";
+import { BuildDetails } from "./BuildInfo";
 import { focusTargetAfter, useLeaving } from "./lists";
 import { useAction, type Navigate } from "./state";
 
@@ -152,6 +153,8 @@ export function Security({
             </span>
           </div>
         )}
+
+        <BuildDetails />
       </main>
     </>
   );

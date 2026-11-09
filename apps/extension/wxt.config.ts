@@ -42,6 +42,39 @@ function idemixModule(): string {
 }
 const EXPERIMENTAL_CSP = "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';";
 
+// Each build carries the time it was made, import.meta.env.WEFT_BUILT_AT (an
+// ISO string), so the popup can tell when the background runs other code
+// than its own window (lib/build-stamp.ts). A release build has one stamp,
+// taken as it starts. In dev, the background is built to disk and rebuilt on
+// each change, while pages load from the Vite dev server: the stamp is then
+// the time of the background's latest build, and the dev server gives each
+// page the stamp current when the page loads. The two match unless the
+// browser kept running an older background. Kept on globalThis because WXT
+// loads this file again on every change in dev.
+interface BuildStamp {
+  at: string;
+  /** True under `wxt` (dev), false under `wxt build`. */
+  serve: boolean;
+  /** Dev servers, and the modules each has transformed that read the stamp. */
+  pages: Map<DevServer, Set<string>>;
+}
+interface DevServer {
+  moduleGraph: { getModuleById(id: string): unknown; invalidateModule(module: never): void };
+}
+const stamp: BuildStamp = ((globalThis as { weftBuildStamp?: BuildStamp }).weftBuildStamp ??= { at: new Date().toISOString(), serve: false, pages: new Map() });
+const STAMP_KEY = "import.meta.env.WEFT_BUILT_AT";
+
+/** A new stamp, and every page module the dev servers hold marked for transforming again, so a page that loads next reads it. */
+function restamp(): void {
+  stamp.at = new Date().toISOString();
+  for (const [server, ids] of stamp.pages) {
+    for (const id of ids) {
+      const module = server.moduleGraph.getModuleById(id);
+      if (module) server.moduleGraph.invalidateModule(module as never);
+    }
+  }
+}
+
 // Before reusing a Firefox profile, web-ext reads Firefox's own profiles.ini
 // to make sure it isn't your everyday profile. macOS can refuse a terminal
 // that read, and web-ext then stops. Where it can't be read, the dev Firefox
@@ -70,8 +103,23 @@ export default defineConfig({
   // Reads the workspace packages from their source, so a stale build is never used.
   vite: () => ({
     ...source,
-    define: { "import.meta.env.WEFT_EXPERIMENTAL": JSON.stringify(experimental) },
+    define: { "import.meta.env.WEFT_EXPERIMENTAL": JSON.stringify(experimental), [STAMP_KEY]: JSON.stringify(stamp.at) },
     plugins: [
+      {
+        // The dev server's pages read the stamp as each module is
+        // transformed, not when the server started (above).
+        name: "weft-build-stamp",
+        apply: "serve" as const,
+        enforce: "pre" as const,
+        configureServer(server: DevServer) {
+          stamp.pages.set(server, new Set());
+        },
+        transform(code: string, id: string) {
+          if (!code.includes(STAMP_KEY)) return null;
+          for (const ids of stamp.pages.values()) ids.add(id);
+          return { code: code.replaceAll(STAMP_KEY, JSON.stringify(stamp.at)), map: null };
+        },
+      },
       {
         // The windows' titles ("Weft · Approve request") name the product.
         name: "weft-product-name",
@@ -90,6 +138,18 @@ export default defineConfig({
     ...(keepFirefoxProfile ? { firefoxProfile: `./.wxt/firefox-data${profileSuffix}`, keepProfileChanges: true } : {}),
   },
   hooks: {
+    "config:resolved": (wxt) => {
+      stamp.serve = wxt.config.command === "serve";
+    },
+    "build:before": () => {
+      stamp.at = new Date().toISOString();
+    },
+    // In dev, each build of the background takes a new stamp (above).
+    "vite:build:extendConfig": (entrypoints, config) => {
+      if (!stamp.serve) return;
+      if (entrypoints.some((e) => e.type === "background")) restamp();
+      config.define = { ...config.define, [STAMP_KEY]: JSON.stringify(stamp.at) };
+    },
     // The idemix module's worker (entrypoints/idemix-worker.ts) is Weft
     // Experimental's alone, so the normal build leaves the entrypoint out.
     "entrypoints:found": (_wxt, infos) => {

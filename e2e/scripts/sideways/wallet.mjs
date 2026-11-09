@@ -122,11 +122,14 @@ export function fakeWorker(canned) {
     receiptGet: canned.receipt ?? null,
     receiptsOf: { count: 1, elections: ["board-of-directors-2026-annual-election"] },
     keepAlive: null,
+    // Unanswered unless a screen asks for it, as a slow worker would: no notice about the build.
+    ...(canned.buildInfo ? { buildInfo: canned.buildInfo } : {}),
   };
   window.close = () => {};
   const runtime = {
     id: "weft",
     getURL: (p) => p,
+    getManifest: () => ({ version: "0.1.0" }),
     onMessage: listeners,
     sendMessage: async (req) => {
       if (req?.channel !== "weft-ui") return undefined;
@@ -163,6 +166,10 @@ const steps = (...fns) => async (page, width) => {
  * whatever size they are given, so they are checked at every width.
  */
 const popup = (name, worker, ...fns) => ({ name, path: "/popup.html", minWidth: 360, worker: { state: state(), activity, ...worker }, run: steps(...fns) });
+/** popup.html opened in a tab (lib/permissions.ts), which fills whatever size the tab is: checked at every width. */
+const popupTab = (name, worker, ...fns) => ({ name, path: "/popup.html?tab=1", worker: { state: state(), activity, ...worker }, run: steps(...fns) });
+/** A background built before Weft stamped its builds, so the popup says it's older. */
+const olderBackground = { buildInfo: { builtAt: null } };
 const approve = (name, worker, ...fns) => ({ name, path: "/approve.html?id=req", worker: { state: state(), ...worker }, run: steps(...fns) });
 
 export const wallet = {
@@ -191,6 +198,11 @@ export const wallet = {
     popup("popup: import", {}, press("Manage identities"), press("Add"), press("Import PEM")),
     popup("popup: generate a CSR", {}, press("Manage identities"), press("Add"), press("Generate CSR")),
     popup("popup: security", {}, press("Security")),
+    popup("popup: home, background older", olderBackground),
+    popup("popup: security, background older", olderBackground, press("Security")),
+    popup("popup: welcome, background older", { ...olderBackground, state: state({ identities: [], networks: [], pendingCsrs: [], sites: [], vault: vault("none") }) }),
+    popupTab("popup in a tab: home"),
+    popupTab("popup in a tab: join from an invite", {}, press("Manage identities"), press("Add"), press("Join from an invite")),
     approve("window: connect", { view: { id: "req", origin: submitView.origin, method: "weft_connect", call: null, identity: identityView } }),
     approve("window: sign in", { view: { id: "req", origin: submitView.origin, method: "weft_signIn", call: null, identity: identityView, statement: "Sign in to Northwind Trade Finance to see your letters of credit and invoices." } }),
     approve("window: add a network", { view: { id: "req", origin: submitView.origin, method: "weft_addNetwork", call: null, identity: identityView, inviteUrl: northwind.inviteUrl } }),

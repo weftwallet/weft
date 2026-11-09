@@ -25,6 +25,7 @@ import { attachVoterPort, ballotModuleFailed, ballotRead, ballotRefreshInvite } 
 import { anonymousActivity, anonymousItem, anonymousReceiptView, removeAnonymousReceipt } from "../lib/voter/activity";
 import { PORT_PREFIX } from "../lib/voter/remote";
 import { addVoterCredential, removeVoterCredential, voterCredential } from "../lib/voter/store";
+import { BUILT_AT } from "../lib/build-stamp";
 import { checkCertificates, registerCertificateWatch } from "../lib/certificate-watch";
 import * as receipts from "../lib/receipts";
 import * as vault from "../lib/vault";
@@ -117,6 +118,7 @@ const handlers: Handlers = {
   receiptsOf: ({ identityId }) => receipts.receiptsOf(identityId),
   approvalsPending: async () => pendingApprovals(),
   keepAlive: async () => null,
+  buildInfo: async () => ({ builtAt: BUILT_AT }),
   vaultStatus: () => vault.status(),
   vaultSetup: async ({ password }) => (await vault.setup(password), vault.status()),
   vaultUnlock: async ({ password }) => (await vault.unlockWithPassword(password), vault.status()),
@@ -141,7 +143,7 @@ const handlers: Handlers = {
 
 // Using Weft from its own pages counts as activity for the auto-lock, except
 // the requests an open window sends on its own.
-const PASSIVE: UiMethod[] = ["keepAlive", "state", "vaultStatus", "approvalGet", "approvalsPending"];
+const PASSIVE: UiMethod[] = ["keepAlive", "buildInfo", "state", "vaultStatus", "approvalGet", "approvalsPending"];
 
 export default defineBackground(() => {
   const extensionOrigin = new URL(browser.runtime.getURL("/")).origin;

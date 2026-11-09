@@ -245,6 +245,8 @@ export interface UiApi {
   refreshInvite: [{ networkId: string }, OrgInvite];
   /** Sent by open approval windows so the worker isn't stopped mid-approval. */
   keepAlive: [undefined, null];
+  /** When the background's code was built (lib/build-stamp.ts), for the popup to compare with its own. */
+  buildInfo: [undefined, { builtAt: string | null }];
 
   /* The lock (docs/adr/0005). Byte arrays travel as number[]. */
   vaultStatus: [undefined, VaultStatus];

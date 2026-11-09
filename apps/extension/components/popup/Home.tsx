@@ -6,6 +6,7 @@ import { requestHostAccess } from "../../lib/permissions";
 import { CopyButton, useFeedback } from "../feedback";
 import { ActionError, Button, Empty, Icon, Logo, Select, compactHex, healthView, shorten, timeAgo, toErrorInfo, tokenMs, useFocusOnArrival, type ErrorInfo } from "../ui";
 import { FILTER_FROM, FilterInput, GroupHeading, focusTargetAfter, groupByNetwork, matches, namesSummary, useLeaving } from "./lists";
+import { BuildNotice, useBuildCheck } from "./BuildInfo";
 import { AddIdentityOptions } from "./Identities";
 import { useAction, useActivityEvents, voterCredentialsOf, type Navigate } from "./state";
 
@@ -36,6 +37,7 @@ export function Home({
   memory: HomeMemory;
 }) {
   const { toast } = useFeedback();
+  const build = useBuildCheck();
   // Null only in Weft Experimental, when Weft holds nothing but voter credentials, which are never active.
   const active = state.identities.find((i) => i.id === state.settings.activeIdentityId) ?? state.identities[0] ?? null;
   const voter = active ? null : (voterCredentialsOf(state)[0] ?? null);
@@ -177,6 +179,7 @@ export function Home({
       </header>
 
       <main ref={page} className="page">
+        <BuildNotice check={build} />
         {active ? (
           <IdentityCard
             key={active.id}

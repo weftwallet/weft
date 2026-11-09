@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { browser } from "wxt/browser";
 import { CompleteCsr, CsrForm, EnrollForm, ImportForm, JoinInvite } from "../../components/popup/AddForms";
+import { BuildNotice, useBuildCheck } from "../../components/popup/BuildInfo";
 import { Home, type HomeMemory } from "../../components/popup/Home";
 import { AddIdentity, AddIdentityOptions, Identities } from "../../components/popup/Identities";
 import { NetworkSettings } from "../../components/popup/NetworkSettings";
@@ -319,9 +320,11 @@ function Welcome({ navigate }: { navigate: (r: Route) => void }) {
     };
   }, []);
   const joining = usePendingApproval("weft_addNetwork");
+  const build = useBuildCheck();
 
   return (
     <main className="page welcome stagger">
+      <BuildNotice check={build} />
       <div className="welcome__mark">{mode && <ReplayMark size={72} draw={mode === "draw"} />}</div>
       <div className="welcome__words">
         <h1 ref={heading} tabIndex={-1} className="wordmark">
