@@ -228,10 +228,11 @@ function compareGo(a, b) {
 
 /**
  * The contract is written in Go (docs/adr/0007), and Fabric's deployment
- * vendors its modules with the local Go. Its go.mod needs Go 1.26.3 or later
- * and names the toolchain go1.26.10, for IBM idemix (docs/adr/0008). An older
- * Go, from 1.21, downloads that toolchain when it vendors the contract,
- * unless GOTOOLCHAIN stops it. Called before anything starts. Returns the
+ * vendors its modules with the local Go. Its go.mod needs Go 1.26.3 or later,
+ * for IBM idemix (docs/adr/0008), and has no toolchain line, so that
+ * fabric-ccenv's Go 1.26.4 builds it without a download. An older local Go,
+ * from 1.21, downloads go1.26.3 when it vendors the contract, unless
+ * GOTOOLCHAIN stops it. Called before anything starts. Returns the
  * line cli.mjs prints.
  */
 export function checkGo({ fail }) {
