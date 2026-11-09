@@ -5,7 +5,8 @@
  * browser, finds the other organisations' explorers through the ones it
  * knows, and compares block hashes directly. A member can sign in with Weft
  * once; each explorer that names this page then gives it a token for what it
- * publishes to members.
+ * publishes to members. With Weft and Weft Experimental both installed, the
+ * page offers to sign in with either (docs/adr/0010).
  */
 interface Props {
   /** The demo network's explorers, when one is hosted; the page opens on them. */
@@ -55,7 +56,9 @@ const { demoExplorers = [] } = Astro.props;
     <div class="action-error" id="nw-error" role="alert" hidden></div>
     <div class="nw-signin" id="nw-signin" hidden>
       <p class="nw-hint" id="nw-signin-text">Members of the network can sign in with Weft to include members-only channels.</p>
-      <button type="button" class="btn" id="nw-signin-button">Sign in with Weft</button>
+      <div class="nw-signin__actions" id="nw-signin-actions">
+        <button type="button" class="btn" id="nw-signin-button">Sign in with Weft</button>
+      </div>
       <div class="action-error" id="nw-signin-error" role="alert" hidden></div>
     </div>
   </div>
@@ -64,6 +67,7 @@ const { demoExplorers = [] } = Astro.props;
 <script>
   import type { BlockHeader, MemberCas, SignedCheckpoint } from "@weftwallet/core/chain";
   import { announce, clearError, closesInReverse, conceal, fetchProblem, grouped, isBusy, isWebUrl, reveal, setBusy, setFieldError, showError, technical, tokenMs, watchFields } from "@weftwallet/ui/ui";
+  import { onWallets, wallets, type WeftProvider } from "@weftwallet/ui/wallets";
 
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
   /** The public demo network's explorers, when one is hosted (products.json, "demo"). */
@@ -628,21 +632,40 @@ const { demoExplorers = [] } = Astro.props;
     }, REFRESH_MS);
   }
 
+  /** With two wallets: a Sign in button for each, after the main one, which is then hidden. */
+  function walletButtons(): HTMLButtonElement[] {
+    return [...$("nw-signin-actions").querySelectorAll<HTMLButtonElement>("button[data-wallet]")];
+  }
+
   function showSignIn() {
     const box = $("nw-signin");
     box.hidden = explorers.length === 0;
     const button = $<HTMLButtonElement>("nw-signin-button");
-    if (isBusy(button)) return;
+    if (isBusy(button) || walletButtons().some(isBusy)) return;
     const textP = $("nw-signin-text");
+    const list = signedIn ? [] : wallets();
+    if (list.length < 2) walletButtons().forEach((b) => b.remove());
+    button.hidden = list.length >= 2;
     if (!signedIn) {
       text(
         textP,
-        (window as any).weft?.isWeft
+        (window as any).weft?.isWeft || list.length
           ? "Members of the network can sign in with Weft to include members-only channels."
           : "Members of the network can sign in with Weft to include members-only channels. Install Weft in this browser to sign in.",
       );
       text(button, "Sign in with Weft");
       button.disabled = !(window as any).weft?.isWeft;
+      if (list.length >= 2 && walletButtons().length !== list.length) {
+        const had = $("nw-signin-actions").contains(document.activeElement);
+        walletButtons().forEach((b) => b.remove());
+        for (const wallet of list) {
+          const b = Object.assign(document.createElement("button"), { type: "button", className: "btn", textContent: `Sign in with ${wallet.info.name}` });
+          b.dataset.wallet = wallet.info.uuid;
+          b.addEventListener("click", () => signIn(b, wallet.provider, wallet.info.name));
+          $("nw-signin-actions").append(b);
+        }
+        if (had) walletButtons()[0]!.focus();
+      }
       return;
     }
     const who = `${signedIn.name ?? "you"} (${signedIn.mspId})`;
@@ -657,21 +680,50 @@ const { demoExplorers = [] } = Astro.props;
     return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
 
-  /** What a wallet error means, for the sign-in. */
-  function signInProblem(error: any): string {
-    if (error?.code === 4001) return "You rejected the request in Weft, so you're not signed in. Sign in again when you're ready.";
-    if (error?.code === 4300) return "Weft has no identity yet. Join your organisation's network in Weft first.";
-    if (error?.code === 4301) return "Your certificate has expired. Renew it in Weft, then sign in again.";
-    if (error?.code === -32002) return "Weft already has a request from this page waiting. Finish it in the Weft window first.";
+  /** What a wallet error means, for the sign-in. `name` is the wallet's: Weft, or Weft Experimental. */
+  function signInProblem(error: any, name = "Weft"): string {
+    if (error?.code === 4001) return `You rejected the request in ${name}, so you're not signed in. Sign in again when you're ready.`;
+    if (error?.code === 4300) return `${name} has no identity yet. Join your organisation's network in ${name} first.`;
+    if (error?.code === 4301) return `Your certificate has expired. Renew it in ${name}, then sign in again.`;
+    if (error?.code === -32002) return `${name} already has a request from this page waiting. Finish it in the ${name} window first.`;
     return "Sign-in didn't complete. Try again.";
+  }
+
+  /** Signs in to the explorers with one wallet's identity, from `button`. */
+  async function signIn(button: HTMLButtonElement, weft: WeftProvider, name: string) {
+    if (isBusy(button)) return;
+    clearError($("nw-signin-error"));
+    setBusy(button, true);
+    const hadFocus = $("nw-signin-actions").contains(document.activeElement);
+    try {
+      await weft.request({ method: "weft_connect" });
+      const signed = await weft.request({
+        method: "weft_signIn",
+        params: { nonce: randomNonce(), statement: "Sign in to this network's explorers, for the members-only channels." },
+      });
+      signedIn = { message: signed.message, signature: signed.signature, certificate: signed.certificate, mspId: signed.mspId, name: null };
+      generation++;
+      await signInEverywhere();
+      await refresh();
+      render();
+      announce(`Signed in as ${signedIn.name ?? signedIn.mspId}.`);
+      schedule();
+    } catch (error: any) {
+      showError($("nw-signin-error"), signInProblem(error, name), technical(error));
+    } finally {
+      setBusy(button, false);
+      showSignIn();
+      // The wallet's own button is gone once signed in: Sign out takes its place.
+      if (hadFocus && !button.isConnected) $("nw-signin-button").focus();
+    }
   }
 
   $("nw-signin-button").addEventListener("click", async () => {
     const button = $<HTMLButtonElement>("nw-signin-button");
     if (isBusy(button)) return;
-    clearError($("nw-signin-error"));
-    setBusy(button, true);
     if (signedIn) {
+      clearError($("nw-signin-error"));
+      setBusy(button, true);
       signedIn = null;
       tokens.clear();
       refused.clear();
@@ -687,28 +739,10 @@ const { demoExplorers = [] } = Astro.props;
       }
       return;
     }
-    const weft = (window as any).weft;
-    try {
-      await weft.request({ method: "weft_connect" });
-      const signed = await weft.request({
-        method: "weft_signIn",
-        params: { nonce: randomNonce(), statement: "Sign in to this network's explorers, for the members-only channels." },
-      });
-      signedIn = { message: signed.message, signature: signed.signature, certificate: signed.certificate, mspId: signed.mspId, name: null };
-      generation++;
-      await signInEverywhere();
-      await refresh();
-      render();
-      announce(`Signed in as ${signedIn.name ?? signedIn.mspId}.`);
-      schedule();
-    } catch (error: any) {
-      showError($("nw-signin-error"), signInProblem(error), technical(error));
-    } finally {
-      setBusy(button, false);
-      showSignIn();
-    }
+    await signIn(button, (window as any).weft, "Weft");
   });
   window.addEventListener("weft#initialized", showSignIn, { once: true });
+  onWallets(showSignIn);
 
   /**
    * Finds the explorers. `quiet` is the demo network, opened by default;
@@ -891,6 +925,11 @@ const { demoExplorers = [] } = Astro.props;
   }
   .nw-signin .nw-hint {
     flex: 1 1 16rem;
+  }
+  .nw-signin__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-2);
   }
   .nw-signin .action-error {
     flex: 1 0 100%;

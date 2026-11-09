@@ -1,8 +1,10 @@
 ---
 // Experimental (docs/adr/0009): the "Private election" section, for
-// weft_castBallot (docs/adr/0007). Playground.astro shows it only when
-// window.weft.features includes "castBallot", which only Weft Experimental
-// lists.
+// weft_castBallot (docs/adr/0007). Playground.astro shows it only when a
+// Weft in the browser lists "castBallot" in its features, which only Weft
+// Experimental does. With Weft and Weft Experimental both installed, the
+// section casts with the one that lists it (docs/adr/0010), whichever holds
+// window.weft.
 //
 // It lists the private elections that the invite's explorer publishes, read
 // from the explorer's JSON API, so reading needs no connection to Weft. It
@@ -105,6 +107,7 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
 <script>
   import { WeftClient, type CastBallotResult, type WeftProvider } from "@weftwallet/sdk";
   import { announce, clearError, conceal, fetchProblem, grouped, isBusy, reveal, setBusy, shortened, showError, technical } from "@weftwallet/ui/ui";
+  import { walletWith } from "@weftwallet/ui/wallets";
   import { logged } from "../scripts/provider-log.ts";
 
   /* What the explorer's JSON API returns (apps/explorer/src/private-elections.ts). */
@@ -149,7 +152,6 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
   type Listed = Summary & { channel: string };
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  const w = window as any;
   const section = $("pg-private");
   const root = section.closest<HTMLElement>(".pg")!;
   const timeOf = (d: string | number) => new Date(d).toLocaleString("en-GB", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
@@ -175,8 +177,10 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
 
   let explorer: string | null = root.dataset.explorer || null;
   let relay: string | null = root.dataset.relay || null;
-  /** Whether this Weft can hold voter credentials. */
-  const holdsCredentials = () => Array.isArray(w.weft?.features) && w.weft.features.includes("voterCredentials");
+  /** The Weft that casts ballots: window.weft when it lists castBallot, or else the announced Weft that does. */
+  const ballotWallet = () => walletWith("castBallot");
+  /** Whether that Weft can hold voter credentials. */
+  const holdsCredentials = () => ballotWallet()?.features.includes("voterCredentials") ?? false;
   const anonymous = (e: { anonymous?: unknown }) => !!e.anonymous;
   const inviteUrl = (id: string) => `${relay}/.well-known/weft-voter-invite/${encodeURIComponent(id)}.json`;
   let elections: Listed[] = [];
@@ -537,9 +541,9 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
 
   /* ---------------- casting ---------------- */
 
-  /** window.weft, with every request in the provider log, for the SDK's client. */
+  /** The ballot wallet, with every request in the provider log, for the SDK's client. */
   function provider(): WeftProvider {
-    const weft = w.weft;
+    const weft = ballotWallet()!;
     return {
       isWeft: true,
       version: weft.version,
@@ -559,7 +563,7 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
 
   async function cast() {
     const button = $<HTMLButtonElement>("pg-pe-vote");
-    if (!view || !w.weft || isBusy(button)) return;
+    if (!view || !ballotWallet() || isBusy(button)) return;
     const v = view;
     const key = keyOf(v);
     setBusy(button, true);

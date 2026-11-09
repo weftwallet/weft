@@ -233,6 +233,18 @@ function fakeProvider() {
   };
 }
 
+/**
+ * Runs in the page before its scripts: Weft and Weft Experimental, each
+ * announcing a provider when asked (docs/adr/0010), so a page offers both.
+ */
+function twoWallets() {
+  const provider = () => Object.freeze({ isWeft: true, version: "0.1.0", features: [], request: async () => null, on() {}, off() {} });
+  for (const [name, rdns] of [["Weft", "dev.ifeanyiugwu.weft"], ["Weft Experimental", "dev.ifeanyiugwu.weft.experimental"]]) {
+    const detail = Object.freeze({ info: Object.freeze({ uuid: crypto.randomUUID(), name, rdns, icon: "" }), provider: provider() });
+    window.addEventListener("weft:requestProvider", () => window.dispatchEvent(new CustomEvent("weft:announceProvider", { detail })));
+  }
+}
+
 function statesFor(product, path, ctx) {
   const states = [{ name: "as loaded", run: async () => true }];
   if (path === "/" || path === "/index.html") states.push(productsMenu);
@@ -251,6 +263,16 @@ function statesFor(product, path, ctx) {
   }
   if (product === "site" && path === "/join/") {
     states.push({ name: "with an invite", url: `/join/?weft-invite=${encodeURIComponent(LONG_INVITE)}`, run: async (page) => (await page.waitForTimeout(1200), true) });
+    states.push({
+      name: "with an invite and two wallets",
+      url: `/join/?weft-invite=${encodeURIComponent(LONG_INVITE)}`,
+      init: twoWallets,
+      run: async (page) => {
+        await page.getByRole("button", { name: "Add to Weft Experimental" }).waitFor({ timeout: 5000 });
+        await page.waitForTimeout(600);
+        return true;
+      },
+    });
   }
   if (product === "network" && path === "/" && ctx.explorer) {
     // Opened on the sample explorer, as a link with ?explorer= opens it.

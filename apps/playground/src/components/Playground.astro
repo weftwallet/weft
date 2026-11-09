@@ -234,6 +234,7 @@ const { demoInvite = null } = Astro.props;
 
 <script>
   import { announce, clearError, closesInReverse, conceal, fetchProblem, isBusy, isWebUrl, reveal, setBusy, shortened, showError, technical, watchFields } from "@weftwallet/ui/ui";
+  import { onWallets, wallets } from "@weftwallet/ui/wallets";
   import { log, logged } from "../scripts/provider-log.ts";
 
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
@@ -325,14 +326,19 @@ const { demoInvite = null } = Astro.props;
 
   /**
    * Sections for a feature only some Weft builds have, marked data-feature
-   * (PrivateElection.astro): shown only when window.weft.features lists it.
+   * (PrivateElection.astro): shown only when a Weft in this browser lists it,
+   * window.weft or another that announced itself (docs/adr/0010). With Weft
+   * and Weft Experimental both installed, the section uses the one that
+   * lists it.
    */
   function showFeatureSections() {
-    const features: unknown[] = Array.isArray(weft?.features) ? weft.features : [];
+    const features = new Set<unknown>(Array.isArray(weft?.features) ? weft.features : []);
+    for (const wallet of wallets()) for (const feature of wallet.provider.features ?? []) features.add(feature);
     for (const section of document.querySelectorAll<HTMLElement>("[data-feature]")) {
-      section.hidden = !features.includes(section.dataset.feature);
+      section.hidden = !features.has(section.dataset.feature);
     }
   }
+  onWallets(showFeatureSections);
 
   function detect() {
     if (w.weft?.isWeft) {

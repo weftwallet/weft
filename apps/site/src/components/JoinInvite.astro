@@ -1,6 +1,7 @@
 ---
 // The landing page behind invite links: previews the invite and hands it to
-// the Weft extension with weft_addNetwork.
+// the Weft extension with weft_addNetwork. With Weft and Weft Experimental
+// both installed, it offers one button for each (docs/adr/0010).
 import { productHref } from "@weftwallet/ui/links";
 ---
 
@@ -23,7 +24,7 @@ import { productHref } from "@weftwallet/ui/links";
       <p class="weft-muted" id="join-preview-failed" hidden></p>
     </div>
 
-    <div class="weft-actions">
+    <div class="weft-actions" id="join-actions">
       <button type="button" class="btn btn--primary" id="join-open">Open in Weft</button>
     </div>
     <p class="weft-status" id="join-status" hidden></p>
@@ -42,6 +43,7 @@ import { productHref } from "@weftwallet/ui/links";
 
 <script>
   import { announce, clearError, isBusy, reveal, setBusy, showError, technical, tokenMs } from "@weftwallet/ui/ui";
+  import { onWallets, wallets, type WeftProvider, type WeftProviderDetail } from "@weftwallet/ui/wallets";
 
   const $ = (id: string) => document.getElementById(id)!;
   const raw = new URLSearchParams(window.location.search).get("weft-invite");
@@ -108,33 +110,55 @@ import { productHref } from "@weftwallet/ui/links";
       announce(text);
     };
 
-    $("join-open").addEventListener("click", async () => {
-      const button = $("join-open");
+    /**
+     * Hands the invite to one wallet. `name` is the wallet's, in what the
+     * page says, and `again` names the button to press again.
+     */
+    async function addTo(button: HTMLElement, find: () => Promise<WeftProvider | null>, name: string, again: string) {
       if (isBusy(button)) return;
       setBusy(button, true);
       clearError($("join-error"));
       $("join-status").hidden = true;
       try {
-        const weft = await waitForWeft();
+        const weft = await find();
         if (!weft) {
           reveal($("join-install"));
           $("join-install-title").focus();
           return;
         }
-        say("Continue in the Weft window.");
+        say(`Continue in the ${name} window.`);
         await weft.request({ method: "weft_addNetwork", params: { url } });
-        say("You're enrolled. The network is in Weft.");
+        say(`You're enrolled. The network is in ${name}.`);
       } catch (error: any) {
         $("join-status").hidden = true;
         showError(
           $("join-error"),
-          error?.code === 4001 ? "You rejected the request in Weft, so the network wasn't added. Open in Weft again when you're ready." : "Weft couldn't add the network. Try again, or ask your administrator to check the invite.",
+          error?.code === 4001 ? `You rejected the request in ${name}, so the network wasn't added. ${again} again when you're ready.` : `${name} couldn't add the network. Try again, or ask your administrator to check the invite.`,
           error?.code === 4001 ? null : technical(error),
         );
       } finally {
         setBusy(button, false);
       }
-    });
+    }
+
+    $("join-open").addEventListener("click", () => addTo($("join-open"), waitForWeft, "Weft", "Open in Weft"));
+
+    // Two wallets: one button for each, named after it, in place of Open in Weft.
+    const showWallets = (list: WeftProviderDetail[]) => {
+      if (list.length < 2) return;
+      const actions = $("join-actions");
+      const had = actions.contains(document.activeElement);
+      const buttons = list.map((wallet, i) => {
+        const label = `Add to ${wallet.info.name}`;
+        const button = Object.assign(document.createElement("button"), { type: "button", className: i === 0 ? "btn btn--primary" : "btn", textContent: label });
+        button.addEventListener("click", () => addTo(button, async () => wallet.provider, wallet.info.name, label));
+        return button;
+      });
+      actions.replaceChildren(...buttons);
+      if (had) buttons[0]!.focus();
+    };
+    showWallets(wallets());
+    onWallets(showWallets);
   }
 </script>
 
@@ -147,6 +171,11 @@ import { productHref } from "@weftwallet/ui/links";
   }
   #join-main {
     margin-top: 0;
+  }
+  .weft-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-2);
   }
   .weft-card {
     border: 1px solid var(--weft-line-strong);
