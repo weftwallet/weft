@@ -1,5 +1,6 @@
 import { browser } from "wxt/browser";
 import { UiError } from "./messages";
+import { saveCarry } from "./tab-carry";
 
 /*
  * A toolbar popup can't keep a permission prompt in view. Chrome closes the
@@ -56,20 +57,26 @@ export function setTabLink(link: string): void {
   tabLink = link;
 }
 
-/** The tab's address part after popup.html?tab=1: the screen, and the link when there is one. */
-function tabHash(): string {
-  if (!tabRoute) return "";
-  return `#${encodeURIComponent(JSON.stringify(tabLink ? { ...tabRoute, link: tabLink } : tabRoute))}`;
+/**
+ * The tab's address part after popup.html?tab=1: the screen, the link when
+ * there is one, and the id of the other fields saved for the tab
+ * (lib/tab-carry.ts). The fields themselves never go in the address.
+ */
+function tabHash(route: { name: string } | null, link: string, carry: string | null): string {
+  if (!route) return "";
+  return `#${encodeURIComponent(JSON.stringify({ ...route, ...(link ? { link } : {}), ...(carry ? { carry } : {}) }))}`;
 }
 
-/** The screen a tab opened by the popup starts on, or null. */
-export function tabStart(): { route: { name: string; [key: string]: unknown } | null } {
-  if (!new URLSearchParams(location.search).has("tab") || location.hash.length < 2) return { route: null };
+/** The screen a tab opened by the popup starts on, or null, and the id its fields were saved under, or null. */
+export function tabStart(): { route: { name: string; [key: string]: unknown } | null; carry: string | null } {
+  if (!new URLSearchParams(location.search).has("tab") || location.hash.length < 2) return { route: null, carry: null };
   try {
-    const route = JSON.parse(decodeURIComponent(location.hash.slice(1))) as unknown;
-    return { route: route && typeof route === "object" && typeof (route as { name?: unknown }).name === "string" ? (route as { name: string }) : null };
+    const parsed = JSON.parse(decodeURIComponent(location.hash.slice(1))) as unknown;
+    if (!parsed || typeof parsed !== "object" || typeof (parsed as { name?: unknown }).name !== "string") return { route: null, carry: null };
+    const { carry, ...route } = parsed as { name: string; carry?: unknown };
+    return { route, carry: typeof carry === "string" && carry !== "" ? carry : null };
   } catch {
-    return { route: null };
+    return { route: null, carry: null };
   }
 }
 
@@ -117,9 +124,15 @@ export async function requestHostAccess(urls: string[], what = "your organisatio
   // "localhost:8787" as a different host from the manifest's "localhost"
   // and refuses it as undeclared.
   const origins = Array.from(new Set(parsed.map((u) => `${u.protocol}//${u.hostname}/*`)));
-  // The toolbar popup can't keep the prompt in view (above): continue in a tab instead.
+  // The toolbar popup can't keep the prompt in view (above): continue in a
+  // tab instead, with the screen's other fields saved for it first. Secrets
+  // stay behind (lib/tab-carry.ts).
   if (inToolbarPopup() && !holdsAll(origins)) {
-    void browser.tabs.create({ url: `${browser.runtime.getURL("/popup.html")}?tab=1${tabHash()}` }).then(() => window.close());
+    const route = tabRoute;
+    const link = tabLink;
+    void saveCarry()
+      .then((carry) => browser.tabs.create({ url: `${browser.runtime.getURL("/popup.html")}?tab=1${tabHash(route, link, carry)}` }))
+      .then(() => window.close());
     throw new MovedToTab();
   }
   // Already-granted origins resolve without a prompt.

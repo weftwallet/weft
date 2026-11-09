@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { NetworkRecord } from "../../lib/db";
 import { ui, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
+import { useCarriedFields } from "../../lib/tab-carry";
 import * as check from "../../lib/validate";
 import { useFeedback, useLeaveGuard } from "../feedback";
 import { useChecks } from "../form";
@@ -52,15 +53,20 @@ function Settings({
   onBack: () => void;
 }) {
   const { confirm, toast } = useFeedback();
-  const [advanced, setAdvanced] = useState(false);
-  const [relayUrl, setRelayUrl] = useState(network.relayUrl);
-  const [caUrl, setCaUrl] = useState(network.caUrl);
-  const [caName, setCaName] = useState(network.caName ?? "");
-  const [explorerUrl, setExplorerUrl] = useState(network.explorerUrl ?? "");
+  // Carried to a tab if the toolbar popup has to move a step there (lib/tab-carry.ts).
+  const carried = useCarriedFields(`network:${network.id}`, () => ({ fields: { relayUrl, caUrl, caName, explorerUrl, channels } }));
+  const saved = { relayUrl: network.relayUrl, caUrl: network.caUrl, caName: network.caName ?? "", explorerUrl: network.explorerUrl ?? "", channels: network.channels.join(", ") };
+  const start = (key: keyof typeof saved) => carried.fields[key] ?? saved[key];
+  // Advanced opens in the tab when what was carried changes something in it.
+  const [advanced, setAdvanced] = useState(() => (Object.keys(saved) as (keyof typeof saved)[]).some((key) => start(key) !== saved[key]));
+  const [relayUrl, setRelayUrl] = useState(() => start("relayUrl"));
+  const [caUrl, setCaUrl] = useState(() => start("caUrl"));
+  const [caName, setCaName] = useState(() => start("caName"));
+  const [explorerUrl, setExplorerUrl] = useState(() => start("explorerUrl"));
   // Channels are editable only for networks added without an invite; invite
   // networks take their channels from the invite.
   const editableChannels = !network.inviteUrl;
-  const [channels, setChannels] = useState(network.channels.join(", "));
+  const [channels, setChannels] = useState(() => start("channels"));
   const channelList = channels
     .split(",")
     .map((c) => c.trim())

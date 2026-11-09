@@ -12,6 +12,7 @@ import "./voter-credential.css";
 import { newId } from "../../lib/db";
 import { ui, type WalletState } from "../../lib/messages";
 import { requestHostAccess } from "../../lib/permissions";
+import { secretAgain, useCarriedFields } from "../../lib/tab-carry";
 import { EnrolError, STEP_LINES, alreadyHeld, enrol, saveRecord, type EnrolStep } from "../../lib/voter/enrol";
 import { measure, startVoterModule } from "../../lib/voter/module";
 import { openEnrollmentId, sealCredential, voterKey } from "../../lib/voter/seal";
@@ -103,7 +104,9 @@ export function VoterJoin({
   onBack: () => void;
   onDone: (added?: string, to?: "home" | "identities") => Promise<void>;
 }) {
-  const [enrollmentId, setEnrollmentId] = useState("");
+  // Carried to a tab if the toolbar popup has to move this step there, all but the secret (lib/tab-carry.ts).
+  const carried = useCarriedFields("join-voter", () => ({ fields: { enrollmentId }, secrets: { secret: secret !== "" } }));
+  const [enrollmentId, setEnrollmentId] = useState(carried.fields.enrollmentId ?? "");
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [line, setLine] = useState("");
@@ -202,7 +205,12 @@ export function VoterJoin({
         <Field label="Enrolment ID" {...checks.field("enrollmentId")}>
           {(a) => <input {...a} className="mono" autoComplete="off" value={enrollmentId} disabled={pending !== null} onChange={(e) => setEnrollmentId(e.target.value)} />}
         </Field>
-        <Field label="Enrolment secret" hint="The organisers give you this. The voters' CA accepts it once, and Weft never stores it." {...checks.field("secret")}>
+        <Field
+          label="Enrolment secret"
+          note={carried.leftOut.includes("secret") && secret === "" ? secretAgain("Enter the enrolment secret again.") : undefined}
+          hint="The organisers give you this. The voters' CA accepts it once, and Weft never stores it."
+          {...checks.field("secret")}
+        >
           {(a) => <SecretInput {...a} autoComplete="off" value={secret} disabled={pending !== null} onChange={(e) => setSecret(e.target.value)} />}
         </Field>
         <div className="page__actions">

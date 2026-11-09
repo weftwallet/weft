@@ -801,6 +801,16 @@ textarea {
   color: var(--weft-text-subtle);
 }
 
+/* A line about the field's value, such as a secret to type again in a tab
+   the popup opened (lib/tab-carry.ts). */
+.field__note {
+  margin: 0;
+  font-size: var(--weft-type-xs);
+  line-height: var(--weft-leading-xs);
+  font-weight: 500;
+  color: var(--weft-warn-text);
+}
+
 /* SYSTEM.md, Errors: the field's reserved line (.field__status, motion.css)
    holds an icon then the sentence; the line is there before the error is, so
    nothing below the field moves. */

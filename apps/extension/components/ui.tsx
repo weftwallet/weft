@@ -675,6 +675,7 @@ export interface FieldInputProps {
 export function Field({
   label,
   hint,
+  note,
   error,
   id: given,
   onLeave,
@@ -682,6 +683,8 @@ export function Field({
 }: {
   label: ReactNode;
   hint?: ReactNode;
+  /** A line about this field's value, before the hint: for example that it has to be typed again. */
+  note?: ReactNode;
   error?: string | null;
   id?: string;
   onLeave?: () => void;
@@ -690,7 +693,7 @@ export function Field({
   const fallback = useId().replace(/[^a-zA-Z0-9]/g, "");
   const id = given ?? `f${fallback}`;
   const [edited, setEdited] = useState(false);
-  const described = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(" ");
+  const described = [note ? `${id}-note` : null, hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(" ");
   return (
     <div
       className="field"
@@ -701,6 +704,11 @@ export function Field({
     >
       <label htmlFor={id}>{label}</label>
       {children({ id, ...(error ? { "aria-invalid": true as const } : {}), ...(described ? { "aria-describedby": described } : {}) })}
+      {note ? (
+        <p className="field__note" id={`${id}-note`}>
+          {note}
+        </p>
+      ) : null}
       {hint ? (
         <p className="field__hint" id={`${id}-hint`}>
           {hint}

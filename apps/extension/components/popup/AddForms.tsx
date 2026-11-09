@@ -3,6 +3,7 @@ import type { OrgInvite, VoterInvite } from "@weftwallet/protocol";
 import { Suspense, lazy, useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { ui, type IdentityView, type NetworkInput, type PendingCsrView, type WalletState } from "../../lib/messages";
 import { requestHostAccess, setTabLink } from "../../lib/permissions";
+import { secretAgain, useCarriedFields } from "../../lib/tab-carry";
 import { scanActiveTab, scanPastedImage } from "../../lib/qr";
 import * as check from "../../lib/validate";
 import { InviteCard } from "../InviteCard";
@@ -39,6 +40,17 @@ const EMPTY_NETWORK = {
 };
 
 type NetworkDraft = typeof EMPTY_NETWORK;
+
+/** The network fields carried to a tab (lib/tab-carry.ts), over empty ones. */
+function draftFrom(fields: Record<string, string>): NetworkDraft {
+  const draft = { ...EMPTY_NETWORK };
+  for (const key of Object.keys(EMPTY_NETWORK) as (keyof NetworkDraft)[]) {
+    if (typeof fields[key] === "string") draft[key] = fields[key];
+  }
+  return draft;
+}
+
+const ENROLMENT_SECRET_AGAIN = secretAgain("Enter the enrolment secret again.");
 
 function toNetwork(d: NetworkDraft): NetworkInput {
   return {
@@ -127,7 +139,11 @@ export function JoinInvite({ state, navigate, onDone, from, initialLink }: FormP
     return () => setTabLink("");
   }, [link]);
   const [invite, setInvite] = useState<OrgInvite | VoterInvite | null>(null);
-  const [enrollmentId, setEnrollmentId] = useState("");
+  // The enrolment ID is carried to a tab too, and the secret left out (lib/tab-carry.ts).
+  const carried = useCarriedFields("join", () => ({ fields: { enrollmentId }, secrets: { secret: secret !== "" } }));
+  // Used once, for the first invite reviewed in the tab, over the invite's own.
+  const carriedId = useRef(carried.fields.enrollmentId ?? "");
+  const [enrollmentId, setEnrollmentId] = useState(carried.fields.enrollmentId ?? "");
   const [secret, setSecret] = useState("");
   // Which way the steps moved, for the slide.
   const direction = useRef<"forward" | "back">("forward");
@@ -145,7 +161,8 @@ export function JoinInvite({ state, navigate, onDone, from, initialLink }: FormP
     const loaded = await ui("fetchInvite", { link: value });
     direction.current = "forward";
     setInvite(loaded);
-    setEnrollmentId("weftVoterInvite" in loaded ? "" : (loaded.enrollmentId ?? ""));
+    setEnrollmentId("weftVoterInvite" in loaded ? "" : carriedId.current || (loaded.enrollmentId ?? ""));
+    carriedId.current = "";
   });
 
   // Scanning hands over a link but can't open the permission prompt itself:
@@ -254,7 +271,12 @@ export function JoinInvite({ state, navigate, onDone, from, initialLink }: FormP
         <Field label="Enrolment ID" {...enrolChecks.field("enrollmentId")}>
           {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
         </Field>
-        <Field label="Enrolment secret" hint="Your administrator gives you this. Weft uses it once and never stores it." {...enrolChecks.field("secret")}>
+        <Field
+          label="Enrolment secret"
+          note={carried.leftOut.includes("secret") && secret === "" ? ENROLMENT_SECRET_AGAIN : undefined}
+          hint="Your administrator gives you this. Weft uses it once and never stores it."
+          {...enrolChecks.field("secret")}
+        >
           {(a) => <SecretInput {...a} value={secret} onChange={(e) => setSecret(e.target.value)} />}
         </Field>
         <Submit busy={join.busy} label="Enrol" error={join.error} />
@@ -266,8 +288,10 @@ export function JoinInvite({ state, navigate, onDone, from, initialLink }: FormP
 /* Enrol manually -------------------------------------------------- */
 
 export function EnrollForm({ navigate, onDone, from }: FormProps) {
-  const [draft, setDraft] = useState(EMPTY_NETWORK);
-  const [enrollmentId, setEnrollmentId] = useState("");
+  // Carried to a tab if the toolbar popup has to move this step there, all but the secret (lib/tab-carry.ts).
+  const carried = useCarriedFields("enroll", () => ({ fields: { ...draft, enrollmentId }, secrets: { secret: secret !== "" } }));
+  const [draft, setDraft] = useState(() => draftFrom(carried.fields));
+  const [enrollmentId, setEnrollmentId] = useState(carried.fields.enrollmentId ?? "");
   const [secret, setSecret] = useState("");
   const checks = useChecks({
     enrollmentId: () => check.required(enrollmentId, "Enter your enrolment ID."),
@@ -296,7 +320,12 @@ export function EnrollForm({ navigate, onDone, from }: FormProps) {
         <Field label="Enrolment ID" {...checks.field("enrollmentId")}>
           {(a) => <input {...a} className="mono" value={enrollmentId} onChange={(e) => setEnrollmentId(e.target.value)} />}
         </Field>
-        <Field label="Enrolment secret" hint="Weft uses it once and never stores it." {...checks.field("secret")}>
+        <Field
+          label="Enrolment secret"
+          note={carried.leftOut.includes("secret") && secret === "" ? ENROLMENT_SECRET_AGAIN : undefined}
+          hint="Weft uses it once and never stores it."
+          {...checks.field("secret")}
+        >
           {(a) => <SecretInput {...a} value={secret} onChange={(e) => setSecret(e.target.value)} />}
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa field={checks.field} />
@@ -309,8 +338,10 @@ export function EnrollForm({ navigate, onDone, from }: FormProps) {
 /* Import PEM -------------------------------------------------------- */
 
 export function ImportForm({ navigate, onDone, from }: FormProps) {
-  const [draft, setDraft] = useState(EMPTY_NETWORK);
-  const [certificate, setCertificate] = useState("");
+  // Carried to a tab if the toolbar popup has to move this step there, all but the private key (lib/tab-carry.ts).
+  const carried = useCarriedFields("import", () => ({ fields: { ...draft, certificate }, secrets: { privateKey: privateKeyPem !== "" } }));
+  const [draft, setDraft] = useState(() => draftFrom(carried.fields));
+  const [certificate, setCertificate] = useState(carried.fields.certificate ?? "");
   const [privateKeyPem, setPrivateKeyPem] = useState("");
   const checks = useChecks({
     certificate: () => check.certificatePem(certificate),
@@ -339,7 +370,12 @@ export function ImportForm({ navigate, onDone, from }: FormProps) {
         <Field label="Certificate (PEM)" {...checks.field("certificate")}>
           {(a) => <textarea {...a} placeholder="-----BEGIN CERTIFICATE-----" value={certificate} onChange={(e) => setCertificate(e.target.value)} />}
         </Field>
-        <Field label="Private key (PKCS#8 PEM)" hint="Weft imports it as a non-extractable key. Delete the file afterwards." {...checks.field("privateKey")}>
+        <Field
+          label="Private key (PKCS#8 PEM)"
+          note={carried.leftOut.includes("privateKey") && privateKeyPem === "" ? secretAgain("Paste the private key again.") : undefined}
+          hint="Weft imports it as a non-extractable key. Delete the file afterwards."
+          {...checks.field("privateKey")}
+        >
           {(a) => <textarea {...a} placeholder="-----BEGIN PRIVATE KEY-----" value={privateKeyPem} onChange={(e) => setPrivateKeyPem(e.target.value)} />}
         </Field>
         <NetworkFields draft={draft} onChange={setDraft} needsCa={false} field={checks.field} />
@@ -352,8 +388,10 @@ export function ImportForm({ navigate, onDone, from }: FormProps) {
 /* Generate CSR ------------------------------------------------------ */
 
 export function CsrForm({ navigate, onDone, from }: FormProps) {
-  const [draft, setDraft] = useState(EMPTY_NETWORK);
-  const [commonName, setCommonName] = useState("");
+  // Carried to a tab if the toolbar popup has to move this step there (lib/tab-carry.ts).
+  const carried = useCarriedFields("csr", () => ({ fields: { ...draft, commonName } }));
+  const [draft, setDraft] = useState(() => draftFrom(carried.fields));
+  const [commonName, setCommonName] = useState(carried.fields.commonName ?? "");
   const [result, setResult] = useState<PendingCsrView | null>(null);
   const checks = useChecks({
     commonName: () => check.required(commonName, "Enter the name to request, usually your enrolment ID."),

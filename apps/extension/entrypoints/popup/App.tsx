@@ -12,6 +12,7 @@ import { usePendingApproval, useUiEvents, useWallet, voterCredentialsOf, type Ro
 import { FeedbackProvider, useFeedback } from "../../components/feedback";
 import { EXPERIMENTAL } from "../../lib/experimental";
 import { inPopupTab, primeHostAccess, setTabRoute, tabStart } from "../../lib/permissions";
+import { loadCarry } from "../../lib/tab-carry";
 import { Button, ErrorDetails, ReplayMark, Spinner, Splash, StatusScreen, WeaveMark, clockTime, tokenMs, useFocusOnArrival } from "../../components/ui";
 
 /** Weft Experimental's voter credential detail (docs/adr/0008); the normal build never emits it. */
@@ -54,11 +55,15 @@ interface Leaving {
 function Screens() {
   const { state, setState, error, refresh } = useWallet();
   const { toast, dismiss } = useFeedback();
-  // A tab the popup opened (lib/permissions.ts) starts on the screen it came from.
-  const [route, setRoute] = useState<Route>(() => (tabStart().route as Route | null) ?? { name: "home" });
+  // A tab the popup opened (lib/permissions.ts) starts on the screen it came
+  // from, with the fields typed there once they're read (lib/tab-carry.ts).
+  const [start] = useState(tabStart);
+  const [route, setRoute] = useState<Route>(() => (start.route as Route | null) ?? { name: "home" });
+  const [carryRead, setCarryRead] = useState(start.carry === null);
   useEffect(() => {
     void primeHostAccess();
     if (inPopupTab()) document.body.classList.add("popup-tab");
+    if (start.carry !== null) void loadCarry(start.carry).finally(() => setCarryRead(true));
   }, []);
   useEffect(() => {
     setTabRoute(route);
@@ -168,7 +173,7 @@ function Screens() {
       </StatusScreen>
     );
   }
-  if (!state) return <Splash label="Opening Weft" />;
+  if (!state || !carryRead) return <Splash label="Opening Weft" />;
 
   const onDone = async (added?: string, to: "home" | "identities" = "home") => {
     await refresh();
