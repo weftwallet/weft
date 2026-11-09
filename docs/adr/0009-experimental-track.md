@@ -31,15 +31,15 @@ The build with the switch is a separate product, Weft Experimental:
 
 - It has its own name, extension ID (in Firefox, its own add-on ID), icon and storage. It installs alongside normal Weft and shares no identities, keys, receipts or settings with it.
 - Only it carries the idemix WebAssembly module, the content security policy that allows WebAssembly, and `weft_castBallot`. The normal build leaves this code out at build time, and its size, its permissions and the code a reviewer reads don't change.
-- It reports the same `version` as normal Weft, 0.1.0. Pages detect what it can do from `window.weft.features`: normal Weft lists `["receipts"]`, and Weft Experimental adds `"castBallot"` (ADR 0007) and `"voterCredentials"` (ADR 0008).
+- It reports the same `version` as normal Weft, 0.1.0. Pages detect what it can do from its provider's `features`: normal Weft lists `["receipts"]`, and Weft Experimental adds `"castBallot"` (ADR 0007) and `"voterCredentials"` (ADR 0008).
 - It is built from source and isn't offered in browser stores while it is experimental.
 
-Both builds define `window.weft`, and the first to load on a page provides it, as normal Weft already does when another provider exists. To use Weft Experimental on a site, a tester uses a browser profile with only Weft Experimental installed, or removes normal Weft's access to the site in the browser's extension settings.
+Both builds can share a browser profile. Each announces its own provider to every page and talks to it on its own channel (ADR 0010), and the first to load on a page provides `window.weft`. A site that wants Weft Experimental finds it by its announcement, by its `rdns` or by its `features`. A site that reads only `window.weft` reaches whichever build loaded first, so a tester who needs such a site to reach Weft Experimental removes normal Weft's access to that site in the browser's extension settings.
 
 ### The rest of the switch
 
 - `pnpm playground:up --experimental` starts everything `playground:up` does, plus a channel for each election, with the election's idemix organisation when its voters have credentials, and `examples/private-ballot-contract`, with a key ceremony already run and seeded elections.
-- Weft Playground shows a "Private election" section only when `window.weft.features` includes `"castBallot"`.
+- Weft Playground shows a "Private election" section only when a Weft on the page lists `"castBallot"` in its `features`.
 - The relay accepts idemix signers, and the explorer shows private elections, only when each is started with `WEFT_EXPERIMENTAL=1`.
 - The docs site has an Experimental section. Every page in it starts by saying it is experimental, not externally reviewed, and not part of the main product.
 

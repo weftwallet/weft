@@ -25,7 +25,7 @@ Ethereum wallets had the same problem with `window.ethereum`. EIP-6963 has each 
 1. Announcement events, with one message channel per wallet, in the style of EIP-6963 (chosen).
 2. One channel per wallet and nothing else. A request stops reaching both wallets, but a page still sees only the first wallet to load.
 3. A shared list on `window`, such as `window.weftProviders`, that each wallet adds to. A page has to read it after every wallet has loaded, and any script can change the list.
-4. No change, with a separate browser profile for each wallet, as ADR 0009 asks of testers. Anyone with both installed still gets two windows and mixed events.
+4. No change, with a separate browser profile for each wallet, as ADR 0009 asked of testers before this record. Anyone with both installed still gets two windows and mixed events.
 
 ## Decision
 
@@ -54,7 +54,7 @@ The first wallet to load still defines `window.weft`, not writable and not confi
 
 `@weftwallet/sdk` adds `detectProviders()`, which asks every wallet to announce itself, listens for 500 milliseconds by default, and returns one `{ info, provider }` per UUID. `detectProvider()` and `getWeft()` take an optional `rdns` to prefer one wallet, and use `window.weft` when that wallet doesn't announce itself within 500 milliseconds of another Weft being found. `WeftClient` has `info` when it was built from an announcement. Without an `rdns`, the SDK behaves as before.
 
-Weft Playground's Private election section casts with the wallet that lists `"castBallot"`. With both wallets installed, the Weft site's invite page offers "Add to Weft" and "Add to Weft Experimental", and Weft Network offers "Sign in with Weft" and "Sign in with Weft Experimental". With one wallet, each page shows what it showed before.
+With both wallets installed, Weft Playground lets the visitor choose the wallet the whole page uses, and remembers the choice. Its Private election section uses that wallet, and offers to switch the page to the wallet that lists `"castBallot"` when the chosen one doesn't. With both wallets installed, the Weft site's invite page offers "Add to Weft" and "Add to Weft Experimental", and Weft Network offers "Sign in with Weft" and "Sign in with Weft Experimental". With one wallet, each page shows what it showed before.
 
 ### What info claims
 
