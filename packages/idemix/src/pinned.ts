@@ -7,11 +7,11 @@
  */
 export const PINNED = {
   /** SHA-256 of dist/wasm/weft-idemix.wasm, lowercase hex. */
-  wasmSha256: "fc1d413f3c4fab8c0a3b9a24a47338c0b9c5584ab83e015f4ee932b61ece2032",
+  wasmSha256: "8292e9cd5b42b6c946f224e2dcb69e7f279921dc41cde0f28ffecbffe0e4aa3a",
   /** SHA-256 of dist/wasm/wasm_exec.js, from the same Go toolchain. */
   wasmExecSha256: "0c949f4996f9a89698e4b5c586de32249c3b69b7baadb64d220073cc04acba14",
   /** The module's size in bytes, for progress and for the budget's record. */
-  wasmBytes: 12_680_460,
+  wasmBytes: 12_680_076,
   /** The Go toolchain, IBM idemix and IBM mathlib it is built with. */
   go: "go1.26.10",
   idemix: "v0.3.1",
