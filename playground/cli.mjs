@@ -177,11 +177,40 @@ function runningPid(name) {
   return alive(pid) ? pid : null;
 }
 
+function commandFile(name) {
+  return join(state, `${name}.command`);
+}
+
+/**
+ * The command a background process was started with: its script, arguments
+ * and the environment up added. Kept beside its pid file, so a later up with
+ * other settings (--https, for one) restarts it instead of reusing it.
+ */
+function commandKey(script, args, env = {}) {
+  return JSON.stringify({ script, args, env });
+}
+
+/**
+ * Whether the process called name is running with this command. When it is
+ * running with another, it is stopped, and up starts it again.
+ */
+function runningWith(name, key) {
+  const pid = runningPid(name);
+  if (!pid) return false;
+  const before = existsSync(commandFile(name)) ? readFileSync(commandFile(name), "utf8") : null;
+  if (before === key) return true;
+  stopBackground(name, { quiet: true });
+  // Wait for it to exit, so its port is free for the new one.
+  for (let i = 0; i < 40 && alive(pid); i++) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 125);
+  note(`stopped ${name} (pid ${pid}): it was running with other settings, so it starts again`);
+  return false;
+}
+
 /** Starts a long-running Node process in the background, logging to .state/<name>.log. */
 function startBackground(name, script, args, env = {}) {
-  const existing = runningPid(name);
-  if (existing) {
-    note(`${name} already running (pid ${existing})`);
+  const key = commandKey(script, args, env);
+  if (runningWith(name, key)) {
+    note(`${name} already running (pid ${runningPid(name)})`);
     return;
   }
   const log = openSync(join(state, `${name}.log`), "a");
@@ -192,6 +221,7 @@ function startBackground(name, script, args, env = {}) {
   });
   child.unref();
   writeFileSync(pidFile(name), String(child.pid));
+  writeFileSync(commandFile(name), key);
   note(`${name} started (pid ${child.pid}), log: .state/${name}.log`);
 }
 
@@ -213,6 +243,7 @@ function stopBackground(name, { quiet = false } = {}) {
     if (!quiet) console.log(`  stopped ${name} (pid ${pid})`);
   }
   rmSync(pidFile(name), { force: true });
+  rmSync(commandFile(name), { force: true });
 }
 
 /* ------------------------------------------------------------------ */
@@ -617,7 +648,10 @@ let proxyTls = null;
 async function startVotersCaProxy(election) {
   const name = experimentalNetwork.caProxyName(election);
   const url = experimentalNetwork.caProxyUrl(election, { https: Boolean(proxyTls) });
-  if (runningPid(name)) return { started: false, url };
+  const script = join(here, "ca-proxy.mjs");
+  const args = experimentalNetwork.caProxyArgs(state, election, proxyTls);
+  const key = commandKey(script, args);
+  if (runningWith(name, key)) return { started: false, url };
   const { port } = { port: election.voterOrg.ca.proxy };
   if (await portTaken(port)) {
     fail(
@@ -626,12 +660,13 @@ async function startVotersCaProxy(election) {
     );
   }
   const log = openSync(join(state, `${name}.log`), "a");
-  const child = spawn(process.execPath, [join(here, "ca-proxy.mjs"), ...experimentalNetwork.caProxyArgs(state, election, proxyTls)], {
+  const child = spawn(process.execPath, [script, ...args], {
     detached: true,
     stdio: ["ignore", log, log],
   });
   child.unref();
   writeFileSync(pidFile(name), String(child.pid));
+  writeFileSync(commandFile(name), key);
   await waitForPort(port, `The proxy for ${election.voterOrg.ca.name}`);
   ensureStillRunning(name);
   return { started: true, url };
