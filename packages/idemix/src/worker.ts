@@ -1,7 +1,7 @@
 /**
  * The idemix module's dedicated worker. A page that needs the module (the
- * popup to enrol, the approval window to vote) starts this worker, sends it
- * "start" with the URLs of the module and wasm_exec.js, calls the module's
+ * popup to enrol, the approval window to vote) starts this worker, waits for
+ * its "loaded", sends it "start" with the URLs of the module and wasm_exec.js, calls the module's
  * functions through client.ts, and terminates it when it is done, which
  * frees every copy of the secret key the module made (docs/adr/0008). The
  * background worker never runs the module: Chrome's extension service worker
@@ -19,6 +19,12 @@ interface WorkerScope {
   postMessage(message: FromWorker): void;
 }
 const scope = globalThis as unknown as WorkerScope;
+
+// The first thing the worker does, before it fetches or starts the module:
+// tell the page its script has loaded. A worker whose script never loads
+// can fail without an error event, and this lets the page stop waiting
+// after a few seconds instead of after the module's whole start time.
+scope.postMessage({ type: "loaded" });
 
 let api: IdemixApi | null = null;
 

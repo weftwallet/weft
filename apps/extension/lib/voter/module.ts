@@ -10,11 +10,14 @@
  * ("weft-idemix-start", and the names the caller gives), so the timings can
  * be read from the page for the docs.
  */
-import { startIdemixWorker, type IdemixWorker } from "@weftwallet/idemix";
+import { IdemixWorkerLoadError, startIdemixWorker, type IdemixWorker } from "@weftwallet/idemix";
 import { browser } from "wxt/browser";
 
-/** How long Weft waits for the module to start. */
-const START_TIMEOUT_MS = 30_000;
+/** How long Weft waits for the worker's script to load and say so. */
+export const LOAD_TIMEOUT_MS = 3_000;
+
+/** How long Weft waits for the module to start, once the worker has loaded. */
+export const START_TIMEOUT_MS = 30_000;
 
 /** The module's files, copied into Weft Experimental's build by wxt.config.ts. */
 const asset = (name: string) => browser.runtime.getURL(`/idemix/${name}` as "/");
@@ -27,16 +30,35 @@ const asset = (name: string) => browser.runtime.getURL(`/idemix/${name}` as "/")
  */
 export const workerUrl = () => browser.runtime.getURL("/idemix-worker.js" as "/");
 
+/**
+ * Starts the module in its worker. The worker's script says it has loaded
+ * before it fetches the module; without that within LOAD_TIMEOUT_MS, the
+ * start fails then, since a script that never loads can fail without an
+ * error event. The module then has START_TIMEOUT_MS to start.
+ */
 export async function startVoterModule(): Promise<IdemixWorker> {
   const started = performance.now();
   const worker = new Worker(workerUrl(), { type: "module" });
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let rejectTimeout: (error: Error) => void = () => {};
+  const timeout = new Promise<never>((_, reject) => {
+    rejectTimeout = reject;
+  });
   try {
     const idemix = await Promise.race([
-      startIdemixWorker({ worker, wasmUrl: asset("weft-idemix.wasm"), wasmExecUrl: asset("wasm_exec.js") }),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`The voting module didn't start within ${START_TIMEOUT_MS / 1000} seconds.`)), START_TIMEOUT_MS);
+      startIdemixWorker({
+        worker,
+        wasmUrl: asset("weft-idemix.wasm"),
+        wasmExecUrl: asset("wasm_exec.js"),
+        loadTimeoutMs: LOAD_TIMEOUT_MS,
+        onLoaded: () => {
+          timer = setTimeout(() => rejectTimeout(new Error(`The voting module didn't start within ${START_TIMEOUT_MS / 1000} seconds.`)), START_TIMEOUT_MS);
+        },
+      }).catch((error: unknown) => {
+        if (error instanceof IdemixWorkerLoadError) throw new Error(`The voting module's worker didn't load within ${LOAD_TIMEOUT_MS / 1000} seconds, so nothing was sent to it.`);
+        throw error;
       }),
+      timeout,
     ]);
     measure("weft-idemix-start", started);
     mark("weft-idemix-timings", idemix.timings);

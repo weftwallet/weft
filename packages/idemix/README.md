@@ -94,6 +94,8 @@ try {
 }
 ```
 
+The worker's first message is `{ type: "loaded" }`, posted as its script starts and before it fetches the module, and `startIdemixWorker` sends `start` only after it. A worker whose script never loads can fail without an `error` event, so without `loaded` within `loadTimeoutMs` (3 seconds by default) `startIdemixWorker` terminates the worker and rejects with `IdemixWorkerLoadError`. `onLoaded` is called as `start` is sent, for a caller that times the module's own start from then. The worker script isn't part of the pinned hashes, which cover the module and `wasm_exec.js` only.
+
 The page's content security policy needs `'wasm-unsafe-eval'` in `script-src`. In Node, `startIdemixNode()` from `@weftwallet/idemix/node` reads the module from `dist/wasm`.
 
 ## Tests

@@ -108,16 +108,22 @@ test.describe("Weft Experimental", () => {
       const chrome = (globalThis as any).chrome;
       const url: string = chrome.runtime.getURL("/idemix-worker.js");
       const worker = new Worker(url, { type: "module" });
-      const reply = await new Promise((resolve, reject) => {
+      // Its script says "loaded" first, and then the page sends "start".
+      const replies: { type: string }[] = [];
+      await new Promise<void>((resolve, reject) => {
         worker.onerror = (e) => reject(new Error(e.message || "The worker fired error."));
-        worker.onmessage = (e) => resolve(e.data);
-        worker.postMessage({ type: "start", wasmUrl: chrome.runtime.getURL("/idemix/weft-idemix.wasm"), wasmExecUrl: chrome.runtime.getURL("/idemix/wasm_exec.js") });
+        worker.onmessage = (e) => {
+          replies.push(e.data);
+          if (e.data.type === "loaded") {
+            worker.postMessage({ type: "start", wasmUrl: chrome.runtime.getURL("/idemix/weft-idemix.wasm"), wasmExecUrl: chrome.runtime.getURL("/idemix/wasm_exec.js") });
+          } else resolve();
+        };
       });
       worker.terminate();
-      return { worker: new URL(url).origin, page: location.origin, reply };
+      return { worker: new URL(url).origin, page: location.origin, replies };
     });
     expect(out.worker).toBe(out.page);
-    expect(out.reply).toMatchObject({ type: "started" });
+    expect(out.replies.map((r) => r.type)).toEqual(["loaded", "started"]);
   });
 
   test("checks weft_castBallot's params before any window opens", async ({ wallet }) => {
