@@ -46,14 +46,3 @@ export function onWallets(listener: (wallets: WeftProviderDetail[]) => void): ()
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
-
-/**
- * The wallet that offers `feature`, for example "castBallot": window.weft
- * when it does, or else the first announced wallet that does. Null when
- * none does.
- */
-export function walletWith(feature: string): WeftProvider | null {
-  const weft = (window as { weft?: WeftProvider }).weft;
-  if (weft?.isWeft && weft.features?.includes(feature)) return weft;
-  return wallets().find((d) => d.provider.features?.includes(feature))?.provider ?? null;
-}

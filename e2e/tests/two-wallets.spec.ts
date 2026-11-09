@@ -8,7 +8,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import { BUILDS, clickToClose, expect, launchBothWallets, stack, test, type Wallet } from "../support/fixtures.ts";
+import { BUILDS, clickToClose, expect, launchBothWallets, stack, test, type Build, type Wallet } from "../support/fixtures.ts";
 
 const built = existsSync(join(BUILDS.experimental, "manifest.json"));
 const WEFT = "dev.ifeanyiugwu.weft";
@@ -74,6 +74,23 @@ async function connectThrough(page: Page, rdns: string, wallet: Wallet) {
   const identity = await result;
   wallet.context.off("page", onPage);
   return identity;
+}
+
+/** Presses `button` on the page, checks that exactly one approval window opened, in `wallet`, and approves the connection there. */
+async function connectFrom(page: Page, button: string, wallet: Wallet) {
+  const opened: Page[] = [];
+  const onPage = (p: Page) => opened.push(p);
+  wallet.context.on("page", onPage);
+  await page.locator(button).click();
+  await expect.poll(() => opened.length, { timeout: 15_000 }).toBeGreaterThan(0);
+  const win = opened[0]!;
+  await win.waitForLoadState();
+  expect(win.url().startsWith(wallet.url("approve.html"))).toBe(true);
+  // The other wallet would open its window at about the same moment.
+  await page.waitForTimeout(1500);
+  expect(opened.map((p) => new URL(p.url()).host)).toEqual([wallet.id]);
+  await win.locator("footer").getByRole("button", { name: "Connect" }).click();
+  wallet.context.off("page", onPage);
 }
 
 test.describe("Weft and Weft Experimental in one browser", () => {
@@ -165,13 +182,91 @@ test.describe("Weft and Weft Experimental in one browser", () => {
       await clickToClose(win, win.getByRole("button", { name: "Reject" }));
       await expect(join.getByText("You rejected the request in Weft Experimental, so the network wasn't added. Add to Weft Experimental again when you're ready.")).toBeVisible();
 
-      // The Playground shows the Private election section, which casts with Weft Experimental.
+      // The Playground shows the Private election section, which casts with Weft Experimental, or offers to switch to it.
       if (sites.playground) {
         const playground = await context.newPage();
         await playground.goto(sites.playground);
         await expect(playground.locator("#pg-weft")).toHaveAttribute("data-state", "ok");
         await expect(playground.locator("#pg-private")).toBeVisible();
       }
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("Weft Playground uses the wallet the visitor chooses, and remembers it", async ({ site }, testInfo) => {
+    const { sites, inviteUrl, users } = stack();
+    test.skip(!sites.playground, "Build the playground first (WEFT_PRODUCTS=dev pnpm --filter @weftwallet/playground build).");
+    const wallets = await launchBothWallets(site, testInfo.outputPath("profile"));
+    const context = wallets.normal.context;
+    try {
+      await wallets.normal.enroll("alice", users.alice!);
+      await wallets.experimental.enroll("bob", users.bob!);
+      for (const page of context.pages()) if (page.url().startsWith("chrome-extension://")) await page.close();
+
+      const page = await context.newPage();
+      await page.goto(`${sites.playground}/?invite=${encodeURIComponent(inviteUrl)}`);
+      const pill = page.locator("#pg-weft");
+      await expect(pill).toHaveAttribute("data-state", "ok");
+
+      // Both wallets show, each with the mark it announced.
+      const choice = page.locator("#pg-wallets");
+      await expect(choice).toBeVisible();
+      await expect(choice.locator("legend")).toHaveText("This browser has Weft and Weft Experimental. Choose the one this page uses.");
+      const radio = { normal: page.getByRole("radio", { name: "Weft", exact: true }), experimental: page.getByRole("radio", { name: "Weft Experimental" }) };
+      const option = (build: Build) => page.locator(`label.pg-wallet[data-rdns="${build === "normal" ? WEFT : EXPERIMENTAL}"]`);
+      for (const build of ["normal", "experimental"] as const) await expect(option(build).locator("img")).toHaveAttribute("src", /^data:image\/svg\+xml,/);
+      const NAME: Record<Build, string> = { normal: "Weft", experimental: "Weft Experimental" };
+
+      // The default is window.weft's wallet.
+      const first: Build = (await page.evaluate(() => (window as any).weft.features.includes("castBallot"))) ? "experimental" : "normal";
+      const other: Build = first === "normal" ? "experimental" : "normal";
+      await expect(radio[first]).toBeChecked();
+      await expect(pill).toHaveText(`Using ${NAME[first]} 0.1.0`);
+
+      /** Chooses a wallet, and checks the page says so, forgets the other wallet's connection, and logs the switch. */
+      const use = async (build: Build) => {
+        await option(build).click();
+        await expect(radio[build]).toBeChecked();
+        await expect(pill).toHaveText(`Using ${NAME[build]} 0.1.0`);
+        await expect(page.locator("#pg-join")).toHaveText(`Join with ${NAME[build]}`);
+        await expect(page.locator("#pg-log")).toContainText(`switched to ${NAME[build]}`);
+      };
+      const IDENTITY: Record<Build, string> = { normal: "alice", experimental: "bob" };
+
+      // Each choice sends weft_connect to that wallet only: one approval window, in that wallet.
+      for (const build of [other, first]) {
+        await use(build);
+        await expect(page.locator("#pg-conn")).toHaveText("Not connected");
+        await connectFrom(page, "#pg-connect", wallets[build]);
+        await expect(page.locator("#pg-conn")).toHaveText("Connected");
+        await expect(page.locator("#pg-id-name")).toHaveText(IDENTITY[build]);
+        await expect(page.locator("#pg-log")).toContainText(`weft_connect · ${NAME[build]}`);
+      }
+      // The code the page shows asks the SDK for that wallet.
+      await page.locator("#pg-evaluate").click();
+      await expect(page.locator("#pg-code")).toContainText(`getWeft({ rdns: "${first === "normal" ? WEFT : EXPERIMENTAL}" })`);
+
+      // With Weft chosen, the Private election section offers to switch the page to Weft Experimental.
+      const section = page.locator("#pg-private");
+      await use("normal");
+      await expect(section).toBeVisible();
+      await expect(section.locator("#pg-pe-wallet-text")).toHaveText("This page uses Weft, which doesn't offer private elections. Weft Experimental does, and it's in this browser too.");
+      await section.getByRole("button", { name: "Use Weft Experimental" }).click();
+      await expect(radio.experimental).toBeChecked();
+      await expect(section.locator("#pg-pe-wallet-text")).toHaveText("This page now uses Weft Experimental, which offers private elections.");
+      await expect(section.getByRole("button", { name: "Use Weft Experimental" })).toBeHidden();
+      // bob connected this page to Weft Experimental earlier, so it is connected again at once.
+      await expect(page.locator("#pg-conn")).toHaveText("Connected");
+
+      // The choice survives a reload, though window.weft is the other wallet.
+      await use(other);
+      await page.reload();
+      await expect(pill).toHaveAttribute("data-state", "ok");
+      await expect(radio[other]).toBeChecked();
+      await expect(pill).toHaveText(`Using ${NAME[other]} 0.1.0`);
+      await expect(page.locator("#pg-id-name")).toHaveText(IDENTITY[other]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     } finally {
       await context.close();
     }

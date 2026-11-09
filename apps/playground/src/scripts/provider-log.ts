@@ -1,8 +1,9 @@
 /**
- * The provider log: every window.weft request and response, with timings,
- * newest first. Shared by Playground.astro's steps and the Private election
- * section (PrivateElection.astro), so one log holds the whole conversation
- * with Weft.
+ * The provider log: every request to the wallet this page uses and its
+ * response, with timings, newest first. Shared by Playground.astro's steps
+ * and the Private election section (PrivateElection.astro), so one log holds
+ * the whole conversation with Weft. With more than one Weft in the browser
+ * (wallet-choice.ts), each entry names the wallet it went to or came from.
  */
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -64,16 +65,21 @@ function showAll(pre: HTMLPreElement): HTMLButtonElement {
   return button;
 }
 
-/** Sends one request to Weft, logging it and its answer or failure with how long it took. */
-export async function logged<T = any>(provider: { request(args: { method: string; params?: unknown }): Promise<unknown> }, method: string, params?: unknown): Promise<T> {
-  log("→", method, params);
+/**
+ * Sends one request to Weft, logging it and its answer or failure with how
+ * long it took. `wallet` is the wallet's name, for the log, when the browser
+ * has more than one Weft.
+ */
+export async function logged<T = any>(provider: { request(args: { method: string; params?: unknown }): Promise<unknown> }, method: string, params?: unknown, wallet?: string | null): Promise<T> {
+  const to = wallet ? ` · ${wallet}` : "";
+  log("→", `${method}${to}`, params);
   const started = performance.now();
   try {
     const result = await provider.request(params === undefined ? { method } : { method, params });
-    log("←", `${method} · ${Math.round(performance.now() - started)} ms`, result, "ok");
+    log("←", `${method}${to} · ${Math.round(performance.now() - started)} ms`, result, "ok");
     return result as T;
   } catch (error: any) {
-    log("←", `${method} failed · ${Math.round(performance.now() - started)} ms`, { code: error?.code, message: error?.message, data: error?.data }, "err");
+    log("←", `${method} failed${to} · ${Math.round(performance.now() - started)} ms`, { code: error?.code, message: error?.message, data: error?.data }, "err");
     throw error;
   }
 }

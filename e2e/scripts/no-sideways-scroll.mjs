@@ -23,6 +23,9 @@ import { createServer } from "node:http";
 import { extname, join, relative, resolve } from "node:path";
 import { chromium } from "@playwright/test";
 import { wallet as walletProduct } from "./sideways/wallet.mjs";
+import { requirePinnedNode } from "../../scripts/node-version.mjs";
+
+requirePinnedNode();
 
 const ROOT = resolve(import.meta.dirname, "../..");
 
@@ -245,6 +248,40 @@ function twoWallets() {
   }
 }
 
+/**
+ * Runs in the page before its scripts: Weft and Weft Experimental for the
+ * playground (docs/adr/0010), each announcing a provider with a mark when
+ * asked, Weft at window.weft, and each answering as a connected wallet does,
+ * with long values. Only Weft Experimental lists castBallot, so with Weft
+ * chosen the Private election section offers the switch.
+ */
+function twoPlaygroundWallets() {
+  const identity = {
+    id: "alice",
+    name: "alice-with-a-long-enrolment-name",
+    mspId: "NorthwindFreightHoldingsInternationalMSP",
+    role: "client",
+    attributes: { "hf.EnrollmentID": "alice-with-a-long-enrolment-name", "hf.Affiliation": "org1.department1.northwind-freight-holdings", "hf.Type": "client" },
+    notAfter: "2027-06-01T00:00:00.000Z",
+  };
+  const answers = {
+    weft_connect: identity,
+    weft_identity: identity,
+    weft_evaluate: { text: JSON.stringify([{ ID: "asset1", Owner: "Northwind Freight Holdings International", Note: "a-long-value-with-no-spaces-0123456789abcdef0123456789abcdef" }]), status: 200 },
+  };
+  const mark = (fill) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="4" fill="${fill}"/></svg>`)}`;
+  const providers = [
+    ["Weft", "dev.ifeanyiugwu.weft", ["receipts"], mark("#0f766e")],
+    ["Weft Experimental", "dev.ifeanyiugwu.weft.experimental", ["receipts", "castBallot", "voterCredentials"], mark("#be185d")],
+  ].map(([name, rdns, features, icon]) => {
+    const provider = Object.freeze({ isWeft: true, version: "0.1.0", features, request: async ({ method }) => answers[method] ?? null, on() {}, off() {} });
+    const detail = Object.freeze({ info: Object.freeze({ uuid: crypto.randomUUID(), name, rdns, icon }), provider });
+    window.addEventListener("weft:requestProvider", () => window.dispatchEvent(new CustomEvent("weft:announceProvider", { detail })));
+    return provider;
+  });
+  Object.defineProperty(window, "weft", { value: providers[0], writable: false, configurable: false });
+}
+
 function statesFor(product, path, ctx) {
   const states = [{ name: "as loaded", run: async () => true }];
   if (path === "/" || path === "/index.html") states.push(productsMenu);
@@ -313,6 +350,30 @@ function statesFor(product, path, ctx) {
         await page.locator("#pg-evaluate").click();
         await page.locator("#pg-result-wrap:not([hidden])").waitFor({ timeout: 5000 });
         await page.locator("#pg-submit").click();
+        await page.waitForTimeout(800);
+        return true;
+      },
+    });
+    // Two wallets: the choice under the chip, and the Private election section's offer to switch.
+    states.push({
+      name: "two wallets, Weft chosen",
+      init: twoPlaygroundWallets,
+      run: async (page) => {
+        await page.locator("#pg-wallets:not([hidden])").waitFor({ timeout: 5000 });
+        await page.locator("#pg-pe-wallet-use").waitFor({ timeout: 5000 });
+        await page.waitForTimeout(600);
+        return true;
+      },
+    });
+    states.push({
+      name: "two wallets, Weft Experimental chosen, connected, after a read",
+      init: twoPlaygroundWallets,
+      run: async (page) => {
+        await page.locator("#pg-wallets:not([hidden])").waitFor({ timeout: 5000 });
+        await page.locator("label.pg-wallet", { hasText: "Weft Experimental" }).click();
+        await page.locator("#pg-conn[data-state=ok]").waitFor({ timeout: 5000 });
+        await page.locator("#pg-evaluate").click();
+        await page.locator("#pg-result-wrap:not([hidden])").waitFor({ timeout: 5000 });
         await page.waitForTimeout(800);
         return true;
       },

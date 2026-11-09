@@ -26,6 +26,10 @@ const { demoInvite = null } = Astro.props;
         // demo's: before the first paint, so the chip is never shown.
         if (new URLSearchParams(location.search).get("invite")) document.getElementById("pg-demo").hidden = true;
       </script>
+      <fieldset class="pg-wallets" id="pg-wallets" hidden>
+        <legend class="pg-hint" id="pg-wallets-found"></legend>
+        <div class="pg-wallets__options" id="pg-wallets-options"></div>
+      </fieldset>
     </div>
     <form class="field" id="pg-invite-form" novalidate>
       <label for="pg-invite">Invite URL</label>
@@ -226,7 +230,7 @@ const { demoInvite = null } = Astro.props;
       <h2 id="pg-log-heading">Provider log</h2>
       <button type="button" id="pg-clear" class="btn btn--text">Clear log</button>
     </div>
-    <p class="pg-hint">Every <code>window.weft</code> request and response, with timings, as this page sends and receives them.</p>
+    <p class="pg-hint" id="pg-log-about">Every <code>window.weft</code> request and response, with timings, as this page sends and receives them.</p>
     <p class="pg-hint" id="pg-log-empty">No requests yet. Connect or call a function to see them here.</p>
     <ol id="pg-log" class="pg-log"></ol>
   </aside>
@@ -234,8 +238,9 @@ const { demoInvite = null } = Astro.props;
 
 <script>
   import { announce, clearError, closesInReverse, conceal, fetchProblem, isBusy, isWebUrl, reveal, setBusy, shortened, showError, technical, watchFields } from "@weftwallet/ui/ui";
-  import { onWallets, wallets } from "@weftwallet/ui/wallets";
+  import { onWallets, wallets, type WeftProviderDetail } from "@weftwallet/ui/wallets";
   import { log, logged } from "../scripts/provider-log.ts";
+  import { choose, chosen as chosenWallet, chosenName, found, onChoice, resolve, sdkOptions, type Choice } from "../scripts/wallet-choice.ts";
 
   const LOCAL_INVITE = "http://localhost:8787/.well-known/weft-invite.json";
 
@@ -250,7 +255,6 @@ const { demoInvite = null } = Astro.props;
   };
 
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  const w = window as any;
   /** The other products this page links to, from @weftwallet/brand's registry. */
   const root = document.querySelector<HTMLElement>(".pg")!;
   /** The public demo network's invite, when one is hosted (products.json, "demo"). */
@@ -269,23 +273,30 @@ const { demoInvite = null } = Astro.props;
   /** Elections this page has voted in, so it doesn't offer a second ballot. */
   const votedIn = new Set<string>();
 
+  /**
+   * The wallet's name in the page's sentences: "Weft", or, with more than one
+   * Weft in the browser, the one this page uses (wallet-choice.ts).
+   */
+  const weftName = () => chosenName() ?? "Weft";
+
   /** What a wallet error means for the person, in words. */
-  function walletProblem(error: any, fallback = "Weft couldn't complete the request.", declined = "You rejected the request in Weft, so nothing was sent. Try again when you're ready."): string {
+  function walletProblem(error: any, fallback = `${weftName()} couldn't complete the request.`, declined = `You rejected the request in ${weftName()}, so nothing was sent. Try again when you're ready.`): string {
+    const name = weftName();
     switch (error?.code) {
       case 4001:
         return declined;
       case 4100:
-        return "This page isn't connected to Weft. Connect in step 2, then try again.";
+        return `This page isn't connected to ${name}. Connect in step 2, then try again.`;
       case 4300:
-        return "Weft has no identity yet. Use Join with Weft in step 2 first.";
+        return `${name} has no identity yet. Use Join with ${name} in step 2 first.`;
       case 4301:
-        return "Your certificate has expired. Renew it in Weft, then try again.";
+        return `Your certificate has expired. Renew it in ${name}, then try again.`;
       case -32002:
-        return "Weft already has a request from this page waiting. Finish it in the Weft window first.";
+        return `${name} already has a request from this page waiting. Finish it in the ${name} window first.`;
       case 5001:
         return "The network rejected the call. The reason is under Details.";
       case 5002:
-        return "Weft couldn't reach the network's relay. Check that the network is running, then try again.";
+        return `${name} couldn't reach the network's relay. Check that the network is running, then try again.`;
       default:
         return fallback;
     }
@@ -293,13 +304,15 @@ const { demoInvite = null } = Astro.props;
 
   /* ---------------- log ---------------- */
 
+  /** Sends a request to the wallet this page uses, through the provider log. */
   async function call(method: string, params?: unknown) {
     if (!weft) throw Object.assign(new Error("Weft isn't installed in this browser."), { code: "missing" });
+    const using = weft;
     try {
-      return await logged(weft, method, params);
+      return await logged(using, method, params, chosenName());
     } catch (error: any) {
       // 4100: the wallet no longer treats this site as connected.
-      if (error?.code === 4100 && connected) setConnected(false);
+      if (error?.code === 4100 && connected && weft === using) setConnected(false);
       throw error;
     }
   }
@@ -308,7 +321,8 @@ const { demoInvite = null } = Astro.props;
 
   /**
    * Whether Weft is in this browser. Not a warning when it isn't: the chip
-   * stays neutral and offers the install page.
+   * stays neutral and offers the install page. With more than one Weft, the
+   * chip names the one this page uses.
    */
   function setWeftPill(state: "ok" | "missing") {
     const pill = $("pg-weft");
@@ -316,7 +330,8 @@ const { demoInvite = null } = Astro.props;
     pill.classList.remove("is-working");
     pill.dataset.state = state;
     if (state === "ok") {
-      pill.textContent = `Weft ${weft.version} detected`;
+      const name = chosenName();
+      pill.textContent = name ? `Using ${name} ${weft.version}` : `Weft ${weft.version} detected`;
       return;
     }
     pill.replaceChildren("Weft not found. ", Object.assign(document.createElement("a"), { href: docsAt("/start/install/"), textContent: "Install it" }));
@@ -327,9 +342,9 @@ const { demoInvite = null } = Astro.props;
   /**
    * Sections for a feature only some Weft builds have, marked data-feature
    * (PrivateElection.astro): shown only when a Weft in this browser lists it,
-   * window.weft or another that announced itself (docs/adr/0010). With Weft
-   * and Weft Experimental both installed, the section uses the one that
-   * lists it.
+   * window.weft or another that announced itself (docs/adr/0010). When the
+   * wallet this page uses doesn't list it and another does, the section says
+   * so and offers to switch to that one.
    */
   function showFeatureSections() {
     const features = new Set<unknown>(Array.isArray(weft?.features) ? weft.features : []);
@@ -338,35 +353,136 @@ const { demoInvite = null } = Astro.props;
       section.hidden = !features.has(section.dataset.feature);
     }
   }
-  onWallets(showFeatureSections);
 
-  function detect() {
-    if (w.weft?.isWeft) {
-      if (weft) return;
-      weft = w.weft;
-      setWeftPill("ok");
-      showFeatureSections();
-      weft.on("identityChanged", (identity: any) => {
-        log("•", "event identityChanged", identity);
-        showIdentity(identity);
-        announce(`Identity in Weft is now ${identity?.name ?? "none"}.`);
-      });
-      weft.on("networkChanged", (payload: any) => {
-        log("•", "event networkChanged", payload);
-        selectChannel(payload.channel);
-      });
-      weft.on("certificateStatus", (payload: any) => {
-        log("•", "event certificateStatus", payload);
-        $("pg-id-exp").textContent = payload.state === "expired" ? "Expired, renew it in Weft" : `${dateOf(payload.notAfter)} (${payload.daysLeft} days left)`;
-      });
-      weft.on("disconnect", (payload: any) => {
-        log("•", "event disconnect", payload);
-        setConnected(false, DISCONNECT_REASONS[payload?.reason] ?? "Disconnected");
-      });
-      void refreshIdentity();
-      updateButtons();
+  /** "Weft and Weft Experimental". */
+  const namesOf = (list: WeftProviderDetail[]) => {
+    const names = list.map((d) => d.info.name);
+    return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+  };
+
+  /**
+   * With more than one Weft in the browser: the wallets the page found, and a
+   * choice of the one it uses, under the chip, each named and with the mark
+   * it announced. With one, nothing shows. Updated in place, so the chosen
+   * option and focus survive.
+   */
+  function showWallets() {
+    const box = $("pg-wallets");
+    const list = found();
+    if (!weft || list.length < 2) {
+      box.hidden = true;
       return;
     }
+    $("pg-wallets-found").textContent = `This browser has ${namesOf(list)}. Choose the one this page uses.`;
+    const options = $("pg-wallets-options");
+    const have = new Map([...options.querySelectorAll<HTMLLabelElement>("label")].map((l) => [l.dataset.uuid!, l]));
+    for (const wallet of list) {
+      let label = have.get(wallet.info.uuid);
+      if (!label) {
+        label = Object.assign(document.createElement("label"), { className: "pg-wallet" });
+        label.dataset.uuid = wallet.info.uuid;
+        label.dataset.rdns = wallet.info.rdns;
+        label.dataset.press = "";
+        const input = Object.assign(document.createElement("input"), { type: "radio", name: "pg-wallet", value: wallet.info.uuid, className: "visually-hidden" });
+        input.addEventListener("change", () => input.checked && choose(wallet.info.uuid));
+        label.append(input);
+        // Only an image the announcement carries itself, never an address to fetch.
+        if (/^data:image\//.test(wallet.info.icon)) label.append(Object.assign(document.createElement("img"), { src: wallet.info.icon, alt: "", width: 16, height: 16 }));
+        label.append(wallet.info.name);
+      }
+      options.append(label);
+      label.querySelector("input")!.checked = wallet.provider === chosenWallet()?.provider;
+      have.delete(wallet.info.uuid);
+    }
+    for (const gone of have.values()) gone.remove();
+    box.hidden = false;
+  }
+
+  onWallets(() => {
+    showFeatureSections();
+    if (!weft) return;
+    setWeftPill("ok");
+    showWallets();
+    showLogAbout();
+    updateButtons();
+  });
+
+  /** With more than one Weft, the log names the wallet of each entry, and says so. */
+  function showLogAbout() {
+    if (!chosenName()) return;
+    $("pg-log-about").textContent = "Every request and response, with timings and the wallet each one went to, as this page sends and receives them.";
+  }
+
+  /** The wallet's events, as the page handles them: added to the wallet in use, and taken off one the page stops using. */
+  const eventTitle = (event: string) => `event ${event}${chosenName() ? ` · ${chosenName()}` : ""}`;
+  const handlers = {
+    identityChanged: (identity: any) => {
+      log("•", eventTitle("identityChanged"), identity);
+      showIdentity(identity);
+      announce(`Identity in ${weftName()} is now ${identity?.name ?? "none"}.`);
+    },
+    networkChanged: (payload: any) => {
+      log("•", eventTitle("networkChanged"), payload);
+      selectChannel(payload.channel);
+    },
+    certificateStatus: (payload: any) => {
+      log("•", eventTitle("certificateStatus"), payload);
+      $("pg-id-exp").textContent = payload.state === "expired" ? `Expired, renew it in ${weftName()}` : `${dateOf(payload.notAfter)} (${payload.daysLeft} days left)`;
+    },
+    disconnect: (payload: any) => {
+      log("•", eventTitle("disconnect"), payload);
+      setConnected(false, disconnectReason(payload?.reason));
+    },
+  };
+  const listen = (provider: any, on: boolean) => {
+    for (const [event, listener] of Object.entries(handlers)) {
+      if (on) provider.on(event, listener);
+      else provider.off?.(event, listener);
+    }
+  };
+
+  const nameOf = (c: Choice) => c.info?.name ?? "Weft";
+
+  /**
+   * The page starts using a wallet: the first one it finds, or the one the
+   * visitor switches to. A switch takes the event listeners off the old
+   * wallet's provider, forgets what belonged to it (the connection, the
+   * identity, the MSP and the elections it voted in), says so in the log,
+   * and asks the new wallet whether this page is connected already.
+   */
+  onChoice(({ current, previous, byVisitor }) => {
+    if (previous) listen(previous.provider, false);
+    weft = current.provider;
+    listen(weft, true);
+    if (previous) {
+      connected = false;
+      $("pg-conn").dataset.state = "pending";
+      $("pg-conn").textContent = "Not connected";
+      showIdentity(null);
+      clearError($("pg-id-error"));
+      myMsp = null;
+      votedIn.clear();
+      log("•", `switched to ${nameOf(current)}`, {
+        from: { name: nameOf(previous), rdns: previous.info?.rdns ?? null },
+        to: { name: nameOf(current), rdns: current.info?.rdns ?? null },
+        by: byVisitor ? "visitor" : "remembered choice",
+      });
+      announce(`This page now uses ${nameOf(current)}. Connect in step 2 to use it.`);
+    }
+    setWeftPill("ok");
+    showWallets();
+    showLogAbout();
+    showFeatureSections();
+    // The call shown in code reaches the wallet this page uses now.
+    if (lastCode) $("pg-code").textContent = codeFor(...lastCode);
+    void refreshIdentity();
+    updateButtons();
+  });
+
+  function detect() {
+    if (weft) return;
+    // The first choice runs the onChoice handler above.
+    if (resolve()) return;
     setWeftPill("missing");
     updateButtons();
   }
@@ -374,13 +490,17 @@ const { demoInvite = null } = Astro.props;
   window.addEventListener("weft#initialized", detect);
   setTimeout(() => !weft && detect(), 1200);
 
-  const DISCONNECT_REASONS: Record<string, string> = {
-    user: "Disconnected in Weft",
-    site: "Disconnected",
-    "no-identity": "No identity in Weft",
-    "wallet-updated": "Weft was updated. Reload this page.",
-    "identity-changed": "Identity switched in Weft. Connect again.",
-  };
+  function disconnectReason(reason: string | undefined): string {
+    const name = weftName();
+    const reasons: Record<string, string> = {
+      user: `Disconnected in ${name}`,
+      site: "Disconnected",
+      "no-identity": `No identity in ${name}`,
+      "wallet-updated": `${name} was updated. Reload this page.`,
+      "identity-changed": `Identity switched in ${name}. Connect again.`,
+    };
+    return (reason && reasons[reason]) || "Disconnected";
+  }
 
   function setConnected(value: boolean, label?: string) {
     const changed = value !== connected;
@@ -394,7 +514,7 @@ const { demoInvite = null } = Astro.props;
     updateButtons();
     if (had === $("pg-connect") && value) $("pg-disconnect").focus();
     if (had === $("pg-disconnect") && !value) $("pg-connect").focus();
-    if (changed || label) announce(value ? "Connected to Weft." : `${pill.textContent}.`.replace(/\.\.$/, "."));
+    if (changed || label) announce(value ? `Connected to ${weftName()}.` : `${pill.textContent}.`.replace(/\.\.$/, "."));
   }
 
   function selectChannel(channel: string) {
@@ -406,8 +526,11 @@ const { demoInvite = null } = Astro.props;
   }
 
   async function refreshIdentity() {
+    const using = weft;
     try {
-      const identity = await weft.request({ method: "weft_identity" });
+      const identity = await using.request({ method: "weft_identity" });
+      // The visitor switched wallets while this one answered.
+      if (weft !== using) return;
       if (identity) {
         showIdentity(identity);
         setConnected(true);
@@ -457,6 +580,7 @@ const { demoInvite = null } = Astro.props;
     const haveInvite = Boolean(inviteUrl());
     const looking = !weft && $("pg-weft").dataset.state === "pending";
     $<HTMLButtonElement>("pg-join").disabled = !weft || !haveInvite;
+    $("pg-join").textContent = `Join with ${weftName()}`;
     $<HTMLButtonElement>("pg-connect").disabled = !weft;
     $("pg-connect").hidden = connected;
     $("pg-disconnect").hidden = !connected;
@@ -580,11 +704,12 @@ const { demoInvite = null } = Astro.props;
     clearError($("pg-id-error"));
     try {
       const result = await call("weft_addNetwork", { url });
-      const text = result?.added === false ? "Weft already has this network. Connect this page to use it." : "Weft added the network. Now connect this page.";
+      const name = weftName();
+      const text = result?.added === false ? `${name} already has this network. Connect this page to use it.` : `${name} added the network. Now connect this page.`;
       why("pg-id-why", text);
       announce(text);
     } catch (error) {
-      showError($("pg-id-error"), walletProblem(error, "Weft couldn't add the network.", "You rejected the request in Weft, so the network wasn't added. Join again when you're ready."), technical(error));
+      showError($("pg-id-error"), walletProblem(error, `${weftName()} couldn't add the network.`, `You rejected the request in ${weftName()}, so the network wasn't added. Join again when you're ready.`), technical(error));
     } finally {
       setBusy(button, false);
     }
@@ -595,12 +720,17 @@ const { demoInvite = null } = Astro.props;
     if (isBusy(button)) return;
     setBusy(button, true);
     clearError($("pg-id-error"));
+    const using = weft;
     try {
-      showIdentity(await call("weft_connect"));
+      const identity = await call("weft_connect");
+      // The visitor switched wallets while this one asked: its connection isn't the page's now.
+      if (weft !== using) return;
+      showIdentity(identity);
       setBusy(button, false);
       setConnected(true);
     } catch (error) {
-      showError($("pg-id-error"), walletProblem(error, "Weft couldn't connect this page.", "You rejected the request in Weft, so this page isn't connected. Connect again when you're ready."), technical(error));
+      if (weft !== using) return;
+      showError($("pg-id-error"), walletProblem(error, `${weftName()} couldn't connect this page.`, `You rejected the request in ${weftName()}, so this page isn't connected. Connect again when you're ready.`), technical(error));
     } finally {
       setBusy(button, false);
       updateButtons();
@@ -609,7 +739,7 @@ const { demoInvite = null } = Astro.props;
 
   // The wallet answers with a disconnect event, which updates the page.
   $("pg-disconnect").addEventListener("click", () =>
-    void call("weft_disconnect").catch((error) => showError($("pg-id-error"), walletProblem(error, "Weft couldn't disconnect this page."), technical(error))),
+    void call("weft_disconnect").catch((error) => showError($("pg-id-error"), walletProblem(error, `${weftName()} couldn't disconnect this page.`), technical(error))),
   );
 
   /* ---------------- contract calls ---------------- */
@@ -683,11 +813,16 @@ const { demoInvite = null } = Astro.props;
     };
   }
 
+  /** The last call shown in code, so a switch of wallet can show it again with that wallet's rdns. */
+  let lastCode: ["evaluate" | "submit", ReturnType<typeof currentCall>] | null = null;
+
+  /** The call in code. With more than one Weft in the browser, getWeft() asks for the wallet this page uses, by rdns. */
   function codeFor(kind: "evaluate" | "submit", c: ReturnType<typeof currentCall>) {
     const args = c.args.map((a) => JSON.stringify(a)).join(", ");
+    lastCode = [kind, c];
     return `import { getWeft } from "@weftwallet/sdk";
 
-const weft = await getWeft();
+const weft = await getWeft(${sdkOptions()});
 const contract = weft.contract({ channel: ${JSON.stringify(c.channel)}, chaincode: ${JSON.stringify(c.chaincode)} });
 const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Boolean).join(", ")});`;
   }
@@ -1346,6 +1481,64 @@ const result = await contract.${kind}(${[JSON.stringify(c.fn), args].filter(Bool
     .pg-head--status .pg-chips[data-demo] {
       min-height: calc(var(--pg-chip-height) * 2 + var(--weft-space-2));
     }
+  }
+  /* With more than one Weft in the browser: which wallet the page uses,
+     under the chip. Each option is a 36px secondary control with the
+     wallet's mark and name; the chosen one is Selected, as SYSTEM.md has
+     it. The options wrap onto a second line where the card is too narrow
+     for both. */
+  .pg-wallets {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .pg-wallets legend {
+    padding: 0;
+    margin-bottom: var(--weft-space-2);
+  }
+  .pg-wallets__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--weft-space-2);
+  }
+  .pg-wallet {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--weft-space-2);
+    min-height: 36px;
+    max-width: 100%;
+    padding: 0 var(--weft-space-3);
+    border: 1px solid var(--weft-line-strong);
+    border-radius: var(--weft-radius-lg);
+    font-size: var(--weft-type-md);
+    line-height: var(--weft-leading-md);
+    position: relative;
+    cursor: pointer;
+    /* Pressed is motion.css's [data-press]; its transform is listed here too. */
+    transition:
+      border-color var(--weft-duration-fast) var(--weft-ease-out),
+      background-color var(--weft-duration-fast) var(--weft-ease-out),
+      transform var(--weft-duration-fast) var(--weft-ease-out);
+  }
+  .pg-wallet img {
+    flex: none;
+    width: 16px;
+    height: 16px;
+  }
+  @media (hover: hover) {
+    .pg-wallet:hover:not(:has(input:checked)) {
+      border-color: var(--weft-text-subtle);
+    }
+  }
+  .pg-wallet:has(input:checked) {
+    background: var(--weft-accent-soft);
+    border-color: var(--weft-accent-line);
+  }
+  .pg-wallet:has(input:focus-visible) {
+    outline: var(--weft-focus-ring) solid var(--weft-focus);
+    outline-offset: var(--weft-focus-offset);
   }
   .pg-card {
     border: 1px solid var(--weft-line-strong);

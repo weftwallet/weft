@@ -2,9 +2,11 @@
 // Experimental (docs/adr/0009): the "Private election" section, for
 // weft_castBallot (docs/adr/0007). Playground.astro shows it only when a
 // Weft in the browser lists "castBallot" in its features, which only Weft
-// Experimental does. With Weft and Weft Experimental both installed, the
-// section casts with the one that lists it (docs/adr/0010), whichever holds
-// window.weft.
+// Experimental does. It casts with the wallet the page uses
+// (src/scripts/wallet-choice.ts). With Weft and Weft Experimental both
+// installed and Weft chosen, it says that Weft doesn't offer private
+// elections and offers to switch the page to Weft Experimental
+// (docs/adr/0010).
 //
 // It lists the private elections that the invite's explorer publishes, read
 // from the explorer's JSON API, so reading needs no connection to Weft. It
@@ -44,6 +46,12 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
     voted.
   </p>
   <p class="pg-receipt-line pg-receipt-line--unsaved">Experimental. No one outside the project has reviewed this cryptography.</p>
+  <div class="pg-stack" id="pg-pe-wallet" hidden>
+    <p class="pg-hint pg-why" id="pg-pe-wallet-text" tabindex="-1"></p>
+    <div class="pg-row pg-wrap">
+      <button type="button" id="pg-pe-wallet-use" class="btn btn--primary"></button>
+    </div>
+  </div>
 
   <div class="pg-head">
     <h3 id="pg-pe-list-heading">Elections</h3>
@@ -107,8 +115,9 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
 <script>
   import { WeftClient, type CastBallotResult, type WeftProvider } from "@weftwallet/sdk";
   import { announce, clearError, conceal, fetchProblem, grouped, isBusy, reveal, setBusy, shortened, showError, technical } from "@weftwallet/ui/ui";
-  import { walletWith } from "@weftwallet/ui/wallets";
+  import { onWallets } from "@weftwallet/ui/wallets";
   import { logged } from "../scripts/provider-log.ts";
+  import { choose, found, inUse, onChoice, sdkOptions, several } from "../scripts/wallet-choice.ts";
 
   /* What the explorer's JSON API returns (apps/explorer/src/private-elections.ts). */
   type Phase = "round1" | "round2" | "round3" | "opening" | "open" | "late" | "counting" | "counted" | "failed" | "cancelled";
@@ -177,10 +186,21 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
 
   let explorer: string | null = root.dataset.explorer || null;
   let relay: string | null = root.dataset.relay || null;
-  /** The Weft that casts ballots: window.weft when it lists castBallot, or else the announced Weft that does. */
-  const ballotWallet = () => walletWith("castBallot");
-  /** Whether that Weft can hold voter credentials. */
-  const holdsCredentials = () => ballotWallet()?.features.includes("voterCredentials") ?? false;
+  const castsBallots = (provider: WeftProvider | null | undefined) => !!provider?.features?.includes("castBallot");
+  /** The Weft that casts ballots: the wallet the page uses, when it lists castBallot. */
+  const ballotWallet = (): WeftProvider | null => {
+    const provider = inUse()?.provider;
+    return castsBallots(provider) ? provider! : null;
+  };
+  /** When the page uses a wallet without castBallot: another Weft in the browser that lists it, to offer a switch to. */
+  const otherBallotWallet = () => {
+    const using = inUse();
+    return !using || castsBallots(using.provider) ? undefined : found().find((d) => d.provider !== using.provider && castsBallots(d.provider));
+  };
+  /** The name of the wallet in use, for the log and the notice, when the browser has more than one Weft. */
+  const walletName = () => (several() ? (inUse()?.info?.name ?? null) : null);
+  /** Whether the Weft that would vote, the one in use or the one offered, can hold voter credentials. */
+  const holdsCredentials = () => (ballotWallet() ?? otherBallotWallet()?.provider)?.features.includes("voterCredentials") ?? false;
   const anonymous = (e: { anonymous?: unknown }) => !!e.anonymous;
   const inviteUrl = (id: string) => `${relay}/.well-known/weft-voter-invite/${encodeURIComponent(id)}.json`;
   let elections: Listed[] = [];
@@ -377,7 +397,7 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
     // Vote in Weft is offered while the contract takes ballots, once per
     // election from this page, and for voter credentials only to a Weft that holds them.
     const able = !anonymous(v) || holdsCredentials();
-    const offer = canVote(v.phase) && !results.has(key) && !votedBefore.has(key) && able;
+    const offer = canVote(v.phase) && !results.has(key) && !votedBefore.has(key) && able && !!ballotWallet();
     showInvite(v, offer);
     const needs = $("pg-pe-needs");
     needs.textContent = canVote(v.phase) && !able ? `This version of Weft Experimental can't hold voter credentials, so it can't vote in ${v.title}. A Weft Experimental that lists "voterCredentials" in its features can.` : "";
@@ -533,7 +553,7 @@ const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: st
   function showCode(v: View, show: boolean) {
     $("pg-pe-code").textContent = `import { getWeft } from "@weftwallet/sdk";
 
-const weft = await getWeft();
+const weft = await getWeft(${sdkOptions()});
 const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, chaincode: ${JSON.stringify(v.contract)}, electionId: ${JSON.stringify(v.id)} });`;
     if (show) reveal($("pg-pe-code-wrap"));
     else conceal($("pg-pe-code-wrap"));
@@ -548,7 +568,7 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
       isWeft: true,
       version: weft.version,
       features: weft.features,
-      request: ((args: { method: string; params?: unknown }) => logged(weft, args.method, args.params)) as WeftProvider["request"],
+      request: ((args: { method: string; params?: unknown }) => logged(weft, args.method, args.params, walletName())) as WeftProvider["request"],
       on: (event: any, listener: any) => weft.on(event, listener),
       off: (event: any, listener: any) => weft.off(event, listener),
     } as WeftProvider;
@@ -752,6 +772,62 @@ const result = await weft.castBallot({ channel: ${JSON.stringify(v.channel)}, ch
       getSelection()?.selectAllChildren($("pg-pe-receipt-json"));
       showError($("pg-pe-receipt-error"), "This browser didn't allow copying. The receipt is selected: press Ctrl+C, or Cmd+C on a Mac.");
     }
+  });
+
+  /* ---------------- the wallet ---------------- */
+
+  /** Whether the visitor switched wallets with Use Weft Experimental, so the notice says what it did. */
+  let switching = false;
+  let switchedHere = false;
+
+  /**
+   * When the page uses a wallet that doesn't offer private elections and
+   * another Weft in this browser does: says so, and offers to switch the
+   * whole page to that one. After that switch, says which wallet the page
+   * uses now, in the same place.
+   */
+  function showWalletNotice() {
+    const box = $("pg-pe-wallet");
+    const text = $("pg-pe-wallet-text");
+    const button = $<HTMLButtonElement>("pg-pe-wallet-use");
+    const other = otherBallotWallet();
+    if (other) {
+      text.textContent = `This page uses ${walletName() ?? "Weft"}, which doesn't offer private elections. ${other.info.name} does, and it's in this browser too.`;
+      button.textContent = `Use ${other.info.name}`;
+      button.dataset.uuid = other.info.uuid;
+      button.hidden = false;
+      reveal(box);
+      return;
+    }
+    if (switchedHere && ballotWallet()) {
+      text.textContent = `This page now uses ${walletName() ?? "Weft"}, which offers private elections.`;
+      button.hidden = true;
+      reveal(box);
+      return;
+    }
+    conceal(box);
+  }
+
+  /** The wallet the page uses changed: every part of the section that depends on it. */
+  function walletChanged() {
+    showWalletNotice();
+    showList();
+    if (view) showView(view);
+  }
+  onChoice(() => {
+    switchedHere = switching;
+    walletChanged();
+  });
+  onWallets(walletChanged);
+
+  $("pg-pe-wallet-use").addEventListener("click", () => {
+    const uuid = $("pg-pe-wallet-use").dataset.uuid;
+    if (!uuid) return;
+    switching = true;
+    choose(uuid);
+    switching = false;
+    // The button is gone now: focus the sentence that took its place.
+    $("pg-pe-wallet-text").focus();
   });
 
   /* ---------------- wiring ---------------- */
