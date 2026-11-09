@@ -1,6 +1,96 @@
 import { browser } from "wxt/browser";
 import { UiError } from "./messages";
 
+/*
+ * A toolbar popup can't keep a permission prompt in view. Chrome closes the
+ * popup when its prompt opens, so the step that asked is lost. Firefox opens
+ * the prompt behind the popup (Mozilla bug 1798454), so the popup waits,
+ * blank, for an answer to a prompt nobody can see. So in the toolbar popup,
+ * in every browser, a step that needs a host Weft doesn't hold yet is moved
+ * to a tab, where the prompt shows in front and the page stays open.
+ * Approval windows and tabs ask in place. Deciding that must not wait on the
+ * browser, or the click no longer counts as one, so the popup keeps the
+ * origins it holds (primeHostAccess) and checks them at once.
+ */
+
+/** Origins Weft holds, as the popup last read them. Null until read. */
+let held: Set<string> | null = null;
+
+/** The screen to reopen in a tab, set by the popup as it changes screen, and the invite link typed on it. */
+let tabRoute: { name: string } | null = null;
+let tabLink = "";
+
+/**
+ * True in the toolbar popup, false in a tab (popup.html opened in one, by the
+ * popup or by hand) or a window. The browser says which pages are open as
+ * its popup. Where it can't, popup.html without ?tab counts as the popup.
+ */
+export function inToolbarPopup(): boolean {
+  if (!location.pathname.endsWith("/popup.html") || new URLSearchParams(location.search).has("tab")) return false;
+  try {
+    const popups = browser.extension.getViews({ type: "popup" });
+    return popups.includes(window);
+  } catch {
+    return true;
+  }
+}
+
+/** Reads the origins Weft holds, and keeps them up to date while the page is open. Called once when the popup starts. */
+export async function primeHostAccess(): Promise<void> {
+  const read = async () => {
+    const all = await browser.permissions.getAll().catch(() => ({ origins: [] as string[] }));
+    held = new Set(all.origins ?? []);
+  };
+  await read();
+  browser.permissions.onAdded?.addListener(() => void read());
+  browser.permissions.onRemoved?.addListener(() => void read());
+}
+
+/** The popup's current screen, to reopen in a tab. */
+export function setTabRoute(route: { name: string }): void {
+  tabRoute = route;
+}
+
+/** The invite link typed on Join from an invite, carried to the tab. */
+export function setTabLink(link: string): void {
+  tabLink = link;
+}
+
+/** The tab's address part after popup.html?tab=1: the screen, and the link when there is one. */
+function tabHash(): string {
+  if (!tabRoute) return "";
+  return `#${encodeURIComponent(JSON.stringify(tabLink ? { ...tabRoute, link: tabLink } : tabRoute))}`;
+}
+
+/** The screen a tab opened by the popup starts on, or null. */
+export function tabStart(): { route: { name: string; [key: string]: unknown } | null } {
+  if (!new URLSearchParams(location.search).has("tab") || location.hash.length < 2) return { route: null };
+  try {
+    const route = JSON.parse(decodeURIComponent(location.hash.slice(1))) as unknown;
+    return { route: route && typeof route === "object" && typeof (route as { name?: unknown }).name === "string" ? (route as { name: string }) : null };
+  } catch {
+    return { route: null };
+  }
+}
+
+/** True in a tab the popup opened. */
+export function inPopupTab(): boolean {
+  return location.pathname.endsWith("/popup.html") && new URLSearchParams(location.search).has("tab");
+}
+
+/** Whether the popup knows it holds every origin. Unknown counts as no. */
+function holdsAll(origins: string[]): boolean {
+  return held !== null && origins.every((o) => held!.has(o) || held!.has("<all_urls>"));
+}
+
+/** The error a popup step ends with once it has moved itself to a tab. */
+export class MovedToTab extends UiError {
+  constructor() {
+    super("Weft opened this step in a tab, because the browser can't ask for access over this popup.");
+    this.name = "MovedToTab";
+  }
+}
+
 /**
  * Asks the user for access to the hosts Weft needs for a network: its CA and
  * relay, or the server an invite comes from. Must run inside a click handler
@@ -27,6 +117,11 @@ export async function requestHostAccess(urls: string[], what = "your organisatio
   // "localhost:8787" as a different host from the manifest's "localhost"
   // and refuses it as undeclared.
   const origins = Array.from(new Set(parsed.map((u) => `${u.protocol}//${u.hostname}/*`)));
+  // The toolbar popup can't keep the prompt in view (above): continue in a tab instead.
+  if (inToolbarPopup() && !holdsAll(origins)) {
+    void browser.tabs.create({ url: `${browser.runtime.getURL("/popup.html")}?tab=1${tabHash()}` }).then(() => window.close());
+    throw new MovedToTab();
+  }
   // Already-granted origins resolve without a prompt.
   let granted: boolean;
   try {

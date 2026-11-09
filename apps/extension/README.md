@@ -26,6 +26,10 @@ pnpm --filter @weftwallet/extension build -b firefox       # writes .output/fire
 
 To load a build by hand, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on** and pick `manifest.json` in `.output/firefox-mv3`. Firefox removes a temporary add-on when it closes.
 
+## Permission prompts and the popup
+
+A toolbar popup can't keep a permission prompt in view. Chrome closes the popup when its prompt opens, so the step that asked is lost. Firefox opens the prompt behind the popup (Mozilla bug 1798454), so the popup sits blank, waiting for an answer to a prompt nobody can see. So when a step in the toolbar popup needs a host Weft doesn't hold yet, in either browser, such as the server of an invite pasted into Join from an invite, Weft opens that step in a tab, on the same screen and with the invite link carried over, and closes the popup. The prompt then shows in front, and the step continues in the tab (`lib/permissions.ts`). Other things typed on the screen aren't carried over. A step that needs only hosts Weft already holds asks in the popup, and the approval windows and tabs always ask in place.
+
 ## Weft Experimental
 
 `WEFT_EXPERIMENTAL=1` builds Weft Experimental from this same project: a separate extension for features that no one outside the project has reviewed and that aren't part of Weft ([ADR 0009](../../docs/adr/0009-experimental-track.md), [Experimental features](../docs/src/content/docs/experimental/overview.md)). It isn't offered in browser stores.

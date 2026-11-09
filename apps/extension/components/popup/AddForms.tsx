@@ -1,8 +1,8 @@
 import { resolveInviteUrl } from "@weftwallet/core";
 import type { OrgInvite, VoterInvite } from "@weftwallet/protocol";
-import { Suspense, lazy, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
+import { Suspense, lazy, useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { ui, type IdentityView, type NetworkInput, type PendingCsrView, type WalletState } from "../../lib/messages";
-import { requestHostAccess } from "../../lib/permissions";
+import { requestHostAccess, setTabLink } from "../../lib/permissions";
 import { scanActiveTab, scanPastedImage } from "../../lib/qr";
 import * as check from "../../lib/validate";
 import { InviteCard } from "../InviteCard";
@@ -119,8 +119,13 @@ function Submit({ busy, label, error }: { busy: boolean; label: string; error: E
 
 /* Join from invite ------------------------------------------------- */
 
-export function JoinInvite({ state, navigate, onDone, from }: FormProps) {
-  const [link, setLink] = useState("");
+export function JoinInvite({ state, navigate, onDone, from, initialLink }: FormProps & { initialLink?: string | undefined }) {
+  const [link, setLink] = useState(initialLink ?? "");
+  // Carried to a tab if the toolbar popup has to move this step there (lib/permissions.ts).
+  useEffect(() => {
+    setTabLink(link.trim());
+    return () => setTabLink("");
+  }, [link]);
   const [invite, setInvite] = useState<OrgInvite | VoterInvite | null>(null);
   const [enrollmentId, setEnrollmentId] = useState("");
   const [secret, setSecret] = useState("");

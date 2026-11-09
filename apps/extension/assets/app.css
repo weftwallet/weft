@@ -44,6 +44,25 @@ body.window {
   height: 100vh;
 }
 
+/* The popup opened in a tab, for a step that needs a permission prompt,
+   which the toolbar popup can't keep in view (lib/permissions.ts): the
+   popup's own size, centred, and never wider than the tab. */
+body.popup-tab {
+  max-width: 100%;
+  margin: 2rem auto;
+  border: 1px solid var(--weft-line-strong);
+  border-radius: var(--weft-radius-lg);
+}
+
+/* In a tab no wider than the popup, it fills the width without a frame. */
+@media (max-width: 400px) {
+  body.popup-tab {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
 #root {
   height: 100%;
   display: flex;

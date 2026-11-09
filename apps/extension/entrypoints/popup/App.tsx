@@ -10,6 +10,7 @@ import { TxDetail } from "../../components/popup/TxDetail";
 import { usePendingApproval, useUiEvents, useWallet, voterCredentialsOf, type Route } from "../../components/popup/state";
 import { FeedbackProvider, useFeedback } from "../../components/feedback";
 import { EXPERIMENTAL } from "../../lib/experimental";
+import { inPopupTab, primeHostAccess, setTabRoute, tabStart } from "../../lib/permissions";
 import { Button, ErrorDetails, ReplayMark, Spinner, Splash, StatusScreen, WeaveMark, clockTime, tokenMs, useFocusOnArrival } from "../../components/ui";
 
 /** Weft Experimental's voter credential detail (docs/adr/0008); the normal build never emits it. */
@@ -52,7 +53,15 @@ interface Leaving {
 function Screens() {
   const { state, setState, error, refresh } = useWallet();
   const { toast, dismiss } = useFeedback();
-  const [route, setRoute] = useState<Route>({ name: "home" });
+  // A tab the popup opened (lib/permissions.ts) starts on the screen it came from.
+  const [route, setRoute] = useState<Route>(() => (tabStart().route as Route | null) ?? { name: "home" });
+  useEffect(() => {
+    void primeHostAccess();
+    if (inPopupTab()) document.body.classList.add("popup-tab");
+  }, []);
+  useEffect(() => {
+    setTabRoute(route);
+  }, [route]);
   const direction = useRef<"forward" | "back" | "none">("none");
   const visits = useRef(0);
   // Home's tab and scroll position, kept while a deeper screen is open.
@@ -204,7 +213,7 @@ function Screens() {
       screen = <AddIdentity state={state} navigate={navigate} />;
       break;
     case "join":
-      screen = <JoinInvite {...props} from={from} />;
+      screen = <JoinInvite {...props} from={from} initialLink={route.link} />;
       break;
     case "enroll":
       screen = <EnrollForm {...props} from={from} />;

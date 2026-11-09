@@ -11,7 +11,7 @@ export type Route =
   | { name: "home" }
   | { name: "identities" }
   | { name: "add" }
-  | { name: "join"; from?: AddFrom }
+  | { name: "join"; from?: AddFrom; /** Carried from the popup to a tab (lib/permissions.ts). */ link?: string }
   | { name: "enroll"; from?: AddFrom }
   | { name: "import"; from?: AddFrom }
   | { name: "csr"; from?: AddFrom }
