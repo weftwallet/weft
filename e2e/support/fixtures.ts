@@ -261,3 +261,32 @@ export async function launchWallet(site: Site, build: Build, profile: string, { 
   }
   return wallet;
 }
+
+/**
+ * One browser profile with both test builds loaded, Weft and Weft
+ * Experimental (docs/adr/0010), each with its vault set up. The two wallets
+ * share one context: close it once, when done.
+ */
+export async function launchBothWallets(site: Site, profile: string): Promise<Record<Build, Wallet>> {
+  const both = [BUILDS.normal, BUILDS.experimental].join(",");
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: "chromium",
+    headless: true,
+    args: [`--disable-extensions-except=${both}`, `--load-extension=${both}`],
+  });
+  while (context.serviceWorkers().length < 2) await context.waitForEvent("serviceworker");
+  const wallets: Partial<Record<Build, Wallet>> = {};
+  for (const worker of context.serviceWorkers()) {
+    // A worker that has just started may not have chrome.runtime yet.
+    let name: string | null = null;
+    for (let tries = 0; !name && tries < 50; tries++) {
+      name = await worker.evaluate(() => (globalThis as any).chrome?.runtime?.getManifest?.().name ?? null);
+      if (!name) await new Promise((r) => setTimeout(r, 100));
+    }
+    wallets[name === "Weft Experimental" ? "experimental" : "normal"] = new Wallet(context, new URL(worker.url()).host, worker, site);
+  }
+  if (!wallets.normal || !wallets.experimental) throw new Error("The browser didn't load both Weft and Weft Experimental.");
+  for (const wallet of [wallets.normal, wallets.experimental]) await wallet.ui("vaultSetup", { password: PASSWORD });
+  for (const page of context.pages()) if (page.url().startsWith("chrome-extension://")) await page.close();
+  return wallets as Record<Build, Wallet>;
+}
