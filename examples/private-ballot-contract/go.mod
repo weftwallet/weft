@@ -2,8 +2,6 @@ module github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract
 
 go 1.26.3
 
-toolchain go1.26.10
-
 require (
 	github.com/IBM/idemix v0.3.1
 	github.com/IBM/mathlib v0.3.2
