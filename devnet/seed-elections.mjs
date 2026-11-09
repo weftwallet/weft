@@ -11,7 +11,7 @@
  * bob) can still vote in board-2026 from Weft. Safe to run again: elections
  * and ballots that already exist are kept.
  *
- *   node playground/seed-elections.mjs <peerOrganizations folder> [receipts.json]
+ *   node devnet/seed-elections.mjs <peerOrganizations folder> [receipts.json]
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createPrivateKey, randomBytes } from "node:crypto";
@@ -26,7 +26,7 @@ const { connect, signers } = require("@hyperledger/fabric-gateway");
 
 const [organizations, receiptsFile] = process.argv.slice(2);
 if (!organizations) {
-  console.error("Usage: node playground/seed-elections.mjs <peerOrganizations folder> [receipts.json]");
+  console.error("Usage: node devnet/seed-elections.mjs <peerOrganizations folder> [receipts.json]");
   process.exit(1);
 }
 const CHANNEL = "mychannel";

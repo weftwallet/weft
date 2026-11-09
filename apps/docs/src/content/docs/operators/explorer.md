@@ -211,8 +211,8 @@ The content security policy adds `worker-src 'self'` for the full check's worker
 
 | Explorer | Policy | Publishes |
 |---|---|---|
-| Org1, [localhost:8790](http://localhost:8790) | `playground/explorer.yaml` | Everything, with submitters and the ballots' private data hashes. Contract approvals (`_lifecycle`) are for signed-in members only. |
-| Org2, [localhost:8791](http://localhost:8791) | `playground/explorer-org2.yaml` | No submitters. The `basic` contract's transactions are for signed-in members only. |
+| Org1, [localhost:8790](http://localhost:8790) | `devnet/explorer.yaml` | Everything, with submitters and the ballots' private data hashes. Contract approvals (`_lifecycle`) are for signed-in members only. |
+| Org2, [localhost:8791](http://localhost:8791) | `devnet/explorer-org2.yaml` | No submitters. The `basic` contract's transactions are for signed-in members only. |
 
 Both show the elections the playground seeds and, once you sign in, the `members` channel's assets, and they cross-check each other, so you can see two organisations publish different amounts of the same ledger and still agree on every block. The [playground](weft:playground/) lists both, with things to try. Org1's invite names its explorer, so Weft links each transaction in its activity to it. If your playground was already running, restart only the explorers with `pnpm playground:explorer`.
 

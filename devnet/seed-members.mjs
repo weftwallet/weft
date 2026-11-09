@@ -4,7 +4,7 @@
  * members-only channel, so its explorers have transactions to show members.
  * Safe to run again: it does nothing when assets are already there.
  *
- *   node playground/seed-members.mjs <peerOrganizations folder>
+ *   node devnet/seed-members.mjs <peerOrganizations folder>
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { createPrivateKey } from "node:crypto";
@@ -19,7 +19,7 @@ const { connect, signers } = require("@hyperledger/fabric-gateway");
 
 const [organizations] = process.argv.slice(2);
 if (!organizations) {
-  console.error("Usage: node playground/seed-members.mjs <peerOrganizations folder>");
+  console.error("Usage: node devnet/seed-members.mjs <peerOrganizations folder>");
   process.exit(1);
 }
 const only = (dir) => join(dir, readdirSync(dir).filter((f) => !f.startsWith("."))[0]);

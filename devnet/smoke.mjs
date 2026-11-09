@@ -27,7 +27,7 @@
  * playground's trustees, as the e2e tests do, and votes in that. It uses the
  * built packages (pnpm build) and the idemix module, which
  * `playground:up --experimental` builds. With WEFT_SMOKE_STATE, it reads the
- * playground's files from another folder than playground/.state.
+ * playground's files from another folder than devnet/.state.
  */
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";

@@ -84,9 +84,9 @@ Then, for each election in `ELECTIONS` with a `seed`, it runs as Org1's trustee 
 To run `weft-trustee` by hand as Org1's trustee, from the repository's root:
 
 ```sh
-WEFT_TRUSTEE_PASSPHRASE=$(cat playground/.state/trustees/org1/passphrase) \
+WEFT_TRUSTEE_PASSPHRASE=$(cat devnet/.state/trustees/org1/passphrase) \
   node packages/trustee/dist/cli.js status --election budget-2027 \
-  --connection playground/.state/trustees/org1/privatevote-budget-2027.yaml
+  --connection devnet/.state/trustees/org1/privatevote-budget-2027.yaml
 ```
 
 `pnpm playground:count <election>` counts an election without waiting for its planned closing time. As each organisation's trustee in turn, it runs `weft-trustee close --early`, until the election closes, then `decrypt`, the second of which publishes the tally, and prints the counts. After eight ballots:
@@ -187,7 +187,7 @@ The test network's CA serves HTTPS with a self-signed certificate. Browsers reje
 
 ### HTTPS with `--https`
 
-Real organisations give an `https://` CA URL, so use `pnpm playground:up --https` to test that path. The script runs `mkcert -install`, which adds mkcert's root to your system's trusted certificates (it may ask for your password the first time), makes a `localhost` certificate in `playground/.state`, and serves the proxy on `https://localhost:7443`. Chrome trusts the system's certificates, and unlike a certificate accepted in a tab, that trust reaches the extension too. Firefox keeps its own list: mkcert adds its root there if `certutil` is installed (`brew install nss`).
+Real organisations give an `https://` CA URL, so use `pnpm playground:up --https` to test that path. The script runs `mkcert -install`, which adds mkcert's root to your system's trusted certificates (it may ask for your password the first time), makes a `localhost` certificate in `devnet/.state`, and serves the proxy on `https://localhost:7443`. Chrome trusts the system's certificates, and unlike a certificate accepted in a tab, that trust reaches the extension too. Firefox keeps its own list: mkcert adds its root there if `certutil` is installed (`brew install nss`).
 
 If mkcert isn't installed, `--https` stops before doing anything and tells you to install it or drop the flag.
 
@@ -195,7 +195,7 @@ Restart the stack to switch between the two (`pnpm playground:down`, then `up` w
 
 ## Using your own fabric-samples
 
-Set `WEFT_FABRIC_SAMPLES` to an existing checkout that has `bin/` and `test-network/`; otherwise the script downloads Fabric 2.5 and Fabric CA 1.5 into `playground/.fabric` (git-ignored).
+Set `WEFT_FABRIC_SAMPLES` to an existing checkout that has `bin/` and `test-network/`; otherwise the script downloads Fabric 2.5 and Fabric CA 1.5 into `devnet/.fabric` (git-ignored).
 
 ## Hosting it
 

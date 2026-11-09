@@ -284,7 +284,7 @@ function ensureFabric() {
   }
   const dir = dirname(samples);
   mkdirSync(dir, { recursive: true });
-  note(`downloading Fabric ${FABRIC_VERSION} and Fabric CA ${CA_VERSION} into playground/.fabric (one-time)`);
+  note(`downloading Fabric ${FABRIC_VERSION} and Fabric CA ${CA_VERSION} into devnet/.fabric (one-time)`);
   run("curl", ["-sSLO", "https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh"], { cwd: dir });
   run("bash", ["install-fabric.sh", "--fabric-version", FABRIC_VERSION, "--ca-version", CA_VERSION, "docker", "samples", "binary"], {
     cwd: dir,
@@ -656,7 +656,7 @@ async function startVotersCaProxy(election) {
   if (await portTaken(port)) {
     fail(
       `The proxy for ${election.voterOrg.ca.name} couldn't listen on ${port}: the port is in use.`,
-      `Stop what uses it, or give ${election.id} another ca.proxy port in ELECTIONS in playground/experimental.mjs.`,
+      `Stop what uses it, or give ${election.id} another ca.proxy port in ELECTIONS in devnet/experimental.mjs.`,
     );
   }
   const log = openSync(join(state, `${name}.log`), "a");
@@ -902,7 +902,7 @@ function down() {
   for (const name of ["explorer", "explorer-org2"]) {
     for (const suffix of ["", "-wal", "-shm"]) rmSync(join(state, `${name}.db${suffix}`), { force: true });
   }
-  console.log("Done. Downloads in playground/.fabric are kept; delete that folder to remove them.");
+  console.log("Done. Downloads in devnet/.fabric are kept; delete that folder to remove them.");
 }
 
 async function status() {
@@ -971,7 +971,7 @@ const unknown =
       : flags.filter((f) => !(command === "up" && (f === "--https" || f === "--experimental")));
 if (!commands[command] || unknown.length) {
   console.log(
-    "Usage: node playground/cli.mjs <up [--https] [--experimental]|count <election> [--channel <channel>] [--accept-extra-credentials]|credentials <election>|explorer|down|status>",
+    "Usage: node devnet/cli.mjs <up [--https] [--experimental]|count <election> [--channel <channel>] [--accept-extra-credentials]|credentials <election>|explorer|down|status>",
   );
   if (unknown.length) console.log(`Unknown option: ${unknown.join(" ")}`);
   process.exit(command ? 1 : 0);

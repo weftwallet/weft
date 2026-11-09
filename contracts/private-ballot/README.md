@@ -49,7 +49,7 @@ The contract's tests run on an in-memory peer in `contract/stub_test.go`, which 
 `pnpm playground:up --experimental` deploys it on every election's channel, with test-network's `deployCC -ccl go` and `AND('Org1MSP.peer','Org2MSP.peer')` ([the playground's README](../../playground/README.md#the-experimental-channels)). By hand, on a channel test-network's peers have joined:
 
 ```sh
-cd playground/.fabric/fabric-samples/test-network
+cd devnet/.fabric/fabric-samples/test-network
 ./network.sh deployCC -c privatevote-budget-2027 -ccn private-ballot \
   -ccp ../../../../contracts/private-ballot -ccl go \
   -ccep "AND('Org1MSP.peer','Org2MSP.peer')"

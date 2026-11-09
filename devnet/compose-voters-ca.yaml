@@ -5,14 +5,14 @@
 # host, where fabric-ca-server writes the idemix issuer keys
 # (IssuerPublicKey, IssuerRevocationPublicKey) that become the election's MSP.
 #
-# playground/cli.mjs runs it once per election with voter credentials in
-# ELECTIONS (playground/experimental.mjs), as the Compose project weft-voters-<election>,
+# devnet/cli.mjs runs it once per election with voter credentials in
+# ELECTIONS (devnet/experimental.mjs), as the Compose project weft-voters-<election>,
 # with these variables set:
 #   VOTERS_CA_CONTAINER        the container's name, for example ca_voters_chair_2027
 #   VOTERS_CA_NAME             the CA's name, for example ca-chair-2027
 #   VOTERS_CA_PORT             its port, the same inside and on localhost
 #   VOTERS_CA_OPERATIONS_PORT  its operations port, the same inside and on localhost
-#   VOTERS_CA_HOME             its home on the host, playground/.state/voters-ca/<election>/server
+#   VOTERS_CA_HOME             its home on the host, devnet/.state/voters-ca/<election>/server
 
 services:
 
@@ -22,14 +22,14 @@ services:
       service: weft-voters-ca
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
-      - FABRIC_CA_SERVER_CA_NAME=${VOTERS_CA_NAME:?set by playground/cli.mjs}
+      - FABRIC_CA_SERVER_CA_NAME=${VOTERS_CA_NAME:?set by devnet/cli.mjs}
       - FABRIC_CA_SERVER_TLS_ENABLED=true
-      - FABRIC_CA_SERVER_PORT=${VOTERS_CA_PORT:?set by playground/cli.mjs}
-      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:${VOTERS_CA_OPERATIONS_PORT:?set by playground/cli.mjs}
+      - FABRIC_CA_SERVER_PORT=${VOTERS_CA_PORT:?set by devnet/cli.mjs}
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:${VOTERS_CA_OPERATIONS_PORT:?set by devnet/cli.mjs}
     ports:
       - "${VOTERS_CA_PORT}:${VOTERS_CA_PORT}"
       - "${VOTERS_CA_OPERATIONS_PORT}:${VOTERS_CA_OPERATIONS_PORT}"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
-      - ${VOTERS_CA_HOME:?set by playground/cli.mjs}:/etc/hyperledger/fabric-ca-server
-    container_name: ${VOTERS_CA_CONTAINER:?set by playground/cli.mjs}
+      - ${VOTERS_CA_HOME:?set by devnet/cli.mjs}:/etc/hyperledger/fabric-ca-server
+    container_name: ${VOTERS_CA_CONTAINER:?set by devnet/cli.mjs}

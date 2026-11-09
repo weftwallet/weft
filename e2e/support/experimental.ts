@@ -9,12 +9,12 @@
  * Needs `pnpm playground:up --experimental` (WEFT_E2E_STACK=playground).
  * For a stack started another way:
  *   WEFT_E2E_PLAYGROUND_STATE   the folder with the trustees' files, trustees/<org>
- *                               (playground/.state by default)
+ *                               (devnet/.state by default)
  *   WEFT_E2E_ELECTION_CHANNEL   the election channel to create it on
  *                               (privatevote-budget-2027 by default)
  *   WEFT_E2E_PLAYGROUND_COUNT   the command that counts an election, given
  *                               `<election> --channel <channel>` after it
- *                               (node playground/cli.mjs count by default)
+ *                               (node devnet/cli.mjs count by default)
  */
 
 import { spawnSync } from "node:child_process";
@@ -32,7 +32,7 @@ export interface RunElection {
   seeded: string;
 }
 
-export const PLAYGROUND_STATE = process.env.WEFT_E2E_PLAYGROUND_STATE ?? join(ROOT, "playground", ".state");
+export const PLAYGROUND_STATE = process.env.WEFT_E2E_PLAYGROUND_STATE ?? join(ROOT, "devnet", ".state");
 export const ELECTION_CHANNEL = process.env.WEFT_E2E_ELECTION_CHANNEL ?? "privatevote-budget-2027";
 export const CONTRACT = "private-ballot";
 /** Where the setup project leaves the run's election for the tests: in Playwright's output folder, which each run empties. */
@@ -51,12 +51,12 @@ export function missingStack(): string | null {
 
 /**
  * Creates and opens a new election with Org1MSP and Org2MSP as trustees, 2 of
- * 2, with the playground's seedElection (playground/experimental.mjs), which
+ * 2, with the playground's seedElection (devnet/experimental.mjs), which
  * runs weft-trustee create, commit, share and confirm as each organisation's
  * trustee.
  */
 export async function createRunElection(): Promise<RunElection> {
-  const playground = (await import(pathToFileURL(join(ROOT, "playground", "experimental.mjs")).href)) as {
+  const playground = (await import(pathToFileURL(join(ROOT, "devnet", "experimental.mjs")).href)) as {
     seedElection: (net: { orgs: { msp: string }[] }, state: string, election: unknown, creator: { msp: string }) => string;
   };
   const electionId = `e2e-${Date.now().toString(36)}`;
@@ -82,7 +82,7 @@ export function runElection(): RunElection | null {
 
 /** Counts the election with pnpm playground:count's command, and returns what it printed. */
 export function countRunElection(e: RunElection): string {
-  const [command, ...args] = (process.env.WEFT_E2E_PLAYGROUND_COUNT ?? `node ${join(ROOT, "playground", "cli.mjs")} count`).split(/\s+/).filter(Boolean);
+  const [command, ...args] = (process.env.WEFT_E2E_PLAYGROUND_COUNT ?? `node ${join(ROOT, "devnet", "cli.mjs")} count`).split(/\s+/).filter(Boolean);
   const r = spawnSync(command!, [...args, e.electionId, "--channel", e.channel], { cwd: ROOT, encoding: "utf8", timeout: 120_000 });
   const output = `${r.stdout ?? ""}${r.stderr ?? ""}`;
   if (r.status !== 0) throw new Error(`Counting ${e.electionId} failed:\n${output}`);
@@ -110,14 +110,14 @@ interface Playground {
   seedElection: (net: { orgs: { msp: string }[] }, state: string, election: unknown, creator: { msp: string }) => string;
   VOTER_AFFILIATION: string;
 }
-const playground = async () => (await import(pathToFileURL(join(ROOT, "playground", "experimental.mjs")).href)) as Playground;
+const playground = async () => (await import(pathToFileURL(join(ROOT, "devnet", "experimental.mjs")).href)) as Playground;
 
 /** fabric-ca-client: FABRIC_CA_BIN's, or the one the playground downloaded with Fabric's binaries. */
 function caClientBin(): string {
-  for (const dir of [process.env.FABRIC_CA_BIN, join(ROOT, "playground", ".fabric", "fabric-samples", "bin")]) {
+  for (const dir of [process.env.FABRIC_CA_BIN, join(ROOT, "devnet", ".fabric", "fabric-samples", "bin")]) {
     if (dir && existsSync(join(dir, "fabric-ca-client"))) return join(dir, "fabric-ca-client");
   }
-  throw new Error("fabric-ca-client isn't in FABRIC_CA_BIN or playground/.fabric/fabric-samples/bin, so the run's voters can't be registered.");
+  throw new Error("fabric-ca-client isn't in FABRIC_CA_BIN or devnet/.fabric/fabric-samples/bin, so the run's voters can't be registered.");
 }
 
 /** Why the stack can't make an election with voter credentials here, or null when it can. */

@@ -279,14 +279,14 @@ export function checkElections({ fail }) {
   if (bad) {
     fail(
       `The election ID ${bad.id} can't name a channel: ${electionChannel(bad)} isn't a valid Fabric channel name.`,
-      "Use lower-case letters, digits, dots and hyphens, starting with a letter, in ELECTIONS in playground/experimental.mjs.",
+      "Use lower-case letters, digits, dots and hyphens, starting with a letter, in ELECTIONS in devnet/experimental.mjs.",
     );
   }
   const noProxy = voterElections().find((e) => !Number.isInteger(e.voterOrg.ca?.proxy));
   if (noProxy) {
     fail(
       `${noProxy.id} has voter credentials, but its entry in ELECTIONS has no ca.proxy, the port the browser reaches ${noProxy.voterOrg.ca?.name ?? "its voters' CA"} on.`,
-      "Give it a free port in ELECTIONS in playground/experimental.mjs, for example 7081 for chair-2027 and 7181 for chair-2028.",
+      "Give it a free port in ELECTIONS in devnet/experimental.mjs, for example 7081 for chair-2027 and 7181 for chair-2028.",
     );
   }
 }
@@ -415,7 +415,7 @@ ${x.peers.map((peer) => `      - { Host: ${peer.anchor.host}, Port: ${peer.ancho
   };
   const endorsers = net.orgs.map((x) => `'${x.msp}.peer'`).join(",");
   const admins = net.orgs.map((x) => `'${x.msp}.admin'`).join(",");
-  return `# Written by playground/experimental.mjs for the ${electionChannel(election)} channel.
+  return `# Written by devnet/experimental.mjs for the ${electionChannel(election)} channel.
 Organizations:
   - &OrdererOrg
     Name: OrdererOrg
@@ -759,7 +759,7 @@ export function setUpTrustees(net, state, { note, fail }) {
     for (const election of ELECTIONS) {
       writeFileSync(
         files.connection(election),
-        `# Written by playground/experimental.mjs: ${org.msp}'s trustee, ${user.id}, for ${electionChannel(election)}.
+        `# Written by devnet/experimental.mjs: ${org.msp}'s trustee, ${user.id}, for ${electionChannel(election)}.
 # From this folder: WEFT_TRUSTEE_PASSPHRASE=$(cat passphrase) weft-trustee status --election ${election.id} --connection ${electionChannel(election)}.yaml
 peer: ${peer.address}
 ${peer.hostAlias ? `peerHostAlias: ${peer.hostAlias}\n` : ""}tlsCa: ${peer.tlsCa}
@@ -985,7 +985,7 @@ export function printCredentials(state, id, { fail }) {
     const withCredentials = voterElections().map((e) => e.id);
     fail(
       election ? `${id} has X.509 voters, so it has no voters' CA to count.` : `There's no election ${id} in the playground's list.`,
-      withCredentials.length ? `The elections with voter credentials are ${list(withCredentials)}.` : "No election in ELECTIONS in playground/experimental.mjs has voter credentials.",
+      withCredentials.length ? `The elections with voter credentials are ${list(withCredentials)}.` : "No election in ELECTIONS in devnet/experimental.mjs has voter credentials.",
     );
   }
   const count = credentialCount(state, election);
@@ -1095,7 +1095,7 @@ export function countElection(net, state, id, { step, note, fail }, { channel, a
   if (!election) {
     fail(
       `There's no election ${id} in the playground's list.`,
-      `The elections are ${list(ELECTIONS.map((e) => e.id))}, in ELECTIONS in playground/experimental.mjs. For another election, give its channel: pnpm playground:count ${id} --channel <channel>.`,
+      `The elections are ${list(ELECTIONS.map((e) => e.id))}, in ELECTIONS in devnet/experimental.mjs. For another election, give its channel: pnpm playground:count ${id} --channel <channel>.`,
     );
   }
   const files = paths(state).trustee(net.orgs[0]);

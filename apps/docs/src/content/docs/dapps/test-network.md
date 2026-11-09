@@ -32,7 +32,7 @@ Then open the [playground](weft:playground/). It finds the local network, and le
 | Contracts on `mychannel` | `basic`, and `ballot` with its private collection |
 | Elections | `team-lunch` (counted), `board-2026` (open) |
 
-`playground:up` does the steps below for you, plus one more: it puts a proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Add `--https` to serve it on `https://localhost:7443` with a [mkcert](https://github.com/FiloSottile/mkcert) certificate instead, to test an HTTPS CA URL like a real organisation's. Details: [`playground/README.md`](https://github.com/weftwallet/weft/tree/main/playground).
+`playground:up` does the steps below for you, plus one more: it puts a proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Add `--https` to serve it on `https://localhost:7443` with a [mkcert](https://github.com/FiloSottile/mkcert) certificate instead, to test an HTTPS CA URL like a real organisation's. Details: [`devnet/README.md`](https://github.com/weftwallet/weft/tree/main/playground).
 
 ## By hand
 
@@ -93,7 +93,7 @@ In the extension choose **Enrol with CA** and enter:
 The test network's CA serves HTTPS with a self-signed certificate. The browser refuses it, and accepting it in a tab doesn't help: Weft's background worker still refuses it, so enrolment fails with "Failed to fetch". `pnpm playground:up` starts a proxy for this. By hand, run the playground's CA proxy, which verifies the CA against its root certificate and serves plain HTTP on `localhost`, and use `http://localhost:7080` as the CA URL:
 
 ```sh
-node playground/ca-proxy.mjs --listen 7080 --target https://localhost:7054 \
+node devnet/ca-proxy.mjs --listen 7080 --target https://localhost:7054 \
   --upstream-ca fabric-samples/test-network/organizations/fabric-ca/org1/ca-cert.pem
 ```
 :::

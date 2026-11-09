@@ -125,8 +125,8 @@ say(bold("Weft: the checks for a Mac with Docker"));
 say(dim(`${new Date().toString()}. Log: ${relative(process.cwd(), logPath)}`));
 say(dim(`Node ${process.version}, ${process.platform} ${process.arch}\n`));
 
-const playground = await import(pathToFileURL(join(repo, "playground", "experimental.mjs")).href);
-const STATE = join(repo, "playground", ".state");
+const playground = await import(pathToFileURL(join(repo, "devnet", "experimental.mjs")).href);
+const STATE = join(repo, "devnet", ".state");
 
 await step("Docker is running", [], async () => {
   if (!has("docker")) throw new Error("Docker isn't installed. Install Docker Desktop or OrbStack, start it, then run pnpm check:mac again. Every step but the Go and module checks needs it.");
@@ -205,7 +205,7 @@ await step("Playwright's Chromium is installed", ["The packages are built"], asy
   return "";
 });
 
-await step("The experimental e2e projects, on playground/.state", ["pnpm playground:up --experimental", "Playwright's Chromium is installed"], async () => {
+await step("The experimental e2e projects, on devnet/.state", ["pnpm playground:up --experimental", "Playwright's Chromium is installed"], async () => {
   const projects = ["experimental-setup", "experimental-stack", "voter-credentials-setup", "voter-credentials"].flatMap((p) => ["--project", p]);
   // test:e2e builds the sites and the e2e builds of Weft and Weft Experimental, then runs Playwright with these projects.
   const out = await must("pnpm", ["test:e2e", ...projects], { env: { WEFT_E2E_STACK: "playground" }, timeout: 45 * 60_000 }, "WEFT_E2E_STACK=playground pnpm test:e2e (the experimental projects)");

@@ -3,10 +3,10 @@
  * own peer, with weft-trustee's commands and the Fabric Gateway. Skipped
  * unless WEFT_TRUSTEE_IT_ORG1 and WEFT_TRUSTEE_IT_ORG2 name each trustee's
  * connection file, as `pnpm playground:up --experimental` writes them in
- * playground/.state/trustees/<org>/<channel>.yaml:
+ * devnet/.state/trustees/<org>/<channel>.yaml:
  *
- *   WEFT_TRUSTEE_IT_ORG1=playground/.state/trustees/org1/privatevote-budget-2027.yaml \
- *   WEFT_TRUSTEE_IT_ORG2=playground/.state/trustees/org2/privatevote-budget-2027.yaml \
+ *   WEFT_TRUSTEE_IT_ORG1=devnet/.state/trustees/org1/privatevote-budget-2027.yaml \
+ *   WEFT_TRUSTEE_IT_ORG2=devnet/.state/trustees/org2/privatevote-budget-2027.yaml \
  *   pnpm --filter @weftwallet/trustee test integration
  *
  * Each run creates a new election, it-<time>, on that channel.

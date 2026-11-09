@@ -73,11 +73,11 @@ Deleting a file first overwrites it once with random bytes. SSDs and journaling 
 
 ## In the playground
 
-`pnpm playground:up --experimental` registers `trustee1` at Org1's CA and `trustee2` at Org2's, writes a connection file for each election's channel in `playground/.state/trustees/<org>/<channel>.yaml`, with a random passphrase in `passphrase` beside it, and runs the ceremony for `budget-2027`. To run a command by hand there:
+`pnpm playground:up --experimental` registers `trustee1` at Org1's CA and `trustee2` at Org2's, writes a connection file for each election's channel in `devnet/.state/trustees/<org>/<channel>.yaml`, with a random passphrase in `passphrase` beside it, and runs the ceremony for `budget-2027`. To run a command by hand there:
 
 ```sh
-WEFT_TRUSTEE_PASSPHRASE=$(cat playground/.state/trustees/org1/passphrase) \
-  weft-trustee status --election budget-2027 --connection playground/.state/trustees/org1/privatevote-budget-2027.yaml
+WEFT_TRUSTEE_PASSPHRASE=$(cat devnet/.state/trustees/org1/passphrase) \
+  weft-trustee status --election budget-2027 --connection devnet/.state/trustees/org1/privatevote-budget-2027.yaml
 ```
 
 `pnpm playground:count budget-2027` closes it early with both trustees, decrypts it and prints the counts.

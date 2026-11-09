@@ -143,7 +143,7 @@ async function startCa(name: string, port: number, proxyPort: number, expiry: st
   }
 
   background(`${name}-proxy`, process.execPath, [
-    join(ROOT, "playground/ca-proxy.mjs"),
+    join(ROOT, "devnet/ca-proxy.mjs"),
     "--listen", String(proxyPort),
     "--target", `https://localhost:${port}`,
     "--upstream-ca", tls,

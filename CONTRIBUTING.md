@@ -8,7 +8,7 @@ After each pull, run `pnpm install`. `pnpm <script>` refuses to run while `node_
 
 ```sh
 pnpm install
-pnpm test        # every package's unit tests and the playground's own (playground/test), not the browser tests
+pnpm test        # every package's unit tests and the playground's own (devnet/test), not the browser tests
 pnpm typecheck   # tsc everywhere, wxt prepare for the extension and astro check for Weft Playground
 ```
 
@@ -52,7 +52,7 @@ CI (`.github/workflows/ci.yml`) runs all three: unit tests and typecheck, the br
 4. `pnpm playground:credentials <election>` for each election with voter credentials.
 5. `pnpm playground:smoke`.
 6. `pnpm playground:count <election> --channel <channel>` on a fresh election it creates, as the e2e tests do.
-7. The experimental e2e projects (`experimental-setup`, `experimental-stack`, `voter-credentials-setup`, `voter-credentials`) with `WEFT_E2E_STACK=playground` and the default `playground/.state`.
+7. The experimental e2e projects (`experimental-setup`, `experimental-stack`, `voter-credentials-setup`, `voter-credentials`) with `WEFT_E2E_STACK=playground` and the default `devnet/.state`.
 8. With mkcert installed, `pnpm playground:up --experimental --https` and the smoke test over HTTPS, then back to HTTP. `--no-https` skips it.
 9. `go mod download` and `go mod verify` in `contracts/private-ballot` and `packages/idemix`, and `pnpm --filter @weftwallet/idemix check:wasm`, which builds the module twice and compares both with the pinned hash. These don't need Docker, so they run whatever happened before.
 

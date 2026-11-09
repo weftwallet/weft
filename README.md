@@ -51,7 +51,7 @@ Browsers can't open gRPC connections to Fabric peers, so each organisation runs 
 | `packages/cli` | `@weftwallet/cli` | `weft` command for operators: build invites from connection profiles, share links and QR codes, check a deployment. |
 | `packages/brand` | `@weftwallet/brand` | The design system: tokens, logos and product marks, and where each product lives (`products.json`). |
 | `packages/ui` | `@weftwallet/ui` | The page shell, base styles and links between products, shared by the Weft site, the playground and Weft Network. |
-| `playground/` | None | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the playground. |
+| `devnet/` | None | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the playground. |
 | `contracts/` | None | Fabric contracts: `ballot` (TypeScript) for elections the explorer can check, and `private-ballot` (Go) for Weft Experimental's private elections. |
 | `examples/` | None | A plain-HTML demo dApp and a sample invite. |
 | `docs/adr/` | None | Architecture decision records. |
@@ -105,7 +105,7 @@ pnpm dev             # then open http://localhost:4323
                      # the explorer is at http://localhost:8790
 ```
 
-See [`playground/README.md`](playground/README.md).
+See [`devnet/README.md`](devnet/README.md).
 
 ## Status
 

@@ -1,6 +1,6 @@
 // The playground's own logic that runs without Docker: which voters' CA
 // proxies and containers the next `playground:up --experimental` stops.
-// Run with `node --test playground/test/` (part of `pnpm test`).
+// Run with `node --test devnet/test/` (part of `pnpm test`).
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DEMO_VOTERS, unlistedVoters, voterElections } from "../experimental.mjs";
