@@ -15,7 +15,7 @@
  *      block: Org1MSP and Org2MSP as endorsers, and the election's idemix
  *      organisation if it has one. privatevote-budget-2027 has none, and
  *      privatevote-chair-2027 has ChairVoters2027MSP.
- *   3. The private-ballot contract (examples/private-ballot-contract,
+ *   3. The private-ballot contract (contracts/private-ballot,
  *      docs/adr/0007) on the channel, endorsed by Org1 and Org2.
  *   4. A trustee identity for each organisation, trustee1 for Org1 and
  *      trustee2 for Org2, registered at its CA with weft.trustee=true, and a
@@ -624,9 +624,9 @@ async function createElectionChannel(election, net, state, { note, fail }) {
   writeFileSync(marker, new Date().toISOString());
 }
 
-/** The contract's source, examples/private-ballot-contract. */
+/** The contract's source, contracts/private-ballot. */
 export const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-export const contractSource = join(repoRoot, "examples", "private-ballot-contract");
+export const contractSource = join(repoRoot, "contracts", "private-ballot");
 
 /**
  * A hash of the files the peer builds the contract from: go.mod, go.sum and
@@ -656,7 +656,7 @@ export const endorsementPolicy = (net) => `AND(${net.orgs.map((o) => `'${o.msp}.
 
 /**
  * The private-ballot contract on every election's channel (docs/adr/0007,
- * contract-api.md), from examples/private-ballot-contract, endorsed by Org1
+ * contract-api.md), from contracts/private-ballot, endorsed by Org1
  * and Org2. tools.deployContract builds and deploys it with test-network's
  * deployCC -ccl go, which runs go mod vendor in the contract's folder
  * (vendor/ isn't committed). A marker in .state/private-channels/<channel>

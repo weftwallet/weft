@@ -3,7 +3,7 @@ title: Run an election
 description: Ballots kept private, commitments on the ledger, a result anyone can count, and receipts voters can check.
 ---
 
-The [ballot contract](https://github.com/ifeanyi-ugwu/weft/tree/main/examples/ballot-contract) and the [explorer](/operators/explorer/) together let a consortium run an election where:
+The [ballot contract](https://github.com/weftwallet/weft/tree/main/contracts/ballot) and the [explorer](/operators/explorer/) together let a consortium run an election where:
 
 - each organisation's explorer shows how many ballots were cast, and the result once voting closes;
 - anyone can check that the published total matches the ballots on the ledger;

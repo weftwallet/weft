@@ -92,7 +92,7 @@ This proves the ballot was counted and that no ballots were added or removed aft
 3. Signed checkpoints and cross-checking between instances.
 4. The ballot contract template and the receipt check.
 
-All four phases are built: `apps/explorer`, `weft_signIn`, signed checkpoints, and `examples/ballot-contract` with the explorer's election pages.
+All four phases are built: `apps/explorer`, `weft_signIn`, signed checkpoints, and `contracts/ballot` with the explorer's election pages.
 
 ## Consequences
 

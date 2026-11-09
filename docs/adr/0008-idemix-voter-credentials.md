@@ -2,7 +2,7 @@
 
 Proposed on 1 November 2026 as an experiment, revised on 8 November 2026, and built on 8 November 2026. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`, which it shares with ADR 0007. ADR 0004 and ADR 0006 remain the main product's decisions. All of it is built, behind the experimental switches: the idemix module in `packages/idemix`, the per-election pseudonym in the contract's `pseudonym` package, `CastAnonymousBallot`, idemix signers and voter invites in the relay, enrolment and anonymous ballots in Weft Experimental, the explorer's reading of idemix organisations and anonymous ballots, and the playground's voters' CA, its `chair-2027` election and its Private election section for voter credentials. No one outside the project has reviewed the pseudonym proof.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `contracts/private-ballot`, which it shares with ADR 0007. ADR 0004 and ADR 0006 remain the main product's decisions. All of it is built, behind the experimental switches: the idemix module in `packages/idemix`, the per-election pseudonym in the contract's `pseudonym` package, `CastAnonymousBallot`, idemix signers and voter invites in the relay, enrolment and anonymous ballots in Weft Experimental, the explorer's reading of idemix organisations and anonymous ballots, and the playground's voters' CA, its `chair-2027` election and its Private election section for voter credentials. No one outside the project has reviewed the pseudonym proof.
 
 ## Context and problem
 

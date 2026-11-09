@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/internal/tally"
+	"github.com/weftwallet/weft/contracts/private-ballot/internal/tally"
 )
 
 // The test vectors from packages/tally/vectors/v1, driven through the

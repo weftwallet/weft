@@ -159,7 +159,7 @@ await step("The private-ballot contract builds offline in fabric-ccenv:2.5", ["p
   if (!has("go")) throw new Error("Go isn't on PATH, and the contract's modules are vendored with it, as test-network's deployCC does. Install Go (brew install go).");
   const work = mkdtempSync(join(tmpdir(), "weft-ccenv-"));
   try {
-    cpSync(join(repo, "examples", "private-ballot-contract"), join(work, "src"), { recursive: true, filter: (p) => !p.split(/[\\/]/).includes("vendor") });
+    cpSync(join(repo, "contracts", "private-ballot"), join(work, "src"), { recursive: true, filter: (p) => !p.split(/[\\/]/).includes("vendor") });
     await must("go", ["mod", "vendor"], { cwd: join(work, "src") }, "go mod vendor");
     const toolchain = readFileSync(join(work, "src", "go.mod"), "utf8").match(/^toolchain (\S+)/m)?.[1] ?? "none";
     const out = await must(
@@ -230,7 +230,7 @@ await step(
   { optional: true },
 );
 
-for (const dir of ["examples/private-ballot-contract", "packages/idemix"]) {
+for (const dir of ["contracts/private-ballot", "packages/idemix"]) {
   await step(`go mod download && go mod verify in ${dir}`, [], async () => {
     if (!has("go")) throw new Error("Go isn't on PATH. Install Go (brew install go); any Go from 1.21 downloads the pinned toolchain itself.");
     await must("go", ["mod", "download"], { cwd: join(repo, dir) }, "go mod download");

@@ -1,7 +1,7 @@
 /**
  * The verifying half: everything the contract runs, and the explorer's full
  * check. It handles no secret and draws no randomness, so every endorser
- * computes the same result. examples/private-ballot-contract/internal/tally
+ * computes the same result. contracts/private-ballot/internal/tally
  * is the same code in Go, and the test vectors hold the two together.
  */
 import { sha512 } from "@noble/hashes/sha2.js";

@@ -29,8 +29,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
-	"github.com/ifeanyi-ugwu/weft/packages/idemix/internal/testtool"
+	"github.com/weftwallet/weft/contracts/private-ballot/pseudonym"
+	"github.com/weftwallet/weft/packages/idemix/internal/testtool"
 )
 
 func main() {

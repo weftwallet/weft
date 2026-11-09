@@ -18,7 +18,7 @@ When Weft is listed in the browser stores, this page will link to the listing an
 Build the extension from the source and load it unpacked:
 
 ```sh
-git clone https://github.com/ifeanyi-ugwu/weft
+git clone https://github.com/weftwallet/weft
 cd weft
 pnpm install
 pnpm build

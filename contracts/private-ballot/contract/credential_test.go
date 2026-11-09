@@ -8,8 +8,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/internal/tally"
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
+	"github.com/weftwallet/weft/contracts/private-ballot/internal/tally"
+	"github.com/weftwallet/weft/contracts/private-ballot/pseudonym"
 )
 
 // The contract checks each anonymous creator's proof against the election's

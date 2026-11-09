@@ -2,6 +2,11 @@
   "name": "@weftwallet/cli",
   "version": "0.1.0",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weftwallet/weft.git",
+    "directory": "packages/cli"
+  },
   "description": "Command-line tools for Weft network operators: build invites and share links",
   "type": "module",
   "bin": {

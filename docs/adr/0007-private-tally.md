@@ -2,13 +2,13 @@
 
 Proposed on 1 November 2026 as an experiment, revised on 7 November 2026, and built on 8 November 2026. Decided by Ifeanyi Ugwu.
 
-This record applies only to the Weft Experimental build, the playground's experimental channels and `examples/private-ballot-contract`. ADR 0004 and ADR 0006 remain the main product's decisions. All of it is built, behind the experimental switches: `@weftwallet/tally`, `examples/private-ballot-contract` with its verifiers in `internal/tally`, `weft-trustee` in `packages/trustee`, `weft_castBallot` and receipt version 2 in Weft Experimental, the explorer's private election pages with the full check, and the playground's Private election section.
+This record applies only to the Weft Experimental build, the playground's experimental channels and `contracts/private-ballot`. ADR 0004 and ADR 0006 remain the main product's decisions. All of it is built, behind the experimental switches: `@weftwallet/tally`, `contracts/private-ballot` with its verifiers in `internal/tally`, `weft-trustee` in `packages/trustee`, `weft_castBallot` and receipt version 2 in Weft Experimental, the explorer's private election pages with the full check, and the playground's Private election section.
 
 ## Context and problem
 
 The ballot contract from ADR 0004 hides each choice from the public, and ADR 0006 lets Weft keep the voter's receipt. Several parties still see the choice:
 
-| Party | Sees the choice with `examples/ballot-contract` | Why |
+| Party | Sees the choice with `contracts/ballot` | Why |
 |---|---|---|
 | The public, through an explorer | No | Only the commitment is on the ledger, and the salt stops a guess-and-hash attack. |
 | Every member organisation | Yes | The collection policy lets each member's peers store the plaintext ballot. |
@@ -82,7 +82,7 @@ Each trustee posts a decryption share of each total with a proof, the contract c
 
 ### A Go contract, with the proofs written twice
 
-`examples/private-ballot-contract` is written in Go, and `examples/ballot-contract` stays as it is. Go is chosen over TypeScript for three reasons:
+`contracts/private-ballot` is written in Go, and `contracts/ballot` stays as it is. Go is chosen over TypeScript for three reasons:
 
 - IBM's idemix library is Go, and ADR 0008's pseudonym proof is verified natively in the same contract.
 - Node chaincode verifies about 40 three-option ballots a second per core with noble. The Go standard library's curve operations were 24 to 56 times faster than noble's in the prototype. Version 1's Go verifier, measured since, checks a three-option ballot in 0.68 ms, about 22 times as fast as version 1 in Node on the same machine.
@@ -108,7 +108,7 @@ The ElGamal encryption, the proofs, the share encryption, the Lagrange combinati
 - Anyone with ledger access can check the whole count, including the count per option.
 - Election creators choose trustees and a threshold. The trustee organisations run a ceremony before voting and a decryption step after it.
 - Two implementations of the proofs have to be kept in step, with the test vectors as the contract between them.
-- A three-option ballot is 640 bytes, or about 1,520 as hex JSON. `CloseElection` reads every ballot, and its read set grows with the electorate, as in `examples/ballot-contract`.
+- A three-option ballot is 640 bytes, or about 1,520 as hex JSON. `CloseElection` reads every ballot, and its read set grows with the electorate, as in `contracts/ballot`.
 - Version 1 receipts and the main product's ballot contract keep working unchanged.
 - Any k colluding trustees can read a single ballot, and nothing on the ledger would show it. If fewer than k can or will post shares, the totals can't be decrypted, and the election has to be run again.
 - A voter running a modified Weft can keep the randomness and prove their vote. A bug or side channel in Weft that leaks the randomness reveals the vote.

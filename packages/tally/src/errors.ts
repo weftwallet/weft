@@ -1,7 +1,7 @@
 /**
  * Every refusal the verifiers make, with the contract's exact message from
  * the error table in contract-api.md. The Go verifiers in
- * examples/private-ballot-contract/internal/tally build the same strings, and
+ * contracts/private-ballot/internal/tally build the same strings, and
  * the negative test vectors hold them.
  */
 

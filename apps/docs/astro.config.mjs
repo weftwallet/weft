@@ -70,7 +70,7 @@ export default defineConfig({
         MobileMenuToggle: "./src/components/MobileMenuToggle.astro",
         MobileMenuFooter: "./src/components/MobileMenuFooter.astro",
       },
-      editLink: { baseUrl: "https://github.com/ifeanyi-ugwu/weft/edit/main/apps/docs/" },
+      editLink: { baseUrl: "https://github.com/weftwallet/weft/edit/main/apps/docs/" },
       // No code block scrolls sideways (SYSTEM.md, Overflow): a long line
       // wraps, keeps its indentation, and its continuation is indented two
       // more characters. Copy copies the lines as written, unwrapped.

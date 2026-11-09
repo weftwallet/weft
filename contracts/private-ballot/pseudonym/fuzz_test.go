@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
+	"github.com/weftwallet/weft/contracts/private-ballot/pseudonym"
 )
 
 // FuzzDecode: parsing and decoding pseudonymJson never panics, refuses

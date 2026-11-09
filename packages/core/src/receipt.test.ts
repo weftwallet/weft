@@ -136,7 +136,7 @@ describe("a salt Weft generates", () => {
 
 describe("the commitment", () => {
   it("is the ballot contract's: SHA-256 of election, option and salt, joined by newlines", async () => {
-    // node:crypto, as examples/ballot-contract computes it.
+    // node:crypto, as contracts/ballot computes it.
     const { createHash } = await import("node:crypto");
     const expected = createHash("sha256").update(`board-2026\nAda\n${SALT}`, "utf8").digest("hex");
     expect(await ballotCommitment("board-2026", "Ada", SALT)).toBe(expected);

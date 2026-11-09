@@ -52,7 +52,8 @@ Browsers can't open gRPC connections to Fabric peers, so each organisation runs 
 | `packages/brand` | `@weftwallet/brand` | The design system: tokens, logos and product marks, and where each product lives (`products.json`). |
 | `packages/ui` | `@weftwallet/ui` | The page shell, base styles and links between products, shared by the Weft site, the playground and Weft Network. |
 | `playground/` | None | `pnpm playground:up`: a local Fabric network with the relay, an explorer and demo users, for the playground. |
-| `examples/` | None | A plain-HTML demo dApp, a sample invite, and a ballot contract for elections the explorer can check. |
+| `contracts/` | None | Fabric contracts: `ballot` (TypeScript) for elections the explorer can check, and `private-ballot` (Go) for Weft Experimental's private elections. |
+| `examples/` | None | A plain-HTML demo dApp and a sample invite. |
 | `docs/adr/` | None | Architecture decision records. |
 
 ## Develop

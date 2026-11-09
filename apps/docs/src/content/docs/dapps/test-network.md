@@ -32,7 +32,7 @@ Then open the [playground](weft:playground/). It finds the local network, and le
 | Contracts on `mychannel` | `basic`, and `ballot` with its private collection |
 | Elections | `team-lunch` (counted), `board-2026` (open) |
 
-`playground:up` does the steps below for you, plus one more: it puts a proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Add `--https` to serve it on `https://localhost:7443` with a [mkcert](https://github.com/FiloSottile/mkcert) certificate instead, to test an HTTPS CA URL like a real organisation's. Details: [`playground/README.md`](https://github.com/ifeanyi-ugwu/weft/tree/main/playground).
+`playground:up` does the steps below for you, plus one more: it puts a proxy in front of Org1's CA on `http://localhost:7080`, so the browser can enrol (see the caution in step 4). Add `--https` to serve it on `https://localhost:7443` with a [mkcert](https://github.com/FiloSottile/mkcert) certificate instead, to test an HTTPS CA URL like a real organisation's. Details: [`playground/README.md`](https://github.com/weftwallet/weft/tree/main/playground).
 
 ## By hand
 

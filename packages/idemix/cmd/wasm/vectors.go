@@ -14,7 +14,7 @@ import (
 
 	math "github.com/IBM/mathlib"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
+	"github.com/weftwallet/weft/contracts/private-ballot/pseudonym"
 )
 
 func init() {

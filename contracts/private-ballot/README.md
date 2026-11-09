@@ -1,4 +1,4 @@
-# private-ballot-contract
+# private-ballot
 
 The Go contract for private elections in Weft Experimental ([ADR 0007](../../docs/adr/0007-private-tally.md)), deployed as `private-ballot`. The [contract API](../../apps/docs/src/content/docs/experimental/contract-api.md) describes its functions, state and errors. No one outside the project has reviewed its cryptography.
 
@@ -51,7 +51,7 @@ The contract's tests run on an in-memory peer in `contract/stub_test.go`, which 
 ```sh
 cd playground/.fabric/fabric-samples/test-network
 ./network.sh deployCC -c privatevote-budget-2027 -ccn private-ballot \
-  -ccp ../../../../examples/private-ballot-contract -ccl go \
+  -ccp ../../../../contracts/private-ballot -ccl go \
   -ccep "AND('Org1MSP.peer','Org2MSP.peer')"
 ```
 

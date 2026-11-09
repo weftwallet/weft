@@ -44,7 +44,7 @@ const pageTitle = title ? `${title} | ${me.name}` : me.name;
 const icon = `data:image/svg+xml;base64,${Buffer.from(svg(me.markSmall)).toString("base64")}`;
 // The product's loader, for anything marked .is-working (base.css).
 const loader = `--weft-loader: url("data:image/svg+xml;base64,${Buffer.from(svg(me.loaderSmall)).toString("base64")}")`;
-const github = "https://github.com/ifeanyi-ugwu/weft";
+const github = "https://github.com/weftwallet/weft";
 // Before the first paint: the stored theme, and the page transition's
 // direction. One file, shared with the docs and the explorer.
 const early = readFileSync(require.resolve("@weftwallet/ui/early.js"), "utf8");

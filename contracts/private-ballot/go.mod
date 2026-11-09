@@ -1,4 +1,4 @@
-module github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract
+module github.com/weftwallet/weft/contracts/private-ballot
 
 go 1.26.3
 

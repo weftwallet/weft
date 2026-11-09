@@ -24,7 +24,7 @@ export class ReceiptError extends Error {
   }
 }
 
-/** The ballot contract's rule for a salt (examples/ballot-contract). */
+/** The ballot contract's rule for a salt (contracts/ballot). */
 export const SALT_PATTERN = /^[0-9a-f]{32,128}$/;
 /** How many random bytes Weft draws for a salt it generates: 32 hex characters. */
 export const GENERATED_SALT_BYTES = 16;

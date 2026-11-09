@@ -14,7 +14,7 @@ Randomness comes only from `crypto.getRandomValues`, except through `/testing`, 
 
 ## Test vectors
 
-`vectors/v1/*.json` are written by `scripts/vectors.ts` from fixed seeds and committed. The contract's Go tests in `examples/private-ballot-contract/internal/tally` read the same files.
+`vectors/v1/*.json` are written by `scripts/vectors.ts` from fixed seeds and committed. The contract's Go tests in `contracts/private-ballot/internal/tally` read the same files.
 
 ```sh
 pnpm --filter @weftwallet/tally vectors   # writes vectors/v1; running it again changes no file

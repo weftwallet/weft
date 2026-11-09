@@ -1,6 +1,6 @@
 /**
  * The pseudonym vectors, which the contract's Go tests write and check
- * (examples/private-ballot-contract/pseudonym/testdata/v1), through the
+ * (contracts/private-ballot/pseudonym/testdata/v1), through the
  * WebAssembly build of the same Go package: a test build with
  * pseudonymVector reproduces every positive vector byte for byte from its
  * fixed inputs, and the contract's verifier, called from Node, accepts the
@@ -15,7 +15,7 @@ import { DIST_WASM } from "./node.ts";
 import { verifyPseudonym } from "./test/tool.ts";
 
 const skip = process.env.WEFT_IDEMIX_SKIP;
-const vectorsFile = fileURLToPath(new URL("../../../examples/private-ballot-contract/pseudonym/testdata/v1/pseudonym.json", import.meta.url));
+const vectorsFile = fileURLToPath(new URL("../../../contracts/private-ballot/pseudonym/testdata/v1/pseudonym.json", import.meta.url));
 
 interface Issuer {
   name: string;

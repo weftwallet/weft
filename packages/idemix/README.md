@@ -17,7 +17,7 @@ The module does what a wallet needs to hold a voter credential and sign with it:
 
 The two `verify` functions need no secret. The explorer runs them to check anonymous ballots, in its own process as it indexes each block and in the browser's full check, so the explorer checks with the code the contract and Weft run, and there is no TypeScript verifier.
 
-The pseudonym and its proof come from the contract's `pseudonym` package, in `examples/private-ballot-contract/pseudonym`, which `go.mod` requires with a replace directive. The contract verifies with the same Go source.
+The pseudonym and its proof come from the contract's `pseudonym` package, in `contracts/private-ballot/pseudonym`, which `go.mod` requires with a replace directive. The contract verifies with the same Go source.
 
 ## Layout
 
@@ -101,7 +101,7 @@ The page's content security policy needs `'wasm-unsafe-eval'` in `script-src`. I
 ## Tests
 
 - `go test ./...`: the signer against a scratch issuer, with IBM idemix's MSP accepting every signature over its message and refusing it over another, a new Nym for every identity, every changed credential refused, and `Dispose` zeroing the secret key's and the Nym randomness's words. `VerifyIdentity` accepts the module's own identities and refuses a changed proof, another identity's Nym, another organisational unit, the role admin in place of member and another issuer's key; `VerifyPseudonym` refuses a proof for another Nym, election, channel or tracking code.
-- `pnpm test`: the module in Node, against the same scratch issuer and MSP through `internal/cmd/testtool`, and a module with another hash refused. Its pseudonym proofs verify with the contract's verifier, for their own Nym and ballot only, and one credential has one pseudonym per election. A test build with `pseudonymVector` reproduces every positive vector in `examples/private-ballot-contract/pseudonym/testdata/v1/pseudonym.json` byte for byte, and the contract's verifier refuses each negative vector past parsing with its message. Vitest's setup builds the module if `dist/wasm` has none with the pinned hash, the test build and the test tool, with Go; without Go, these tests skip.
+- `pnpm test`: the module in Node, against the same scratch issuer and MSP through `internal/cmd/testtool`, and a module with another hash refused. Its pseudonym proofs verify with the contract's verifier, for their own Nym and ballot only, and one credential has one pseudonym per election. A test build with `pseudonymVector` reproduces every positive vector in `contracts/private-ballot/pseudonym/testdata/v1/pseudonym.json` byte for byte, and the contract's verifier refuses each negative vector past parsing with its message. Vitest's setup builds the module if `dist/wasm` has none with the pinned hash, the test build and the test tool, with Go; without Go, these tests skip.
 - With `WEFT_FABRIC_CA_BIN` set to a folder with `fabric-ca-server` and `fabric-ca-client` (for example `e2e/.bin` after `e2e/scripts/fabric-ca.sh`), `pnpm test` also enrols with a real Fabric CA through HTTP, checks that `/cainfo` serves the bytes of the `IssuerPublicKey` file, that a second enrolment is refused, and that IBM's MSP accepts the signatures under the CA's own key files.
 
 ## Timings
@@ -132,7 +132,7 @@ Firefox wasn't available where these were measured.
 | `github.com/hyperledger/fabric-amcl` | v0.0.0-20230602173724-9e02669dceb2 | Apache 2.0 |
 | `github.com/consensys/gnark-crypto` | v0.21.0, vendored by the build but not linked into the module, because of the overlay | Apache 2.0 |
 | `github.com/hyperledger/fabric-protos-go-apiv2` | v0.3.7 | Apache 2.0 |
-| `github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract` | the repository's, by a replace directive, for its `pseudonym` package | Apache 2.0 |
+| `github.com/weftwallet/weft/contracts/private-ballot` | the repository's, by a replace directive, for its `pseudonym` package | Apache 2.0 |
 | `google.golang.org/protobuf` | v1.36.11 | BSD 3-Clause |
 | `golang.org/x/crypto`, `golang.org/x/sys` | v0.57.0, v0.48.0 | BSD 3-Clause |
 

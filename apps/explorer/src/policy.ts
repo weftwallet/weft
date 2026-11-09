@@ -37,11 +37,11 @@ export interface ChannelPolicy {
   values: "show" | "hash";
   submitter: "show" | "hide";
   contracts: Record<string, Level>;
-  /** The ballot contract on this channel (examples/ballot-contract), whose elections the explorer shows. */
+  /** The ballot contract on this channel (contracts/ballot), whose elections the explorer shows. */
   elections?: string;
   /**
    * Experimental (docs/adr/0009): the private-ballot contract on this channel
-   * (examples/private-ballot-contract), whose elections get pages and the
+   * (contracts/private-ballot), whose elections get pages and the
    * browser's full check (private-elections.ts, private-pages.ts). Allowed
    * only when the explorer is started with WEFT_EXPERIMENTAL=1 (config.ts),
    * and only with values: show, since the pages are made from the contract's

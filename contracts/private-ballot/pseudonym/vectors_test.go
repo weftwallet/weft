@@ -30,8 +30,8 @@ import (
 	math "github.com/IBM/mathlib"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/internal/tally"
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
+	"github.com/weftwallet/weft/contracts/private-ballot/internal/tally"
+	"github.com/weftwallet/weft/contracts/private-ballot/pseudonym"
 )
 
 var update = flag.Bool("update", false, "write testdata/v1/pseudonym.json")

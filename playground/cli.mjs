@@ -29,7 +29,7 @@
  *      uses an existing fabric-samples checkout from WEFT_FABRIC_SAMPLES.
  *   2. Starts test-network with CAs, creates `mychannel`, deploys the
  *      asset-transfer `basic` contract and Weft's ballot contract
- *      (examples/ballot-contract) with its private collection.
+ *      (contracts/ballot) with its private collection.
  *   3. Creates a second channel, `members`, with the basic contract, which
  *      both explorers publish to signed-in members only.
  *   4. Registers demo users in Org1 with known secrets.
@@ -322,7 +322,7 @@ function deployBallot() {
     return;
   }
   const env = { ...process.env, PATH: `${join(samples, "bin")}:${process.env.PATH}` };
-  const source = join(repo, "examples", "ballot-contract");
+  const source = join(repo, "contracts", "ballot");
   run(
     "./network.sh",
     [

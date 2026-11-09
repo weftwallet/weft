@@ -89,7 +89,7 @@ function go(args, options) {
  * The contract's module, which go.mod requires with a replace directive for
  * its pseudonym package, the one Go source the contract verifies with.
  */
-const contractRoot = join(root, "..", "..", "examples", "private-ballot-contract");
+const contractRoot = join(root, "..", "..", "contracts", "private-ballot");
 
 /** Copies a module's go.mod, go.sum and these packages' sources, without tests, from one folder into another. */
 function copyModule(from, to, packages) {
@@ -113,7 +113,7 @@ function copyModule(from, to, packages) {
 function copySources(dir) {
   const module = join(dir, "packages", "idemix");
   copyModule(root, module, ["signer", "cmd/wasm"]);
-  copyModule(contractRoot, join(dir, "examples", "private-ballot-contract"), ["pseudonym"]);
+  copyModule(contractRoot, join(dir, "contracts", "private-ballot"), ["pseudonym"]);
   return module;
 }
 

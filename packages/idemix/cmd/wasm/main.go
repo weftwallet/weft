@@ -15,7 +15,7 @@ import (
 	"runtime/debug"
 	"syscall/js"
 
-	"github.com/ifeanyi-ugwu/weft/packages/idemix/signer"
+	"github.com/weftwallet/weft/packages/idemix/signer"
 )
 
 // API is the version of the functions below. A change to a function's

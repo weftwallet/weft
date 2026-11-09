@@ -10,7 +10,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go-apiv2/msp"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
+	"github.com/weftwallet/weft/contracts/private-ballot/pseudonym"
 )
 
 // What an explorer needs to check an anonymous ballot from what is on the

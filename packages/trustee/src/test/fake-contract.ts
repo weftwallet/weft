@@ -1,5 +1,5 @@
 /**
- * TEST ONLY: an in-memory stand-in for examples/private-ballot-contract,
+ * TEST ONLY: an in-memory stand-in for contracts/private-ballot,
  * with the contract's checks from @weftwallet/tally/verify and its messages
  * from contract-api.md, behind weft-trustee's Ledger interface. It records
  * every call, so tests can check what each command sent.

@@ -6,7 +6,7 @@ Weft holds signing keys for permissioned networks.
 
 Please **do not** open a public issue. Instead, either:
 
-- use **[Report a vulnerability](https://github.com/ifeanyi-ugwu/weft/security/advisories/new)** on GitHub (preferred), or
+- use **[Report a vulnerability](https://github.com/weftwallet/weft/security/advisories/new)** on GitHub (preferred), or
 - email **security@ifeanyiugwu.dev**
 
 with:

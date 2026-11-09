@@ -81,7 +81,7 @@ Each secret is encrypted with AES-256-GCM, under a key derived from the passphra
 
 Rounds 1 to 3 can't be run by one trustee alone: each waits for every trustee to finish the round before. `status` says who the ceremony is waiting for.
 
-In the playground, `pnpm playground:up --experimental` runs steps 1 to 5 for Org1 and Org2, 2 of 2, on your machine, and `pnpm playground:count <election>` runs steps 7 and 8 with `--early`. Each organisation's connection files are in `playground/.state/trustees/<org>`, one per election channel, `<channel>.yaml`, with `home: state`, so its state folders are in `playground/.state/trustees/<org>/state/<channel>/<election>`, and its passphrase is in `passphrase` beside them. The [playground's README](https://github.com/ifeanyi-ugwu/weft/tree/main/playground#the-key-ceremony-and-counting) has the details.
+In the playground, `pnpm playground:up --experimental` runs steps 1 to 5 for Org1 and Org2, 2 of 2, on your machine, and `pnpm playground:count <election>` runs steps 7 and 8 with `--early`. Each organisation's connection files are in `playground/.state/trustees/<org>`, one per election channel, `<channel>.yaml`, with `home: state`, so its state folders are in `playground/.state/trustees/<org>/state/<channel>/<election>`, and its passphrase is in `passphrase` beside them. The [playground's README](https://github.com/weftwallet/weft/tree/main/playground#the-key-ceremony-and-counting) has the details.
 
 ## When something fails
 

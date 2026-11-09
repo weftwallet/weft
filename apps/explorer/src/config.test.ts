@@ -135,7 +135,7 @@ describe("the pages' links to the products", () => {
   });
 
   it("link to the repository named in package.json", async () => {
-    expect(await page()).toContain('href="https://github.com/ifeanyi-ugwu/weft">Source on GitHub</a>');
+    expect(await page()).toContain('href="https://github.com/weftwallet/weft">Source on GitHub</a>');
   });
 });
 

@@ -135,7 +135,7 @@ The timings above are from Node 22 on the build machine, and none of them were t
 
 ### The module, version 1
 
-The module Weft Experimental and the explorer run, `packages/idemix`, built with Go 1.26.10 and IBM mathlib's unused curves left out ([its README](https://github.com/ifeanyi-ugwu/weft/tree/main/packages/idemix#size) has every build measured), with `gzip -9`:
+The module Weft Experimental and the explorer run, `packages/idemix`, built with Go 1.26.10 and IBM mathlib's unused curves left out ([its README](https://github.com/weftwallet/weft/tree/main/packages/idemix#size) has every build measured), with `gzip -9`:
 
 | Build | Raw | Gzipped |
 |---|---|---|

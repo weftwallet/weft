@@ -21,10 +21,10 @@ COPY packages/ui packages/ui
 # The private tally (docs/adr/0007), for the experimental private election pages.
 COPY packages/tally packages/tally
 # The idemix module's Go source and loaders, and the contract's pseudonym
-# package, which the module's go.mod takes from ../../examples/private-ballot-contract.
+# package, which the module's go.mod takes from ../../contracts/private-ballot.
 COPY packages/idemix packages/idemix
-COPY examples/private-ballot-contract/go.mod examples/private-ballot-contract/go.sum examples/private-ballot-contract/
-COPY examples/private-ballot-contract/pseudonym examples/private-ballot-contract/pseudonym
+COPY contracts/private-ballot/go.mod contracts/private-ballot/go.sum contracts/private-ballot/
+COPY contracts/private-ballot/pseudonym contracts/private-ballot/pseudonym
 COPY apps/explorer apps/explorer
 RUN pnpm install --frozen-lockfile --filter @weftwallet/explorer... \
  && pnpm --filter @weftwallet/protocol build \

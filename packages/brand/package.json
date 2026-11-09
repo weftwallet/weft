@@ -2,6 +2,11 @@
   "name": "@weftwallet/brand",
   "version": "0.1.0",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weftwallet/weft.git",
+    "directory": "packages/brand"
+  },
   "description": "Weft's logos, product marks, design tokens and product registry",
   "type": "module",
   "exports": {

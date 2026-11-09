@@ -7,7 +7,7 @@
   "description": "A block explorer that one Fabric organisation runs for the channels it chooses to publish",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ifeanyi-ugwu/weft.git",
+    "url": "git+https://github.com/weftwallet/weft.git",
     "directory": "apps/explorer"
   },
   "files": [

@@ -10,8 +10,8 @@ import (
 
 	"github.com/hyperledger/fabric-chaincode-go/v2/shim"
 
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/internal/tally"
-	"github.com/ifeanyi-ugwu/weft/examples/private-ballot-contract/pseudonym"
+	"github.com/weftwallet/weft/contracts/private-ballot/internal/tally"
+	"github.com/weftwallet/weft/contracts/private-ballot/pseudonym"
 )
 
 var electionIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)

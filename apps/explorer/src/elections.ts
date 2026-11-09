@@ -1,5 +1,5 @@
 /**
- * Elections run with the ballot contract (examples/ballot-contract; docs/adr/0004,
+ * Elections run with the ballot contract (contracts/ballot; docs/adr/0004,
  * phase 4), read back from the indexed transactions. Nothing here is secret:
  * the ledger holds commitments and the published tally, never ballots.
  */
