@@ -18,6 +18,74 @@ interface WeftProvider {
 
 The provider may be injected after your script runs. Wait for the `weft#initialized` event on `window`, or use `detectProvider()` from `@weftwallet/sdk`, which does this for you.
 
+## More than one Weft
+
+Weft and Weft Experimental can be installed side by side. Each puts its own provider in the page and announces it with a `weft:announceProvider` event on `window`, in the style of [EIP-6963](https://eips.ethereum.org/EIPS/eip-6963). `window.weft` is the provider of the first one to load. The other is reachable only through its announcement.
+
+Each provider talks only to its own wallet. A request sent through one opens at most one approval window, in that wallet, and a provider hears only its own wallet's events.
+
+A wallet announces itself once when it loads, and again whenever your page dispatches `weft:requestProvider`. The event's `detail` is frozen:
+
+```ts
+interface WeftProviderDetail {
+  info: WeftProviderInfo;
+  provider: WeftProvider;
+}
+
+interface WeftProviderInfo {
+  uuid: string;  // new each time the page loads
+  name: string;  // "Weft" or "Weft Experimental"
+  icon: string;  // the product's mark, an SVG data URI
+  rdns: string;  // names the product, as below
+}
+```
+
+| Product | `rdns` |
+|---|---|
+| Weft | `dev.ifeanyiugwu.weft` |
+| Weft Experimental | `dev.ifeanyiugwu.weft.experimental` |
+
+`@weftwallet/protocol` exports both as `WEFT_RDNS` and `WEFT_EXPERIMENTAL_RDNS`, and the event names as `ANNOUNCE_PROVIDER_EVENT` and `REQUEST_PROVIDER_EVENT`.
+
+With the SDK, `detectProviders()` asks every wallet, listens for 500 ms (or `waitMs`), and returns one entry per wallet:
+
+```ts
+import { WeftClient, detectProviders } from "@weftwallet/sdk";
+
+const wallets = await detectProviders();
+for (const { info, provider } of wallets) {
+  const client = new WeftClient(provider, info);
+  addWalletButton(info.name, info.icon, client);
+}
+```
+
+To prefer one wallet, give its `rdns` to `getWeft()` or `detectProvider()`. When that wallet doesn't announce itself within 500 ms of another Weft being found, they use `window.weft`, as they do without an `rdns`:
+
+```ts
+import { WEFT_EXPERIMENTAL_RDNS, getWeft } from "@weftwallet/sdk";
+
+const weft = await getWeft({ rdns: WEFT_EXPERIMENTAL_RDNS });
+if (weft.supports("castBallot")) {
+  // weft.info?.name is "Weft Experimental"
+}
+```
+
+Without the SDK:
+
+```js
+const wallets = new Map();
+window.addEventListener("weft:announceProvider", (e) => {
+  wallets.set(e.detail.info.uuid, e.detail);
+});
+window.dispatchEvent(new Event("weft:requestProvider"));
+```
+
+Wallets answer `weft:requestProvider` at once. A wallet whose script runs after yours announces itself when it loads, so add the listener before you dispatch the request, and keep it.
+
+### What an announcement proves
+
+Only what the announcing script says. Any script on your page can dispatch `weft:announceProvider` with a provider named "Weft" and Weft's `rdns`, as any script that runs first can define `window.weft`. Trust an announced provider as you trust `window.weft`: it is part of your page. The user sees which wallet is asking in that wallet's own approval window, which a page can't draw.
+
 ## Methods
 
 | Method | Params | Result | Asks the user |

@@ -78,3 +78,11 @@ Accepted on 1 November 2026.
 `WEFT_EXPERIMENTAL=1` builds Weft Experimental, a separate extension that installs alongside Weft with its own storage. Only it carries the idemix module and offers `weft_castBallot`, and pages detect it through `window.weft.features`. The playground, relay and explorer have matching switches, and the docs have an Experimental section. A feature leaves the track only after an external cryptographic review and a maintainer's sign-off. Until then, its records don't amend the main product's.
 
 The trade-off: main holds code most users never run, and both builds must be tested.
+
+## 0010: Announce each Weft's provider, in the style of EIP-6963
+
+Accepted on 9 November 2026.
+
+With Weft and Weft Experimental both installed, each wallet dispatches `weft:announceProvider` on `window` with a frozen `{ info, provider }`, once when it loads and again whenever a page dispatches `weft:requestProvider`. `info` has a UUID per page load, the product's name and mark, and its rdns: `dev.ifeanyiugwu.weft` or `dev.ifeanyiugwu.weft.experimental`. Each wallet's provider and bridge tag their messages with that rdns, so a request opens one approval window, in one wallet, and each provider hears only its own wallet's events. The first wallet to load still defines `window.weft`. The SDK adds `detectProviders()` and an `rdns` option for `getWeft()`. See [More than one Weft](/dapps/provider-api/#more-than-one-weft).
+
+The trade-off: `info` is what the announcer claims. Any script on the page can announce a provider named "Weft", which is the same trust as `window.weft`.

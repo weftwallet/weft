@@ -29,7 +29,7 @@ Passkeys are optional and need the WebAuthn PRF extension, which most phone and 
 
 ### Pages have no privileges
 
-The provider in the page (`window.weft`) only posts messages. A separate content script forwards them to the background worker. The background worker takes the requesting site's origin from the browser, never from the message, so a page can't pretend to be another site.
+The provider in the page (`window.weft`) only posts messages. A separate content script forwards them to the background worker. Each wallet tags its messages with its own name, so with Weft and Weft Experimental both installed, each content script forwards only its own wallet's requests, and each provider accepts only its own wallet's answers. The background worker takes the requesting site's origin from the browser, never from the message, so a page can't pretend to be another site.
 
 ### Every signature is checked
 

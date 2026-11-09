@@ -58,9 +58,10 @@ An experimental record says in its status that it is experimental and applies on
 - Main holds code that most users never run, which reviewers and tests must treat as part of the repository.
 - Both builds are built and tested. CI is planned to build each.
 - A tester of Weft Experimental enrols separately in it, because its identities are its own.
-- Two extensions that both define `window.weft` don't share a page. A provider announcement, like Ethereum's EIP-6963, would let a page choose, and is left for later.
+- Both extensions run in every page. Each announces its own provider and talks to it on its own channel (ADR 0010), so a page can choose between them, and `window.weft` stays with the first to load.
 - The docs describe features that aren't in Weft. Every Experimental page carries the same notice, and the main pages make no claim that depends on them.
 
 ## More information
 
 - [Experimental features](../../apps/docs/src/content/docs/experimental/overview.md) explains how to build and run Weft Experimental.
+- See also [0010](0010-provider-announcement.md), which lets a page reach both builds when both are installed.

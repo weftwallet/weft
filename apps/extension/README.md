@@ -38,7 +38,7 @@ pnpm --filter @weftwallet/extension build:experimental -b firefox
 pnpm --filter @weftwallet/extension build:e2e:experimental      # .output-e2e-experimental, for the e2e tests
 ```
 
-It is named Weft Experimental, in the manifest, the popup and the windows' titles, and its welcome says it is a separate build. It has its own output folder, so Chrome gives the unpacked extension its own ID, and its own Firefox add-on ID, `experimental@weft.ifeanyiugwu.dev`. Its storage is therefore its own, and it shares no identities, keys, receipts or settings with Weft. Load it in a browser profile without Weft, since the first of the two to load on a page provides `window.weft`.
+It is named Weft Experimental, in the manifest, the popup and the windows' titles, and its welcome says it is a separate build. It has its own output folder, so Chrome gives the unpacked extension its own ID, and its own Firefox add-on ID, `experimental@weft.ifeanyiugwu.dev`. Its storage is therefore its own, and it shares no identities, keys, receipts or settings with Weft. It can share a browser profile with Weft: each announces its own provider to pages and talks to it on its own channel (docs/adr/0010), and the first of the two to load on a page provides `window.weft`.
 
 `lib/experimental.ts` holds the one constant that gates experimental code, `EXPERIMENTAL`, which `wxt.config.ts` sets at build time from `import.meta.env.WEFT_EXPERIMENTAL`. Experimental code runs only inside `if (EXPERIMENTAL)`, so the normal build leaves it out; the e2e tests check that the normal build contains none of it. A branch that imports a whole experimental module tests `import.meta.env.WEFT_EXPERIMENTAL` itself, in the importing file, because the bundler folds a constant from another module only after it has chosen the modules; the file explains this. The same file lists the experimental features that `window.weft.features` adds: Weft Experimental reports `["receipts", "castBallot", "voterCredentials"]`, and Weft `["receipts"]`.
 
@@ -83,7 +83,7 @@ The ballot handler (`lib/ballot/handler.ts`) picks the credential for the electi
 
 ```
 web page ──window.weft──▶ inpage.content.ts   (main world, no privileges)
-                              │ window.postMessage
+                              │ window.postMessage, on this wallet's channel
                               ▼
                          bridge.content.ts    (isolated world)
                               │ runtime.sendMessage
@@ -96,13 +96,13 @@ web page ──window.weft──▶ inpage.content.ts   (main world, no privileg
 
 | Path | What it does |
 |---|---|
-| `entrypoints/inpage.content.ts` | Defines `window.weft` and fires `weft#initialized`. |
-| `entrypoints/bridge.content.ts` | Forwards requests to the background; forwards events only to connected origins. |
+| `entrypoints/inpage.content.ts` | Installs this wallet's provider (`lib/page-provider.ts`): announces it with `weft:announceProvider`, and defines `window.weft` and fires `weft#initialized` when no Weft has yet. |
+| `entrypoints/bridge.content.ts` | Runs `lib/bridge.ts`: forwards requests on this wallet's channel to the background, and events only to connected origins. |
 | `entrypoints/background.ts` | Routes popup and provider messages. The site origin comes from the browser, never the message. |
 | `lib/provider.ts` | Connect checks, approval windows, evaluate/submit through the relay, activity records. |
 | `lib/wallet.ts` | Identities and networks: enrol, import, CSR, re-enrol, signing. |
 | `lib/db.ts` | IndexedDB. Private keys are non-extractable `CryptoKey`s. Weft Experimental adds two stores, for voter credentials and sealed anonymous activity. |
-| `lib/experimental.ts` | The build switch for Weft Experimental: `EXPERIMENTAL`, the product's name, and `window.weft.features`. |
+| `lib/experimental.ts` | The build switch for Weft Experimental: `EXPERIMENTAL`, the product's name and rdns, and `window.weft.features`. |
 | `lib/receipts.ts` | Ballot receipts kept at the user's request, their choice and salt sealed with a key derived from the vault key (ADR 0006). In Weft Experimental, also version 2 receipts, with the voter's note of the choice sealed the same way (ADR 0007). |
 | `entrypoints/popup/` | Home, identities, add-identity flows, transaction detail. |
 | `entrypoints/approve/` | Connect and signature approval screens, with "Keep the receipt in Weft" for a vote. |

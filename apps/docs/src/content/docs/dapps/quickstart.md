@@ -33,6 +33,8 @@ try {
 
 `connect()` resolves with the active identity's public details: name, MSP ID, role, attributes, expiry, fingerprint and PEM certificate. Use them to tailor your UI, for example hide admin actions from `role: "client"`.
 
+`getWeft()` uses `window.weft`, the first Weft to load in the page. When a user has both Weft and Weft Experimental installed, `detectProviders()` lists them both, and `getWeft({ rdns })` prefers one. See [More than one Weft](/dapps/provider-api/#more-than-one-weft).
+
 ## Call a contract
 
 Bind a channel and chaincode once, then call functions by name. Arguments are strings, as in Fabric.
