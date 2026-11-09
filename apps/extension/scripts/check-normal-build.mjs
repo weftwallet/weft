@@ -2,7 +2,8 @@
 /**
  * The normal build carries none of Weft Experimental's code (docs/adr/0009):
  * none of its names, the ballot window and handler, @weftwallet/tally with
- * noble's ristretto255, the voter credentials' module and its worker, no
+ * noble's ristretto255, the voter credentials' module and its worker
+ * (idemix-worker.js), no
  * WebAssembly file and no content security policy of its own. The one
  * sentence allowed is D11's, which tells a voter what a voter invite is, and
  * it must be there once.
@@ -10,7 +11,7 @@
  *   pnpm --filter @weftwallet/extension check:normal [build folder ...]
  *
  * Without folders, it checks .output/chrome-mv3 and .output/firefox-mv3,
- * which `pnpm --filter @weftwallet/extension build` and `build -b firefox`
+ * which `pnpm --filter @weftwallet/extension build` and `build:firefox`
  * make. The e2e tests (e2e/tests/experimental.spec.ts) run the same check on
  * the e2e build.
  */
@@ -43,6 +44,7 @@ export function experimentalTraces(dir) {
   const said = all.filter((f) => f.text.includes(VOTER_INVITE_MESSAGE)).length;
   if (said !== 1) problems.push(`The voter invite's sentence is in ${said} files, not 1.`);
   for (const f of readdirSync(dir, { recursive: true })) if (String(f).endsWith(".wasm")) problems.push(`${f} is a WebAssembly file.`);
+  if (existsSync(join(dir, "idemix-worker.js"))) problems.push("idemix-worker.js is the voting module's worker.");
   const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
   if (manifest.content_security_policy !== undefined) problems.push("manifest.json has a content_security_policy.");
   return problems;
@@ -54,7 +56,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   let failed = false;
   for (const dir of dirs) {
     if (!existsSync(join(dir, "manifest.json"))) {
-      console.error(`✗ ${dir} has no build. Run pnpm --filter @weftwallet/extension build (and build -b firefox) first.`);
+      console.error(`✗ ${dir} has no build. Run pnpm --filter @weftwallet/extension build (and build:firefox) first.`);
       failed = true;
       continue;
     }

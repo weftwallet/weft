@@ -19,9 +19,17 @@ const START_TIMEOUT_MS = 30_000;
 /** The module's files, copied into Weft Experimental's build by wxt.config.ts. */
 const asset = (name: string) => browser.runtime.getURL(`/idemix/${name}` as "/");
 
+/**
+ * The worker's own extension file (entrypoints/idemix-worker.ts), on the
+ * extension's origin in every build. In a dev build the page's scripts come
+ * from the Vite dev server, so a worker bundled with them would too, and the
+ * browser refuses a worker from another origin.
+ */
+export const workerUrl = () => browser.runtime.getURL("/idemix-worker.js" as "/");
+
 export async function startVoterModule(): Promise<IdemixWorker> {
   const started = performance.now();
-  const worker = new Worker(new URL("./idemix.worker.ts", import.meta.url), { type: "module" });
+  const worker = new Worker(workerUrl(), { type: "module" });
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const idemix = await Promise.race([

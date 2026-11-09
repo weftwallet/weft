@@ -71,8 +71,6 @@ export default defineConfig({
   vite: () => ({
     ...source,
     define: { "import.meta.env.WEFT_EXPERIMENTAL": JSON.stringify(experimental) },
-    // The idemix module's worker (lib/voter/idemix.worker.ts) is a module worker: it imports wasm_exec.js at run time.
-    worker: { format: "es" as const },
     plugins: [
       {
         // The windows' titles ("Weft · Approve request") name the product.
@@ -92,6 +90,13 @@ export default defineConfig({
     ...(keepFirefoxProfile ? { firefoxProfile: `./.wxt/firefox-data${profileSuffix}`, keepProfileChanges: true } : {}),
   },
   hooks: {
+    // The idemix module's worker (entrypoints/idemix-worker.ts) is Weft
+    // Experimental's alone, so the normal build leaves the entrypoint out.
+    "entrypoints:found": (_wxt, infos) => {
+      if (experimental) return;
+      const keep = infos.filter((info) => info.name !== "idemix-worker");
+      infos.splice(0, infos.length, ...keep);
+    },
     // Each build ships only its own icons: public/icon for Weft,
     // public/icon-experimental for Weft Experimental.
     "build:publicAssets": (_wxt, files) => {

@@ -5,7 +5,7 @@
  */
 
 import { chromium, type Worker } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { experimentalTraces } from "../../apps/extension/scripts/check-normal-build.mjs";
 import { BUILDS, PASSWORD, clickToClose, expect, stack, test, type Wallet } from "../support/fixtures.ts";
@@ -90,6 +90,34 @@ test.describe("Weft Experimental", () => {
     await expect(popup.locator(".header .build-tag")).toHaveText("Experimental");
     // It lists castBallot, so the Playground shows the section (null when the Playground isn't built).
     expect(await privateElectionShown(wallet)).not.toBe(false);
+  });
+
+  test("starts the voting module's worker from its own file, on the extension's origin", async ({ wallet }) => {
+    // The worker is an extension file of its own, which lib/voter/module.ts
+    // starts with runtime.getURL, not a worker bundled with the page: in a
+    // dev build that would load from the Vite dev server, which browsers refuse.
+    const dir = BUILDS.experimental;
+    expect(existsSync(join(dir, "idemix-worker.js"))).toBe(true);
+    const files = readdirSync(dir, { recursive: true }).map(String);
+    expect(files.filter((f) => /idemix.*worker/.test(f) && f !== "idemix-worker.js")).toEqual([]);
+    const pages = files.filter((f) => f.startsWith("chunks/") && f.endsWith(".js")).map((f) => readFileSync(join(dir, f), "utf8"));
+    expect(pages.filter((code) => code.includes("getURL(`/idemix-worker.js`)") || code.includes('getURL("/idemix-worker.js")'))).toHaveLength(1);
+
+    const popup = await wallet.popup();
+    const out = await popup.evaluate(async () => {
+      const chrome = (globalThis as any).chrome;
+      const url: string = chrome.runtime.getURL("/idemix-worker.js");
+      const worker = new Worker(url, { type: "module" });
+      const reply = await new Promise((resolve, reject) => {
+        worker.onerror = (e) => reject(new Error(e.message || "The worker fired error."));
+        worker.onmessage = (e) => resolve(e.data);
+        worker.postMessage({ type: "start", wasmUrl: chrome.runtime.getURL("/idemix/weft-idemix.wasm"), wasmExecUrl: chrome.runtime.getURL("/idemix/wasm_exec.js") });
+      });
+      worker.terminate();
+      return { worker: new URL(url).origin, page: location.origin, reply };
+    });
+    expect(out.worker).toBe(out.page);
+    expect(out.reply).toMatchObject({ type: "started" });
   });
 
   test("checks weft_castBallot's params before any window opens", async ({ wallet }) => {

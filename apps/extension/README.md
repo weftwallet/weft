@@ -70,11 +70,13 @@ When Weft Experimental enrols or re-enrols an identity, it keeps the CA chain th
 
 Weft Experimental holds Idemix voter credentials and casts anonymous ballots with them ([Voter credentials](../docs/src/content/docs/experimental/voter-credentials.md), ADR 0008). It carries IBM's idemix library as WebAssembly from `packages/idemix`: `wxt.config.ts` copies `weft-idemix.wasm` and `wasm_exec.js` into its build at `/idemix/`, building them first when `packages/idemix/dist/wasm` has none with the pinned hash (that needs Go), and gives its extension pages `script-src 'self' 'wasm-unsafe-eval'; object-src 'self';`. Normal Weft has neither, and says only, for a voter invite, that it needs Weft Experimental.
 
+The module runs in a dedicated worker, `entrypoints/idemix-worker.ts`, which WXT builds as an extension file of its own, `/idemix-worker.js`, and which `lib/voter/module.ts` starts with `browser.runtime.getURL`. The worker therefore always loads from the extension's own origin, in dev builds as in release builds: in dev, the pages' code comes from the Vite dev server, and browsers refuse to start a worker from another origin. WXT builds the worker to disk in dev too and rebuilds it when its code changes, so `dev:experimental` and `dev:firefox:experimental` run the voting module. A worker that fails to load or throws fails the start at once, rather than after the 30 second timeout.
+
 | Path | What it does |
 |---|---|
 | `lib/voter/invite.ts` | Join from an invite reads a voter invite as well as an organisation's, with `@weftwallet/core`'s `parseVoterInvite`. |
 | `lib/voter/enrol.ts` | Getting a voter credential, in the popup, in the order that sends nothing secret before a check that can fail, and what the voter is told for each failure. |
-| `lib/voter/module.ts`, `lib/voter/idemix.worker.ts` | Starts the module in a dedicated worker of the page that needs it, the popup or the approval window, and measures it with the User Timing API. The background worker never runs it. |
+| `lib/voter/module.ts`, `entrypoints/idemix-worker.ts` | Starts the module in a dedicated worker of the page that needs it, the popup or the approval window, from the worker's own extension file, and measures it with the User Timing API. The background worker never runs it. |
 | `lib/voter/seal.ts` | The voter credentials' key, HKDF of the vault key, and sealing the credential's secrets. The page that needs them seals or opens them itself. |
 | `lib/voter/store.ts` | The credentials in the background worker: one per election, never an identity. |
 | `lib/voter/activity.ts` | An anonymous ballot's activity and receipt, sealed whole. |

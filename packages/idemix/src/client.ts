@@ -27,12 +27,20 @@ export function startIdemixWorker({ worker, wasmUrl, wasmExecUrl }: StartOptions
   let next = 1;
   const send = (message: ToWorker) => worker.postMessage(message);
   return new Promise((resolveStart, rejectStart) => {
-    worker.onerror = (event) => {
-      const error = new IdemixError(`The idemix module's worker failed: ${event.message || "no message"}`);
+    // A worker that can't load (a refused or missing script) or that throws
+    // fires `error`: the start, and every call waiting, fails at once rather
+    // than waiting for an answer that can't come.
+    const fail = (error: IdemixError) => {
+      worker.terminate();
       rejectStart(error);
       for (const p of pending.values()) p.reject(error);
       pending.clear();
     };
+    worker.onerror = (event: ErrorEvent | Event) => {
+      const message = "message" in event && event.message ? event.message : "";
+      fail(new IdemixError(`The idemix module's worker stopped with an error${message ? `: ${message}` : ", and the browser gave no reason. Its script may have failed to load."}`));
+    };
+    worker.onmessageerror = () => fail(new IdemixError("The idemix module's worker sent a message the page couldn't read."));
     worker.onmessage = (event: MessageEvent<FromWorker>) => {
       const msg = event.data;
       if (msg.type === "failed") {
