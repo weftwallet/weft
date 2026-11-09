@@ -16,7 +16,7 @@
  * would drop the branch but keep the module's top-level code.
  */
 
-import { PROVIDER_FEATURES, type ExperimentalFeature, type WeftFeature } from "@weftwallet/protocol";
+import { PROVIDER_FEATURES, WEFT_EXPERIMENTAL_RDNS, WEFT_RDNS, type ExperimentalFeature, type WeftFeature } from "@weftwallet/protocol";
 
 declare global {
   interface ImportMetaEnv {
@@ -30,6 +30,12 @@ export const EXPERIMENTAL: boolean = import.meta.env.WEFT_EXPERIMENTAL === true;
 
 /** The product's name, as the popup and the windows show it. */
 export const PRODUCT_NAME: string = EXPERIMENTAL ? "Weft Experimental" : "Weft";
+
+/**
+ * The product's rdns, in its provider announcement (docs/adr/0010) and in
+ * its page channel's message tags, so the two wallets' channels never mix.
+ */
+export const PRODUCT_RDNS: string = EXPERIMENTAL ? WEFT_EXPERIMENTAL_RDNS : WEFT_RDNS;
 
 /**
  * The experimental features this build offers. Each feature adds its name

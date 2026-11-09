@@ -8,8 +8,10 @@
  */
 
 import {
+  ANNOUNCE_PROVIDER_EVENT,
   ErrorCode,
   RECEIPT_HANDOFF,
+  REQUEST_PROVIDER_EVENT,
   WeftError,
   isWeftErrorShape,
   type AddNetworkResult,
@@ -30,6 +32,8 @@ import {
   type WeftEvents,
   type WeftFeature,
   type WeftProvider,
+  type WeftProviderDetail,
+  type WeftProviderInfo,
 } from "@weftwallet/protocol";
 
 export * from "@weftwallet/protocol";
@@ -41,12 +45,130 @@ export class WeftNotInstalledError extends Error {
   }
 }
 
+/** How long detectProviders listens for announcements, and detectProvider for the preferred wallet once another is found. */
+export const ANNOUNCE_WAIT_MS = 500;
+
+/** Whether an announcement's detail has the shape of a WeftProviderDetail. */
+function isDetail(value: unknown): value is WeftProviderDetail {
+  const d = value as Partial<WeftProviderDetail> | null;
+  return typeof d?.info?.uuid === "string" && typeof d.info.rdns === "string" && d.provider?.isWeft === true;
+}
+
 /**
- * Resolves with the injected provider, waiting up to `timeoutMs` for it to
- * appear. Rejects with WeftNotInstalledError if it never does.
+ * Listens for announcements, asks every Weft to announce itself, and calls
+ * `found` once for each wallet (by info.uuid). Returns a function that stops
+ * listening.
  */
-export function detectProvider(timeoutMs = 3000): Promise<WeftProvider> {
-  if (typeof window === "undefined") return Promise.reject(new WeftNotInstalledError());
+function listenForProviders(found: (detail: WeftProviderDetail) => void): () => void {
+  const seen = new Set<string>();
+  const onAnnounce = (event: Event) => {
+    const detail = (event as CustomEvent<unknown>).detail;
+    if (!isDetail(detail) || seen.has(detail.info.uuid)) return;
+    seen.add(detail.info.uuid);
+    found(detail);
+  };
+  window.addEventListener(ANNOUNCE_PROVIDER_EVENT, onAnnounce);
+  window.dispatchEvent(new Event(REQUEST_PROVIDER_EVENT));
+  return () => window.removeEventListener(ANNOUNCE_PROVIDER_EVENT, onAnnounce);
+}
+
+export interface DetectProvidersOptions {
+  /** How long to listen for announcements, in milliseconds. 500 by default. */
+  waitMs?: number;
+}
+
+/**
+ * Every Weft in this browser that announces itself (docs/adr/0010): asks
+ * them with weft:requestProvider, listens for `waitMs`, and resolves with
+ * one { info, provider } per wallet, in the order they answered. With Weft
+ * and Weft Experimental both installed, that is two. Resolves with an empty
+ * list when none answers.
+ *
+ * `info` is what each announcer says about itself. Any script on the page
+ * can announce a provider named "Weft", so treat it as you treat
+ * window.weft: the page's own content, not proof of which extension it is.
+ */
+export function detectProviders(options: DetectProvidersOptions = {}): Promise<WeftProviderDetail[]> {
+  if (typeof window === "undefined") return Promise.resolve([]);
+  const found: WeftProviderDetail[] = [];
+  const stop = listenForProviders((detail) => found.push(detail));
+  return new Promise((resolve) =>
+    setTimeout(() => {
+      stop();
+      resolve(found);
+    }, options.waitMs ?? ANNOUNCE_WAIT_MS),
+  );
+}
+
+export interface DetectProviderOptions {
+  /** How long to wait for any Weft, in milliseconds. 3000 by default. */
+  timeoutMs?: number;
+  /**
+   * The wallet to prefer, by its rdns, for example WEFT_EXPERIMENTAL_RDNS.
+   * When it doesn't announce itself, detectProvider resolves with
+   * window.weft, or another announced Weft, as it would without one.
+   */
+  rdns?: string;
+}
+
+/** The provider detectProvider found, with its announcement when it had one. */
+async function findProvider(options: DetectProviderOptions): Promise<{ provider: WeftProvider; info?: WeftProviderInfo }> {
+  if (typeof window === "undefined") throw new WeftNotInstalledError();
+  const timeoutMs = options.timeoutMs ?? 3000;
+  const { rdns } = options;
+
+  if (!rdns) {
+    const provider = await waitForWindowWeft(timeoutMs);
+    // Each Weft announces itself as soon as it is asked, so this one's
+    // announcement, if it made one, has already arrived when stop() runs.
+    let info: WeftProviderInfo | undefined;
+    const stop = listenForProviders((detail) => {
+      if (detail.provider === provider) info = detail.info;
+    });
+    stop();
+    return { provider, info };
+  }
+
+  return new Promise((resolve, reject) => {
+    const announced: WeftProviderDetail[] = [];
+    let done = false;
+    let grace: ReturnType<typeof setTimeout> | undefined;
+    let stop = () => {};
+    const finish = (result: { provider: WeftProvider; info?: WeftProviderInfo } | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      clearTimeout(grace);
+      stop();
+      window.removeEventListener("weft#initialized", someWeft);
+      if (result) resolve(result);
+      else reject(new WeftNotInstalledError());
+    };
+    // The preferred wallet didn't answer: window.weft, or else the first that did.
+    const fallback = () => {
+      const weft = window.weft?.isWeft ? window.weft : null;
+      if (weft) finish({ provider: weft, info: announced.find((d) => d.provider === weft)?.info });
+      else finish(announced[0] ?? null);
+    };
+    // Once any Weft is here, the preferred one has ANNOUNCE_WAIT_MS more to answer.
+    const someWeft = () => {
+      if (!done && grace === undefined) grace = setTimeout(fallback, ANNOUNCE_WAIT_MS);
+    };
+    window.addEventListener("weft#initialized", someWeft);
+    const timer = setTimeout(fallback, timeoutMs);
+    // Wallets answer the request at once, so finish can run before stop is set.
+    stop = listenForProviders((detail) => {
+      if (detail.info.rdns === rdns) return finish(detail);
+      announced.push(detail);
+      someWeft();
+    });
+    if (done) stop();
+    else if (window.weft?.isWeft) someWeft();
+  });
+}
+
+/** window.weft, waiting up to `timeoutMs` for weft#initialized. */
+function waitForWindowWeft(timeoutMs: number): Promise<WeftProvider> {
   if (window.weft?.isWeft) return Promise.resolve(window.weft);
   return new Promise((resolve, reject) => {
     const onReady = () => {
@@ -60,6 +182,21 @@ export function detectProvider(timeoutMs = 3000): Promise<WeftProvider> {
     }, timeoutMs);
     window.addEventListener("weft#initialized", onReady, { once: true });
   });
+}
+
+/**
+ * Resolves with the injected provider, window.weft, waiting up to
+ * `timeoutMs` (3000 by default) for it to appear. Rejects with
+ * WeftNotInstalledError if it never does.
+ *
+ * With `{ rdns }`, it prefers that wallet: it resolves with that wallet's
+ * provider as soon as it announces itself. When it doesn't announce itself
+ * within half a second of another Weft being found, it resolves with
+ * window.weft instead.
+ */
+export function detectProvider(options?: number | DetectProviderOptions): Promise<WeftProvider> {
+  const resolved = typeof options === "number" ? { timeoutMs: options } : (options ?? {});
+  return findProvider(resolved).then((found) => found.provider);
 }
 
 function rethrow(error: unknown): never {
@@ -85,9 +222,16 @@ export interface CallOptions {
 /** A typed, ergonomic wrapper around the raw provider. */
 export class WeftClient {
   readonly provider: WeftProvider;
+  /**
+   * Which wallet this is, from its announcement (docs/adr/0010), when the
+   * client was built from one: `new WeftClient(detail.provider, detail.info)`
+   * or getWeft(). What the announcer claims, as detectProviders says.
+   */
+  readonly info?: WeftProviderInfo;
 
-  constructor(provider: WeftProvider) {
+  constructor(provider: WeftProvider, info?: WeftProviderInfo) {
     this.provider = provider;
+    if (info) this.info = info;
   }
 
   /** Asks the user to connect this site. Resolves with their active identity. */
@@ -232,7 +376,11 @@ export function checkReceiptInExplorer(explorerUrl: string, receipt: BallotRecei
   return win;
 }
 
-/** Finds the wallet and returns a client for it. */
-export async function getWeft(options: { timeoutMs?: number } = {}): Promise<WeftClient> {
-  return new WeftClient(await detectProvider(options.timeoutMs));
+/**
+ * Finds the wallet and returns a client for it, as detectProvider finds it.
+ * The client has `info` when the wallet announced itself.
+ */
+export async function getWeft(options: DetectProviderOptions = {}): Promise<WeftClient> {
+  const found = await findProvider(options);
+  return new WeftClient(found.provider, found.info);
 }

@@ -1,86 +1,20 @@
 /**
- * Isolated-world content script. Relays requests from the page's
- * `window.weft` (inpage.content.ts) to the background worker, and events
- * back. Only messages tagged for Weft from this same window are accepted.
+ * Isolated-world content script. Relays requests from this wallet's provider
+ * in the page (inpage.content.ts) to the background worker, and events back.
+ * Only messages from this same window tagged with this wallet's channel are
+ * accepted (lib/bridge.ts, docs/adr/0010).
  */
 
-import { MESSAGE_TARGET, type PageToWalletMessage, type WalletToPageMessage } from "@weftwallet/protocol";
 import { browser } from "wxt/browser";
 import { defineContentScript } from "wxt/utils/define-content-script";
-import type { ProviderEventMessage, ProviderRequest, ProviderResponse } from "../lib/messages";
+import { installBridge } from "../lib/bridge";
+import { PRODUCT_RDNS } from "../lib/experimental";
 
 export default defineContentScript({
   matches: ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
   runAt: "document_start",
   allFrames: false,
   main() {
-    const post = (message: WalletToPageMessage) => window.postMessage(message, window.location.origin);
-
-    // When Weft is updated or reloaded, Chrome cuts this script off from it:
-    // no more events, and requests fail. Nothing tells the page, so it would
-    // keep showing "connected". Notice it and say so once.
-    let cutOff = false;
-    const stillAttached = () => {
-      try {
-        return Boolean(browser.runtime?.id);
-      } catch {
-        return false;
-      }
-    };
-    const checkAttached = () => {
-      if (cutOff || stillAttached()) return;
-      cutOff = true;
-      clearInterval(timer);
-      post({ target: MESSAGE_TARGET.toPage, kind: "event", event: "disconnect", payload: { reason: "wallet-updated" } });
-    };
-    const timer = setInterval(checkAttached, 2000);
-    document.addEventListener("visibilitychange", checkAttached);
-    window.addEventListener("focus", checkAttached);
-
-    window.addEventListener("message", (event: MessageEvent) => {
-      if (event.source !== window || event.origin !== window.location.origin) return;
-      const data = event.data as Partial<PageToWalletMessage> | null;
-      if (data?.target !== MESSAGE_TARGET.toWallet || typeof data.id !== "string" || !data.method) return;
-
-      const request: ProviderRequest = { channel: "weft-provider", method: data.method, params: data.params };
-      const id = data.id;
-      // Promise.resolve().then: once cut off, sendMessage throws synchronously.
-      Promise.resolve()
-        .then(() => browser.runtime.sendMessage(request))
-        .then((response: ProviderResponse | undefined) => {
-          if (!response) {
-            post({ target: MESSAGE_TARGET.toPage, kind: "response", id, error: { code: -32603, message: "Weft did not respond." } });
-          } else if ("error" in response) {
-            post({ target: MESSAGE_TARGET.toPage, kind: "response", id, error: response.error });
-          } else {
-            post({ target: MESSAGE_TARGET.toPage, kind: "response", id, result: response.result });
-          }
-        })
-        .catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : "Weft is unavailable.";
-          post({
-            target: MESSAGE_TARGET.toPage,
-            kind: "response",
-            id,
-            error: {
-              code: -32603,
-              // After Weft is updated or reloaded, this page's old connection
-              // to it is dead until the page reloads.
-              message:
-                cutOff || /context invalidated|undefined/i.test(message) || !stillAttached()
-                  ? "Weft was updated. Reload this page to keep using it."
-                  : message,
-            },
-          });
-        });
-    });
-
-    browser.runtime.onMessage.addListener((message: unknown) => {
-      const m = message as Partial<ProviderEventMessage & { origins: string[] }>;
-      if (m.channel !== "weft-provider-event" || !m.event) return;
-      // Only connected sites hear about identity changes.
-      if (!m.origins?.includes(window.location.origin)) return;
-      post({ target: MESSAGE_TARGET.toPage, kind: "event", event: m.event as never, payload: m.payload });
-    });
+    installBridge(window, PRODUCT_RDNS, browser);
   },
 });

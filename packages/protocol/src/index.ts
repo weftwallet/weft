@@ -423,13 +423,62 @@ export interface WeftProvider {
   off<E extends WeftEvent>(event: E, listener: (payload: WeftEvents[E]) => void): void;
 }
 
+/* ------------------------------------------------------------------ */
+/* Provider announcement (docs/adr/0010)                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Each Weft in the browser dispatches this CustomEvent on `window`, its
+ * detail a frozen WeftProviderDetail: once when it loads, and again each time
+ * a page dispatches REQUEST_PROVIDER_EVENT. With Weft and Weft Experimental
+ * both installed, a page hears two, one per wallet.
+ */
+export const ANNOUNCE_PROVIDER_EVENT = "weft:announceProvider";
+
+/** A page dispatches this plain Event on `window` to ask every Weft to announce itself again. */
+export const REQUEST_PROVIDER_EVENT = "weft:requestProvider";
+
+/** The `rdns` of Weft. */
+export const WEFT_RDNS = "dev.ifeanyiugwu.weft";
+
+/** The `rdns` of Weft Experimental (docs/adr/0009). */
+export const WEFT_EXPERIMENTAL_RDNS = "dev.ifeanyiugwu.weft.experimental";
+
+/**
+ * Who an announced provider says it is. Any script on the page can dispatch
+ * an announcement, so this is what the announcer claims, and no more.
+ */
+export interface WeftProviderInfo {
+  /** A UUID the wallet picks each time the page loads. The same wallet announces the same one until the page reloads. */
+  readonly uuid: string;
+  /** The product's name: "Weft" or "Weft Experimental". */
+  readonly name: string;
+  /** The product's mark, as an SVG data URI. */
+  readonly icon: string;
+  /** Names the product, and stays the same across versions: WEFT_RDNS or WEFT_EXPERIMENTAL_RDNS. */
+  readonly rdns: string;
+}
+
+/** The detail of an ANNOUNCE_PROVIDER_EVENT. */
+export interface WeftProviderDetail {
+  readonly info: WeftProviderInfo;
+  readonly provider: WeftProvider;
+}
+
+export type WeftAnnounceProviderEvent = CustomEvent<WeftProviderDetail>;
+
 declare global {
   interface Window {
+    /** The first Weft to load in the page. A second one announces itself but leaves this alone. */
     weft?: WeftProvider;
   }
   interface WindowEventMap {
-    /** Fired on `window` once the provider has been injected. */
+    /** Fired on `window` once the provider has been injected at `window.weft`. */
     "weft#initialized": Event;
+    /** Each Weft announces its provider (ANNOUNCE_PROVIDER_EVENT). */
+    "weft:announceProvider": WeftAnnounceProviderEvent;
+    /** A page asks every Weft to announce itself (REQUEST_PROVIDER_EVENT). */
+    "weft:requestProvider": Event;
   }
 }
 
@@ -513,23 +562,39 @@ export function isWeftErrorShape(value: unknown): value is WeftErrorShape {
 /* Window messaging between the page and the extension                 */
 /* ------------------------------------------------------------------ */
 
-/** Tag on every `postMessage` so the bridge ignores unrelated traffic. */
+/**
+ * The start of the tag on every `postMessage` between a wallet's provider
+ * and its bridge. The full tag ends with the wallet's rdns (messageTargets),
+ * so each wallet has its own channel (docs/adr/0010).
+ */
 export const MESSAGE_TARGET = {
   toWallet: "weft:to-wallet",
   toPage: "weft:to-page",
 } as const;
 
+export type ToWalletTarget = `${typeof MESSAGE_TARGET.toWallet}:${string}`;
+export type ToPageTarget = `${typeof MESSAGE_TARGET.toPage}:${string}`;
+
+/**
+ * One wallet's channel: the tags its provider and bridge put on their
+ * messages, for example "weft:to-wallet:dev.ifeanyiugwu.weft". A bridge
+ * answers only its own toWallet, and a provider accepts only its own toPage.
+ */
+export function messageTargets(rdns: string): { readonly toWallet: ToWalletTarget; readonly toPage: ToPageTarget } {
+  return Object.freeze({ toWallet: `${MESSAGE_TARGET.toWallet}:${rdns}` as const, toPage: `${MESSAGE_TARGET.toPage}:${rdns}` as const });
+}
+
 export interface PageToWalletMessage {
-  target: typeof MESSAGE_TARGET.toWallet;
+  target: ToWalletTarget;
   id: string;
   method: AnyMethod;
   params?: unknown;
 }
 
 export type WalletToPageMessage =
-  | { target: typeof MESSAGE_TARGET.toPage; kind: "response"; id: string; result: unknown }
-  | { target: typeof MESSAGE_TARGET.toPage; kind: "response"; id: string; error: WeftErrorShape }
-  | { target: typeof MESSAGE_TARGET.toPage; kind: "event"; event: WeftEvent; payload: unknown };
+  | { target: ToPageTarget; kind: "response"; id: string; result: unknown }
+  | { target: ToPageTarget; kind: "response"; id: string; error: WeftErrorShape }
+  | { target: ToPageTarget; kind: "event"; event: WeftEvent; payload: unknown };
 
 /* ------------------------------------------------------------------ */
 /* Invites                                                             */

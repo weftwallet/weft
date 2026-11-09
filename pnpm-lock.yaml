@@ -345,6 +345,10 @@ importers:
       '@weftwallet/protocol':
         specifier: workspace:*
         version: link:../protocol
+    devDependencies:
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1))
 
   packages/tally:
     dependencies:
@@ -395,6 +399,9 @@ importers:
       '@weftwallet/brand':
         specifier: workspace:*
         version: link:../brand
+      '@weftwallet/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       astro:
         specifier: ^7.4.1
         version: 7.4.1(@astrojs/markdown-remark@7.3.5)(@types/node@26.6.5)(jiti@2.7.0)(yaml@2.9.1)
