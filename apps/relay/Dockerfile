@@ -8,6 +8,10 @@ COPY packages/brand packages/brand
 COPY packages/protocol packages/protocol
 COPY packages/core packages/core
 COPY apps/relay apps/relay
+# Only the manifest: the relay's tests use @weftwallet/idemix (a dev
+# dependency), and pnpm can't resolve the workspace without it. The image
+# doesn't build or carry the module.
+COPY packages/idemix/package.json packages/idemix/
 RUN pnpm install --frozen-lockfile --filter @weftwallet/relay... \
  && pnpm --filter @weftwallet/protocol build \
  && pnpm --filter @weftwallet/core build \
