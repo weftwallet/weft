@@ -24,7 +24,7 @@ esac
 url="https://github.com/hyperledger/fabric-ca/releases/download/v${VERSION}/hyperledger-fabric-ca-${os}-${arch}-${VERSION}.tar.gz"
 tmp="$(mktemp -d)"
 echo "Downloading Fabric CA ${VERSION} for ${os}-${arch}"
-curl -fsSL "$url" -o "$tmp/ca.tgz"
+curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 "$url" -o "$tmp/ca.tgz"
 tar -xzf "$tmp/ca.tgz" -C "$tmp"
 mkdir -p "$bin"
 cp "$tmp/bin/fabric-ca-server" "$tmp/bin/fabric-ca-client" "$bin/"

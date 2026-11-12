@@ -285,10 +285,18 @@ function ensureFabric() {
   const dir = dirname(samples);
   mkdirSync(dir, { recursive: true });
   note(`downloading Fabric ${FABRIC_VERSION} and Fabric CA ${CA_VERSION} into devnet/.fabric (one-time)`);
-  run("curl", ["-sSLO", "https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh"], { cwd: dir });
-  run("bash", ["install-fabric.sh", "--fabric-version", FABRIC_VERSION, "--ca-version", CA_VERSION, "docker", "samples", "binary"], {
-    cwd: dir,
-  });
+  run("curl", ["-sSLO", "--retry", "5", "--retry-all-errors", "https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh"], { cwd: dir });
+  // install-fabric.sh exits 0 when GitHub fails the binaries' download, and
+  // network.sh then fails with "Peer binary not found", so check for peer.
+  for (let attempt = 1; ; attempt++) {
+    run("bash", ["install-fabric.sh", "--fabric-version", FABRIC_VERSION, "--ca-version", CA_VERSION, "docker", "samples", "binary"], {
+      cwd: dir,
+    });
+    if (existsSync(join(samples, "bin", "peer"))) return;
+    if (attempt === 3) fail("Fabric's binaries didn't download after 3 tries.", "GitHub's release downloads may be failing; run pnpm playground:up again later.");
+    note(`Fabric's binaries didn't download; trying again in 20 seconds (try ${attempt + 1} of 3)`);
+    spawnSync("sleep", ["20"]);
+  }
 }
 
 function startNetwork() {
