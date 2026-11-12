@@ -23,10 +23,10 @@
 // the voter organisation, so this page learns neither the choice nor the voter.
 import { productHref } from "@weftwallet/ui/links";
 // The local playground's own elections with voter credentials, and the demo
-// voters it registers on each one's voters' CA (playground/experimental.mjs).
+// voters it registers on each one's voters' CA (devnet/experimental.mjs).
 // Any other election, such as one the e2e tests create, has voters that its
 // organisers registered, so the hint doesn't name the demo voters for it.
-import { DEMO_VOTERS, voterElections } from "../../../../playground/experimental.mjs";
+import { DEMO_VOTERS, voterElections } from "../../../../devnet/experimental.mjs";
 const docs = (path: string) => productHref("docs", path);
 const demoVoters = JSON.stringify({ elections: voterElections().map((e: { id: string }) => e.id), voters: DEMO_VOTERS.map((v: { id: string; secret: string }) => [v.id, v.secret]) });
 ---
